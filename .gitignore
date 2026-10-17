@@ -1,0 +1,77 @@
+# Local provisioning, credentials and runtime state
+/.local/
+/.oci/
+/.aws/
+/.ssh/
+/.docker/
+/secrets/
+**/oci-secrets/
+
+# Environment values: commit only sanitized example files
+.env
+.env.*
+!.env.example
+!.env.*.example
+*.key
+*.pem
+*.p12
+*.pfx
+*.jks
+*.keystore
+id_rsa*
+id_ed25519*
+
+# Frontend dependencies and generated output (keep lockfiles)
+node_modules/
+dist/
+.vite/
+.cache/
+*.tsbuildinfo
+
+# Java build output and local Gradle state (keep wrapper tooling)
+target/
+build/
+.gradle/
+*.class
+*.jar
+*.war
+!**/gradle/wrapper/gradle-wrapper.jar
+!**/.mvn/wrapper/maven-wrapper.jar
+
+# Test reports and runtime logs (keep committed visual baselines)
+coverage/
+playwright-report/
+test-results/
+blob-report/
+*.log
+*.pid
+*.pid.lock
+
+# Local deployment state; templates and Compose sources stay tracked
+/infra/runtime/
+/infra/releases/
+/infra/certbot/conf/
+/infra/certbot/www/
+/infra/.env
+
+# Local tool, editor and OS state
+/.superpowers/
+/.codex/
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+Desktop.ini
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.tmp
+*.bak
+*.swp
+*.swo
+*~
+
+# Superseded prototype captures only.
+# Keep prototype/approved-2026-10-18/ and its approved screenshots.
+/prototype/*.png

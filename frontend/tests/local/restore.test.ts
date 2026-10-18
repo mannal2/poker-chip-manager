@@ -1,0 +1,33 @@
+import { it, expect } from 'vitest';
+import { validateStored } from '../../src/local/restore';
+import { fixtureState } from '../game/helpers';
+it('설정 총량·이름·핸드 단계·응답자·예약·취소 snapshot 손상을 거절', () => {
+  const base = { schemaVersion: 1, rulesVersion: 1, eventSequence: 0, state: fixtureState() };
+  const changes = [
+    (s: typeof base.state) => {
+      s.settings.initial = 2000;
+    },
+    (s: typeof base.state) => {
+      s.players[0].name = '다른이름';
+    },
+    (s: typeof base.state) => {
+      s.hand!.pending.push('missing');
+    },
+    (s: typeof base.state) => {
+      s.pendingBlinds = { sb: 20, bb: 10 };
+    },
+    (s: typeof base.state) => {
+      s.hand!.showdown = undefined as unknown as boolean;
+    },
+    (s: typeof base.state) => {
+      s.undo = { ...structuredClone(s), pot: 123, undo: undefined } as unknown as NonNullable<
+        typeof s.undo
+      >;
+    },
+  ];
+  for (const change of changes) {
+    const saved = structuredClone(base);
+    change(saved.state);
+    expect(() => validateStored(saved)).toThrow();
+  }
+});

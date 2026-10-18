@@ -1,0 +1,298 @@
+[
+  {
+    "id": "LIF01",
+    "initialState": {
+      "names": ["A", "B", "C"],
+      "initial": 1000,
+      "sb": 5,
+      "bb": 10,
+      "button": 0,
+      "viewSeat": 0
+    },
+    "commands": [
+      {
+        "type": "START_TOURNAMENT"
+      },
+      {
+        "type": "CALL"
+      },
+      {
+        "type": "CALL"
+      },
+      {
+        "type": "CHECK"
+      },
+      {
+        "type": "CHECK"
+      },
+      {
+        "type": "CHECK"
+      },
+      {
+        "type": "CHECK"
+      },
+      {
+        "type": "CHECK"
+      },
+      {
+        "type": "CHECK"
+      },
+      {
+        "type": "CHECK"
+      },
+      {
+        "type": "CHECK"
+      },
+      {
+        "type": "CHECK"
+      },
+      {
+        "type": "CHECK"
+      },
+      {
+        "type": "SETTLE_HAND",
+        "winners": {
+          "pot0": ["p0"]
+        }
+      }
+    ],
+    "expectedStateSubset": {
+      "status": "playing",
+      "pot": 15,
+      "hand": {
+        "number": 2
+      },
+      "players": [
+        {
+          "stack": 1010,
+          "H": 10
+        },
+        {
+          "stack": 990,
+          "H": 0
+        },
+        {
+          "stack": 985,
+          "H": 5
+        }
+      ]
+    },
+    "suite": "lifecycle",
+    "description": "정산·시작·중단 LIF01",
+    "context": {
+      "id": "LIF01",
+      "at": "2026-10-18T00:00:00Z"
+    },
+    "expectedError": null,
+    "expectedEvents": ["HAND_START"]
+  },
+  {
+    "id": "LIF02",
+    "initialState": {
+      "names": ["A", "B"],
+      "initial": 1000,
+      "sb": 5,
+      "bb": 10,
+      "button": 0,
+      "viewSeat": 0
+    },
+    "commands": [
+      {
+        "type": "START_TOURNAMENT"
+      },
+      {
+        "type": "ALL_IN"
+      },
+      {
+        "type": "CALL"
+      },
+      {
+        "type": "SETTLE_HAND",
+        "winners": {
+          "pot0": ["p0"]
+        }
+      }
+    ],
+    "expectedStateSubset": {
+      "status": "ended",
+      "pot": 0,
+      "hand": {
+        "number": 1
+      },
+      "players": [
+        {
+          "stack": 2000
+        },
+        {
+          "stack": 0,
+          "eliminated": true
+        }
+      ]
+    },
+    "suite": "lifecycle",
+    "description": "정산·시작·중단 LIF02",
+    "context": {
+      "id": "LIF02",
+      "at": "2026-10-18T00:00:00Z"
+    },
+    "expectedError": null,
+    "expectedEvents": ["HAND_START"]
+  },
+  {
+    "id": "LIF03",
+    "initialState": {
+      "names": ["A", "B"],
+      "initial": 1000,
+      "sb": 5,
+      "bb": 10,
+      "button": 0,
+      "viewSeat": 0
+    },
+    "commands": [
+      {
+        "type": "START_TOURNAMENT"
+      },
+      {
+        "type": "FOLD"
+      }
+    ],
+    "expectedStateSubset": {
+      "status": "playing",
+      "pot": 15,
+      "hand": {
+        "number": 2
+      },
+      "players": [
+        {
+          "stack": 985
+        },
+        {
+          "stack": 1000
+        }
+      ]
+    },
+    "suite": "lifecycle",
+    "description": "정산·시작·중단 LIF03",
+    "context": {
+      "id": "LIF03",
+      "at": "2026-10-18T00:00:00Z"
+    },
+    "expectedError": null,
+    "expectedEvents": ["HAND_START"]
+  },
+  {
+    "id": "LIF04",
+    "initialState": {
+      "names": ["A", "B"],
+      "initial": 1000,
+      "sb": 5,
+      "bb": 10,
+      "button": 0,
+      "viewSeat": 0
+    },
+    "commands": [
+      {
+        "type": "START_TOURNAMENT"
+      },
+      {
+        "type": "SCHEDULE_BLINDS",
+        "sb": 10,
+        "bb": 20
+      },
+      {
+        "type": "CALL"
+      },
+      {
+        "type": "CHECK"
+      },
+      {
+        "type": "CHECK"
+      },
+      {
+        "type": "CHECK"
+      },
+      {
+        "type": "CHECK"
+      },
+      {
+        "type": "CHECK"
+      },
+      {
+        "type": "CHECK"
+      },
+      {
+        "type": "CHECK"
+      },
+      {
+        "type": "SETTLE_HAND",
+        "winners": {
+          "pot0": ["p0"]
+        }
+      }
+    ],
+    "expectedStateSubset": {
+      "pendingBlinds": null,
+      "hand": {
+        "number": 2,
+        "sb": 10,
+        "bb": 20
+      },
+      "pot": 30,
+      "players": [
+        {
+          "stack": 990
+        },
+        {
+          "stack": 980
+        }
+      ]
+    },
+    "suite": "lifecycle",
+    "description": "정산·시작·중단 LIF04",
+    "context": {
+      "id": "LIF04",
+      "at": "2026-10-18T00:00:00Z"
+    },
+    "expectedError": null,
+    "expectedEvents": ["HAND_START"]
+  },
+  {
+    "id": "LIF05",
+    "initialState": {
+      "names": ["A", "B"],
+      "initial": 1000,
+      "sb": 5,
+      "bb": 10,
+      "button": 0,
+      "viewSeat": 0
+    },
+    "commands": [
+      {
+        "type": "START_TOURNAMENT"
+      },
+      {
+        "type": "ABORT"
+      }
+    ],
+    "expectedStateSubset": {
+      "status": "aborted",
+      "pot": 15,
+      "players": [
+        {
+          "stack": 995
+        },
+        {
+          "stack": 990
+        }
+      ]
+    },
+    "suite": "lifecycle",
+    "description": "정산·시작·중단 LIF05",
+    "context": {
+      "id": "LIF05",
+      "at": "2026-10-18T00:00:00Z"
+    },
+    "expectedError": null,
+    "expectedEvents": ["HAND_START"]
+  }
+]

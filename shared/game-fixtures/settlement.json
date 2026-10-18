@@ -1,0 +1,342 @@
+[
+  {
+    "id": "W01",
+    "source": "P01",
+    "winners": [["p0"], ["p1"]],
+    "ok": false,
+    "suite": "settlement",
+    "description": "P01 | 메인 A / 사이드 B | 거절: A>B와 B>A 충돌 |",
+    "context": {
+      "id": "W01",
+      "at": "2026-10-18T00:00:00Z"
+    },
+    "initialState": {
+      "source": "P01"
+    },
+    "commands": [
+      {
+        "type": "PREVIEW_SETTLEMENT",
+        "winners": [["p0"], ["p1"]]
+      }
+    ],
+    "expectedStateSubset": {
+      "ok": false
+    },
+    "expectedError": null,
+    "expectedEvents": []
+  },
+  {
+    "id": "W02",
+    "source": "P01",
+    "winners": [["p2"], ["p1"]],
+    "ok": true,
+    "payouts": {
+      "p0": 0,
+      "p1": 100,
+      "p2": 150
+    },
+    "suite": "settlement",
+    "description": "P01 | 메인 C / 사이드 B | 허용: C>B>A 순위 가능, C150/B100 |",
+    "context": {
+      "id": "W02",
+      "at": "2026-10-18T00:00:00Z"
+    },
+    "initialState": {
+      "source": "P01"
+    },
+    "commands": [
+      {
+        "type": "PREVIEW_SETTLEMENT",
+        "winners": [["p2"], ["p1"]]
+      }
+    ],
+    "expectedStateSubset": {
+      "ok": true,
+      "payouts": {
+        "p0": 0,
+        "p1": 100,
+        "p2": 150
+      }
+    },
+    "expectedError": null,
+    "expectedEvents": []
+  },
+  {
+    "id": "W03",
+    "source": "P01",
+    "winners": [["p0", "p1"], ["p0"]],
+    "ok": false,
+    "suite": "settlement",
+    "description": "P01 | 메인 A+B / 사이드 A | 거절: A=B인데 A>B 요구 |",
+    "context": {
+      "id": "W03",
+      "at": "2026-10-18T00:00:00Z"
+    },
+    "initialState": {
+      "source": "P01"
+    },
+    "commands": [
+      {
+        "type": "PREVIEW_SETTLEMENT",
+        "winners": [["p0", "p1"], ["p0"]]
+      }
+    ],
+    "expectedStateSubset": {
+      "ok": false
+    },
+    "expectedError": null,
+    "expectedEvents": []
+  },
+  {
+    "id": "W04",
+    "source": "P01",
+    "winners": [["p0", "p2"], ["p1"]],
+    "ok": false,
+    "suite": "settlement",
+    "description": "P01 | 메인 A+C / 사이드 B | 거절: A=C>B와 B>A 충돌 |",
+    "context": {
+      "id": "W04",
+      "at": "2026-10-18T00:00:00Z"
+    },
+    "initialState": {
+      "source": "P01"
+    },
+    "commands": [
+      {
+        "type": "PREVIEW_SETTLEMENT",
+        "winners": [["p0", "p2"], ["p1"]]
+      }
+    ],
+    "expectedStateSubset": {
+      "ok": false
+    },
+    "expectedError": null,
+    "expectedEvents": []
+  },
+  {
+    "id": "W05",
+    "source": "P01",
+    "winners": [
+      ["p0", "p1"],
+      ["p0", "p1"]
+    ],
+    "ok": true,
+    "payouts": {
+      "p0": 125,
+      "p1": 125,
+      "p2": 0
+    },
+    "suite": "settlement",
+    "description": "P01 | 메인 A+B / 사이드 A+B | 허용: 메인 각75·사이드 각50, A125/B125 |",
+    "context": {
+      "id": "W05",
+      "at": "2026-10-18T00:00:00Z"
+    },
+    "initialState": {
+      "source": "P01"
+    },
+    "commands": [
+      {
+        "type": "PREVIEW_SETTLEMENT",
+        "winners": [
+          ["p0", "p1"],
+          ["p0", "p1"]
+        ]
+      }
+    ],
+    "expectedStateSubset": {
+      "ok": true,
+      "payouts": {
+        "p0": 125,
+        "p1": 125,
+        "p2": 0
+      }
+    },
+    "expectedError": null,
+    "expectedEvents": []
+  },
+  {
+    "id": "W06",
+    "source": "P03",
+    "winners": [["p0"], ["p2"]],
+    "ok": false,
+    "suite": "settlement",
+    "description": "P03 | 사이드 C 선택 | 거절: C는 그 사이드에 기여하지 않음 |",
+    "context": {
+      "id": "W06",
+      "at": "2026-10-18T00:00:00Z"
+    },
+    "initialState": {
+      "source": "P03"
+    },
+    "commands": [
+      {
+        "type": "PREVIEW_SETTLEMENT",
+        "winners": [["p0"], ["p2"]]
+      }
+    ],
+    "expectedStateSubset": {
+      "ok": false
+    },
+    "expectedError": null,
+    "expectedEvents": []
+  },
+  {
+    "id": "W07",
+    "source": "P03",
+    "winners": [[], ["p0"]],
+    "ok": false,
+    "suite": "settlement",
+    "description": "임의 팟 | 승자 없음 또는 폴드자 포함 | 거절, 지급 없음 |",
+    "context": {
+      "id": "W07",
+      "at": "2026-10-18T00:00:00Z"
+    },
+    "initialState": {
+      "source": "P03"
+    },
+    "commands": [
+      {
+        "type": "PREVIEW_SETTLEMENT",
+        "winners": [[], ["p0"]]
+      }
+    ],
+    "expectedStateSubset": {
+      "ok": false
+    },
+    "expectedError": null,
+    "expectedEvents": []
+  },
+  {
+    "id": "W08",
+    "source": "custom",
+    "amounts": [15],
+    "eligible": [["p1", "p2"]],
+    "winners": [["p1", "p2"]],
+    "ok": true,
+    "payouts": {
+      "p0": 0,
+      "p1": 10,
+      "p2": 5
+    },
+    "suite": "settlement",
+    "description": "팟15, 승자 B/C, 버튼A | B10/C5 |",
+    "context": {
+      "id": "W08",
+      "at": "2026-10-18T00:00:00Z"
+    },
+    "initialState": {
+      "source": "custom",
+      "amounts": [15],
+      "eligible": [["p1", "p2"]]
+    },
+    "commands": [
+      {
+        "type": "PREVIEW_SETTLEMENT",
+        "winners": [["p1", "p2"]]
+      }
+    ],
+    "expectedStateSubset": {
+      "ok": true,
+      "payouts": {
+        "p0": 0,
+        "p1": 10,
+        "p2": 5
+      }
+    },
+    "expectedError": null,
+    "expectedEvents": []
+  },
+  {
+    "id": "W09",
+    "source": "custom",
+    "amounts": [25],
+    "eligible": [["p0", "p1", "p2"]],
+    "winners": [["p0", "p1", "p2"]],
+    "ok": true,
+    "payouts": {
+      "p0": 5,
+      "p1": 10,
+      "p2": 10
+    },
+    "suite": "settlement",
+    "description": "팟25, 승자 A/B/C, 버튼A | B10/C10/A5 |",
+    "context": {
+      "id": "W09",
+      "at": "2026-10-18T00:00:00Z"
+    },
+    "initialState": {
+      "source": "custom",
+      "amounts": [25],
+      "eligible": [["p0", "p1", "p2"]]
+    },
+    "commands": [
+      {
+        "type": "PREVIEW_SETTLEMENT",
+        "winners": [["p0", "p1", "p2"]]
+      }
+    ],
+    "expectedStateSubset": {
+      "ok": true,
+      "payouts": {
+        "p0": 5,
+        "p1": 10,
+        "p2": 10
+      }
+    },
+    "expectedError": null,
+    "expectedEvents": []
+  },
+  {
+    "id": "W10",
+    "source": "custom",
+    "amounts": [15, 15],
+    "eligible": [
+      ["p1", "p2"],
+      ["p1", "p2"]
+    ],
+    "winners": [
+      ["p1", "p2"],
+      ["p1", "p2"]
+    ],
+    "ok": true,
+    "payouts": {
+      "p0": 0,
+      "p1": 20,
+      "p2": 10
+    },
+    "suite": "settlement",
+    "description": "서로 다른 두 팟 각15, 각 승자 B/C, 버튼A | 각 팟 B10/C5 → 총 B20/C10. 두 팟을30으로 합쳐15씩 주지 않음 |",
+    "context": {
+      "id": "W10",
+      "at": "2026-10-18T00:00:00Z"
+    },
+    "initialState": {
+      "source": "custom",
+      "amounts": [15, 15],
+      "eligible": [
+        ["p1", "p2"],
+        ["p1", "p2"]
+      ]
+    },
+    "commands": [
+      {
+        "type": "PREVIEW_SETTLEMENT",
+        "winners": [
+          ["p1", "p2"],
+          ["p1", "p2"]
+        ]
+      }
+    ],
+    "expectedStateSubset": {
+      "ok": true,
+      "payouts": {
+        "p0": 0,
+        "p1": 20,
+        "p2": 10
+      }
+    },
+    "expectedError": null,
+    "expectedEvents": []
+  }
+]

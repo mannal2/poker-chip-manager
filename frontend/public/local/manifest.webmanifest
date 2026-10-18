@@ -1,0 +1,30 @@
+{
+  "id": "/local/",
+  "name": "Poker Chip Manager",
+  "short_name": "Poker Chips",
+  "lang": "ko",
+  "start_url": "/local/",
+  "scope": "/local/",
+  "display": "standalone",
+  "theme_color": "#101b18",
+  "background_color": "#101b18",
+  "icons": [
+    {
+      "src": "/local/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/local/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/local/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}

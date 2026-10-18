@@ -1,0 +1,732 @@
+[
+  {
+    "id": "B01",
+    "initialState": {
+      "stacks": [1000, 995, 990],
+      "B": [0, 5, 10],
+      "W": 10,
+      "R": 10,
+      "bb": 10,
+      "street": 0
+    },
+    "commands": [
+      {
+        "type": "CALL"
+      },
+      {
+        "type": "CALL"
+      }
+    ],
+    "expectedStateSubset": {
+      "pot": 30,
+      "hand": {
+        "actorId": "p2",
+        "phase": "betting"
+      }
+    },
+    "suite": "betting",
+    "description": "3명 A버튼/B SB5/C BB10, A 추가10 콜, B 추가5 콜 | 팟30. C의 체크/레이즈 차례가 남으며 자동 Flop 전환 금지 |",
+    "context": {
+      "id": "B01",
+      "at": "2026-10-18T00:00:00Z"
+    },
+    "expectedError": null,
+    "expectedEvents": []
+  },
+  {
+    "id": "B02",
+    "initialState": {
+      "stacks": [1000, 995, 990],
+      "B": [0, 5, 10],
+      "actor": 1,
+      "W": 10,
+      "R": 10,
+      "bb": 10,
+      "street": 0
+    },
+    "commands": [
+      {
+        "type": "RAISE",
+        "additional": 25
+      }
+    ],
+    "expectedStateSubset": {
+      "hand": {
+        "W": 30,
+        "R": 20
+      },
+      "players": [
+        {},
+        {
+          "B": 30,
+          "H": 30,
+          "stack": 970
+        },
+        {}
+      ]
+    },
+    "suite": "betting",
+    "description": "B01에서 C 체크 | 팟30, 카드 공개 시작 대기. 아직 다음 라운드는 아님 |",
+    "context": {
+      "id": "B02",
+      "at": "2026-10-18T00:00:00Z"
+    },
+    "expectedError": null,
+    "expectedEvents": []
+  },
+  {
+    "id": "B03",
+    "initialState": {
+      "stacks": [1000, 1000, 1000],
+      "B": [5, 30, 30],
+      "W": 30,
+      "R": 20,
+      "bb": 10
+    },
+    "commands": [
+      {
+        "type": "RAISE",
+        "additional": 40
+      }
+    ],
+    "expectedError": "MIN_RAISE",
+    "suite": "betting",
+    "description": "BB10, 현재 W30/R20, 본인 B5 | 정상 최소 총액50, 추가45. 잔액 충분할 때 추가40은 거절 |",
+    "context": {
+      "id": "B03",
+      "at": "2026-10-18T00:00:00Z"
+    },
+    "expectedStateSubset": {},
+    "expectedEvents": []
+  },
+  {
+    "id": "B04",
+    "initialState": {
+      "stacks": [30, 1000, 1000],
+      "B": [20, 100, 100],
+      "W": 100,
+      "R": 100
+    },
+    "commands": [
+      {
+        "type": "CALL"
+      }
+    ],
+    "expectedStateSubset": {
+      "players": [
+        {
+          "B": 50,
+          "stack": 0
+        },
+        {},
+        {}
+      ]
+    },
+    "suite": "betting",
+    "description": "W100, 본인 B20/S30에서 콜 | 추가30 전액 납부, B50, 잔액0. 80을 낼 수 없다고 콜 전체를 거절하지 않음 |",
+    "context": {
+      "id": "B04",
+      "at": "2026-10-18T00:00:00Z"
+    },
+    "expectedError": null,
+    "expectedEvents": []
+  },
+  {
+    "id": "B05",
+    "initialState": {
+      "stacks": [1000, 150, 1000],
+      "R": 100
+    },
+    "commands": [
+      {
+        "type": "BET",
+        "additional": 100
+      },
+      {
+        "type": "ALL_IN"
+      },
+      {
+        "type": "CALL"
+      }
+    ],
+    "expectedLegal": {
+      "callAdditional": 50,
+      "canRaise": false
+    },
+    "suite": "betting",
+    "description": "Flop A100 베팅, B150 짧은 올인, C150 콜 | A는 추가50 콜/폴드만. 잔액 전부로 레이즈하는 우회도 거절 |",
+    "context": {
+      "id": "B05",
+      "at": "2026-10-18T00:00:00Z"
+    },
+    "expectedStateSubset": {},
+    "expectedError": null,
+    "expectedEvents": []
+  },
+  {
+    "id": "B06",
+    "initialState": {
+      "stacks": [1000, 150, 200, 1000],
+      "R": 100
+    },
+    "commands": [
+      {
+        "type": "BET",
+        "additional": 100
+      },
+      {
+        "type": "ALL_IN"
+      },
+      {
+        "type": "ALL_IN"
+      },
+      {
+        "type": "CALL"
+      }
+    ],
+    "expectedLegal": {
+      "callAdditional": 100,
+      "canRaise": true,
+      "minRaiseAdditional": 200
+    },
+    "suite": "betting",
+    "description": "Flop A100, B150 올인, C200 올인, D200 콜 | A는 추가100 콜 또는 최소 총300(추가200) 레이즈 가능, R100 유지 |",
+    "context": {
+      "id": "B06",
+      "at": "2026-10-18T00:00:00Z"
+    },
+    "expectedStateSubset": {},
+    "expectedError": null,
+    "expectedEvents": []
+  },
+  {
+    "id": "B07",
+    "initialState": {
+      "stacks": [1000, 150, 1000, 200],
+      "R": 100
+    },
+    "commands": [
+      {
+        "type": "BET",
+        "additional": 100
+      },
+      {
+        "type": "ALL_IN"
+      },
+      {
+        "type": "CALL"
+      },
+      {
+        "type": "ALL_IN"
+      },
+      {
+        "type": "CALL"
+      }
+    ],
+    "expectedLegal": {
+      "callAdditional": 50,
+      "canRaise": false
+    },
+    "suite": "betting",
+    "description": "A100, B150 올인, C150 콜, D200 올인 | A는 재레이즈 가능. A가200 콜하면 C는 추가50 콜/폴드만 가능 |",
+    "context": {
+      "id": "B07",
+      "at": "2026-10-18T00:00:00Z"
+    },
+    "expectedStateSubset": {},
+    "expectedError": null,
+    "expectedEvents": []
+  },
+  {
+    "id": "B08",
+    "initialState": {
+      "stacks": [1000, 1000, 300],
+      "R": 100
+    },
+    "commands": [
+      {
+        "type": "BET",
+        "additional": 100
+      },
+      {
+        "type": "RAISE",
+        "additional": 250
+      },
+      {
+        "type": "ALL_IN"
+      }
+    ],
+    "expectedLegal": {
+      "minRaiseAdditional": 350,
+      "canRaise": true
+    },
+    "expectedStateSubset": {
+      "hand": {
+        "R": 150,
+        "W": 300
+      }
+    },
+    "suite": "betting",
+    "description": "A100, B가 총250 완전 레이즈, C총300 짧은 올인 | R150. A의 다음 정상 최소 총액450. C 증가폭50으로 R을 낮추지 않음 |",
+    "context": {
+      "id": "B08",
+      "at": "2026-10-18T00:00:00Z"
+    },
+    "expectedError": null,
+    "expectedEvents": []
+  },
+  {
+    "id": "B09",
+    "initialState": {
+      "stacks": [1000, 1000, 300],
+      "R": 100
+    },
+    "commands": [
+      {
+        "type": "BET",
+        "additional": 100
+      },
+      {
+        "type": "RAISE",
+        "additional": 250
+      },
+      {
+        "type": "ALL_IN"
+      },
+      {
+        "type": "CALL"
+      }
+    ],
+    "expectedLegal": {
+      "callAdditional": 50,
+      "canRaise": false
+    },
+    "suite": "betting",
+    "description": "B08에서 A300 콜 후 B 차례 | B는 추가50 콜/폴드만. B 본인의 완전 레이즈로 B의 권한을 재개하지 않음 |",
+    "context": {
+      "id": "B09",
+      "at": "2026-10-18T00:00:00Z"
+    },
+    "expectedStateSubset": {},
+    "expectedError": null,
+    "expectedEvents": []
+  },
+  {
+    "id": "B10",
+    "initialState": {
+      "stacks": [1000, 995, 0],
+      "B": [0, 5, 5],
+      "W": 10,
+      "R": 10,
+      "bb": 10,
+      "street": 0
+    },
+    "commands": [],
+    "expectedLegal": {
+      "callAdditional": 10,
+      "minRaiseAdditional": 20
+    },
+    "suite": "betting",
+    "description": "3명 SB5/BB10, BB 잔액5 전액 납부, 다른 둘은 충분 | 다른 둘의 Preflop 콜 기준10, 일반 최소 레이즈 총20 |",
+    "context": {
+      "id": "B10",
+      "at": "2026-10-18T00:00:00Z"
+    },
+    "expectedStateSubset": {},
+    "expectedError": null,
+    "expectedEvents": []
+  },
+  {
+    "id": "B11",
+    "initialState": {
+      "stacks": [995, 0],
+      "B": [5, 5],
+      "W": 10,
+      "R": 10,
+      "bb": 10,
+      "street": 0
+    },
+    "commands": [],
+    "expectedLegal": {
+      "callAdditional": 0,
+      "canRaise": false
+    },
+    "suite": "betting",
+    "description": "HU SB5/BB10, BB가 잔액5만 납부, SB는 이미5 납부 | 추가 콜/체크 강요 없이 공개 대기, 팟10 |",
+    "context": {
+      "id": "B11",
+      "at": "2026-10-18T00:00:00Z"
+    },
+    "expectedStateSubset": {},
+    "expectedError": null,
+    "expectedEvents": []
+  },
+  {
+    "id": "B12",
+    "initialState": {
+      "stacks": [0, 200, 0],
+      "B": [100, 40, 0],
+      "W": 100,
+      "R": 100,
+      "folded": [2],
+      "actor": 1
+    },
+    "commands": [],
+    "expectedLegal": {
+      "callAdditional": 60,
+      "canRaise": false
+    },
+    "suite": "betting",
+    "description": "A100 올인, B는 이미40 납부하고 잔액200, 다른 사람 모두 폴드 | B는 추가60 콜 또는 폴드. 응답할 상대 없는 추가 레이즈 금지 |",
+    "context": {
+      "id": "B12",
+      "at": "2026-10-18T00:00:00Z"
+    },
+    "expectedStateSubset": {},
+    "expectedError": null,
+    "expectedEvents": []
+  },
+  {
+    "id": "B13",
+    "initialState": {
+      "stacks": [0, 200, 0],
+      "B": [100, 40, 0],
+      "W": 100,
+      "R": 100,
+      "folded": [2],
+      "actor": 1
+    },
+    "commands": [
+      {
+        "type": "CALL"
+      }
+    ],
+    "expectedStateSubset": {
+      "pot": 200,
+      "hand": {
+        "phase": "settlement",
+        "actorId": null,
+        "showdown": true
+      }
+    },
+    "suite": "betting",
+    "description": "B12에서 B 콜 | 다른 이전 기여가 없으면 A/B 기여 합200, 남은 카드 공개 대기 |",
+    "context": {
+      "id": "B13",
+      "at": "2026-10-18T00:00:00Z"
+    },
+    "expectedError": null,
+    "expectedEvents": []
+  },
+  {
+    "id": "B14",
+    "initialState": {
+      "stacks": [1000, 1000, 1000]
+    },
+    "commands": [
+      {
+        "type": "BET",
+        "playerId": "p1",
+        "additional": 100
+      }
+    ],
+    "expectedError": "INVALID_ACTION",
+    "suite": "betting",
+    "description": "자기 차례 아님/이미 폴드/종료 상태에서 베팅 | 상태·칩·기록의 게임 행동·취소 대상 불변 |",
+    "context": {
+      "id": "B14",
+      "at": "2026-10-18T00:00:00Z"
+    },
+    "expectedStateSubset": {},
+    "expectedEvents": []
+  },
+  {
+    "id": "B15",
+    "initialState": {
+      "stacks": [1000, 1000, 1000]
+    },
+    "commands": [
+      {
+        "type": "BET",
+        "additional": 7
+      }
+    ],
+    "expectedError": "INVALID_AMOUNT",
+    "suite": "betting",
+    "description": "입력7, 음수, 잔액 초과, 비정수 | 오류, 자동 보정·차감 없음 |",
+    "context": {
+      "id": "B15",
+      "at": "2026-10-18T00:00:00Z"
+    },
+    "expectedStateSubset": {},
+    "expectedEvents": []
+  },
+  {
+    "id": "B16",
+    "initialState": {
+      "stacks": [50, 1000, 1000]
+    },
+    "commands": [
+      {
+        "type": "ALL_IN"
+      }
+    ],
+    "expectedLegal": {
+      "callAdditional": 50,
+      "minRaiseAdditional": 150
+    },
+    "suite": "betting",
+    "description": "BB100, Flop A가50 첫 올인, B 미행동, C도 칩 보유 | B 콜50 또는 정상 레이즈 총150 이상. 잔액 충분한 B의 총100 레이즈 거절 |",
+    "context": {
+      "id": "B16",
+      "at": "2026-10-18T00:00:00Z"
+    },
+    "expectedStateSubset": {},
+    "expectedError": null,
+    "expectedEvents": []
+  },
+  {
+    "id": "B17",
+    "initialState": {
+      "stacks": [50, 1000, 1000]
+    },
+    "commands": [
+      {
+        "type": "ALL_IN"
+      },
+      {
+        "type": "RAISE",
+        "additional": 150
+      }
+    ],
+    "expectedLegal": {
+      "minRaiseAdditional": 250
+    },
+    "expectedStateSubset": {
+      "hand": {
+        "W": 150,
+        "R": 100
+      }
+    },
+    "suite": "betting",
+    "description": "B16에서 B가150 레이즈 | W150/R100. C의 다음 정상 최소 총액250 |",
+    "context": {
+      "id": "B17",
+      "at": "2026-10-18T00:00:00Z"
+    },
+    "expectedError": null,
+    "expectedEvents": []
+  },
+  {
+    "id": "B18",
+    "initialState": {
+      "stacks": [1000, 50, 1000]
+    },
+    "commands": [
+      {
+        "type": "CHECK"
+      },
+      {
+        "type": "ALL_IN"
+      },
+      {
+        "type": "CALL"
+      }
+    ],
+    "expectedLegal": {
+      "callAdditional": 50,
+      "canRaise": false
+    },
+    "suite": "betting",
+    "description": "BB100, A체크/B50 올인/C50 콜 후 A 차례 | A는 추가50 콜/폴드만. 잔액 전부로 레이즈 우회 금지 |",
+    "context": {
+      "id": "B18",
+      "at": "2026-10-18T00:00:00Z"
+    },
+    "expectedStateSubset": {},
+    "expectedError": null,
+    "expectedEvents": []
+  },
+  {
+    "id": "B19",
+    "initialState": {
+      "stacks": [1000, 50, 1000]
+    },
+    "commands": [
+      {
+        "type": "CHECK"
+      },
+      {
+        "type": "ALL_IN"
+      },
+      {
+        "type": "RAISE",
+        "additional": 150
+      }
+    ],
+    "expectedLegal": {
+      "canRaise": true,
+      "minRaiseAdditional": 250
+    },
+    "suite": "betting",
+    "description": "BB100, A체크/B50 올인/C150 레이즈 후 A 차례 | A 정상 레이즈 최소 총250. C의 증가폭100으로 A의 권한 재개 |",
+    "context": {
+      "id": "B19",
+      "at": "2026-10-18T00:00:00Z"
+    },
+    "expectedStateSubset": {},
+    "expectedError": null,
+    "expectedEvents": []
+  },
+  {
+    "id": "B20",
+    "initialState": {
+      "stacks": [1000, 50, 100, 1000]
+    },
+    "commands": [
+      {
+        "type": "CHECK"
+      },
+      {
+        "type": "ALL_IN"
+      },
+      {
+        "type": "ALL_IN"
+      },
+      {
+        "type": "CALL"
+      }
+    ],
+    "expectedLegal": {
+      "canRaise": true,
+      "minRaiseAdditional": 200
+    },
+    "expectedStateSubset": {
+      "hand": {
+        "R": 100
+      }
+    },
+    "suite": "betting",
+    "description": "BB100, A체크/B50 올인/C100 올인/D100 콜 후 A 차례 | A 정상 레이즈 최소 총200. 누적100으로 체크한 A의 권한 재개, R100 유지 |",
+    "context": {
+      "id": "B20",
+      "at": "2026-10-18T00:00:00Z"
+    },
+    "expectedError": null,
+    "expectedEvents": []
+  },
+  {
+    "id": "B21",
+    "initialState": {
+      "stacks": [1000, 50, 75, 1000, 100, 1000]
+    },
+    "commands": [
+      {
+        "type": "CHECK"
+      },
+      {
+        "type": "ALL_IN"
+      },
+      {
+        "type": "ALL_IN"
+      },
+      {
+        "type": "CALL"
+      },
+      {
+        "type": "ALL_IN"
+      },
+      {
+        "type": "CALL"
+      },
+      {
+        "type": "CALL"
+      }
+    ],
+    "expectedLegal": {
+      "callAdditional": 25,
+      "canRaise": false
+    },
+    "suite": "betting",
+    "description": "BB100, A체크/B50 올인/C75 올인/D75 콜/E100 올인/F100 콜 후 A가100 콜 | D는 추가25 콜/폴드만. A와 달리 D의 마지막 기준은75 |",
+    "context": {
+      "id": "B21",
+      "at": "2026-10-18T00:00:00Z"
+    },
+    "expectedStateSubset": {},
+    "expectedError": null,
+    "expectedEvents": []
+  },
+  {
+    "id": "B22",
+    "initialState": {
+      "stacks": [50, 125, 1000]
+    },
+    "commands": [
+      {
+        "type": "ALL_IN"
+      },
+      {
+        "type": "ALL_IN"
+      }
+    ],
+    "expectedLegal": {
+      "minRaiseAdditional": 225
+    },
+    "expectedStateSubset": {
+      "hand": {
+        "R": 100,
+        "W": 125
+      }
+    },
+    "suite": "betting",
+    "description": "BB100, A50 올인/B 미행동·잔액125/C 칩 보유 | B125 전액 올인 허용, W125/R100. C의 다음 정상 최소 총액225 |",
+    "context": {
+      "id": "B22",
+      "at": "2026-10-18T00:00:00Z"
+    },
+    "expectedError": null,
+    "expectedEvents": []
+  },
+  {
+    "id": "B23",
+    "initialState": {
+      "stacks": [40, 50, 1000]
+    },
+    "commands": [
+      {
+        "type": "CHECK"
+      },
+      {
+        "type": "ALL_IN"
+      },
+      {
+        "type": "CALL"
+      },
+      {
+        "type": "ALL_IN"
+      }
+    ],
+    "expectedStateSubset": {
+      "players": [
+        {
+          "stack": 0,
+          "B": 40
+        },
+        {},
+        {}
+      ],
+      "hand": {
+        "phase": "settlement"
+      }
+    },
+    "suite": "betting",
+    "description": "BB100, A체크/B50 올인/C50 콜 후 A 잔액40 | A는40 올인 콜 가능. 레이즈 불가를 올인 콜 불가로 해석하지 않음 |",
+    "context": {
+      "id": "B23",
+      "at": "2026-10-18T00:00:00Z"
+    },
+    "expectedError": null,
+    "expectedEvents": []
+  }
+]

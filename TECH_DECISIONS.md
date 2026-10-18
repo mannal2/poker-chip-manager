@@ -1,6 +1,6 @@
 # Poker Chip Manager — 기술 의사결정 기록
 
-최종 갱신: 2026-10-17 (Asia/Seoul)
+최종 갱신: 2026-10-18 (Asia/Seoul)
 
 ## 문서 목적과 작성 원칙
 
@@ -1031,3 +1031,18 @@
 - 2026-10-17: 질문 46 합의. React 상태 관리 비교안을 T12 확정 결정으로 전환했다. useReducer·Context·useState·props의 역할과 외부 상태 라이브러리 미도입 이유를 기록했다.
 
 - 2026-10-17: 최초 작성. 기존 기술·구조 선택을 정리하고 최초 지정 스택, 실제 비교, 사후 보충 비교를 구분했다. IndexedDB 채택을 확정 기록했다. 구현·성능 측정 결과는 아직 없다.
+
+## T58. A00 도구 버전 고정 — 2026-10-18
+
+Node 24.18.0/npm 11.16.0에서 React 19.3.1, TypeScript 6.0.3, Vite 8.3.4, Vitest 5.0.5, Playwright 1.64.1, idb 8.0.4, vite-plugin-pwa 2.0.0을 package-lock.json으로 고정한다. 공식 Vite/Vitest Node 요구를 확인했고 현재 Node가 충족한다. 승인된 도구를 유지하고 별도 UI/상태/드래그 라이브러리는 추가하지 않는다. 최신 호환 릴리스 고정은 구버전 고정보다 유지보수에 유리하지만 미래 업그레이드는 자동 반영하지 않는다. npm ci와 전체 검사로 재현성을 검증한다.
+
+근거: https://vite.dev/guide/ , https://vitest.dev/guide/ , https://vite-pwa-org.netlify.app/guide/prompt-for-update
+
+## T59. 단일 기기 구현 구조 — 2026-10-18
+
+- 순수 규칙은 settings/types/positions/transition/settlement/invariants에 책임별로 묶었다. 작은 함수마다 파일을 만들지 않았다. UI는 useReducer의 확정 상태와 useState의 금액/승자/입력 초안을 구분한다. 현재 공유 깊이가 작아 Context를 만들지 않고 props를 사용한다. 공유 범위가 커지면 재검토한다.
+- 좌석 삽입은 Pointer Events·350ms로 구현하고 키보드 대체 버튼을 제공한다. 별도 드래그 라이브러리를 추가하지 않는다. 스크롤과 손가락 취소는 실제 모바일 하드웨어 검증이 남아 있다.
+- IndexedDB slot/events/control을 같은 readwrite tx로 처리한다. 권한 세대별 highWatermark와 최근64결과로 재실행을 차단한다. BroadcastChannel은 알림용이며 실제 허용은 DB 세대를 검사한다.
+- PWA는 vite-plugin-pwa generateSW/prompt를 유지한다. manifest는 public/local에 정적으로 두고 local 문서만 연결해 root/online 설치 신호를 분리한다. 생성SW의 자산 URL은 절대 경로로 지정하며 /local/ navigation만 처리한다. 수동 적용한 창만 waiting worker의 활성화 후 새로고침한다.
+- 이미지 회귀에는 pngjs/pixelmatch, JSON schema에는 Ajv, 새 코드 정리에는 Prettier를 개발 도구로만 추가했다. 제품 UI/상태관리 의존성은 추가하지 않았다. 정확한 버전은 package-lock.json 기준이다.
+- 독립 검토를 위해 읽기 쉬운 코드 형식으로 정리했다. 검증 결과와 실패 이력은 IMPLEMENTATION_PROGRESS에 기록하며 기술 선택을 테스트 성과로 대신하지 않는다.

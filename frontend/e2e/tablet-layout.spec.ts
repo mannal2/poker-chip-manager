@@ -1,5 +1,41 @@
 import { test, expect, type Page } from '@playwright/test';
 import { openLocal } from './helpers';
+
+async function expectFitSettled(page: Page) {
+  const writes = await page.evaluate(async () => {
+    const frames = async () => {
+      for (let i = 0; i < 15; i++) await new Promise(requestAnimationFrame);
+    };
+    await frames();
+    let changes = 0;
+    const observer = new MutationObserver((records) => (changes += records.length));
+    for (const node of [
+      document.documentElement,
+      ...document.querySelectorAll('main,dialog[open]'),
+    ])
+      observer.observe(node, { attributes: true, attributeFilter: ['style'] });
+    await frames();
+    observer.disconnect();
+    return changes;
+  });
+  expect(writes, '화면이 안정된 후에는 크기 스타일을 반복 변경하지 않는다').toBe(0);
+}
+
+test('화면 맞춤은 유휴·클릭·회전·창 열기 후 안정된다', async ({ page }) => {
+  await page.setViewportSize({ width: 800, height: 1280 });
+  await page.goto('/local/');
+  await openLocal(page);
+  await expectFitSettled(page);
+  await page.locator('.seat .card-values').first().click();
+  await expect(page.locator('main')).toHaveAttribute('aria-busy', 'false');
+  await expectFitSettled(page);
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await expectFitSettled(page);
+  await page.getByRole('button', { name: '관리 메뉴', exact: true }).click();
+  await expect(page.getByRole('dialog')).toBeVisible();
+  await expectFitSettled(page);
+});
+
 async function contained(page: Page) {
   await expect
     .poll(() =>

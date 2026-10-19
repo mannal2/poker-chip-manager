@@ -11,8 +11,10 @@ export function useScreenFit(ref: RefObject<HTMLElement | null>, scrollable = fa
       const width = viewport?.width ?? window.innerWidth;
       const height = viewport?.height ?? window.innerHeight;
       const root = document.documentElement;
-      root.style.setProperty('--viewport-width', `${width}px`);
-      root.style.setProperty('--viewport-height', `${height}px`);
+      if (root.style.getPropertyValue('--viewport-width') !== `${width}px`)
+        root.style.setProperty('--viewport-width', `${width}px`);
+      if (root.style.getPropertyValue('--viewport-height') !== `${height}px`)
+        root.style.setProperty('--viewport-height', `${height}px`);
       const body = getComputedStyle(document.body);
       const availableWidth = width - parseFloat(body.paddingLeft) - parseFloat(body.paddingRight);
       const availableHeight = height - parseFloat(body.paddingTop) - parseFloat(body.paddingBottom);
@@ -27,11 +29,16 @@ export function useScreenFit(ref: RefObject<HTMLElement | null>, scrollable = fa
             availableWidth / (rect.width / current),
             availableHeight / (Math.max(node.scrollHeight, rect.height) / current),
           );
-      const value = `${Math.max(0.01, unit)}px`;
-      if (node.style.getPropertyValue('--u') !== value) node.style.setProperty('--u', value);
+      const value = Math.max(0.01, unit);
+      const previous = parseFloat(node.style.getPropertyValue('--u'));
+      // CSSOM rounds lengths; ignore subpixel noise so ResizeObserver can settle.
+      if (!Number.isFinite(previous) || Math.abs(previous - value) > 0.0001)
+        node.style.setProperty('--u', `${value}px`);
       if (node.tagName === 'DIALOG') {
-        node.style.left = `${(viewport?.offsetLeft ?? 0) + width / 2}px`;
-        node.style.top = `${(viewport?.offsetTop ?? 0) + height / 2}px`;
+        const left = `${(viewport?.offsetLeft ?? 0) + width / 2}px`;
+        const top = `${(viewport?.offsetTop ?? 0) + height / 2}px`;
+        if (node.style.left !== left) node.style.left = left;
+        if (node.style.top !== top) node.style.top = top;
       }
     };
     const schedule = () => {

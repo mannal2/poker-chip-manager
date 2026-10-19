@@ -1,3 +1,4 @@
+import { useScreenFit } from '../ui/useScreenFit';
 import { useLocalPWA } from '../pwa/register';
 import { UpdateNotice } from '../pwa/UpdateNotice';
 import { HistoryPanel } from '../ui/HistoryPanel';
@@ -41,6 +42,8 @@ function AppRedirect() {
   return <main className="phone home">앱 홈을 여는 중…</main>;
 }
 function LocalGame() {
+  const screen = useRef<HTMLElement>(null);
+  useScreenFit(screen);
   const pwa = useLocalPWA();
   const [app, setApp] = useReducer(appReducer, initialAppState),
     [dialog, setDialog] = useState(''),
@@ -438,13 +441,13 @@ function LocalGame() {
   }
   if (app.status === 'loading')
     return (
-      <main className="phone home" role="status">
+      <main ref={screen} className="phone home" role="status">
         저장 상태 확인 중…
       </main>
     );
   if (app.status === 'restoreError')
     return (
-      <main className="phone home">
+      <main ref={screen} className="phone home">
         <p role="alert">저장 정보를 불러오지 못했습니다.</p>
         <p>{app.error}</p>
         <button onClick={() => void restore(true)}>다시 시도</button>
@@ -473,7 +476,7 @@ function LocalGame() {
     }
   }
   return (
-    <main className="phone" aria-busy={app.status === 'saving'}>
+    <main ref={screen} className="phone" aria-busy={app.status === 'saving'}>
       {app.error && (
         <div className="notice" role="alert">
           {app.error}
@@ -826,6 +829,7 @@ function LocalGame() {
         <Dialog
           dismissOutside
           showTitle={false}
+          scrollable
           title="현재 토너먼트 기록"
           onClose={() => setDialog('')}
         >

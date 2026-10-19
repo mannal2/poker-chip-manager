@@ -1,25 +1,25 @@
 .table {
   position: relative;
   flex: none;
-  width: calc(100% - 10px);
+  width: calc(100% - calc(10 * var(--u)));
   aspect-ratio: 1.12;
-  margin: 8px 5px 10px;
+  margin: calc(8 * var(--u)) calc(5 * var(--u)) calc(10 * var(--u));
 }
 .felt {
   position: absolute;
-  inset: 26px 29px;
+  inset: calc(26 * var(--u)) calc(29 * var(--u));
   border-radius: 50%;
-  border: 1px solid #53725455;
+  border: calc(1 * var(--u)) solid #53725455;
   background: radial-gradient(ellipse, #234b34, #153324);
   box-shadow:
-    inset 0 0 0 7px #0c23194d,
-    inset 0 0 60px #07150d50;
+    inset 0 0 0 calc(7 * var(--u)) #0c23194d,
+    inset 0 0 calc(60 * var(--u)) #07150d50;
 }
 .felt:after {
   content: '';
   position: absolute;
-  inset: 17px;
-  border: 1px solid #8b9e6c22;
+  inset: calc(17 * var(--u));
+  border: calc(1 * var(--u)) solid #8b9e6c22;
   border-radius: 48%;
 }
 .pot {
@@ -28,38 +28,38 @@
   top: 48%;
   transform: translate(-50%, -50%);
   text-align: center;
-  width: 100px;
+  width: calc(100 * var(--u));
   background: transparent;
   border: 0;
   padding: 0;
 }
 .pot small {
-  font-size: 10px;
+  font-size: calc(10 * var(--u));
   letter-spacing: 0.16em;
   color: #b8c4ad;
 }
 .pot strong {
   display: block;
-  font-size: 25px;
+  font-size: calc(25 * var(--u));
   letter-spacing: -1px;
 }
 .pot span {
-  font-size: 9px;
+  font-size: calc(9 * var(--u));
   color: #b8c4ad;
 }
 .seat {
   position: absolute;
   transform: translate(-50%, -50%);
   width: 27%;
-  max-width: 110px;
-  height: 52px;
-  min-height: 52px;
+  max-width: calc(110 * var(--u));
+  height: calc(52 * var(--u));
+  min-height: calc(52 * var(--u));
   background: #1b2922;
-  border: 1px solid #49604c;
-  border-radius: 10px;
-  padding: 3px 2px;
+  border: calc(1 * var(--u)) solid #49604c;
+  border-radius: calc(10 * var(--u));
+  padding: calc(3 * var(--u)) calc(2 * var(--u));
   text-align: center;
-  box-shadow: 0 5px 14px #0004;
+  box-shadow: 0 calc(5 * var(--u)) calc(14 * var(--u)) #0004;
   transition:
     left 180ms ease,
     top 180ms ease;
@@ -67,40 +67,40 @@
   -webkit-touch-callout: none;
 }
 .seat.active {
-  border: 2px solid var(--gold);
+  border: calc(2 * var(--u)) solid var(--gold);
   background: #344334;
-  box-shadow: 0 0 0 4px #e2bd7512;
+  box-shadow: 0 0 0 calc(4 * var(--u)) #e2bd7512;
 }
 .seat.out {
   opacity: 0.45;
 }
 .seat .name {
-  height: 23px;
+  height: calc(23 * var(--u));
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 11px;
+  font-size: calc(11 * var(--u));
   font-weight: 650;
   overflow-wrap: anywhere;
-  border-bottom: 1px solid #ffffff12;
-  line-height: 11px;
+  border-bottom: calc(1 * var(--u)) solid #ffffff12;
+  line-height: calc(11 * var(--u));
 }
 .card-values {
   display: grid;
   grid-template-columns: 40% 60%;
   align-items: center;
-  height: 19px;
+  height: calc(19 * var(--u));
   font-variant-numeric: tabular-nums;
 }
 .seat .bet,
 .seat .stack {
-  font-size: 11px;
-  line-height: 18px;
+  font-size: calc(11 * var(--u));
+  line-height: calc(18 * var(--u));
   min-width: 0;
   white-space: nowrap;
 }
 .seat .stack {
-  border-left: 1px solid #ffffff20;
+  border-left: calc(1 * var(--u)) solid #ffffff20;
   font-weight: 750;
 }
 .seat .bet {
@@ -113,9 +113,9 @@
   transform: translateX(-50%);
   background: #e9e7d9;
   color: #243227;
-  border-radius: 20px;
-  padding: 0 5px;
-  font-size: 9px;
+  border-radius: calc(20 * var(--u));
+  padding: 0 calc(5 * var(--u));
+  font-size: calc(9 * var(--u));
   font-weight: 800;
   white-space: nowrap;
 }
@@ -126,25 +126,25 @@
   position: absolute;
   bottom: -5px;
   left: 48%;
-  width: 6px;
-  height: 6px;
+  width: calc(6 * var(--u));
+  height: calc(6 * var(--u));
   border-radius: 50%;
   background: var(--gold);
 }
 .seat.selected {
   background: #4a4930;
   color: var(--ink);
-  border: 2px solid var(--gold);
+  border: calc(2 * var(--u)) solid var(--gold);
 }
 .bet.pending {
   color: #80e6bd !important;
   background: #80e6bd18;
-  border-radius: 3px;
+  border-radius: calc(3 * var(--u));
 }
 .seat.dragging {
   transition: none;
   z-index: 4;
-  box-shadow: 0 12px 24px #0009;
+  box-shadow: 0 calc(12 * var(--u)) calc(24 * var(--u)) #0009;
   border-color: var(--gold);
 }
 @media (prefers-reduced-motion: reduce) {
@@ -173,17 +173,17 @@
 .table-center .pot {
   position: static;
   transform: none;
-  width: 100px;
+  width: calc(100 * var(--u));
 }
 .count-control,
 .view-rotate {
   background: transparent;
   border: 0;
   padding: 0;
-  min-height: 36px;
-  width: 36px;
+  min-height: calc(36 * var(--u));
+  width: calc(36 * var(--u));
   color: var(--gold);
-  font-size: 24px;
+  font-size: calc(24 * var(--u));
 }
 .count-control:disabled,
 .view-rotate:disabled {
@@ -192,11 +192,11 @@
 .view-rotate {
   display: block;
   margin: 0 auto;
-  font-size: 23px;
+  font-size: calc(23 * var(--u));
 }
 
 .setup-center .pot {
-  width: 50px;
+  width: calc(50 * var(--u));
 }
 .view-actions {
   position: absolute;
@@ -209,12 +209,12 @@
 }
 .view-actions button {
   flex: none;
-  min-height: 36px;
-  width: 36px;
+  min-height: calc(36 * var(--u));
+  width: calc(36 * var(--u));
   padding: 0;
   background: transparent;
   border: 0;
-  font-size: 23px;
+  font-size: calc(23 * var(--u));
 }
 
 .setup-count-row {
@@ -222,9 +222,9 @@
 }
 .setup-count-row .count-control {
   position: absolute;
-  top: 22.5px;
-  height: 37.5px;
-  min-height: 37.5px;
+  top: calc(22.5 * var(--u));
+  height: calc(37.5 * var(--u));
+  min-height: calc(37.5 * var(--u));
 }
 .setup-count-row .count-control:first-child {
   right: 100%;
@@ -241,17 +241,17 @@
   display: block;
   width: auto;
   max-width: 100%;
-  height: 23px;
+  height: calc(23 * var(--u));
   min-height: 0;
   margin: 0;
   padding: 0;
   border: 0;
-  border-radius: 3px;
+  border-radius: calc(3 * var(--u));
   background: transparent;
   color: inherit;
   font: inherit;
   text-align: center;
-  line-height: 11px;
+  line-height: calc(11 * var(--u));
 }
 .inline-name:has(input) {
   display: block;
@@ -261,11 +261,11 @@
   -webkit-touch-callout: default;
   width: 100%;
   background: var(--bg);
-  outline: 1px solid var(--gold);
+  outline: calc(1 * var(--u)) solid var(--gold);
 }
 button.card-values {
   width: 100%;
-  height: 19px;
+  height: calc(19 * var(--u));
   min-height: 0;
   padding: 0;
   border: 0;

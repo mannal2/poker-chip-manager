@@ -154,14 +154,21 @@ export function Table({
     return () => animation.cancel();
   }, [stageKey]);
   useLayoutEffect(() => {
-    ref.current?.querySelectorAll<HTMLElement>('.card-values>div').forEach((cell) => {
-      let size = 11;
-      cell.style.fontSize = `${size}px`;
-      while (cell.scrollWidth > cell.clientWidth && size > 7) {
-        size -= 0.25;
-        cell.style.fontSize = `${size}px`;
-      }
-    });
+    const table = ref.current;
+    if (!table) return;
+    const fit = () =>
+      table.querySelectorAll<HTMLElement>('.card-values>div').forEach((cell) => {
+        let size = 11;
+        cell.style.fontSize = `calc(${size} * var(--u))`;
+        while (cell.scrollWidth > cell.clientWidth && size > 7) {
+          size -= 0.25;
+          cell.style.fontSize = `calc(${size} * var(--u))`;
+        }
+      });
+    fit();
+    const observer = new ResizeObserver(fit);
+    observer.observe(table);
+    return () => observer.disconnect();
   });
   return (
     <div ref={ref} className="table" aria-label="포커 테이블">

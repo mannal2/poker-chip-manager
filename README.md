@@ -65,3 +65,6 @@ npm --prefix frontend run test:e2e
 E2E는 로컬 4173 포트에서 테스트 빌드를 실행합니다. 해당 포트의 다른 서버는 먼저 종료하세요. 테스트 전용 표시/저장 fixture는 `--mode test`에서만 빌드되며 일반 제품 빌드에 포함되지 않습니다. PWA 테스트는 생성된 `dist` 파일을 일시 변경하고 원복하므로 검사를 동시에 실행하지 마세요.
 
 순수 TypeScript 규칙 → IndexedDB repository/controller → React UI로 구성됩니다. [공통 JSON 사례](shared/game-fixtures/)는 수작업 기대값과 스키마를 사용합니다. [최종 디자인 계약](DESIGN_BASELINE.md), [구현 계획](IMPLEMENTATION_PLAN.md), [실제 검증·미검증 기록](IMPLEMENTATION_PROGRESS.md)을 함께 확인하세요.
+
+
+태블릿에서는 화면 너비와 높이에 맞춰 UI가 함께 커지거나 작아집니다. 넓은 가로 화면은 높이에 맞는 너비만 사용합니다. 기본 화면에는 스크롤이 없고, 핸드 기록 창은 내부 스크롤과 더 보기를 유지합니다. 저장 정보를8초 내 불러오지 못하면 다시 시도 또는 기존 게임/기록을 교체하는 새 토너먼트 시작을 선택할 수 있습니다. 교체는 확인 후 저장 성공 시에만 적용됩니다.

@@ -32,8 +32,10 @@ test('Chrome 실제 터치 조기 이동·길게 누르기·취소 후 탭과 �
   await openLocal(page);
   await page.getByRole('button', { name: '참가자 추가', exact: true }).click();
   await expect(page.locator('.seat')).toHaveCount(3);
-  await page.locator('.seat').evaluateAll(async nodes => {
-    await Promise.all(nodes.flatMap(n => n.getAnimations().map(a => a.finished.catch(() => {}))));
+  await page.locator('.seat').evaluateAll(async (nodes) => {
+    await Promise.all(
+      nodes.flatMap((n) => n.getAnimations().map((a) => a.finished.catch(() => {}))),
+    );
   });
   const first = page.getByRole('group', { name: 'P1', exact: true }),
     values = first.locator('.card-values');

@@ -71,3 +71,26 @@ test('앱 복귀는 조작권을 재확인하고 다른 창의 게임을 자동 
   await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
   await expect(page.getByRole('button', { name: '이 창에서 조작하기', exact: true })).toBeVisible();
 });
+
+test('resume 이벤트 후 저장 연결을 다시 열고 진행 게임 복원', async ({ page }) => {
+  await page.goto('/local/');
+  await openLocal(page);
+  await page.locator('.seat .card-values').first().click();
+  await page.getByRole('button', { name: '게임 시작', exact: true }).click();
+  await expect(page.locator('.pot strong')).toHaveText('15');
+  await page.evaluate(() => {
+    const original = IDBFactory.prototype.open;
+    const monitor = window as unknown as { reopened: number };
+    monitor.reopened = 0;
+    IDBFactory.prototype.open = function (...args) {
+      monitor.reopened++;
+      return original.apply(this, args);
+    };
+  });
+  await page.evaluate(() => document.dispatchEvent(new Event('resume')));
+  await expect
+    .poll(() => page.evaluate(() => (window as unknown as { reopened: number }).reopened))
+    .toBeGreaterThan(0);
+  await expect(page.locator('.pot strong')).toHaveText('15');
+  await expect(page.locator('main')).toHaveAttribute('aria-busy', 'false');
+});

@@ -54,7 +54,7 @@ test('이름 글자 밖은 딜러 선택, 글자는 이름 편집', async ({ pag
   const r = (await row.boundingBox())!,
     t = (await text.boundingBox())!;
   expect(t.width).toBeLessThan(r.width / 2);
-  await expect(text).toHaveCSS('height', '23px');
+  expect(t.height).toBeCloseTo(r.height, 1);
   await expect(text).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
   await page.mouse.click(r.x + 3, r.y + r.height / 2);
   await expect(page.getByRole('textbox', { name: 'P1 이름 수정' })).toHaveCount(0);
@@ -179,6 +179,14 @@ test('기록 기본 오래된 순·전체 역순·핸드 묶음·100건 경계 �
   });
   await page.getByRole('button', { name: '현재 토너먼트 기록', exact: true }).click();
   const list = page.locator('.history-list');
+  const historyDialog = page.getByRole('dialog');
+  await expect(historyDialog).toHaveClass('scrollable');
+  await expect
+    .poll(() => historyDialog.evaluate((e) => e.scrollHeight > e.clientHeight))
+    .toBe(true);
+  await historyDialog.evaluate((e) => e.scrollTo(0, e.scrollHeight));
+  expect(await historyDialog.evaluate((e) => e.scrollTop)).toBeGreaterThan(0);
+  expect(await page.evaluate(() => scrollY)).toBe(0);
   await expect(list.locator('[data-kind=action]').first()).toHaveText('P1 - 베팅 5칩');
   await expect(list.locator('.history-hand')).toHaveText(['HAND 01']);
   await page.getByRole('button', { name: '더 보기', exact: true }).click();
@@ -202,7 +210,9 @@ test('기록 기본 오래된 순·전체 역순·핸드 묶음·100건 경계 �
 test('반대편까지 이어서 드래그해도 이미 지나온 방향을 뒤집지 않음', async ({ page }) => {
   await ready(page);
   await page.locator('.seat').evaluateAll(async (nodes) => {
-    await Promise.all(nodes.flatMap(n => n.getAnimations().map(a => a.finished.catch(() => {}))));
+    await Promise.all(
+      nodes.flatMap((n) => n.getAnimations().map((a) => a.finished.catch(() => {}))),
+    );
   });
   const from = page.getByRole('group', { name: 'P1', exact: true });
   await from.locator('.card-values').hover();

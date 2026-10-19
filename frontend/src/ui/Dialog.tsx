@@ -1,3 +1,4 @@
+import { useScreenFit } from './useScreenFit';
 import { useEffect, useRef, type ReactNode } from 'react';
 export function Dialog({
   title,
@@ -6,6 +7,7 @@ export function Dialog({
   dismissOutside = false,
   closeDisabled = false,
   showTitle = true,
+  scrollable = false,
 }: {
   title: string;
   onClose: () => void;
@@ -13,8 +15,10 @@ export function Dialog({
   dismissOutside?: boolean;
   closeDisabled?: boolean;
   showTitle?: boolean;
+  scrollable?: boolean;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
+  useScreenFit(ref, scrollable);
   const startedOutside = useRef(false);
   function outside(x: number, y: number) {
     const r = ref.current!.getBoundingClientRect();
@@ -26,6 +30,7 @@ export function Dialog({
   return (
     <dialog
       ref={ref}
+      className={scrollable ? 'scrollable' : undefined}
       aria-label={title}
       onPointerDown={(e) => {
         startedOutside.current = outside(e.clientX, e.clientY);

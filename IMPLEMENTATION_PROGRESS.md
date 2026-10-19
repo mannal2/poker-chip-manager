@@ -350,3 +350,12 @@ A00~A11 단일 기기 구현과 자동 검증을 마쳤다. 멀티플레이·실
 - 복원 실패 전용 화면에 다시 시도/새 토너먼트 시작. 교체 확인 후 slot/events/control 한 트랜잭션으로 새 게임·새 세대 확정, 실패 rollback. 슬롯 읽기·검증 실패 상태에서도 쓰기가 가능하면 명시적 교체 가능.
 - 새 단위3개 RED 확인 후 전체14 files/133 PASS(verification-tablet-recovery-unit.log). 타입 테스트 코드 오류와 권한 탐색까지 차단했던 초기 다중창 테스트 실패는 수정하고 숨기지 않음. 기존 앱흐름/실제저장26개 PASS(verification-tablet-recovery-browser.log), 보완 복귀·교체8개 양 브라우저 PASS(verification-tablet-recovery-final.log). 고유 관련34개 PASS.
 - 루트 브랜치는 origin/main 기준. 사용자 요청에 따라 Step 1 완료 상태를 별도 커밋한다.
+
+#### Step 2 터치 드래그 검증
+
+- 카드 contextmenu만 취소하고 입력/textarea/contenteditable은 제외. WebKit callout도 카드에서 막고 이름 입력은 default 유지. primary 포인터만 처리하며 touch/pen은 누르기 전 이동 임계값을 넘으면 취소 대신 드래그 시작, mouse는 기존 길게 누르기 유지.
+- 새 검사2개 수정 전 RED(verification-tablet-touch-red.log). 처음 pointerdown 전체 취소는 WebKit 탭을 막아 제거하고 contextmenu 차단으로 범위를 좁혔다.
+- 기존 Chromium 반대편 드래그 검사는 수정 전 훅에서도 FAIL(verification-tablet-mouse-baseline.log). 인원 추가 직후 카드 transition 중간 좌표를 목적지로 저장하던 경합. 해당 검사에서 실제 카드 애니메이션 완료를 기다린 후 같은 기대 순서를 검증하도록 보완. 제품의 마우스 삽입 규칙은 변경하지 않았다.
+- 최신 사용자 정정: 기본 화면은 스크롤 금지, 핸드 기록 창은 기존 스크롤/더 보기 유지. 기록 페이지 전환 계획은 취소하고 구현하지 않는다.
+
+- Step 2 완료: 타입·소스/테스트 lint PASS, 양 브라우저47 PASS/2.3m(verification-tablet-touch-green.log). CDP 실제 터치1개는 Chromium에서 실행 PASS하며 WebKit에는 CDP가 없어1개 명시적 skip, WebKit 탭/편집/contextmenu/마우스 회귀는 별도 PASS. 각 단계 검증 후 두 번째 커밋.

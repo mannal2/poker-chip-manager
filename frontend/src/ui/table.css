@@ -64,6 +64,7 @@
     left 180ms ease,
     top 180ms ease;
   touch-action: manipulation;
+  -webkit-touch-callout: none;
 }
 .seat.active {
   border: 2px solid var(--gold);
@@ -257,6 +258,7 @@
   width: 100%;
 }
 .inline-name input {
+  -webkit-touch-callout: default;
   width: 100%;
   background: var(--bg);
   outline: 1px solid var(--gold);

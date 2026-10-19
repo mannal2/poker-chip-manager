@@ -251,6 +251,10 @@ export function Table({
             aria-label={`${p.name}${p.active ? ' 현재 차례' : ''}${p.folded ? ' 폴드' : ''}${p.out ? ' 탈락' : ''}`}
             aria-pressed={phase === 'settlement' ? !!p.selected : undefined}
             aria-disabled={phase === 'settlement' && !p.eligible}
+            onContextMenu={(e) => {
+              if (!(e.target as HTMLElement).closest('input, textarea, [contenteditable="true"]'))
+                e.preventDefault();
+            }}
             onClick={() => onSelect?.(p.id)}
             {...drag?.handlers(p.id)}
           >

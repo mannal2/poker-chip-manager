@@ -201,6 +201,9 @@ test('기록 기본 오래된 순·전체 역순·핸드 묶음·100건 경계 �
 
 test('반대편까지 이어서 드래그해도 이미 지나온 방향을 뒤집지 않음', async ({ page }) => {
   await ready(page);
+  await page.locator('.seat').evaluateAll(async (nodes) => {
+    await Promise.all(nodes.flatMap(n => n.getAnimations().map(a => a.finished.catch(() => {}))));
+  });
   const from = page.getByRole('group', { name: 'P1', exact: true });
   await from.locator('.card-values').hover();
   const before = await positions(page),

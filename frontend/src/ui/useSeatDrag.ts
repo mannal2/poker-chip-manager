@@ -39,7 +39,7 @@ export function useSeatDrag(
   function handlers(id: string) {
     return {
       onPointerDown: (e: PointerEvent<HTMLElement>) => {
-        if (!enabled || e.button !== 0) return;
+        if (!enabled || e.button !== 0 || !e.isPrimary) return;
         suppressClick.current = false;
         e.currentTarget.setPointerCapture(e.pointerId);
         const s = {
@@ -63,10 +63,17 @@ export function useSeatDrag(
         if (!s || s.id !== id) return;
         if (!s.active) {
           if (Math.hypot(e.clientX - s.startX, e.clientY - s.startY) > 10) {
-            suppressClick.current = true;
-            clear();
+            if (e.pointerType === 'touch' || e.pointerType === 'pen') {
+              clearTimeout(s.timer);
+              s.active = true;
+              setOrder(ids);
+            } else {
+              suppressClick.current = true;
+              clear();
+              return;
+            }
           }
-          return;
+          if (!s.active) return;
         }
         const r = e.currentTarget.parentElement!.getBoundingClientRect(),
           x = e.clientX - r.x,

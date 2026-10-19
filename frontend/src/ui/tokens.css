@@ -4,6 +4,7 @@
     calc(var(--viewport-height, 100dvh) / 560)
   );
   color-scheme: dark;
+  -webkit-tap-highlight-color: transparent;
   --bg: #101b18;
   --line: #34473d;
   --muted: #a1b2a8;

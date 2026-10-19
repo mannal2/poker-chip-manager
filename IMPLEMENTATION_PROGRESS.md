@@ -377,3 +377,10 @@ A00~A11 단일 기기 구현과 자동 검증을 마쳤다. 멀티플레이·실
 - production-tablet-setup-800-1280.png/setup-1280-800.png/settlement-1280.png/history-scroll-1280.png/recovery-1280.png 직접 확인. computed font-family도 기존 system-ui/-apple-system/Segoe UI/sans-serif 유지 확인.
 - 독립 tablet_final_review Important/Critical 없음. 이후 추가 숫자 보완은 RED→GREEN 및 전체 회귀로 검증. 미뤄둔 제품 결함 없음. 실제 갤럭시탭S7 설치 앱의 OS 메뉴·전환·실제 키보드 검증은 배포 후 별도로 확인할 항목이다.
 - UX_SPEC/SYSTEM_SPEC/DESIGN_BASELINE/START_HERE/README 동기화. 사용자가 요청한 세 번째 작업 커밋 후 브랜치를 남긴다. preview http://127.0.0.1:4173/local/ 실행 중. 서버 배포/PR 생성/push/merge 미실행.
+
+## 2026-10-20 모바일 터치·깜빡임 수정
+
+- 진행 규칙: 앞으로 작업 하나가 완료될 때마다 관련 검증 후 로컬 커밋한다. AGENTS.md에 영구 기록. 기존 codex/tablet-pwa-recovery 브랜치 유지, 배포/push/PR 제외.
+- 계획: (1) 기본 터치 강조 제거 → 실제 탭·키보드 동작 검사. (2) 반응형 단위 오차 반복 계산 제거 → 유휴·클릭·회전 시 안정화와 화면 포함 검사. (3) 저장 중 불필요한 밝기 변화 제거 → 실제 지연 저장/연타/오류 검사. 기본 화면 스크롤 금지, 핸드 기록 내부 스크롤 유지.
+- 작업 1 완료: root에 투명 tap-highlight 설정. 기존 focus-visible/입력 편집/카드 터치 동작 유지.
+- 검증: Chrome 기본 파란값으로 회귀 RED → 수정 후 터치 브라우저 5 PASS/1 skip, 전체 단위 133 PASS. WebKit 데스크탑은 해당 속성 미지원(계산값 빈 문자열)이므로 지원 브라우저만 색상 검사, 실제 탭·편집·키보드는 양쪽 실행. skip은 기존 WebKit CDP touch 미지원. 최초 테스트 타입 오류와 WebKit 미지원 기대 실패를 수정 후 재검증했으며 제품 결함으로 숨기지 않음. 로그: verification-touch-highlight-{red,green,unit}.log.

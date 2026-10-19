@@ -2,6 +2,27 @@ import { test, expect } from '@playwright/test';
 import { openLocal } from './helpers';
 test.use({ hasTouch: true });
 
+test('브라우저 터치 강조 없이 탭과 키보드 포커스 유지', async ({ page }) => {
+  await page.goto('/local/');
+  await openLocal(page);
+  const targets = page.locator('.seat, .seat button, .count-control, #menu, input');
+  if (await page.evaluate(() => CSS.supports('-webkit-tap-highlight-color', 'transparent')))
+    expect(
+      await targets.evaluateAll((nodes) =>
+        nodes.every(
+          (node) =>
+            getComputedStyle(node).getPropertyValue('-webkit-tap-highlight-color') ===
+            'rgba(0, 0, 0, 0)',
+        ),
+      ),
+    ).toBe(true);
+  await page.getByRole('button', { name: '참가자 추가', exact: true }).tap();
+  await expect(page.locator('.seat')).toHaveCount(3);
+  await page.getByRole('button', { name: '관리 메뉴', exact: true }).focus();
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('dialog')).toBeVisible();
+});
+
 test('카드 기본 메뉴 차단, 이름 입력의 편집 메뉴는 유지', async ({ page }) => {
   await page.goto('/local/');
   await openLocal(page);

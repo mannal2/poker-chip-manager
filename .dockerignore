@@ -1,0 +1,11 @@
+.git
+.local
+**/node_modules
+**/dist
+**/.cache
+**/test-results
+**/playwright-report
+**/*.log
+**/.env
+**/.env.*
+**/*.pem

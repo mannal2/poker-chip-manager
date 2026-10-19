@@ -1,0 +1,194 @@
+.dock {
+  height: 140px;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 10px 12px;
+  gap: 10px;
+  background: var(--bg);
+}
+.bet-top {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+.bet-top button {
+  padding: 6px 3px;
+  font-size: 12px;
+  min-height: 42px;
+}
+.bet-bottom {
+  display: grid;
+  grid-template-columns: 40px repeat(4, minmax(0, 1fr)) 50px;
+  align-items: center;
+  gap: 5px;
+}
+.bet-bottom button {
+  padding: 0;
+  min-height: 42px;
+  font-weight: 750;
+}
+.bet-bottom .chip {
+  --chip: #a13932;
+  justify-self: center;
+  width: 44px;
+  height: 44px;
+  min-height: 44px;
+  border-radius: 50%;
+  border: 0;
+  background: repeating-conic-gradient(#e7e2d5 0deg 12deg, var(--chip) 12deg 45deg);
+  position: relative;
+  box-shadow: 0 2px 3px #0006;
+  color: white;
+  font-size: 13px;
+}
+.chip:before {
+  content: '';
+  position: absolute;
+  inset: 5px;
+  background: var(--chip);
+  border: 1px dashed #ffffff85;
+  border-radius: 50%;
+}
+.chip span {
+  position: relative;
+  z-index: 1;
+}
+.chip[data-chip='10'] {
+  --chip: #315ca0;
+}
+.chip[data-chip='50'] {
+  --chip: #26704b;
+}
+.chip[data-chip='100'] {
+  --chip: #292d32;
+}
+.setup-fields {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr 1fr;
+  margin-top: auto;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+.setup-fields label {
+  position: relative;
+  display: block;
+}
+.setup-fields label span {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 10px;
+  color: var(--muted);
+  pointer-events: none;
+}
+.setup-fields input {
+  margin: 0;
+  padding: 8px 29px 8px 8px;
+  font-size: 12px;
+  appearance: textfield;
+}
+.setup-fields label:first-child input {
+  padding-right: 48px;
+}
+.setup-fields input::-webkit-inner-spin-button {
+  appearance: none;
+}
+.actions {
+  display: flex;
+  gap: 6px;
+}
+.actions > * {
+  flex: 1;
+}
+.actions .primary {
+  flex: 1.5;
+}
+.settlement-count {
+  margin-top: auto;
+  text-align: center;
+  font-size: 13px;
+  color: var(--muted);
+}
+.summary {
+  text-align: center;
+  font-size: 13px;
+  color: var(--muted);
+}
+@media (max-width: 350px) {
+  .bet-bottom {
+    grid-template-columns: 32px repeat(4, minmax(0, 1fr)) 42px;
+    gap: 4px;
+  }
+  .bet-bottom .chip {
+    width: 40px;
+    height: 40px;
+    min-height: 40px;
+  }
+  .bet-top button {
+    font-size: 11px;
+  }
+}
+
+fieldset {
+  border: 0;
+  padding: 0;
+  min-width: 0;
+}
+fieldset:disabled {
+  opacity: 0.7;
+}
+.field-error {
+  font-size: 11px;
+  color: var(--gold);
+}
+
+fieldset {
+  margin-inline: 0;
+}
+
+.blind-fields {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: 12px 0;
+}
+.blind-fields label:first-child input {
+  padding-right: 29px;
+}
+.blind-reserve {
+  width: 100%;
+}
+.history-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.history-toolbar h2 {
+  margin: 0;
+  font-size: clamp(16px, 5vw, 19px);
+}
+.history-toolbar button {
+  flex-shrink: 0;
+  min-height: 36px;
+  padding: 4px 8px;
+  font-size: 12px;
+}
+.history-hand {
+  font-size: 13px;
+  margin: 16px 0 0;
+  color: var(--ink);
+}
+.history-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.history-stage {
+  color: var(--gold);
+  font-size: 12px;
+  margin-top: 6px;
+}

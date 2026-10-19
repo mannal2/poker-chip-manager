@@ -1,0 +1,201 @@
+[
+  {
+    "id": "S01",
+    "suite": "settings",
+    "description": "설정 경계 S01",
+    "initialState": {
+      "names": ["A", "B"],
+      "initial": 1000,
+      "sb": 5,
+      "bb": 10,
+      "button": 0,
+      "viewSeat": 0
+    },
+    "commands": [
+      {
+        "type": "VALIDATE_SETTINGS"
+      }
+    ],
+    "context": {
+      "id": "S01",
+      "at": "2026-10-18T00:00:00Z"
+    },
+    "expectedStateSubset": {
+      "ok": true
+    },
+    "expectedError": null,
+    "expectedEvents": []
+  },
+  {
+    "id": "S02",
+    "suite": "settings",
+    "description": "설정 경계 S02",
+    "initialState": {
+      "names": [
+        "사람0",
+        "사람1",
+        "사람2",
+        "사람3",
+        "사람4",
+        "사람5",
+        "사람6",
+        "사람7",
+        "사람8"
+      ],
+      "initial": 1000,
+      "sb": 5,
+      "bb": 10,
+      "button": 0,
+      "viewSeat": 0
+    },
+    "commands": [
+      {
+        "type": "VALIDATE_SETTINGS"
+      }
+    ],
+    "context": {
+      "id": "S02",
+      "at": "2026-10-18T00:00:00Z"
+    },
+    "expectedStateSubset": {
+      "ok": true
+    },
+    "expectedError": null,
+    "expectedEvents": []
+  },
+  {
+    "id": "S03",
+    "suite": "settings",
+    "description": "설정 경계 S03",
+    "initialState": {
+      "names": ["A"],
+      "initial": 1000,
+      "sb": 5,
+      "bb": 10,
+      "button": 0,
+      "viewSeat": 0
+    },
+    "commands": [
+      {
+        "type": "VALIDATE_SETTINGS"
+      }
+    ],
+    "context": {
+      "id": "S03",
+      "at": "2026-10-18T00:00:00Z"
+    },
+    "expectedStateSubset": {
+      "ok": false
+    },
+    "expectedError": null,
+    "expectedEvents": []
+  },
+  {
+    "id": "S04",
+    "suite": "settings",
+    "description": "설정 경계 S04",
+    "initialState": {
+      "names": ["a", "A"],
+      "initial": 1000,
+      "sb": 5,
+      "bb": 10,
+      "button": 0,
+      "viewSeat": 0
+    },
+    "commands": [
+      {
+        "type": "VALIDATE_SETTINGS"
+      }
+    ],
+    "context": {
+      "id": "S04",
+      "at": "2026-10-18T00:00:00Z"
+    },
+    "expectedStateSubset": {
+      "ok": false
+    },
+    "expectedError": null,
+    "expectedEvents": []
+  },
+  {
+    "id": "S05",
+    "suite": "settings",
+    "description": "설정 경계 S05",
+    "initialState": {
+      "names": ["A", "B"],
+      "initial": 5,
+      "sb": 5,
+      "bb": 10,
+      "button": 0,
+      "viewSeat": 0
+    },
+    "commands": [
+      {
+        "type": "VALIDATE_SETTINGS"
+      }
+    ],
+    "context": {
+      "id": "S05",
+      "at": "2026-10-18T00:00:00Z"
+    },
+    "expectedStateSubset": {
+      "ok": false
+    },
+    "expectedError": null,
+    "expectedEvents": []
+  },
+  {
+    "id": "S06",
+    "suite": "settings",
+    "description": "설정 경계 S06",
+    "initialState": {
+      "names": ["A", "B"],
+      "initial": 1000,
+      "sb": 10,
+      "bb": 10,
+      "button": 0,
+      "viewSeat": 0
+    },
+    "commands": [
+      {
+        "type": "VALIDATE_SETTINGS"
+      }
+    ],
+    "context": {
+      "id": "S06",
+      "at": "2026-10-18T00:00:00Z"
+    },
+    "expectedStateSubset": {
+      "ok": false
+    },
+    "expectedError": null,
+    "expectedEvents": []
+  },
+  {
+    "id": "S07",
+    "suite": "settings",
+    "description": "설정 경계 S07",
+    "initialState": {
+      "names": ["A", "B"],
+      "initial": 1000,
+      "sb": 5,
+      "bb": 12,
+      "button": 0,
+      "viewSeat": 0
+    },
+    "commands": [
+      {
+        "type": "VALIDATE_SETTINGS"
+      }
+    ],
+    "context": {
+      "id": "S07",
+      "at": "2026-10-18T00:00:00Z"
+    },
+    "expectedStateSubset": {
+      "ok": false
+    },
+    "expectedError": null,
+    "expectedEvents": []
+  }
+]

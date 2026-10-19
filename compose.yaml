@@ -1,0 +1,25 @@
+name: poker
+
+services:
+  frontend:
+    image: poker-frontend:manual
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    restart: unless-stopped
+    mem_limit: 256m
+    ports:
+      - "127.0.0.1:8080:80"
+    networks:
+      poker-edge:
+        aliases:
+          - poker-frontend
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  poker-edge:
+    external: true

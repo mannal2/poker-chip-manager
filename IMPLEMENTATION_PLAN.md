@@ -1,6 +1,6 @@
 # Poker Chip Manager — 전체 구현 계획
 
-> **For agentic workers:** 사용 가능한 경우 `superpowers:executing-plans`를 읽고 이 계획을 작업 단위로 실행한다. 사용자는 새 대화에서 Sol 모델로 구현할 예정이다. 현재 대화에서는 앱 구현·새 대화 생성·서브에이전트 실행·외부 배포를 시작하지 않는다. 체크박스는 실제 검증 후 갱신한다.
+> **For agentic workers:** 사용 가능한 경우 `superpowers:executing-plans`를 읽고 이 계획을 작업 단위로 실행한다. 계획 작성 대화에서는 구현을 시작하지 않았으며, 2026-10-18 사용자 구현 요청에 따라 A00~A11을 실행했다. 멀티플레이·외부 배포는 실행하지 않는다. 실제 검증 상태는 IMPLEMENTATION_PROGRESS.md를 따른다. 체크박스는 실제 검증 후 갱신한다.
 
 **작성일:** 2026-10-18
 **Goal:** 최종 프로토타입 디자인을 유지하면서 실제 게임에 사용할 수 있는 단일 기기 PWA를 완성하고, 이후 같은 규칙의 멀티플레이와 독립 자동 배포로 확장한다.
@@ -13,7 +13,7 @@
 
 **처음 실행할 범위는 A00~A11 단일 기기 모드다.** B는 첫 배포, C는 단일 기기 실사용 검증 이후 멀티플레이 로드맵이다. 단일 기기 완료 전에 서버·게임방을 만들지 않는다. 테스트를 마지막까지 미루지 않는다.
 
-현재 제품 소스·package.json·자동 테스트·배포 워크플로는 없다. `prototype/`은 독립 HTML 시안이다. 작성 당시 기획·시안 파일은 모두 Git untracked이며 첫 커밋이 없다. 시작 시 실제 상태를 다시 확인한다. `.local/`의 OCI 재시도·키·자격 증명에는 접근하거나 변경하지 않는다. 서버 확보·도메인 구매·프로세스 상태는 확인하지 않았다.
+계획 작성 당시에는 제품 소스·package.json·자동 테스트가 없었다. 현재 frontend/와 shared/game-fixtures/에 단일 기기 구현·검증을 추가했다. 시작 HEAD는 ecdb904이고 작업 브랜치는 codex/single-device다. `prototype/`은 변경하지 않은 디자인 기준이다. 배포 워크플로는 B 범위로 남긴다. `.local/`의 OCI 재시도·키·자격 증명에는 접근하거나 변경하지 않는다. 서버 확보·도메인 구매·프로세스 상태는 확인하지 않았다.
 
 과거 문서의 시안01~03, 별도 핸드 종료 화면·금액 입력칸·현재 라운드 납부액 표시 등은 최신 승인으로 대체됐다. 디자인은 DESIGN_BASELINE과 UX_SPEC8절 및 최종 정산 조정, 계산은 GAME_SPEC이 기준이다. 시안에서 생략한 규칙을 제품에서도 생략하지 않는다. 명백한 이력 차이는 최신 결정으로 해소하고 실제 규칙 모순·정책 변경만 묶어 질문한다.
 
@@ -102,134 +102,134 @@ IMPLEMENTATION_PROGRESS.md
 **Files:** frontend/package.json·lock·Vite/TS/Playwright 설정, app/LocalApp.tsx, tests/game/settings.test.ts, IMPLEMENTATION_PROGRESS.md.
 **Consumes:** 문서·고정 시안. **Produces:** 실행 가능한 `/local/`와 공통 검사 명령.
 
-- [ ] 실제 cwd·AGENTS·git 상태·Node 확인. untracked 문서 삭제·전체 일괄add 금지. HEAD가 없는데 worktree를 강제로 만들지 않는다.
-- [ ] 승인된 기술의 호환 버전으로 최소 구성. 버전·구조 선택 이유는 TECH_DECISIONS에 기록한다.
-- [ ] `npm --prefix frontend run dev -- --host 127.0.0.1`, `typecheck`, `lint`, `test`, `build`, `test:e2e` 스크립트 정의. npm ci로 재현 가능하게 한다.
-- [ ] root는 모드 입구, local은 구현 대상, online은 미제공 안내만 둔다. 실제 온라인 기능처럼 보이는 목업은 배포하지 않는다.
-- [ ] typecheck/lint/build와 첫 설정 테스트 실행 결과를 기록한다. 아직 없는 기능을 완료로 표시하지 않는다.
+- [x] 실제 cwd·AGENTS·git 상태·Node 확인. untracked 문서 삭제·전체 일괄add 금지. HEAD가 없는데 worktree를 강제로 만들지 않는다.
+- [x] 승인된 기술의 호환 버전으로 최소 구성. 버전·구조 선택 이유는 TECH_DECISIONS에 기록한다.
+- [x] `npm --prefix frontend run dev -- --host 127.0.0.1`, `typecheck`, `lint`, `test`, `build`, `test:e2e` 스크립트 정의. npm ci로 재현 가능하게 한다.
+- [x] root는 모드 입구, local은 구현 대상, online은 미제공 안내만 둔다. 실제 온라인 기능처럼 보이는 목업은 배포하지 않는다.
+- [x] typecheck/lint/build와 첫 설정 테스트 실행 결과를 기록한다. 아직 없는 기능을 완료로 표시하지 않는다.
 
 ### A01. 최종 디자인을 React 표시 기준으로 먼저 고정
 
 **Files:** ui/Table·PlayerCard·BetControls, tokens.css/table.css/controls.css, e2e/design.spec.ts.
 **Consumes:** DESIGN_BASELINE·읽기 전용 표시 fixture. **Produces:** props 기반 Table/PlayerCard/BetControls.
 
-- [ ] 최종 HTML의 computed style·기준 이미지를 보고 색·크기·간격을 옮긴다. 역사별 CSS 전부와 시안 script를 통째로 복사하지 않는다.
-- [ ] 고정 테이블, 이름+숫자2칸, D/SB/BB, 현재 차례, 두 줄 버튼, 메뉴, 선택 인원+WIN을 표시한다. 상태 변경을 가짜로 연결하지 않는다.
-- [ ] 같은 Chromium/390×844·320×568에서2/6/9인 기준과 나란히 비교한다. 추가 UI가 없는 기본 게임 화면은 재디자인하지 않는다.
-- [ ] `npm --prefix frontend run test:e2e -- e2e/design.spec.ts`: 단계별 테이블x/y/width/height 동일, 카드 겹침0, 가로 넘침0. 이 기준을 확보한 뒤 실제 상태를 연결한다.
+- [x] 최종 HTML의 computed style·기준 이미지를 보고 색·크기·간격을 옮긴다. 역사별 CSS 전부와 시안 script를 통째로 복사하지 않는다.
+- [x] 고정 테이블, 이름+숫자2칸, D/SB/BB, 현재 차례, 두 줄 버튼, 메뉴, 선택 인원+WIN을 표시한다. 상태 변경을 가짜로 연결하지 않는다.
+- [x] 같은 Chromium/390×844·320×568에서2/6/9인 기준과 나란히 비교한다. 추가 UI가 없는 기본 게임 화면은 재디자인하지 않는다.
+- [x] `npm --prefix frontend run test:e2e -- e2e/design.spec.ts`: 단계별 테이블x/y/width/height 동일, 카드 겹침0, 가로 넘침0. 이 기준을 확보한 뒤 실제 상태를 연결한다.
 
 ### A02. 설정·상태·핸드 시작·턴·베팅 규칙
 
 **Files:** game/types/settings/transition/actions/turns/positions/invariants.ts, fixtures/schema·settings·positions·betting.json, tests/game/*.
 **Consumes:** GameSettings/Command. **Produces:** createTournament/transition/getLegalActions/assertInvariants.
 
-- [ ] JSON schema: id, description, initialState, commands, context, expectedStateSubset, expectedError, expectedEvents. 기대값은 규칙·수작업으로 작성하고 구현 출력에서 생성하지 않는다.
-- [ ] 설정 경계 테스트:2/9명 허용,1/10명 거절;1000/5/10 허용;시작5/BB10·SB10/BB10·12칩 거절. 이름 중복·공백·한글 조합 입력을 검증한다.
-- [ ] GAME_SPEC D01~D12/B01~B23을 JSON으로 옮겨 실패를 확인한 뒤 작은 묶음별 구현. BB 옵션, HU 순서, 짧은 BB, 누적 짧은 올인, 체크 후 재레이즈 권리를 포함한다.
-- [ ] 화면의 게임 시작1회로 START_TOURNAMENT→첫 블라인드 납부까지 한 번 확정한다. 내부 단계는 분리하되 별도 첫 핸드 버튼을 만들지 않는다.
-- [ ] 금액 일치만으로 베팅 종료하지 않는다. fold/all-in은 행동에서 제외하고 전원all-in에 불필요한 체크를 요구하지 않는다.
-- [ ] `npm --prefix frontend run test -- --run tests/game`와 typecheck. 모든 성공 전환의 총량·입력 불변성을 검증한다.
+- [x] JSON schema: id, description, initialState, commands, context, expectedStateSubset, expectedError, expectedEvents. 기대값은 규칙·수작업으로 작성하고 구현 출력에서 생성하지 않는다.
+- [x] 설정 경계 테스트:2/9명 허용,1/10명 거절;1000/5/10 허용;시작5/BB10·SB10/BB10·12칩 거절. 이름 중복·공백·한글 조합 입력을 검증한다.
+- [x] GAME_SPEC D01~D12/B01~B23을 JSON으로 옮겨 실패를 확인한 뒤 작은 묶음별 구현. BB 옵션, HU 순서, 짧은 BB, 누적 짧은 올인, 체크 후 재레이즈 권리를 포함한다.
+- [x] 화면의 게임 시작1회로 START_TOURNAMENT→첫 블라인드 납부까지 한 번 확정한다. 내부 단계는 분리하되 별도 첫 핸드 버튼을 만들지 않는다.
+- [x] 금액 일치만으로 베팅 종료하지 않는다. fold/all-in은 행동에서 제외하고 전원all-in에 불필요한 체크를 요구하지 않는다.
+- [x] `npm --prefix frontend run test -- --run tests/game`와 typecheck. 모든 성공 전환의 총량·입력 불변성을 검증한다.
 
 ### A03. 반환·팟·정산·취소·종료
 
 **Files:** game/pots/settlement/transition.ts, fixtures/pots·settlement·lifecycle.json, tests/game/fixtures.test.ts.
 **Consumes:** A02 상태. **Produces:** buildPots/previewSettlement 및 나머지 게임 명령.
 
-- [ ] P01~P07/W01~W10의 실패 테스트를 작성한다. H=[150,100,50]은50반환 후pots=[150,100];15를2명이 나누면10/5;두 팟 각15는 팟별 처리 후20/10.
-- [ ] 동률 그룹·승패 모순, 폴드자 제외, 단독 자격 자동 선택 및 최종 확정 전 지급 없음 구현.
-- [ ] UNDO는 직전 B/H/S/W/R/응답자/권리/반환을 복원하고 취소 기록을 추가. 연속 취소 불가, 새 행동 후 다시1회 가능.
-- [ ] BEGIN_REVEAL 이후 취소 거절. 일반 스트리트 전환은B만0/H·P유지. 쇼다운 공개는 바로 승자 입력, 일반 플랍/턴 공개까지 정산으로 보내지 않는다.
-- [ ] SETTLE_HAND는 지급→탈락→종료 또는 다음 핸드를1전환으로 처리. 데드 버튼/HU·예약 소진·짧은 블라인드·마지막 폴드 자동 정산 포함.
-- [ ] 테스트:6명×1000 총량6000 유지, 다음 핸드P15/H는 새 블라인드만,1명 남으면 다음 핸드 없음. ABORT는S/P/기록 보존·재개/지급 불가.
-- [ ] 전체game 테스트 PASS. 까다로운 fixture를 삭제하거나 기대값을 엔진 결과로 바꿔 통과시키지 않는다.
+- [x] P01~P07/W01~W10의 실패 테스트를 작성한다. H=[150,100,50]은50반환 후pots=[150,100];15를2명이 나누면10/5;두 팟 각15는 팟별 처리 후20/10.
+- [x] 동률 그룹·승패 모순, 폴드자 제외, 단독 자격 자동 선택 및 최종 확정 전 지급 없음 구현.
+- [x] UNDO는 직전 B/H/S/W/R/응답자/권리/반환을 복원하고 취소 기록을 추가. 연속 취소 불가, 새 행동 후 다시1회 가능.
+- [x] BEGIN_REVEAL 이후 취소 거절. 일반 스트리트 전환은B만0/H·P유지. 쇼다운 공개는 바로 승자 입력, 일반 플랍/턴 공개까지 정산으로 보내지 않는다.
+- [x] SETTLE_HAND는 지급→탈락→종료 또는 다음 핸드를1전환으로 처리. 데드 버튼/HU·예약 소진·짧은 블라인드·마지막 폴드 자동 정산 포함.
+- [x] 테스트:6명×1000 총량6000 유지, 다음 핸드P15/H는 새 블라인드만,1명 남으면 다음 핸드 없음. ABORT는S/P/기록 보존·재개/지급 불가.
+- [x] 전체game 테스트 PASS. 까다로운 fixture를 삭제하거나 기대값을 엔진 결과로 바꿔 통과시키지 않는다.
 
 ### A04. IndexedDB·원자 저장·화면 권한
 
 **Files:** local/database/repository/controller/restore.ts, tests/local/*, e2e/storage.spec.ts.
 **Consumes:** A02/A03 순수 전환. **Produces:** controller.dispatch/takeControl, repository.load/readEvents.
 
-- [ ] schemaVersion1, slot/events/control, rulesVersion 분리. 알 수 없는 형식은 원본 보존·쓰기 차단. 존재하지 않는 구버전용 가짜 migration은 만들지 않는다.
-- [ ] readwrite tx에서 최신 상태/권한→계산→상태·기록·결과 저장→tx 완료. 내부에서 confirm/fetch/timer 대기 금지.
-- [ ] 화면당 미확정1요청, 세대별sequence/highWatermark/최근64결과. 오래된 결과를 지워도 과거 순번 재실행 금지.
-- [ ] SYSTEM_SPEC L01~L09와 X01/X03의 로컬 범위를 실제 브라우저에서 검증. 두 탭 동시 입력/인수의 두 실행 순서 모두 확인.
-- [ ] 저장 실패·완료 응답 불명·용량 부족·upgrade blocked·손상 상태를 재현. 이전 확정 상태 유지, 재시도 시 중복 지급/다음 핸드 이중 생성 없음.
-- [ ] 새 게임의 이전 기록 삭제+새 준비 저장을1tx로 처리. 홈 이동은 저장 완료 대기만 하고 삭제하지 않는다.
-- [ ] `test -- --run tests/local`, `test:e2e -- e2e/storage.spec.ts`. 모의DB 테스트만으로 IndexedDB 검증 완료라 하지 않는다.
+- [x] schemaVersion1, slot/events/control, rulesVersion 분리. 알 수 없는 형식은 원본 보존·쓰기 차단. 존재하지 않는 구버전용 가짜 migration은 만들지 않는다.
+- [x] readwrite tx에서 최신 상태/권한→계산→상태·기록·결과 저장→tx 완료. 내부에서 confirm/fetch/timer 대기 금지.
+- [x] 화면당 미확정1요청, 세대별sequence/highWatermark/최근64결과. 오래된 결과를 지워도 과거 순번 재실행 금지.
+- [x] SYSTEM_SPEC L01~L09와 X01/X03의 로컬 범위를 실제 브라우저에서 검증. 두 탭 동시 입력/인수의 두 실행 순서 모두 확인.
+- [ ] 저장 실패·완료 응답 불명·용량 부족·upgrade blocked·손상 상태를 재현. **첫 형식 검증:** 저장 실패/응답 유실/Quota/손상은 PASS. 실제 존재하지 않는 구형 DB가 v1 업그레이드를 막는 조건은 N/A로 남기며, 실제 versionchange 연결 종료·쓰기 차단은 PASS. 이전 확정 상태 유지, 재시도 시 중복 지급/다음 핸드 이중 생성 없음.
+- [x] 새 게임의 이전 기록 삭제+새 준비 저장을1tx로 처리. 홈 이동은 저장 완료 대기만 하고 삭제하지 않는다.
+- [x] `test -- --run tests/local`, `test:e2e -- e2e/storage.spec.ts`. 모의DB 테스트만으로 IndexedDB 검증 완료라 하지 않는다.
 
 ### A05. 홈·준비·좌석 드래그
 
 **Files:** ui/LocalHome/SetupPanel/useSeatDrag/ManagerMenu, app/LocalApp/appReducer/LocalGameContext, e2e/game.spec.ts.
 **Consumes:** 설정 검증·controller. **Produces:** 저장된 준비 상태와 시작 명령.
 
-- [ ] 이름·인원·시작 칩·SB/BB·첫D·화면 기준 좌석을 연결. 시안에 없는 이름/인원 편집은 준비 전용 메뉴·다이얼로그에 넣고 테이블/두 줄 조작을 새로 디자인하지 않는다.
-- [ ] Pointer Events를 초기 후보로 검토한다. 추가 라이브러리는 스크롤/접근성 등 실질적 필요가 있을 때 대안 비교 후 선택. 시안의350ms 길게 누르기를 기준으로 한다.
-- [ ] 드래그 중 삽입 프리뷰→놓으면 확정·저장. swap금지. 영역 밖/pointercancel은 원복. IME미확정·빈칸을 저장된 유효 설정에 섞지 않는다.
-- [ ] 시작 시 재검증·블라인드 납부 저장, 완료 후 게임 진입. 연타로 중복 시작하지 않는다.
-- [ ] 이어하기·새 토너먼트 삭제 확인·이름/좌석/최초 설정 재사용. 직전 잔액이나 마지막 블라인드를 기본값으로 재사용하지 않는다.
-- [ ] 저장 실패·권한 인수 중 드래그 취소/옛 화면 거절과2~9명 긴 이름을E2E 검증.
+- [x] 이름·인원·시작 칩·SB/BB·첫D·화면 기준 좌석을 연결. 시안에 없는 이름/인원 편집은 준비 전용 메뉴·다이얼로그에 넣고 테이블/두 줄 조작을 새로 디자인하지 않는다.
+- [x] Pointer Events를 초기 후보로 검토한다. 추가 라이브러리는 스크롤/접근성 등 실질적 필요가 있을 때 대안 비교 후 선택. 시안의350ms 길게 누르기를 기준으로 한다.
+- [x] 드래그 중 삽입 프리뷰→놓으면 확정·저장. swap금지. 영역 밖/pointercancel은 원복. IME미확정·빈칸을 저장된 유효 설정에 섞지 않는다.
+- [x] 시작 시 재검증·블라인드 납부 저장, 완료 후 게임 진입. 연타로 중복 시작하지 않는다.
+- [x] 이어하기·새 토너먼트 삭제 확인·이름/좌석/최초 설정 재사용. 직전 잔액이나 마지막 블라인드를 기본값으로 재사용하지 않는다.
+- [x] 저장 실패·권한 인수 중 드래그 취소/옛 화면 거절과2~9명 긴 이름을E2E 검증.
 
 ### A06. 두 줄 베팅과 카드 H+d 연결
 
 **Files:** ui/BetControls/PlayerCard/Table/StatusNotice, app/reducer/context, e2e/game.spec.ts.
 **Consumes:** LegalActions·controller·확정 상태. **Produces:** draftAmount와 합법 명령.
 
-- [ ] draftAmount는useState/초기0. 카드 왼쪽H+d, 오른쪽S. 칩 버튼은draft만 수정, 잔액 초과 거절. 올인은S를draft에 채우고BET까지 미확정.
-- [ ] 검증 예: H20에서50·10 선택→80, 오른쪽 잔액 불변, C→20, BET→60만 차감. H20/B0 플랍에서+10은H30/B10으로 확정.
-- [ ] CALL은draft를 무시하고callAdditional만 제출,0이면CHECK. BET은LegalActions로BET/RAISE/ALL_IN 판단. H+d를additional로 보내지 않는다.
-- [ ] 저장 중 중복 조작 차단, 성공 후 다음 차례, 실패는 고정 오류·재시도. draft는차례/취소/스트리트/새로고침/권한 변경 때0.
-- [ ] 불가 버튼은 탭하면 이유가 잠시 보이고 명령은 안 보낸다. aria-disabled와 실행 차단을 함께 적용. 마지막fold는확인 후 실제 엔진 처리.
-- [ ] typecheck/lint/단위/E2E로 저장 전에 잔액이 바뀌지 않는지 확인.
+- [x] draftAmount는useState/초기0. 카드 왼쪽H+d, 오른쪽S. 칩 버튼은draft만 수정, 잔액 초과 거절. 올인은S를draft에 채우고BET까지 미확정.
+- [x] 검증 예: H20에서50·10 선택→80, 오른쪽 잔액 불변, C→20, BET→60만 차감. H20/B0 플랍에서+10은H30/B10으로 확정.
+- [x] CALL은draft를 무시하고callAdditional만 제출,0이면CHECK. BET은LegalActions로BET/RAISE/ALL_IN 판단. H+d를additional로 보내지 않는다.
+- [x] 저장 중 중복 조작 차단, 성공 후 다음 차례, 실패는 고정 오류·재시도. draft는차례/취소/스트리트/새로고침/권한 변경 때0.
+- [x] 불가 버튼은 탭하면 이유가 잠시 보이고 명령은 안 보낸다. aria-disabled와 실행 차단을 함께 적용. 마지막fold는확인 후 실제 엔진 처리.
+- [x] typecheck/lint/단위/E2E로 저장 전에 잔액이 바뀌지 않는지 확인.
 
 ### A07. 공개·카드 승자 선택·다음 핸드
 
 **Files:** ui/RevealPanel/SettlementPanel/Table, game/transition, e2e/game.spec.ts.
 **Consumes:** phase·Pot[]·previewSettlement·controller. **Produces:** 공개/정산명령과승자draft.
 
-- [ ] `카드 공개` 저장 완료 후 취소 잠금. 쇼다운은중간버튼없이정산,일반플랍/턴/리버는공개후다음스트리트시작. 실물 공개 감지를 가정하지 않는다.
-- [ ] 자격 있는 테이블 카드만 복수 선택. 배경·테두리만 강조,체크동그라미금지. 선택인원은WIN직상단중앙,하단메인팟숫자재추가금지.
-- [ ] 사이드팟은중앙팟이름/금액+이전·다음전환으로선택. 고정테이블유지,전팟선택·모순검증후WIN. 단독자격은자동선택.
-- [ ] 상세 지급 미리보기는 중앙 팟을 눌러 여는 시트로 제공하는 구현안. 카드H를지급예상액으로덮지않는다. 빠진 화면도기존색·메뉴패턴을사용.
-- [ ] WIN저장성공→다음핸드. 기존요청재전송도1회. 승자draft는새로고침때폐기. 최종1명은토너먼트종료.
-- [ ] 동률·side·모순거절·올인runout·최종fold확인취소·우승·연타·저장실패 E2E.
+- [x] `카드 공개` 저장 완료 후 취소 잠금. 쇼다운은중간버튼없이정산,일반플랍/턴/리버는공개후다음스트리트시작. 실물 공개 감지를 가정하지 않는다.
+- [x] 자격 있는 테이블 카드만 복수 선택. 배경·테두리만 강조,체크동그라미금지. 선택인원은WIN직상단중앙,하단메인팟숫자재추가금지.
+- [x] 사이드팟은중앙팟이름/금액+이전·다음전환으로선택. 고정테이블유지,전팟선택·모순검증후WIN. 단독자격은자동선택.
+- [x] 상세 지급 미리보기는 중앙 팟을 눌러 여는 시트로 제공하는 구현안. 카드H를지급예상액으로덮지않는다. 빠진 화면도기존색·메뉴패턴을사용.
+- [x] WIN저장성공→다음핸드. 기존요청재전송도1회. 승자draft는새로고침때폐기. 최종1명은토너먼트종료.
+- [x] 동률·side·모순거절·올인runout·최종fold확인취소·우승·연타·저장실패 E2E.
 
 ### A08. 관리자 메뉴·기록·종료/중단
 
 **Files:** ui/ManagerMenu/HistoryPanel/LocalHome/StatusNotice, local/repository, e2e/game.spec.ts.
 **Consumes:** 전체현재토너먼트기록·controller. **Produces:** 허용된관리행동.
 
-- [ ] 우상단메뉴에기록/다음핸드블라인드예약/화면기준좌석/홈/새토너먼트/중단/업데이트를연결. 준비중에만이름·좌석·첫D편집.
-- [ ] ‘다음 라운드 · 시안 체험’, ‘카드 공개 화면 · 시안 체험’,예시리셋제거. 제품진행은게임상태로만결정.
-- [ ] 핸드·행동·취소·반환·지급·탈락·예약·중단기록페이지조회. 취소로그는추가,과거삭제금지. 과거토너먼트아카이브/CSV제외.
-- [ ] 중단확인→S/P/기록보존·진행불가,정상종료와구분. 새게임삭제확인취소시원본유지.
-- [ ] 블라인드예약은현핸드금액불변/다음에1회적용. 스택부족은짧은블라인드처리.
+- [x] 우상단메뉴에기록/다음핸드블라인드예약/화면기준좌석/홈/새토너먼트/중단/업데이트를연결. 준비중에만이름·좌석·첫D편집.
+- [x] ‘다음 라운드 · 시안 체험’, ‘카드 공개 화면 · 시안 체험’,예시리셋제거. 제품진행은게임상태로만결정.
+- [x] 핸드·행동·취소·반환·지급·탈락·예약·중단기록페이지조회. 취소로그는추가,과거삭제금지. 과거토너먼트아카이브/CSV제외.
+- [x] 중단확인→S/P/기록보존·진행불가,정상종료와구분. 새게임삭제확인취소시원본유지.
+- [x] 블라인드예약은현핸드금액불변/다음에1회적용. 스택부족은짧은블라인드처리.
 
 ### A09. PWA·오프라인·업데이트
 
 **Files:** vite.config.ts, local/index.html, src/pwa/*, e2e/pwa.spec.ts.
 **Consumes:** 로컬전체흐름·restore. **Produces:** /local/전용설치형PWA.
 
-- [ ] vite-plugin-pwa생성방식/prompt업데이트/로컬입구·의존자산precache. 오프라인준비성공과실패구분.
-- [ ] /local/홈→이어하기오프라인검증. root/online문서탐색,online/API는캐시제외.
-- [ ] 진행중skipWaiting/강제reload금지. 종료/중단후수동적용. 모든창종료후새코드로시작하면schema/rules호환검증후복원.
-- [ ] production build에서offline새로고침,구버전→신버전,형식동일/규칙의미변경,알수없는형식,변환실패원본보존을검증.
-- [ ] `npm --prefix frontend run build`, `test:e2e -- e2e/pwa.spec.ts`. dev서버실행만으로완료라하지않는다.
+- [x] vite-plugin-pwa생성방식/prompt업데이트/로컬입구·의존자산precache. 오프라인준비성공과실패구분.
+- [x] /local/홈→이어하기오프라인검증. root/online문서탐색,online/API는캐시제외.
+- [x] 진행중skipWaiting/강제reload금지. 종료/중단후수동적용. 모든창종료후새코드로시작하면schema/rules호환검증후복원.
+- [x] production build에서offline새로고침,구버전→신버전,형식동일/규칙의미변경,알수없는형식,변환실패원본보존을검증.
+- [x] `npm --prefix frontend run build`, `test:e2e -- e2e/pwa.spec.ts`. dev서버실행만으로완료라하지않는다.
 
 ### A10. 통합검증·디자인회귀·실기기
 
 **Files:** e2e/*, IMPLEMENTATION_PROGRESS.md, 생성할frontend/DEVICE_CHECKS.md.
 **Consumes:** A00~A09. **Produces:** 단일기기검증보고.
 
-- [ ] npm ci→typecheck→lint→`test -- --run`→build→test:e2e. Chromium/WebKit,미실행은미검증표시.
-- [ ] 2/6/9명뿐아니라3/4/5/7/8명,10자이름·최대금액·모든단계·선택상태·줄바꿈/터치영역확인.
-- [ ] 정상전체스트리트→정산→다음핸드,짧은올인/side/tie,HU전환,취소,저장재시도,다른화면인수,offline재실행완주.
-- [ ] 동일뷰포트·데이터·브라우저로고정본과이미지비교. 실패이미지에맞춰기준PNG를갱신해통과시키지않는다. 의도한기능추가차이는설명.
-- [ ] 가능한실기기iPhoneSafari/AndroidChrome·설치PWA검증과실제버전기록. 접근불가면사용자검증항목을전달하고미검증으로남긴다.
+- [x] npm ci→typecheck→lint→`test -- --run`→build→test:e2e. Chromium/WebKit,미실행은미검증표시.
+- [x] 2/6/9명뿐아니라3/4/5/7/8명,10자이름·최대금액·모든단계·선택상태·줄바꿈/터치영역확인.
+- [x] 정상전체스트리트→정산→다음핸드,짧은올인/side/tie,HU전환,취소,저장재시도,다른화면인수,offline재실행완주.
+- [x] 동일뷰포트·데이터·브라우저로고정본과이미지비교. 실패이미지에맞춰기준PNG를갱신해통과시키지않는다. 의도한기능추가차이는설명.
+- [x] 가능한실기기iPhoneSafari/AndroidChrome·설치PWA검증과실제버전기록. 접근불가면사용자검증항목을전달하고미검증으로남긴다.
 
 ### A11. 단일 기기 완료 인계
 
-- [ ] 미구현·알려진버그·미검증정리. 실제게임용으로쓸수없는placeholder를남기고완료라하지않는다.
-- [ ] README에설치/실행/테스트/저장소삭제시소실/오프라인준비/업데이트안내. 결과는진척,기술선택은TECH_DECISIONS로구분.
-- [ ] 로컬리뷰가능한결과·실행방법제시. 공개push·실서버반영을자동시작하지않는다. 다음B,실사용검증이후C.
+- [x] 미구현·알려진버그·미검증정리. 실제게임용으로쓸수없는placeholder를남기고완료라하지않는다.
+- [x] README에설치/실행/테스트/저장소삭제시소실/오프라인준비/업데이트안내. 결과는진척,기술선택은TECH_DECISIONS로구분.
+- [x] 로컬리뷰가능한결과·실행방법제시. 공개push·실서버반영을자동시작하지않는다. 다음B,실사용검증이후C.
 
 ## 6. B — 첫 배포·자동화
 
@@ -277,4 +277,21 @@ DEPLOYMENT_SPEC을실행기준으로삼는다. 서버·도메인이없어도CI/�
 
 진척에는 `작업 / 변경 / 검증 명령과 결과 / 미검증 / 다음 작업`을 남긴다. 실패를남기고다음단계로가면독립진행가능한이유를적는다. 컨텍스트부족으로멈출때파일·테스트상태를인계하며완료라고하지않는다.
 
-현재는계획작성·문서정합성확인단계다. 제품의typecheck/테스트/실기기/배포결과는아직없다. 프로토타입검증을본구현통과결과로재사용하지않는다.
+2026-10-18 A00~A11 구현과 자동 검사 완료: typecheck/lint/build, 단위109·Chromium/WebKit172 PASS. 실기기는 DEVICE_CHECKS의 미검증 목록을 따른다. 배포는 미실행이다. 고정 시안과 제품을 직접 비교했으며 프로토타입 검증 결과를 제품 테스트로 대신하지 않았다.
+
+
+## 2026-10-18 후속 승인 변경 — 앱 홈·직접 조작·자동 진행
+
+A00~A11 이후 사용자 승인 변경은 UX_SPEC/GAME_SPEC의 최신 절 및 IMPLEMENTATION_PROGRESS의 해당 실행 기록을 따른다. /local/ 앱 홈에 모드 선택·업데이트, 게임 메뉴는 앱 홈으로/새 토너먼트. HAND 기록·SB/BB 예약 직접 진입, 예약값 표시, 이름줄 직접 편집·즉시 D·중앙 정렬·시계 회전. 공개/스트리트 시작 중간 화면을 제거하고 마지막 응답에서 다음 단계까지 원자 저장한다. 새 코드와 구형 공개 상태 복원을 모두 검증한다. 기존 시안에서 승인 변경 영역 외 카드/테이블/하단은 유지한다. 멀티플레이·배포는 여전히 제외한다.
+
+
+### 후속 승인 UI 수정 — 2026-10-18
+
+원형 드래그 전체 회전 원인 수정, 이름 글자만 편집, 준비 전용 회전, 시간순 기록·역순 버튼·기술 기록 숨김/취소 반영, 기록·블라인드·메뉴 바깥 닫기, 가로 블라인드 입력을 적용한다. 최신 UX_SPEC 및 IMPLEMENTATION_PROGRESS가 요구와 실행·검증의 기준이다. 기존 게임 규칙·원본 시안·저장 형식·멀티플레이/배포 범위는 유지한다.
+
+
+### 단계 기록·팟 오류 수정 — 2026-10-18 최신 승인
+
+HAND와 단계 이름도 기록 행으로 포함해 역순에서 HAND가 해당 핸드의 맨 아래에 온다. 실제 프리플랍/플랍/턴/리버/쇼다운을 표시하고 폴드 종료는 핸드 종료로 구분한다. 단계 글자만520ms 금색·1.1배 강조 후 원상복귀하며 초기 표시/복원·같은 단계 재조작에는 재생하지 않고 동작 줄이기를 존중한다. 폴드 납부 높이 차이로 나눈 같은 수령 자격의 층은 실제 팟 확정 전에 합치며 진짜 올인 자격 경계는 보존한다. 한 팟은 POT/여러 팟만 MAIN·SIDE POT. 원본 HTML·저장 형식·원본 이벤트는 유지하며 검증 상태는 IMPLEMENTATION_PROGRESS 최신 절을 따른다.
+
+- [x] 2026-10-18 승인 업데이트 안내: 홈 클릭 즉시 확인/설치 완료 대기/실패 재시도/바깥 닫기/적용 중 닫기 차단. 첫 설치 실패 복구·오프라인 재시작·게임 보존 포함. 최종 관련 브라우저30/전체 단위130 PASS, 실행 기록은 IMPLEMENTATION_PROGRESS 참조.

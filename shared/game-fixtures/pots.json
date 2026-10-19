@@ -1,0 +1,273 @@
+[
+  {
+    "id": "P01",
+    "H": [100, 100, 50],
+    "folded": [],
+    "returnAmount": 0,
+    "amounts": [150, 100],
+    "eligible": [
+      ["p0", "p1", "p2"],
+      ["p0", "p1"]
+    ],
+    "suite": "pots",
+    "description": "A100/B100/C50, 모두 생존 핸드 | 없음 | 메인150:ABC / 사이드100:AB |",
+    "context": {
+      "id": "P01",
+      "at": "2026-10-18T00:00:00Z"
+    },
+    "initialState": {
+      "H": [100, 100, 50],
+      "B": [100, 100, 50],
+      "folded": []
+    },
+    "commands": [
+      {
+        "type": "RETURN_UNCALLED"
+      },
+      {
+        "type": "BUILD_POTS"
+      }
+    ],
+    "expectedStateSubset": {
+      "amounts": [150, 100],
+      "eligible": [
+        ["p0", "p1", "p2"],
+        ["p0", "p1"]
+      ],
+      "returnAmount": 0
+    },
+    "expectedError": null,
+    "expectedEvents": []
+  },
+  {
+    "id": "P02",
+    "H": [150, 100, 50],
+    "folded": [],
+    "returnAmount": 50,
+    "amounts": [150, 100],
+    "eligible": [
+      ["p0", "p1", "p2"],
+      ["p0", "p1"]
+    ],
+    "suite": "pots",
+    "description": "A150/B100/C50, 최종 라운드 A의50 미콜 | A50 | P01과 같음, 잔액 합50 증가·팟50 감소 |",
+    "context": {
+      "id": "P02",
+      "at": "2026-10-18T00:00:00Z"
+    },
+    "initialState": {
+      "H": [150, 100, 50],
+      "B": [150, 100, 50],
+      "folded": []
+    },
+    "commands": [
+      {
+        "type": "RETURN_UNCALLED"
+      },
+      {
+        "type": "BUILD_POTS"
+      }
+    ],
+    "expectedStateSubset": {
+      "amounts": [150, 100],
+      "eligible": [
+        ["p0", "p1", "p2"],
+        ["p0", "p1"]
+      ],
+      "returnAmount": 50
+    },
+    "expectedError": null,
+    "expectedEvents": []
+  },
+  {
+    "id": "P03",
+    "H": [100, 100, 50],
+    "folded": [1],
+    "returnAmount": 0,
+    "amounts": [150, 100],
+    "eligible": [["p0", "p2"], ["p0"]],
+    "suite": "pots",
+    "description": "A100/B100/C50, B 폴드 | 없음 | 메인150:AC / 사이드100:A. B100은 반환하지 않음 |",
+    "context": {
+      "id": "P03",
+      "at": "2026-10-18T00:00:00Z"
+    },
+    "initialState": {
+      "H": [100, 100, 50],
+      "B": [100, 100, 50],
+      "folded": [1]
+    },
+    "commands": [
+      {
+        "type": "RETURN_UNCALLED"
+      },
+      {
+        "type": "BUILD_POTS"
+      }
+    ],
+    "expectedStateSubset": {
+      "amounts": [150, 100],
+      "eligible": [["p0", "p2"], ["p0"]],
+      "returnAmount": 0
+    },
+    "expectedError": null,
+    "expectedEvents": []
+  },
+  {
+    "id": "P04",
+    "H": [200, 200, 100, 50],
+    "folded": [],
+    "returnAmount": 0,
+    "amounts": [200, 150, 200],
+    "eligible": [
+      ["p0", "p1", "p2", "p3"],
+      ["p0", "p1", "p2"],
+      ["p0", "p1"]
+    ],
+    "suite": "pots",
+    "description": "A200/B200/C100/D50, 모두 생존 핸드 | 없음 | 메인200:ABCD / 사이드150:ABC / 사이드200:AB, 합550 |",
+    "context": {
+      "id": "P04",
+      "at": "2026-10-18T00:00:00Z"
+    },
+    "initialState": {
+      "H": [200, 200, 100, 50],
+      "B": [200, 200, 100, 50],
+      "folded": []
+    },
+    "commands": [
+      {
+        "type": "RETURN_UNCALLED"
+      },
+      {
+        "type": "BUILD_POTS"
+      }
+    ],
+    "expectedStateSubset": {
+      "amounts": [200, 150, 200],
+      "eligible": [
+        ["p0", "p1", "p2", "p3"],
+        ["p0", "p1", "p2"],
+        ["p0", "p1"]
+      ],
+      "returnAmount": 0
+    },
+    "expectedError": null,
+    "expectedEvents": []
+  },
+  {
+    "id": "P05",
+    "H": [100, 100, 50, 50],
+    "folded": [3],
+    "returnAmount": 0,
+    "amounts": [200, 100],
+    "eligible": [
+      ["p0", "p1", "p2"],
+      ["p0", "p1"]
+    ],
+    "suite": "pots",
+    "description": "A100/B100/C50/D50, D 폴드 | 없음 | 메인200:ABC / 사이드100:AB, 합300 |",
+    "context": {
+      "id": "P05",
+      "at": "2026-10-18T00:00:00Z"
+    },
+    "initialState": {
+      "H": [100, 100, 50, 50],
+      "B": [100, 100, 50, 50],
+      "folded": [3]
+    },
+    "commands": [
+      {
+        "type": "RETURN_UNCALLED"
+      },
+      {
+        "type": "BUILD_POTS"
+      }
+    ],
+    "expectedStateSubset": {
+      "amounts": [200, 100],
+      "eligible": [
+        ["p0", "p1", "p2"],
+        ["p0", "p1"]
+      ],
+      "returnAmount": 0
+    },
+    "expectedError": null,
+    "expectedEvents": []
+  },
+  {
+    "id": "P06",
+    "H": [100, 60, 20],
+    "folded": [1, 2],
+    "returnAmount": 40,
+    "amounts": [140],
+    "eligible": [["p0"]],
+    "suite": "pots",
+    "description": "A100/B60/C20, B·C 폴드, A 마지막40 미콜 | A40 | 나머지140을 A에 지급. 반환+지급 총180, 두 번 지급 금지 |",
+    "context": {
+      "id": "P06",
+      "at": "2026-10-18T00:00:00Z"
+    },
+    "initialState": {
+      "H": [100, 60, 20],
+      "B": [100, 60, 20],
+      "folded": [1, 2]
+    },
+    "commands": [
+      {
+        "type": "RETURN_UNCALLED"
+      },
+      {
+        "type": "BUILD_POTS"
+      }
+    ],
+    "expectedStateSubset": {
+      "amounts": [140],
+      "eligible": [["p0"]],
+      "returnAmount": 40
+    },
+    "expectedError": null,
+    "expectedEvents": []
+  },
+  {
+    "id": "P07",
+    "H": [120, 120, 50],
+    "B": [100, 100, 30],
+    "folded": [],
+    "returnAmount": 0,
+    "amounts": [150, 140],
+    "eligible": [
+      ["p0", "p1", "p2"],
+      ["p0", "p1"]
+    ],
+    "suite": "pots",
+    "description": "이전 라운드 모두20, 현 라운드 A100/B100/C30 올인 | 없음 | H120/120/50, 메인150:ABC / 사이드140:AB, 합290 |",
+    "context": {
+      "id": "P07",
+      "at": "2026-10-18T00:00:00Z"
+    },
+    "initialState": {
+      "H": [120, 120, 50],
+      "B": [100, 100, 30],
+      "folded": []
+    },
+    "commands": [
+      {
+        "type": "RETURN_UNCALLED"
+      },
+      {
+        "type": "BUILD_POTS"
+      }
+    ],
+    "expectedStateSubset": {
+      "amounts": [150, 140],
+      "eligible": [
+        ["p0", "p1", "p2"],
+        ["p0", "p1"]
+      ],
+      "returnAmount": 0
+    },
+    "expectedError": null,
+    "expectedEvents": []
+  }
+]

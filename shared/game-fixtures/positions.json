@@ -1,0 +1,382 @@
+[
+  {
+    "id": "D01",
+    "initialState": {
+      "buttonSeat": 0,
+      "sbSeat": 1,
+      "bbSeat": 2
+    },
+    "commands": [
+      {
+        "alive": [true, true, true, true],
+        "expected": {
+          "buttonSeat": 1,
+          "sbSeat": 2,
+          "bbSeat": 3
+        }
+      }
+    ],
+    "suite": "positions",
+    "description": "4명 A버튼/B SB/C BB/D, 탈락 없음 | B버튼/C SB/D BB, Preflop A 먼저 |",
+    "context": {
+      "id": "D01",
+      "at": "2026-10-18T00:00:00Z"
+    },
+    "expectedStateSubset": {},
+    "expectedError": null,
+    "expectedEvents": []
+  },
+  {
+    "id": "D02",
+    "initialState": {
+      "buttonSeat": 0,
+      "sbSeat": 1,
+      "bbSeat": 2
+    },
+    "commands": [
+      {
+        "alive": [true, false, true, true],
+        "expected": {
+          "buttonSeat": 1,
+          "sbSeat": 2,
+          "bbSeat": 3
+        }
+      }
+    ],
+    "suite": "positions",
+    "description": "같은 배치에서 B만 탈락 | B 빈자리 버튼/C SB/D BB, Preflop A 먼저 |",
+    "context": {
+      "id": "D02",
+      "at": "2026-10-18T00:00:00Z"
+    },
+    "expectedStateSubset": {},
+    "expectedError": null,
+    "expectedEvents": []
+  },
+  {
+    "id": "D03",
+    "initialState": {
+      "buttonSeat": 0,
+      "sbSeat": 1,
+      "bbSeat": 2
+    },
+    "commands": [
+      {
+        "alive": [true, true, false, true],
+        "expected": {
+          "buttonSeat": 1,
+          "sbSeat": 2,
+          "bbSeat": 3
+        }
+      }
+    ],
+    "suite": "positions",
+    "description": "같은 배치에서 C만 탈락 | B버튼/SB 없음/D BB, Preflop A 먼저 |",
+    "context": {
+      "id": "D03",
+      "at": "2026-10-18T00:00:00Z"
+    },
+    "expectedStateSubset": {},
+    "expectedError": null,
+    "expectedEvents": []
+  },
+  {
+    "id": "D04",
+    "initialState": {
+      "buttonSeat": 0,
+      "sbSeat": 1,
+      "bbSeat": 2
+    },
+    "commands": [
+      {
+        "alive": [false, true, true],
+        "expected": {
+          "buttonSeat": 2,
+          "sbSeat": 2,
+          "bbSeat": 1
+        }
+      }
+    ],
+    "suite": "positions",
+    "description": "3명 A버튼/B SB/C BB, A 탈락 | C버튼·SB/B BB, Preflop C 먼저 |",
+    "context": {
+      "id": "D04",
+      "at": "2026-10-18T00:00:00Z"
+    },
+    "expectedStateSubset": {},
+    "expectedError": null,
+    "expectedEvents": []
+  },
+  {
+    "id": "D05",
+    "initialState": {
+      "buttonSeat": 0,
+      "sbSeat": 1,
+      "bbSeat": 2
+    },
+    "commands": [
+      {
+        "alive": [true, false, true],
+        "expected": {
+          "buttonSeat": 2,
+          "sbSeat": 2,
+          "bbSeat": 0
+        }
+      }
+    ],
+    "suite": "positions",
+    "description": "같은 3인 배치에서 B 탈락 | C버튼·SB/A BB, Preflop C 먼저 |",
+    "context": {
+      "id": "D05",
+      "at": "2026-10-18T00:00:00Z"
+    },
+    "expectedStateSubset": {},
+    "expectedError": null,
+    "expectedEvents": []
+  },
+  {
+    "id": "D06",
+    "initialState": {
+      "buttonSeat": 0,
+      "sbSeat": 1,
+      "bbSeat": 2
+    },
+    "commands": [
+      {
+        "alive": [true, true, false],
+        "expected": {
+          "buttonSeat": 1,
+          "sbSeat": 1,
+          "bbSeat": 0
+        }
+      }
+    ],
+    "suite": "positions",
+    "description": "같은 3인 배치에서 C 탈락 | B버튼·SB/A BB, Preflop B 먼저 |",
+    "context": {
+      "id": "D06",
+      "at": "2026-10-18T00:00:00Z"
+    },
+    "expectedStateSubset": {},
+    "expectedError": null,
+    "expectedEvents": []
+  },
+  {
+    "id": "D07",
+    "initialState": {
+      "buttonSeat": 0,
+      "sbSeat": 1,
+      "bbSeat": 2
+    },
+    "commands": [
+      {
+        "alive": [true, false, false, true, true, true],
+        "expected": {
+          "buttonSeat": 1,
+          "sbSeat": 2,
+          "bbSeat": 3
+        }
+      },
+      {
+        "alive": [true, false, false, true, true, true],
+        "expected": {
+          "buttonSeat": 2,
+          "sbSeat": 3,
+          "bbSeat": 4
+        }
+      },
+      {
+        "alive": [true, false, false, true, true, true],
+        "expected": {
+          "buttonSeat": 3,
+          "sbSeat": 4,
+          "bbSeat": 5
+        }
+      }
+    ],
+    "suite": "positions",
+    "description": "6명 A버튼/B SB/C BB/D/E/F에서 B·C 동시 탈락 | H2: B빈버튼/C빈SB/D BB → 추가 탈락 없으면 H3: C빈버튼/D SB/E BB → H4: D버튼/E SB/F BB |",
+    "context": {
+      "id": "D07",
+      "at": "2026-10-18T00:00:00Z"
+    },
+    "expectedStateSubset": {},
+    "expectedError": null,
+    "expectedEvents": []
+  },
+  {
+    "id": "D08",
+    "initialState": {
+      "buttonSeat": 0,
+      "sbSeat": 1,
+      "bbSeat": 2
+    },
+    "commands": [
+      {
+        "alive": [true, true, false, true, true, true],
+        "expected": {
+          "buttonSeat": 1,
+          "sbSeat": 2,
+          "bbSeat": 3
+        }
+      },
+      {
+        "alive": [true, true, false, false, true, true],
+        "expected": {
+          "buttonSeat": 2,
+          "sbSeat": 3,
+          "bbSeat": 4
+        }
+      },
+      {
+        "alive": [true, true, false, false, true, true],
+        "expected": {
+          "buttonSeat": 3,
+          "sbSeat": 4,
+          "bbSeat": 5
+        }
+      }
+    ],
+    "suite": "positions",
+    "description": "6명 같은 배치에서 C 탈락, 그 다음 핸드에서 D 탈락 | H2: B버튼/C빈SB/D BB → H3: C빈버튼/D빈SB/E BB → 추가 탈락 없으면 H4: D빈버튼/E SB/F BB |",
+    "context": {
+      "id": "D08",
+      "at": "2026-10-18T00:00:00Z"
+    },
+    "expectedStateSubset": {},
+    "expectedError": null,
+    "expectedEvents": []
+  },
+  {
+    "id": "D09",
+    "initialState": {
+      "buttonSeat": 0,
+      "sbSeat": 1,
+      "bbSeat": 4
+    },
+    "commands": [
+      {
+        "alive": [true, false, false, false, true, true],
+        "expected": {
+          "buttonSeat": 3,
+          "sbSeat": 4,
+          "bbSeat": 5
+        }
+      }
+    ],
+    "suite": "positions",
+    "description": "원래 A~F 좌석, A버튼/B SB/E BB, C·D는 이미 빈자리. 이번에 B 탈락 | D빈버튼/E SB/F BB. B→C→D는 빈자리만 통과하며 살아 있는 A를 건너뛰지 않음 |",
+    "context": {
+      "id": "D09",
+      "at": "2026-10-18T00:00:00Z"
+    },
+    "expectedStateSubset": {},
+    "expectedError": null,
+    "expectedEvents": []
+  },
+  {
+    "id": "D10",
+    "initialState": {
+      "buttonSeat": 0,
+      "sbSeat": 1,
+      "bbSeat": 2
+    },
+    "commands": [
+      {
+        "alive": [true, false, false, false, true, true],
+        "expected": {
+          "buttonSeat": 1,
+          "sbSeat": 2,
+          "bbSeat": 4
+        }
+      },
+      {
+        "alive": [true, false, false, false, true, true],
+        "expected": {
+          "buttonSeat": 3,
+          "sbSeat": 4,
+          "bbSeat": 5
+        }
+      }
+    ],
+    "suite": "positions",
+    "description": "6명 같은 최초 배치에서 B·C·D 동시 탈락 | H2: B빈버튼/C빈SB/E BB → 추가 탈락 없으면 H3: D빈버튼/E SB/F BB |",
+    "context": {
+      "id": "D10",
+      "at": "2026-10-18T00:00:00Z"
+    },
+    "expectedStateSubset": {},
+    "expectedError": null,
+    "expectedEvents": []
+  },
+  {
+    "id": "D11",
+    "initialState": {
+      "buttonSeat": 0,
+      "sbSeat": 1,
+      "bbSeat": 2
+    },
+    "commands": [
+      {
+        "alive": [false, false, true, true],
+        "expected": {
+          "buttonSeat": 2,
+          "sbSeat": 2,
+          "bbSeat": 3
+        }
+      },
+      {
+        "alive": [false, false, true, true],
+        "expected": {
+          "buttonSeat": 3,
+          "sbSeat": 3,
+          "bbSeat": 2
+        }
+      }
+    ],
+    "suite": "positions",
+    "description": "4명 A버튼/B SB/C BB/D에서 A·B 동시 탈락 | HU: C버튼·SB/D BB. 다음은 D버튼·SB/C BB |",
+    "context": {
+      "id": "D11",
+      "at": "2026-10-18T00:00:00Z"
+    },
+    "expectedStateSubset": {},
+    "expectedError": null,
+    "expectedEvents": []
+  },
+  {
+    "id": "D12",
+    "initialState": {
+      "buttonSeat": 0,
+      "sbSeat": 1,
+      "bbSeat": 2
+    },
+    "commands": [
+      {
+        "alive": [true, false, false, true],
+        "expected": {
+          "buttonSeat": 0,
+          "sbSeat": 0,
+          "bbSeat": 3
+        }
+      },
+      {
+        "alive": [true, false, false, true],
+        "expected": {
+          "buttonSeat": 3,
+          "sbSeat": 3,
+          "bbSeat": 0
+        }
+      }
+    ],
+    "suite": "positions",
+    "description": "같은4인 배치에서 B·C 동시 탈락 | HU: A버튼·SB/D BB. 다음은 D버튼·SB/A BB |",
+    "context": {
+      "id": "D12",
+      "at": "2026-10-18T00:00:00Z"
+    },
+    "expectedStateSubset": {},
+    "expectedError": null,
+    "expectedEvents": []
+  }
+]

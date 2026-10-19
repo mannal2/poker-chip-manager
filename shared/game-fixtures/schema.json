@@ -1,0 +1,48 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "공통 게임 규칙 사례",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "required": [
+      "id",
+      "suite",
+      "description",
+      "initialState",
+      "commands",
+      "context",
+      "expectedStateSubset",
+      "expectedError",
+      "expectedEvents"
+    ],
+    "properties": {
+      "id": { "type": "string", "pattern": "^(D|B|P|W|S|LIF)[0-9]{2}$" },
+      "suite": {
+        "enum": [
+          "settings",
+          "positions",
+          "betting",
+          "pots",
+          "settlement",
+          "lifecycle"
+        ]
+      },
+      "description": { "type": "string", "minLength": 1 },
+      "initialState": { "type": "object" },
+      "commands": { "type": "array", "items": { "type": "object" } },
+      "context": {
+        "type": "object",
+        "required": ["id", "at"],
+        "properties": {
+          "id": { "type": "string" },
+          "at": { "type": "string" }
+        },
+        "additionalProperties": false
+      },
+      "expectedStateSubset": { "type": "object" },
+      "expectedError": { "type": ["string", "null"] },
+      "expectedEvents": { "type": "array", "items": { "type": "string" } },
+      "expectedLegal": { "type": "object" }
+    }
+  }
+}

@@ -1,0 +1,39 @@
+name: edge
+
+services:
+  nginx:
+    image: nginx:stable-alpine
+    restart: unless-stopped
+    mem_limit: 256m
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx:/etc/nginx/conf.d:ro
+      - ./www:/var/www/certbot:ro
+      - certificates:/etc/letsencrypt:ro
+    networks:
+      - poker-edge
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  certbot:
+    image: certbot/certbot:v5.4.0
+    profiles:
+      - tools
+    mem_limit: 256m
+    volumes:
+      - ./www:/var/www/certbot
+      - certificates:/etc/letsencrypt
+      - certbot-work:/var/lib/letsencrypt
+
+networks:
+  poker-edge:
+    external: true
+
+volumes:
+  certificates:
+  certbot-work:

@@ -9,7 +9,7 @@ import type { WinnerSelection } from '../game/types';
 import { getLegalActions } from '../game/transition';
 import { BetControls } from '../ui/BetControls';
 import type { GameCommand } from '../game/types';
-import { useEffect, useReducer, useRef, useState } from 'react';
+import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
 import { LocalRepository, type Request } from '../local/repository';
 import { LocalController } from '../local/controller';
 import { defaultSettings, validateSettings, type GameSettings } from '../game/settings';
@@ -116,13 +116,44 @@ function LocalGame() {
     if (toastTimer.current) clearTimeout(toastTimer.current);
     toastTimer.current = setTimeout(() => setToast(''), 2400);
   }
+  const restoreVersion = useRef(0);
+  const restore = useCallback(
+    async (reconnect = false) => {
+      const version = ++restoreVersion.current;
+      if (reconnect) runtime.repo.reconnect();
+      setApp({ status: 'loading', error: '' });
+      try {
+        await c.refresh();
+        if (version !== restoreVersion.current) return;
+        setApp({
+          game: c.state,
+          status: c.pending ? 'storageError' : !inGame.current || c.lease ? 'ready' : 'controlLost',
+          error: c.pending
+            ? '저장 결과를 확인한 뒤 같은 요청으로 재시도해주세요.'
+            : !inGame.current || c.lease
+              ? ''
+              : '다른 화면이 조작 권한을 인수했습니다.',
+        });
+      } catch (error) {
+        if (version === restoreVersion.current)
+          setApp({ status: 'restoreError', error: String(error) });
+      }
+    },
+    [c, runtime],
+  );
+  const cancelRestore = useCallback(() => {
+    restoreVersion.current++;
+    c.cancelRefresh();
+  }, [c]);
   useEffect(() => {
-    let active = true;
-    c.refresh()
-      .then(() => {
-        if (active) setApp({ game: c.state, status: 'ready' });
-      })
-      .catch((e) => setApp({ status: 'restoreError', error: String(e) }));
+    void restore();
+    const resume = () => {
+      if (document.visibilityState === 'hidden' || lock.current || c.pending) return;
+      void restore(true);
+    };
+    document.addEventListener('visibilitychange', resume);
+    window.addEventListener('pageshow', resume);
+    document.addEventListener('resume', resume);
     if (runtime.channel)
       runtime.channel.onmessage = (message) => {
         if (message.data?.type === 'probe') {
@@ -130,29 +161,38 @@ function LocalGame() {
             runtime.channel?.postMessage({ type: 'owner', requestId: message.data.requestId });
           return;
         }
-        if (message.data?.type === 'owner') return;
-        c.refresh()
-          .then(() => {
-            if (active)
-              setApp({
-                game: c.state,
-                status: c.pending
-                  ? 'storageError'
-                  : !inGame.current || c.lease
-                    ? 'ready'
-                    : 'controlLost',
-                error: !inGame.current || c.lease ? '' : '다른 화면이 조작 권한을 인수했습니다.',
-              });
-          })
-          .catch((e) => setApp({ status: 'restoreError', error: String(e) }));
+        if (message.data?.type === 'owner' || lock.current || c.pending) return;
+        void restore();
       };
     return () => {
-      active = false;
+      cancelRestore();
+      document.removeEventListener('visibilitychange', resume);
+      window.removeEventListener('pageshow', resume);
+      document.removeEventListener('resume', resume);
       runtime.channel?.close();
       runtime.repo.close();
       if (toastTimer.current) clearTimeout(toastTimer.current);
     };
-  }, [c, runtime]);
+  }, [c, runtime, restore, cancelRestore]);
+  async function restartAfterFailure() {
+    if (lock.current || !confirm('현재 토너먼트와 전체 기록을 삭제하고 새 토너먼트를 시작할까요?'))
+      return;
+    lock.current = true;
+    restoreVersion.current++;
+    setApp({ status: 'loading', error: '' });
+    try {
+      runtime.repo.reconnect();
+      await c.restart(defaultSettings);
+      inGame.current = true;
+      setDialog('');
+      setApp({ game: c.state, status: 'ready', home: false, error: '' });
+      runtime.channel?.postMessage('changed');
+    } catch (error) {
+      setApp({ status: 'restoreError', error: String(error) });
+    } finally {
+      lock.current = false;
+    }
+  }
   async function dispatch(command: Request['command']) {
     const result = await c.dispatch(command);
     if (!c.lease) {
@@ -396,7 +436,21 @@ function LocalGame() {
       await dispatch(command);
     });
   }
-  if (app.status === 'loading') return <main className="phone home">저장 상태 확인 중…</main>;
+  if (app.status === 'loading')
+    return (
+      <main className="phone home" role="status">
+        저장 상태 확인 중…
+      </main>
+    );
+  if (app.status === 'restoreError')
+    return (
+      <main className="phone home">
+        <p role="alert">저장 정보를 불러오지 못했습니다.</p>
+        <p>{app.error}</p>
+        <button onClick={() => void restore(true)}>다시 시도</button>
+        <button onClick={() => void restartAfterFailure()}>새 토너먼트 시작</button>
+      </main>
+    );
   const button = s?.hand?.buttonSeat ?? s?.settings.button ?? 0;
   let sb = button,
     bb = button;

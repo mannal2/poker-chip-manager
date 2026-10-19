@@ -1,11 +1,14 @@
 import type { LocalRepository, ControlLease, Request, DispatchResult } from './repository';
 import type { GameState } from '../game/types';
+import type { GameSettings } from '../game/settings';
+import { storageDeadline } from './storageDeadline';
 export class LocalController {
   lease: ControlLease | null = null;
   state: GameState | null = null;
   pending: Request | null = null;
   private sequence = 0;
   private running = false;
+  private refreshVersion = 0;
   constructor(
     private repository: LocalRepository,
     private screenId: string,
@@ -18,8 +21,16 @@ export class LocalController {
     await this.refresh();
   }
   async refresh() {
-    this.state = (await this.repository.load())?.state ?? null;
-    const c = await this.repository.control();
+    const version = ++this.refreshVersion;
+    const [saved, c] = await storageDeadline(
+      Promise.all([this.repository.load(), this.repository.control()]),
+      '복원',
+      () => {
+        if (this.refreshVersion === version) this.refreshVersion++;
+      },
+    );
+    if (version !== this.refreshVersion) return;
+    this.state = saved?.state ?? null;
     if (
       this.lease &&
       (c?.screenId !== this.lease.screenId || c.generation !== this.lease.generation)
@@ -27,6 +38,18 @@ export class LocalController {
       this.lease = null;
       this.pending = null;
     }
+  }
+  cancelRefresh() {
+    this.refreshVersion++;
+  }
+  async restart(settings: GameSettings) {
+    if (this.running) throw Error('저장 완료를 기다려주세요.');
+    this.cancelRefresh();
+    const result = await this.repository.restart(settings, this.screenId);
+    this.lease = result.lease;
+    this.state = result.state;
+    this.sequence = 0;
+    this.pending = null;
   }
   async dispatch(command: Request['command']): Promise<DispatchResult> {
     if (this.running || this.pending)

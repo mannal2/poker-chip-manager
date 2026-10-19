@@ -333,3 +333,20 @@ A00~A11 단일 기기 구현과 자동 검증을 마쳤다. 멀티플레이·실
 - 일반 빌드390/320 실제 검사 PASS: 제목·정렬 버튼 중심 차이 모두0px, 가로 겹침 없음, 정렬 전환/홈 가운데/게임 팟15 복원/pageerror0(verification-header-menu-production.log). 첫 개별 bbox 측정에서320px 중심차이21.5px FAIL이 발생해 같은 레이아웃 시점에서 두 치수를 함께 poll하도록 진단 스크립트를 보완한 뒤 재검증 PASS. 제품 코드는 추가 변경하지 않았다. production-header-320.png 및 production-menu-320.png 직접 확인.
 - 독립 header_menu_review Important/Critical 없음. 기록 창만 기본 제목 숨김, 접근성 이름·다른 창 제목 유지 확인.
 - preview http://127.0.0.1:4173/local/ 실행 중. 멀티플레이·배포·저장 스키마·게임 로직 미변경.
+
+
+### 태블릿 PWA 복구·터치·화면 맞춤 — 2026-10-19 진행 중
+
+- 브랜치 codex/tablet-pwa-recovery, origin/main(154daa4) 기준. 기존 auto-deploy 커밋은 포함하지 않는다. 작업 트리 깨끗한 상태에서 분기.
+- 최신 승인: 페이지/창 모두 스크롤 금지. 사용 가능한 너비와 높이에 맞춰 구성요소를 함께 축소·확대, 가로는 높이에 필요한 너비만 쓰고 중앙 배치. 실패 복구는 다시 시도/새 토너먼트 시작 두 선택지, 교체 확인·쓰기 성공 전 기존 저장 보존.
+- Step 1 저장 복귀 → verify: 무응답 제한/재시도/손상 저장 명시적 교체·실패 rollback/늦은 응답 무시/다른 창 권한 보존. 완료 시 커밋.
+- Step 2 터치 → verify: 카드 contextmenu 차단/이름 입력 예외/실제 touch 드래그/취소 상태 복구. 완료 시 커밋.
+- Step 3 화면 맞춤 → verify: 휴대폰/태블릿 세로·가로, 2~9인/창/입력/베팅/승자에서 스크롤 없음·겹침 없음·좌표 일치. 완료 시 커밋.
+- 기준선 단위13 files/130 PASS(verification-tablet-baseline.log). 갤럭시탭 S7 Chrome PWA 실제 복귀 원인은 원격 기기 로그 없이 확정하지 않으며 자동 검사와 실기기 검증을 구분한다. 배포/PR/merge/push는 이번 작업에서 하지 않는다.
+
+#### Step 1 저장 복귀 완료
+
+- 연결/읽기/복원/명시적 새 저장8초 제한, 타임아웃 시 읽기 트랜잭션 취소. 늦은 연결은 닫고 이전 복원은 세대 비교로 무시. visible/pageshow/resume에서 재연결·상태/조작권 검증. 저장 중/결과 불명 요청은 자동 재실행하지 않는다.
+- 복원 실패 전용 화면에 다시 시도/새 토너먼트 시작. 교체 확인 후 slot/events/control 한 트랜잭션으로 새 게임·새 세대 확정, 실패 rollback. 슬롯 읽기·검증 실패 상태에서도 쓰기가 가능하면 명시적 교체 가능.
+- 새 단위3개 RED 확인 후 전체14 files/133 PASS(verification-tablet-recovery-unit.log). 타입 테스트 코드 오류와 권한 탐색까지 차단했던 초기 다중창 테스트 실패는 수정하고 숨기지 않음. 기존 앱흐름/실제저장26개 PASS(verification-tablet-recovery-browser.log), 보완 복귀·교체8개 양 브라우저 PASS(verification-tablet-recovery-final.log). 고유 관련34개 PASS.
+- 루트 브랜치는 origin/main 기준. 사용자 요청에 따라 Step 1 완료 상태를 별도 커밋한다.

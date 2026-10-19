@@ -3,6 +3,7 @@ import type { GameState, GameCommand, GameEvent } from '../game/types';
 import { createTournament, transition } from '../game/transition';
 import { openDatabase, type PokerDB } from './database';
 import { validateStored } from './restore';
+import { storageDeadline } from './storageDeadline';
 import type { IDBPDatabase, IDBPTransaction } from 'idb';
 export interface ControlLease {
   screenId: string;
@@ -50,10 +51,32 @@ export class LocalRepository {
   ) {}
   private connect() {
     if (this.invalid) throw Error('저장 연결이 변경되었습니다. 앱을 다시 열어주세요.');
-    return (this.db ??= openDatabase(this.name, this.onBlocked, () => {
-      this.invalid = true;
-      this.onInvalidated();
-    }));
+    if (!this.db) {
+      let expired = false;
+      const raw = openDatabase(this.name, this.onBlocked, () => {
+        if (this.db !== connection) return;
+        this.invalid = true;
+        this.onInvalidated();
+      });
+      const connection = storageDeadline(raw, '연결', () => {
+        expired = true;
+      });
+      this.db = connection;
+      void raw.then(
+        (db) => {
+          if (expired || this.db !== connection) db.close();
+        },
+        () => {},
+      );
+      void connection.catch(() => {
+        if (this.db === connection) this.db = null;
+      });
+    }
+    return this.db;
+  }
+  reconnect() {
+    this.close();
+    this.invalid = false;
   }
   private async checked(tx: Tx): Promise<StoredGame | null> {
     const v = await tx.objectStore('slot').get('current');
@@ -74,9 +97,21 @@ export class LocalRepository {
     const db = await this.connect(),
       tx = db.transaction(['slot', 'events', 'control'], 'readwrite');
     try {
-      const s = await this.checked(tx);
-      await tx.done;
-      return s;
+      return await storageDeadline(
+        (async () => {
+          const s = await this.checked(tx);
+          await tx.done;
+          return s;
+        })(),
+        '게임 읽기',
+        () => {
+          try {
+            tx.abort();
+          } catch {
+            /* already complete */
+          }
+        },
+      );
     } catch (e) {
       try {
         tx.abort();
@@ -85,6 +120,47 @@ export class LocalRepository {
       }
       await tx.done.catch(() => {});
       throw e;
+    }
+  }
+  // Explicit recovery only: replace unreadable state atomically after user confirmation.
+  async restart(settings: GameSettings, screenId: string) {
+    const db = await this.connect();
+    const tx = db.transaction(['slot', 'events', 'control'], 'readwrite');
+    try {
+      return await storageDeadline(
+        (async () => {
+          const old = await tx.objectStore('control').get('owner');
+          const generation = Number.isSafeInteger(old?.generation) ? old!.generation + 1 : 1;
+          const lease = { screenId, generation };
+          const state = createTournament(settings, {
+            id: crypto.randomUUID(),
+            at: new Date().toISOString(),
+          });
+          await tx
+            .objectStore('slot')
+            .put({ schemaVersion: 1, rulesVersion: 1, state, eventSequence: 0 }, 'current');
+          await tx.objectStore('events').clear();
+          await tx.objectStore('control').put({ ...lease, highWatermark: 0, results: [] }, 'owner');
+          await tx.done;
+          return { lease, state };
+        })(),
+        '새 토너먼트 저장',
+        () => {
+          try {
+            tx.abort();
+          } catch {
+            /* already complete */
+          }
+        },
+      );
+    } catch (error) {
+      try {
+        tx.abort();
+      } catch {
+        /* already complete */
+      }
+      void tx.done.catch(() => {});
+      throw error;
     }
   }
   async takeControl(screenId: string): Promise<ControlLease> {
@@ -291,10 +367,13 @@ export class LocalRepository {
     return events;
   }
   async control(): Promise<ControlRecord | undefined> {
-    return (await this.connect()).get('control', 'owner');
+    return storageDeadline((await this.connect()).get('control', 'owner'), '조작권 읽기');
   }
   close() {
-    void this.db?.then((db) => db.close());
+    void this.db?.then(
+      (db) => db.close(),
+      () => {},
+    );
     this.db = null;
   }
 }

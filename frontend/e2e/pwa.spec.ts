@@ -38,6 +38,8 @@ test('A09 /local/ 앱 캐시 준비→오프라인 새로고침→이어하기',
     return urls;
   });
   expect(urls).toContain('/local/index.html');
+  expect(urls).toContain('/local/manifest.webmanifest');
+  expect(urls).not.toContain('/local/local/manifest.webmanifest');
   expect(
     urls.some((u) => /^\/(online|api|ws)(\/|$)/.test(u) || u === '/index.html' || u === '/'),
   ).toBe(false);

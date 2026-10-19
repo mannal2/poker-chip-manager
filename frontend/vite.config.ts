@@ -10,7 +10,6 @@ export default defineConfig(({ mode }) => ({
       filename: 'local/sw.js',
       scope: '/local/',
       manifest: false,
-      includeAssets: ['local/manifest.webmanifest'],
       workbox: {
         modifyURLPrefix: { '': '/' },
         globPatterns: [

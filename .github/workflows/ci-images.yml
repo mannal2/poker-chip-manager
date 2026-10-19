@@ -1,0 +1,122 @@
+name: CI and images
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      - name: Set up Node
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm --prefix frontend ci
+
+      - name: Lint
+        run: npm --prefix frontend run lint
+
+      - name: Unit tests
+        run: npm --prefix frontend test -- --run
+
+      - name: Install test browsers
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium webkit
+
+      - name: Browser tests
+        working-directory: frontend
+        run: |
+          npx playwright test \
+            e2e/app-flow.spec.ts \
+            e2e/game.spec.ts \
+            e2e/pwa.spec.ts
+
+      - name: Build production Docker image
+        run: |
+          docker build \
+            --platform linux/amd64 \
+            -f frontend/Dockerfile \
+            -t poker-frontend:ci .
+
+      - name: Check container response
+        run: |
+          docker run -d \
+            --name poker-ci \
+            -p 127.0.0.1:4180:80 \
+            poker-frontend:ci
+
+          curl --fail \
+            --retry 10 \
+            --retry-connrefused \
+            --retry-delay 1 \
+            --max-time 10 \
+            http://127.0.0.1:4180/local/ \
+            -o /dev/null
+
+      - name: Container logs on failure
+        if: failure()
+        run: docker logs poker-ci || true
+
+  publish:
+    needs: checks
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    permissions:
+      contents: read
+      packages: write
+
+    env:
+      IMAGE: ghcr.io/mannal2/poker-chip-manager-frontend
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      - name: Log in to GHCR
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GHCR_USER: ${{ github.actor }}
+        run: |
+          printf '%s' "$GHCR_TOKEN" |
+            docker login ghcr.io \
+              --username "$GHCR_USER" \
+              --password-stdin
+
+      - name: Build and publish
+        run: |
+          docker build \
+            --platform linux/amd64 \
+            -f frontend/Dockerfile \
+            --label "org.opencontainers.image.source=https://github.com/mannal2/poker-chip-manager" \
+            --label "org.opencontainers.image.revision=$GITHUB_SHA" \
+            -t "$IMAGE:sha-$GITHUB_SHA" \
+            -t "$IMAGE:main" .
+
+          docker push "$IMAGE:sha-$GITHUB_SHA"
+          docker push "$IMAGE:main"

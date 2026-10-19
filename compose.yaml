@@ -2,14 +2,13 @@ name: poker
 
 services:
   frontend:
-    image: poker-frontend:manual
-    build:
-      context: .
-      dockerfile: frontend/Dockerfile
+    image: "${FRONTEND_IMAGE:?FRONTEND_IMAGE is required}"
     restart: unless-stopped
     mem_limit: 256m
     ports:
       - "127.0.0.1:8080:80"
+    volumes:
+      - frontend-assets:/usr/share/nginx/html/assets:ro
     networks:
       poker-edge:
         aliases:
@@ -22,4 +21,9 @@ services:
 
 networks:
   poker-edge:
+    external: true
+
+volumes:
+  frontend-assets:
+    name: poker-frontend-assets
     external: true

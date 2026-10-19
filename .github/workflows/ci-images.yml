@@ -27,6 +27,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
+      - name: Check deployment script
+        run: |
+          bash -n deploy/deploy-frontend.sh
+          bash deploy/test-deploy-frontend.sh
+
       - name: Set up Node
         uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
@@ -88,6 +93,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
+    outputs:
+      image: ${{ steps.publish.outputs.image }}
+
     permissions:
       contents: read
       packages: write
@@ -110,14 +118,110 @@ jobs:
               --password-stdin
 
       - name: Build and publish
+        id: publish
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           docker build \
             --platform linux/amd64 \
             -f frontend/Dockerfile \
             --label "org.opencontainers.image.source=https://github.com/mannal2/poker-chip-manager" \
             --label "org.opencontainers.image.revision=$GITHUB_SHA" \
-            -t "$IMAGE:sha-$GITHUB_SHA" \
-            -t "$IMAGE:main" .
+            -t "$IMAGE:sha-$GITHUB_SHA" .
 
           docker push "$IMAGE:sha-$GITHUB_SHA"
-          docker push "$IMAGE:main"
+
+          digest=$(docker image inspect --format '{{index .RepoDigests 0}}' "$IMAGE:sha-$GITHUB_SHA")
+          [[ "$digest" == "$IMAGE"@sha256:* && "${digest##*@sha256:}" =~ ^[a-f0-9]{64}$ ]]
+          printf 'image=%s\n' "$digest" >> "$GITHUB_OUTPUT"
+
+          latest=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')
+          if [[ "$latest" == "$GITHUB_SHA" ]]; then
+            docker tag "$IMAGE:sha-$GITHUB_SHA" "$IMAGE:main"
+            docker push "$IMAGE:main"
+          else
+            echo 'A newer main commit exists; leaving the main image tag unchanged.'
+          fi
+
+  deploy:
+    needs: publish
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Connect to Tailscale
+        uses: tailscale/github-action@d1b6cd204f8dceda5b3eaad7f1f767be390056cd # v4
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          audience: ${{ secrets.TS_AUDIENCE }}
+          tags: tag:github-actions
+          ping: ${{ secrets.DEPLOY_HOST }}
+
+      - name: Deploy frontend
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          FRONTEND_IMAGE: ${{ needs.publish.outputs.image }}
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_HOST_KEY: ${{ secrets.DEPLOY_HOST_KEY }}
+        run: |
+          set -euo pipefail
+
+          latest=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')
+          if [[ "$latest" != "$GITHUB_SHA" ]]; then
+            echo 'Skipping deployment: this run is no longer the latest main commit.'
+            exit 0
+          fi
+
+          repository=ghcr.io/mannal2/poker-chip-manager-frontend
+          [[ "$FRONTEND_IMAGE" == "$repository"@sha256:* && "${FRONTEND_IMAGE##*@sha256:}" =~ ^[a-f0-9]{64}$ ]]
+          [[ "$GITHUB_SHA" =~ ^[a-f0-9]{40}$ ]]
+          [[ "$GITHUB_RUN_ID" =~ ^[0-9]+$ && "$GITHUB_RUN_ATTEMPT" =~ ^[0-9]+$ ]]
+          : "${DEPLOY_HOST:?DEPLOY_HOST is missing}"
+          : "${DEPLOY_USER:?DEPLOY_USER is missing}"
+          : "${DEPLOY_SSH_KEY:?DEPLOY_SSH_KEY is missing}"
+          : "${DEPLOY_HOST_KEY:?DEPLOY_HOST_KEY is missing}"
+
+          umask 077
+          mkdir -p "$RUNNER_TEMP/poker-ssh"
+          printf '%s\n' "$DEPLOY_SSH_KEY" |
+            tr -d '\r' > "$RUNNER_TEMP/poker-ssh/id_ed25519"
+          printf '%s\n' "$DEPLOY_HOST_KEY" |
+            awk '{print "poker-server " $1 " " $2}' \
+            > "$RUNNER_TEMP/poker-ssh/known_hosts"
+
+          unit="poker-deploy-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          ssh \
+            -i "$RUNNER_TEMP/poker-ssh/id_ed25519" \
+            -o UserKnownHostsFile="$RUNNER_TEMP/poker-ssh/known_hosts" \
+            -o HostKeyAlias=poker-server \
+            -o StrictHostKeyChecking=yes \
+            -o IdentitiesOnly=yes \
+            -o BatchMode=yes \
+            -o ConnectTimeout=15 \
+            -o ServerAliveInterval=15 \
+            -o ServerAliveCountMax=3 \
+            "$DEPLOY_USER@$DEPLOY_HOST" \
+            "bash -s -- '$FRONTEND_IMAGE' '$GITHUB_SHA' '$unit'" <<'REMOTE'
+          set -euo pipefail
+          image=$1
+          revision=$2
+          unit=$3
+          script=/home/ubuntu/poker-chip-manager/deploy/deploy-frontend.sh
+          bash -n "$script"
+          result=0
+          sudo -n systemd-run --unit="$unit" --service-type=exec --wait --collect \
+            /usr/bin/bash "$script" "$image" "$revision" https://54.180.47.226 || result=$?
+          sudo -n journalctl -u "$unit" --no-pager -n 200 || true
+          exit "$result"
+          REMOTE
+
+      - name: Remove temporary SSH key
+        if: always()
+        run: rm -f "$RUNNER_TEMP/poker-ssh/id_ed25519"

@@ -78,6 +78,9 @@ select:focus-visible {
 button[aria-disabled='true'] {
   opacity: 0.5;
 }
+.phone[aria-busy='true'] button[aria-disabled='true']:not([data-unavailable='true']) {
+  opacity: 1;
+}
 a {
   color: var(--gold);
 }

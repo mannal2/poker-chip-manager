@@ -137,7 +137,7 @@ fieldset {
   padding: 0;
   min-width: 0;
 }
-fieldset:disabled {
+.phone:not([aria-busy='true']) fieldset:disabled {
   opacity: 0.7;
 }
 .field-error {

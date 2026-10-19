@@ -185,8 +185,9 @@
   color: var(--gold);
   font-size: calc(24 * var(--u));
 }
-.count-control:disabled,
-.view-rotate:disabled {
+.count-control[data-unavailable='true'],
+.phone:not([aria-busy='true']) .count-control:disabled,
+.phone:not([aria-busy='true']) .view-rotate:disabled {
   opacity: 0.3;
 }
 .view-rotate {

@@ -180,6 +180,7 @@ export function Table({
               className="count-control"
               aria-label="참가자 삭제"
               disabled={busy || players.length <= 2}
+              data-unavailable={players.length <= 2}
               onClick={onRemove}
             >
               −
@@ -206,6 +207,7 @@ export function Table({
               className="count-control"
               aria-label="참가자 추가"
               disabled={busy || players.length >= 9}
+              data-unavailable={players.length >= 9}
               onClick={onAdd}
             >
               +

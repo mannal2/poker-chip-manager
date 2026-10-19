@@ -18,7 +18,11 @@ export function BetControls({
   return (
     <>
       <div className="bet-top">
-        <button aria-disabled={!canUndo || busy} onClick={() => onAction('UNDO')}>
+        <button
+          aria-disabled={!canUndo || busy}
+          data-unavailable={!canUndo}
+          onClick={() => onAction('UNDO')}
+        >
           베팅 취소
         </button>
         <button aria-disabled={busy} onClick={() => onAction(call ? 'CALL' : 'CHECK')}>
@@ -46,6 +50,7 @@ export function BetControls({
             data-chip={n}
             aria-label={`${n}칩 추가`}
             aria-disabled={busy || draftAmount + n > maxAdditional}
+            data-unavailable={draftAmount + n > maxAdditional}
             onClick={() => onAction('CHIP', n)}
           >
             <span>{n}</span>
@@ -54,6 +59,7 @@ export function BetControls({
         <button
           className="primary"
           aria-disabled={busy || !submitAllowed}
+          data-unavailable={!submitAllowed}
           onClick={() => onAction('SUBMIT')}
         >
           BET

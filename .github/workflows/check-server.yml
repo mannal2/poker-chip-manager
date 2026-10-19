@@ -1,0 +1,64 @@
+name: Check server connection
+
+on:
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+
+jobs:
+  check:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Connect to Tailscale
+        uses: tailscale/github-action@d1b6cd204f8dceda5b3eaad7f1f767be390056cd # v4
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          audience: ${{ secrets.TS_AUDIENCE }}
+          tags: tag:github-actions
+          ping: ${{ secrets.DEPLOY_HOST }}
+
+      - name: Verify SSH connection
+        shell: bash
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_HOST_KEY: ${{ secrets.DEPLOY_HOST_KEY }}
+        run: |
+          set -euo pipefail
+
+          : "${DEPLOY_HOST:?DEPLOY_HOST is missing}"
+          : "${DEPLOY_USER:?DEPLOY_USER is missing}"
+          : "${DEPLOY_SSH_KEY:?DEPLOY_SSH_KEY is missing}"
+          : "${DEPLOY_HOST_KEY:?DEPLOY_HOST_KEY is missing}"
+
+          umask 077
+          mkdir -p "$RUNNER_TEMP/poker-ssh"
+
+          printf '%s\n' "$DEPLOY_SSH_KEY" |
+            tr -d '\r' > "$RUNNER_TEMP/poker-ssh/id_ed25519"
+
+          printf '%s\n' "$DEPLOY_HOST_KEY" |
+            awk '{print "poker-server " $1 " " $2}' \
+            > "$RUNNER_TEMP/poker-ssh/known_hosts"
+
+          ssh \
+            -i "$RUNNER_TEMP/poker-ssh/id_ed25519" \
+            -o UserKnownHostsFile="$RUNNER_TEMP/poker-ssh/known_hosts" \
+            -o HostKeyAlias=poker-server \
+            -o StrictHostKeyChecking=yes \
+            -o IdentitiesOnly=yes \
+            -o BatchMode=yes \
+            -o ConnectTimeout=15 \
+            "$DEPLOY_USER@$DEPLOY_HOST" \
+            "whoami"
+
+      - name: Remove temporary SSH key
+        if: always()
+        shell: bash
+        run: |
+          rm -f "$RUNNER_TEMP/poker-ssh/id_ed25519"

@@ -67,6 +67,12 @@ jobs:
             -f frontend/Dockerfile \
             -t poker-frontend:ci .
 
+      - name: Check asset copying in production image
+        run: |
+          docker run --rm --network none --entrypoint sh \
+            --mount "type=bind,src=$PWD/deploy,dst=/deployment,readonly" \
+            poker-frontend:ci /deployment/test-copy-frontend-assets.sh
+
       - name: Check container response
         run: |
           docker run -d \
@@ -154,6 +160,12 @@ jobs:
       id-token: write
 
     steps:
+      - name: Checkout deployment script
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
       - name: Connect to Tailscale
         uses: tailscale/github-action@d1b6cd204f8dceda5b3eaad7f1f767be390056cd # v4
         with:
@@ -197,23 +209,29 @@ jobs:
             > "$RUNNER_TEMP/poker-ssh/known_hosts"
 
           unit="poker-deploy-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
-          ssh \
-            -i "$RUNNER_TEMP/poker-ssh/id_ed25519" \
-            -o UserKnownHostsFile="$RUNNER_TEMP/poker-ssh/known_hosts" \
-            -o HostKeyAlias=poker-server \
-            -o StrictHostKeyChecking=yes \
-            -o IdentitiesOnly=yes \
-            -o BatchMode=yes \
-            -o ConnectTimeout=15 \
-            -o ServerAliveInterval=15 \
-            -o ServerAliveCountMax=3 \
+          ssh_options=(
+            -i "$RUNNER_TEMP/poker-ssh/id_ed25519"
+            -o UserKnownHostsFile="$RUNNER_TEMP/poker-ssh/known_hosts"
+            -o HostKeyAlias=poker-server
+            -o StrictHostKeyChecking=yes
+            -o IdentitiesOnly=yes
+            -o BatchMode=yes
+            -o ConnectTimeout=15
+            -o ServerAliveInterval=15
+            -o ServerAliveCountMax=3
+          )
+          bash -n deploy/deploy-frontend.sh
+          scp "${ssh_options[@]}" deploy/deploy-frontend.sh \
+            "$DEPLOY_USER@$DEPLOY_HOST:/home/ubuntu/poker-chip-manager/deploy/deploy-frontend-$unit.sh"
+
+          ssh "${ssh_options[@]}" \
             "$DEPLOY_USER@$DEPLOY_HOST" \
             "bash -s -- '$FRONTEND_IMAGE' '$GITHUB_SHA' '$unit'" <<'REMOTE'
           set -euo pipefail
           image=$1
           revision=$2
           unit=$3
-          script=/home/ubuntu/poker-chip-manager/deploy/deploy-frontend.sh
+          script="/home/ubuntu/poker-chip-manager/deploy/deploy-frontend-$unit.sh"
           bash -n "$script"
           result=0
           sudo -n systemd-run --unit="$unit" --service-type=exec --wait --collect \

@@ -117,6 +117,8 @@ export function Table({
   drag?: {
     order: string[];
     position?: { id: string; x: number; y: number } | null;
+    pressed?: string | null;
+    ready?: string | null;
     handlers: (id: string) => React.HTMLAttributes<HTMLElement>;
   };
 }) {
@@ -251,7 +253,7 @@ export function Table({
             type="button"
             role={onRename ? 'group' : undefined}
             data-player={p.id}
-            className={`seat ${p.active ? 'active' : ''} ${p.selected ? 'selected' : ''} ${p.out || p.folded ? 'out' : ''} ${drag?.position?.id === p.id ? 'dragging' : ''}`}
+            className={`seat ${p.active ? 'active' : ''} ${p.selected ? 'selected' : ''} ${p.out || p.folded ? 'out' : ''} ${drag?.pressed === p.id ? 'pressing' : ''} ${drag?.ready === p.id ? 'drag-ready' : ''} ${drag?.position?.id === p.id ? 'dragging' : ''}`}
             style={{
               left: drag?.position?.id === p.id ? drag.position.x : `${x}%`,
               top: drag?.position?.id === p.id ? drag.position.y : `${y}%`,

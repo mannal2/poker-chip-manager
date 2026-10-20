@@ -403,3 +403,6 @@ A00~A11 단일 기기 구현과 자동 검증을 마쳤다. 멀티플레이·실
 - 작업 3 완료: 보이는 영역(키보드 제외)과 전체 레이아웃 영역을 구분하고, 입력 중 키보드가 덮는 높이 감소에는 직전 디자인 viewport 유지. main/팝업이 같은 기준을 공유하며, 포커스가 없어져도 키보드 닫힘 전에는 축소하지 않는다. 폭 변경은 새 레이아웃 높이로 재계산, 일반 창 크기 변경은 기존 맞춤 유지. 가려진 준비 입력 그룹/이름 카드만 translate로 이동 후 복귀. 폰트/드래그 좌표 계산 단위 미변경. 기록 창 높이는 실제 보이는 높이를 사용해 내부 스크롤 유지.
 - 검증: 기존 키보드 영역 모사에서 이름11px→5.89286px 등 RED3 → 양 브라우저 키보드 모사6 PASS/기존 레이아웃22 PASS, 전체 단위133 PASS, lint PASS. 최초 회전 모사 WebKit1 FAIL/27 PASS는 visualViewport getter 덮어쓰기 후 에뮬레이터의 native resize 알림 생략을 실측(실제 innerWidth844/root390, 명시 resize 후 root844)한 뒤 테스트에서 resize를 전달해 재검증 PASS. verification-keyboard-layout-{red,green,final,unit}.log.
 - 키보드 가림 중에는 모든 UI를 동시에 보이게 축소하지 않고 편집 영역 노출을 우선한다. 이 검사는 실제 소프트 키보드가 아니라 visualViewport 감소를 모사한 앱 로직 검사이며 iPhone/Android OS 키보드 실측으로 보고하지 않는다.
+- 작업 4 완료: 준비 카드 이름 글자 외 누름 즉시 배경/테두리 강조,350ms 뒤 준비 그림자. 이동은 기존 dragging 표시 유지. 크기·좌표·회전 미변경. 놓기/취소/lost capture/추가 포인터/앱 전환에서 타이머와 표시 정리, 이름 편집·짧은 탭 딜러 선택 유지.
+- 검증: 기존 pressing 없음 RED2 → 양 브라우저 349ms에는 미준비/350ms 준비, 실제 위치·크기 동일, 취소/추가 포인터/이름편집 회귀 및 기존 터치/준비25 PASS/1 기존 CDP skip. 전체 단위133 PASS, lint PASS. verification-press-feedback-{red,green,unit}.log. UX_SPEC/DESIGN_BASELINE의 이전 키보드 축소 지침을 새 승인으로 갱신.
+- 독립 input_viewport_review에서 이름 편집 키 이벤트 stopPropagation이 확대 단축키 차단을 우회하는 P2 발견. 누름 작업 검증과 별개로 다음 보완 작업에서 실패를 재현하고 캡처 단계 차단으로 수정 예정. 전체 회귀는 실행 중이며 아직 완료로 기록하지 않음.

@@ -74,6 +74,18 @@ export const seatCoordinates: Record<number, number[][]> = {
     [86, 58],
     [81, 79],
   ],
+  10: [
+    [50, 92],
+    [22, 83],
+    [14, 62],
+    [14, 41],
+    [22, 20],
+    [50, 8],
+    [78, 20],
+    [86, 41],
+    [86, 62],
+    [78, 83],
+  ],
 };
 export function Table({
   players,
@@ -117,6 +129,8 @@ export function Table({
   drag?: {
     order: string[];
     position?: { id: string; x: number; y: number } | null;
+    pressed?: string | null;
+    ready?: string | null;
     handlers: (id: string) => React.HTMLAttributes<HTMLElement>;
   };
 }) {
@@ -206,8 +220,8 @@ export function Table({
             <button
               className="count-control"
               aria-label="참가자 추가"
-              disabled={busy || players.length >= 9}
-              data-unavailable={players.length >= 9}
+              disabled={busy || players.length >= 10}
+              data-unavailable={players.length >= 10}
               onClick={onAdd}
             >
               +
@@ -251,7 +265,7 @@ export function Table({
             type="button"
             role={onRename ? 'group' : undefined}
             data-player={p.id}
-            className={`seat ${p.active ? 'active' : ''} ${p.selected ? 'selected' : ''} ${p.out || p.folded ? 'out' : ''} ${drag?.position?.id === p.id ? 'dragging' : ''}`}
+            className={`seat ${p.active ? 'active' : ''} ${p.selected ? 'selected' : ''} ${p.out || p.folded ? 'out' : ''} ${drag?.pressed === p.id ? 'pressing' : ''} ${drag?.ready === p.id ? 'drag-ready' : ''} ${drag?.position?.id === p.id ? 'dragging' : ''}`}
             style={{
               left: drag?.position?.id === p.id ? drag.position.x : `${x}%`,
               top: drag?.position?.id === p.id ? drag.position.y : `${y}%`,

@@ -391,3 +391,41 @@ A00~A11 단일 기기 구현과 자동 검증을 마쳤다. 멀티플레이·실
 - 최종 검증: 전체 비PWA 브라우저 279 PASS/1 skip (4.1m, verification-touch-flicker-regression.log), 전체 단위14 files/133 PASS (verification-touch-flicker-unit-final.log), src/e2e/tests ESLint PASS, production build/typecheck PASS (verification-touch-flicker-build.log). skip은 기존 WebKit CDP touch 미지원이며 Chrome에서 실제 touch PASS. 디자인 원본 비교·기록 내부 스크롤·기본 화면 스크롤 금지·드래그·설정·게임·저장 오류·복구 모두 회귀 범위에 포함. 기존 PWA SW 변경 검사는 이번 범위에 변경이 없어 분리·미실행; PWA 전체 재검증을 주장하지 않음.
 - 실행 계획 스킬의 독립 read-only 최종 리뷰 touch_flicker_review: actionable bug 없음. 실제 Galaxy Tab Chrome/PWA 합성 깜빡임·네이티브 터치 렌더링은 하드웨어 없으므로 판단 범위 밖으로 명시; 실기기에서 제거됐다고 단정하지 않는다.
 - 로컬 production 빌드 갱신/dist/e2e 없음, http://127.0.0.1:4173/local/ HTTP200 확인. 배포/push/PR/merge 미실행. 브라우저 기존 SW는 앱 업데이트 적용 후 최신 UI를 확인할 수 있다.
+
+## 2026-10-20 입력 배율·키보드·카드 누름 개선
+
+- 승인 계획: (1) 폰트 유지한 입력 자동 확대 제한 → 진입 viewport/실제 폰트 확인. (2) 앱 확대 제스처 제한 → 기록 스크롤/편집 유지. (3) 키보드 중 UI 배율 유지·가린 입력 이동 → 회전/닫기 복귀. (4) 누름 즉시·350ms 준비 효과 → 취소/이동/딜러/이름 회귀. 각 작업 검증 후 개별 커밋. 실제 iPhone/Android 키보드 검증은 자동 데스크톱 검사와 구분.
+- 최신 origin/main(145ae70)에 기존 태블릿·자동 배포 작업 병합 확인 후 codex/input-viewport-feedback 분기. 멀티플레이 구현·배포/push/PR은 범위 밖.
+- 작업 1: 세 진입 HTML의 initial/minimum/maximum-scale=1, user-scalable=no 적용. 미구현 online은 동일 진입 정책만 적용하며 기능 추가 없음. 입력 글자 크기는 변경하지 않음.
+- 검증: 기존 확대 제한 없음 RED, 실제 /local 진입이 별도 HTML임을 브라우저 검사에서 발견해 해당 파일까지 수정. 종료된 로컬 preview를 재시작 후 Chromium/WebKit 모바일 에뮬레이션에서 viewport 설정·시작칩12px/이름입력11px 유지 PASS. 전체 단위133 PASS, production build와 세 진입 HTML 검사 PASS. verification-focus-limit-{build,unit}.log. iPhone OS 입력 포커스 확대 차단을 실기기 검증했다고 주장하지 않음.
+- 작업 2 완료: CSS pan-x/pan-y로 확대 제스처를 제한하되 스크롤은 허용, 기록 창은 pan-y 유지. 페이지 수명 동안 Ctrl+휠/확대 단축키와 Safari gesturestart/change만 억제. 일반 휠·touchmove·복사·AltGr·문자 편집은 건드리지 않음. 브라우저 메뉴/OS 접근성 확대의 완전 차단은 범위 밖.
+- 검증: 기존 확대 이벤트 미차단 RED → 양 브라우저 편집/키보드 및 기존 실제 터치·기록/원형 드래그 35 PASS/1 기존 WebKit CDP skip. Chrome 실제 CDP touch pinch 후 scale=1 PASS. 전체 단위133 PASS. verification-zoom-policy-{red,green,unit}.log. viewport만으로 Safari 핀치가 막힌다고 주장하지 않음.
+- 작업 3 완료: 보이는 영역(키보드 제외)과 전체 레이아웃 영역을 구분하고, 입력 중 키보드가 덮는 높이 감소에는 직전 디자인 viewport 유지. main/팝업이 같은 기준을 공유하며, 포커스가 없어져도 키보드 닫힘 전에는 축소하지 않는다. 폭 변경은 새 레이아웃 높이로 재계산, 일반 창 크기 변경은 기존 맞춤 유지. 가려진 준비 입력 그룹/이름 카드만 translate로 이동 후 복귀. 폰트/드래그 좌표 계산 단위 미변경. 기록 창 높이는 실제 보이는 높이를 사용해 내부 스크롤 유지.
+- 검증: 기존 키보드 영역 모사에서 이름11px→5.89286px 등 RED3 → 양 브라우저 키보드 모사6 PASS/기존 레이아웃22 PASS, 전체 단위133 PASS, lint PASS. 최초 회전 모사 WebKit1 FAIL/27 PASS는 visualViewport getter 덮어쓰기 후 에뮬레이터의 native resize 알림 생략을 실측(실제 innerWidth844/root390, 명시 resize 후 root844)한 뒤 테스트에서 resize를 전달해 재검증 PASS. verification-keyboard-layout-{red,green,final,unit}.log.
+- 키보드 가림 중에는 모든 UI를 동시에 보이게 축소하지 않고 편집 영역 노출을 우선한다. 이 검사는 실제 소프트 키보드가 아니라 visualViewport 감소를 모사한 앱 로직 검사이며 iPhone/Android OS 키보드 실측으로 보고하지 않는다.
+- 작업 4 완료: 준비 카드 이름 글자 외 누름 즉시 배경/테두리 강조,350ms 뒤 준비 그림자. 이동은 기존 dragging 표시 유지. 크기·좌표·회전 미변경. 놓기/취소/lost capture/추가 포인터/앱 전환에서 타이머와 표시 정리, 이름 편집·짧은 탭 딜러 선택 유지.
+- 검증: 기존 pressing 없음 RED2 → 양 브라우저 349ms에는 미준비/350ms 준비, 실제 위치·크기 동일, 취소/추가 포인터/이름편집 회귀 및 기존 터치/준비25 PASS/1 기존 CDP skip. 전체 단위133 PASS, lint PASS. verification-press-feedback-{red,green,unit}.log. UX_SPEC/DESIGN_BASELINE의 이전 키보드 축소 지침을 새 승인으로 갱신.
+- 독립 input_viewport_review에서 이름 편집 키 이벤트 stopPropagation이 확대 단축키 차단을 우회하는 P2 발견. 누름 작업 검증과 별개로 다음 보완 작업에서 실패를 재현하고 캡처 단계 차단으로 수정 예정. 전체 회귀는 실행 중이며 아직 완료로 기록하지 않음.
+- 회전 보완: 전체 비PWA 첫 실행290 PASS/1 FAIL/1 skip에서 WebKit 키보드 회전 실패가 다시 재현됨(verification-input-viewport-regression.log). resize 알림만으로는 변경 직후 새 viewport를 놓칠 수 있어 기존 ResizeObserver가 문서 루트의 실제 레이아웃 크기도 관찰하도록1줄 보완. 타이머 대기나 허용치 완화로 덮지 않음.
+- 실패하던 WebKit 키보드 회전을 workers3 부하에서8회 반복 PASS(verification-keyboard-rotation-repeat.log), 전체 단위133 PASS. 전체 회귀는 보완된 코드로 다시 실행 예정이며 최초 실패를 성공으로 기록하지 않음.
+- 리뷰 보완 완료: 이름 입력은 onKeyDown 전파를 차단하므로 document 버블 단계 차단을 우회하던 P2를 실제 입력 대상 이벤트로 RED 재현. 키보드 리스너를 capture:true로 변경, Ctrl 확대/축소/초기화는 차단하고 복사/문자/Enter 편집 유지. zoom-editing.spec.ts 양 브라우저 PASS. 재검토 input_viewport_review에서 캡처 보완·루트 관찰 모두 추가 결함 없음.
+- 최종 검증: 전체 비PWA293 PASS/1 skip(4.0m, verification-input-viewport-regression-final.log) + 실제 SW/PWA14 PASS(34.4s, verification-input-viewport-pwa-final.log), 고유 브라우저307 PASS/1 skip. skip은 기존 WebKit CDP 미지원이며 Chrome 실제 touch 테스트 실행 PASS. 최초 전체290 PASS/1 FAIL/1 skip과 회전8회 보완 검증을 보존했고 실패를 무시하지 않음.
+- 전체 단위14 files/133 PASS(verification-input-viewport-unit-final.log), src/e2e/tests lint PASS, production build/typecheck PASS/dist/e2e 없음(verification-input-viewport-build-final.log). 디자인 원본 비교·기록 내부 스크롤·기본 화면 스크롤 금지·전체 게임·저장 실패/복구 모두 유지. Chrome 실제 CDP 두 손가락 입력으로 누름 상태 취소 PASS, 준비 강조/키보드 영역 모사 입력 배치를 이미지로 직접 확인.
+- 최신 production preview http://127.0.0.1:4173/local/ 재시작/HTTP200 확인. 기존 SW 사용 중이면 앱 업데이트 적용 후 최신 UI를 확인한다. 실제 iPhone 입력 자동 확대·Safari/PWA 핀치·iPhone/Android OS 키보드는 실기기 미검증으로 남기며 모사 테스트를 실제 OS 검사로 표현하지 않음. 입력 폰트 변경 없음. 서버 배포/push/PR/merge 미실행.
+
+## 2026-10-20 — 10명 지원·첫 방문 설치 안내
+
+- 승인 범위: 최대10명(기존2~9명 배치 유지), 앱 홈에서 최초 설치 제안/닫기 기억/수동 재접근, Android 설치 이벤트와 iPhone 수동 추가 안내 구분. 멀티플레이·배포 제외.
+- 브랜치 codex/ten-players-install: 최신 origin/main145ae70에 앞선 기존 모바일 수정6개를 포함하는17b6283에서 분기하여 이전 작업 보존.
+- 작업1 진행: 설정/저장10명 허용 및11명 거절,10명 좌석 추가. 설정·복원·결정적 토너먼트10명 확대 테스트의 기존 제한 RED3 확인 후 전체 단위134 PASS/production build PASS. UI 확대 검증 진행 중.
+- 작업1 완료: 단위134 PASS, build/typecheck 및 src/e2e/tests lint PASS. Chromium/WebKit 준비·레이아웃38 PASS + 10명 전용 드래그/전체 회전/긴 이름·큰 숫자 디자인10 PASS. 320px~태블릿/가로/320x240 기본 화면 넘침 없음, 기존2~9명 배치 유지. 기록 스크롤 정책 미변경. 로컬 렌더 이미지 확인. 초기 이미지 캡처는 테스트 서버 종료 직후 연결 거절로 실패하여 실행 중인4173 preview에서 다시 캡처함. verification-ten-players{,-extra}.log.
+- 작업1 시각 보완:10명 카드는 겹치지 않았으나 캡처에서 중앙10명 두 줄 표시를 발견. 단일 행 검사 RED 재현 → 숫자/명수 nowrap 최소1줄 보완 → 양 브라우저320/390px 4 PASS, 단위134 PASS/lint PASS. 최초 배치 검사에는 줄바꿈 검사가 없었던 한계를 보완함. verification-ten-count-{red,green}.log.
+- 작업2 진행: 홈 첫 설치 제안, 나중에/바깥 탭/Escape 닫기 기억, 홈 앱 설치 재접근, Chromium beforeinstallprompt 사용자 버튼 호출/1회 소비/취소 후 메뉴 안내, iPhone/iPad Safari 수동 안내, standalone/appinstalled 숨김. 게임 화면·다른 창 열림·복원 중 자동 제안 없음. 저장 기억 실패는 현재 방문에서만 억제하며 게임 저장과 분리.
+- 설치 제안 부재 RED1 → 첫 검사9 PASS/1 FAIL. WebKit 재방문 직후 beforeinstallprompt 모사를 앱 effect 등록 전에 전달해 이벤트를 놓친 테스트 초기화 순서 문제를 확인하고 홈 준비 후 전송하도록 보완(실제 WebKit의 native 설치 이벤트 지원으로 오해하지 않음). 추가 검증 진행.
+- 작업2 완료: 설치 모사16 PASS(Chromium/WebKit), 전체 단위134 PASS, build/typecheck/lint PASS. 최초 안내·닫기 기억·수동 재접근·취소 후 메뉴 안내·설치 실패·설치 대기 중 닫기 차단·게임 중 지연·standalone 숨김·iPad 데스크톱 UA·저장 기억 불가·가로 화면 맞춤 확인. iPhone 안내 렌더 이미지 직접 확인. 실제 iPhone/Android OS 설치 창은 실기기 미검증, API 모사를 native 지원/실제 설치 성공으로 보고하지 않음. verification-install-{red,green,final}.log. 전체 회귀 및 독립 리뷰 예정.
+- 독립 ten_install_review:17b6283..bd74da5 전체 변경 읽기 전용 리뷰에서 실행 가능한 결함 없음.
+- Final: Ruling: 실제 iPhone/iPad 안내 및 Android OS 설치 창은 브라우저 모사만으로 확정하지 않음 — 실기기 미검증으로 남김 — 기기별 설치 UI 차이는 실제 확인 필요.
+- Final: Ruling: 브라우저 설치 가능 조건/재제안 간격/이벤트 도착 시점은 앱이 보장하지 않음 — 이벤트가 제공될 때만 native 버튼 표시 — Chrome에서 첫 접속 즉시 안내가 항상 뜨지는 않을 수 있음.
+- 인계/계획 문서의 현행 인원 경계와 최대 전체 칩 총량을10명/10,000,000으로 동기화. 과거 시안9인 및 미래 멀티플레이 부하 이력은 변경하지 않음.
+- 최종 검증: 비PWA 전체319 PASS/1 기존 WebKit CDP 미지원 skip(4.3m, verification-ten-install-regression.log), 실제 SW/PWA14 PASS(30.5s, verification-ten-install-pwa.log). 고유 브라우저333 PASS/1 skip, 단위134 PASS. 저장 실패/권한 인수/전체 게임/기록 스크롤/기본 화면 스크롤 금지/기존 HTML 디자인 비교 유지.
+- 최종 production build/typecheck/lint PASS, dist/e2e 없음. 실제 SW 테스트 후 production 재빌드하고 http://127.0.0.1:4173/local/ preview 재실행/HTTP200 확인. 사용자 기존 탭의 이전 SW는 홈 앱 업데이트에서 적용 가능. 로컬 커밋만 수행하며 push/PR/merge/서버 배포 없음. 실제 OS 설치 실기기 검증은 남음.

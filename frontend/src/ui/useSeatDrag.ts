@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type PointerEvent } from 'react';
+import { useCallback, useEffect, useRef, useState, type PointerEvent } from 'react';
 import { seatCoordinates } from './Table';
 import { gapTarget, moveCircularSeat } from './seatOrder';
 export function useSeatDrag(
@@ -9,7 +9,9 @@ export function useSeatDrag(
   onTap?: (id: string) => void,
 ) {
   const [order, setOrder] = useState<string[] | null>(null),
-    [position, setPosition] = useState<{ id: string; x: number; y: number } | null>(null);
+    [position, setPosition] = useState<{ id: string; x: number; y: number } | null>(null),
+    [pressed, setPressed] = useState<string | null>(null),
+    [ready, setReady] = useState<string | null>(null);
   const session = useRef<{
     id: string;
     startX: number;
@@ -21,26 +23,42 @@ export function useSeatDrag(
   } | null>(null);
   const suppressClick = useRef(false);
   const key = ids.join('|');
-  useEffect(
-    () => () => {
-      if (session.current) clearTimeout(session.current.timer);
-      session.current = null;
-      setOrder(null);
-      setPosition(null);
-    },
-    [key, enabled, viewSeat],
-  );
-  function clear() {
+  const clear = useCallback(() => {
     if (session.current) clearTimeout(session.current.timer);
     session.current = null;
     setOrder(null);
     setPosition(null);
-  }
+    setPressed(null);
+    setReady(null);
+  }, []);
+  useEffect(() => {
+    const cancel = () => {
+      if (!session.current) return;
+      suppressClick.current = true;
+      clear();
+    };
+    const additionalPointer = (event: globalThis.PointerEvent) => {
+      if (!event.isPrimary) cancel();
+    };
+    const hidden = () => {
+      if (document.hidden) cancel();
+    };
+    document.addEventListener('pointerdown', additionalPointer, true);
+    document.addEventListener('visibilitychange', hidden);
+    window.addEventListener('blur', cancel);
+    return () => {
+      document.removeEventListener('pointerdown', additionalPointer, true);
+      document.removeEventListener('visibilitychange', hidden);
+      window.removeEventListener('blur', cancel);
+      clear();
+    };
+  }, [key, enabled, viewSeat, clear]);
   function handlers(id: string) {
     return {
       onPointerDown: (e: PointerEvent<HTMLElement>) => {
         if (!enabled || e.button !== 0 || !e.isPrimary) return;
         suppressClick.current = false;
+        setPressed(id);
         e.currentTarget.setPointerCapture(e.pointerId);
         const s = {
           id,
@@ -54,6 +72,7 @@ export function useSeatDrag(
         clearTimeout(s.timer);
         s.timer = setTimeout(() => {
           s.active = true;
+          setReady(id);
           setOrder(ids);
         }, 350);
         session.current = s;
@@ -66,6 +85,7 @@ export function useSeatDrag(
             if (e.pointerType === 'touch' || e.pointerType === 'pen') {
               clearTimeout(s.timer);
               s.active = true;
+              setReady(id);
               setOrder(ids);
             } else {
               suppressClick.current = true;
@@ -135,5 +155,5 @@ export function useSeatDrag(
       onLostPointerCapture: clear,
     };
   }
-  return { order: order ?? ids, position, handlers };
+  return { order: order ?? ids, position, pressed, ready, handlers };
 }

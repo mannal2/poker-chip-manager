@@ -40,6 +40,7 @@
 }
 .pot strong {
   display: block;
+  white-space: nowrap;
   font-size: calc(25 * var(--u));
   letter-spacing: -1px;
 }
@@ -140,6 +141,18 @@
   color: #80e6bd !important;
   background: #80e6bd18;
   border-radius: calc(3 * var(--u));
+}
+.seat.pressing {
+  background: #263a2d;
+  border-color: #b69b64;
+  box-shadow: 0 0 0 calc(1 * var(--u)) #e2bd7533;
+}
+.seat.drag-ready {
+  background: #2b3d2d;
+  border-color: var(--gold);
+  box-shadow:
+    0 0 0 calc(2 * var(--u)) #e2bd7533,
+    0 calc(8 * var(--u)) calc(18 * var(--u)) #0008;
 }
 .seat.dragging {
   transition: none;

@@ -75,13 +75,13 @@ for (const [width, height] of [
   [667, 375],
   [320, 240],
 ]) {
-  test(`스크롤 없는 화면 맞춤 ${width}x${height} 2~9인·창`, async ({ page }) => {
+  test(`스크롤 없는 화면 맞춤 ${width}x${height} 2~10인·창`, async ({ page }) => {
     test.setTimeout(60000);
     await page.setViewportSize({ width, height });
     await page.goto('/local/');
     await contained(page);
     await openLocal(page);
-    for (let count = 2; count <= 9; count++) {
+    for (let count = 2; count <= 10; count++) {
       await expect(page.locator('.seat')).toHaveCount(count);
       await contained(page);
       const font = await page
@@ -92,7 +92,7 @@ for (const [width, height] of [
           stack: parseFloat(getComputedStyle(e.querySelector('.stack')!).fontSize),
         }));
       expect(font.stack).toBeCloseTo(font.name, 1);
-      if (count < 9) await page.getByRole('button', { name: '참가자 추가', exact: true }).click();
+      if (count < 10) await page.getByRole('button', { name: '참가자 추가', exact: true }).click();
     }
     const box = (await page.locator('main').boundingBox())!;
     if (width > height) expect(box.width).toBeLessThanOrEqual((height * 390) / 560 + 2);

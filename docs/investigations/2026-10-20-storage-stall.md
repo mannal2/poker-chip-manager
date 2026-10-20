@@ -146,3 +146,5 @@ npx vitest run --config .cache/storage-investigation-vitest.config.ts
 - slot 쓰기와 events 변경 이후, native 요청을 이어 트랜잭션을 실제로 활성 상태에 둔 채 완료를 보류했다.8초 제한이 tx.abort를 수행하여 게임 상태·기록·조작권 전체가 이전 snapshot으로 rollback됨을 확인했다.
 - 동일 pending 요청 재시도 후 HAND_START1개/POT15, 뒤늦은 기존 요청 이벤트도 중복 반영하지 않음을 확인했다. 단순한 완료 응답 지연과 실제 미완료 트랜잭션을 구분하여 검증했다.
 - 각 메서드의 완료 알림 유실 테스트는 단순히 반환하는 것뿐 아니라 제한 오류로 반환하는지 확인하도록 강화. 전체 단위144 PASS/typecheck/lint PASS. 이 검사는 fake-indexeddb의 트랜잭션 모사이며 실제 OS 저장 장치 장애 검증은 아니다.
+
+- 검증 기록 정정: 추가 부분 쓰기 테스트의 최초 단위144/typecheck는 통과했으나 lint는 no-this-alias로 실패했다. 해당 출력을 확인하기 전에2f48ba0 커밋 및 lint PASS 기록을 진행한 실행 실수를 인정하고 정정한다. 테스트의 this 별칭을 lexical callback으로 바꾼 뒤 전체 단위144/typecheck/lint를 다시 실행하여 모두 PASS 확인. 제품 코드는 영향 없음.

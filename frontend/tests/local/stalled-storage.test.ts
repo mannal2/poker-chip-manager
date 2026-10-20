@@ -210,8 +210,8 @@ it('부분 쓰기 후 살아 있는 트랜잭션 시간 초과: 전체 rollback�
   IDBObjectStore.prototype.put = function (...args) {
     const request = put.apply(this, args);
     if (this.name === 'slot') {
-      const store = this,
-        add = request.addEventListener;
+      const keepAlive = () => pump(this);
+      const add = request.addEventListener;
       request.addEventListener = function (
         type: string,
         listener: EventListenerOrEventListenerObject,
@@ -226,7 +226,7 @@ it('부분 쓰기 후 살아 있는 트랜잭션 시간 초과: 전체 rollback�
                 if (typeof listener === 'function') listener.call(this, event);
                 else listener.handleEvent(event);
               };
-              pump(store);
+              keepAlive();
               entered();
             },
             options,

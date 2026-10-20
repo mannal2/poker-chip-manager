@@ -391,3 +391,10 @@ A00~A11 단일 기기 구현과 자동 검증을 마쳤다. 멀티플레이·실
 - 최종 검증: 전체 비PWA 브라우저 279 PASS/1 skip (4.1m, verification-touch-flicker-regression.log), 전체 단위14 files/133 PASS (verification-touch-flicker-unit-final.log), src/e2e/tests ESLint PASS, production build/typecheck PASS (verification-touch-flicker-build.log). skip은 기존 WebKit CDP touch 미지원이며 Chrome에서 실제 touch PASS. 디자인 원본 비교·기록 내부 스크롤·기본 화면 스크롤 금지·드래그·설정·게임·저장 오류·복구 모두 회귀 범위에 포함. 기존 PWA SW 변경 검사는 이번 범위에 변경이 없어 분리·미실행; PWA 전체 재검증을 주장하지 않음.
 - 실행 계획 스킬의 독립 read-only 최종 리뷰 touch_flicker_review: actionable bug 없음. 실제 Galaxy Tab Chrome/PWA 합성 깜빡임·네이티브 터치 렌더링은 하드웨어 없으므로 판단 범위 밖으로 명시; 실기기에서 제거됐다고 단정하지 않는다.
 - 로컬 production 빌드 갱신/dist/e2e 없음, http://127.0.0.1:4173/local/ HTTP200 확인. 배포/push/PR/merge 미실행. 브라우저 기존 SW는 앱 업데이트 적용 후 최신 UI를 확인할 수 있다.
+
+## 2026-10-20 입력 배율·키보드·카드 누름 개선
+
+- 승인 계획: (1) 폰트 유지한 입력 자동 확대 제한 → 진입 viewport/실제 폰트 확인. (2) 앱 확대 제스처 제한 → 기록 스크롤/편집 유지. (3) 키보드 중 UI 배율 유지·가린 입력 이동 → 회전/닫기 복귀. (4) 누름 즉시·350ms 준비 효과 → 취소/이동/딜러/이름 회귀. 각 작업 검증 후 개별 커밋. 실제 iPhone/Android 키보드 검증은 자동 데스크톱 검사와 구분.
+- 최신 origin/main(145ae70)에 기존 태블릿·자동 배포 작업 병합 확인 후 codex/input-viewport-feedback 분기. 멀티플레이 구현·배포/push/PR은 범위 밖.
+- 작업 1: 세 진입 HTML의 initial/minimum/maximum-scale=1, user-scalable=no 적용. 미구현 online은 동일 진입 정책만 적용하며 기능 추가 없음. 입력 글자 크기는 변경하지 않음.
+- 검증: 기존 확대 제한 없음 RED, 실제 /local 진입이 별도 HTML임을 브라우저 검사에서 발견해 해당 파일까지 수정. 종료된 로컬 preview를 재시작 후 Chromium/WebKit 모바일 에뮬레이션에서 viewport 설정·시작칩12px/이름입력11px 유지 PASS. 전체 단위133 PASS, production build와 세 진입 HTML 검사 PASS. verification-focus-limit-{build,unit}.log. iPhone OS 입력 포커스 확대 차단을 실기기 검증했다고 주장하지 않음.

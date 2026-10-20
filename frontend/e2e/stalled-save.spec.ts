@@ -166,10 +166,11 @@ test('복구 교체 쓰기 실패는 이전 이름·기록 보존 후 다시 시
   expect(await snapshot(page)).toBe(before);
   await page.evaluate(() => (window as unknown as { restorePut: () => void }).restorePut());
   await page.getByRole('button', { name: '다시 시도', exact: true }).click();
-  await openLocal(page);
   await expect(page.locator('.seat .name').first()).toHaveText('원본보존');
+  await page.getByRole('button', { name: '게임 시작', exact: true }).click();
+  await expect(page.locator('.pot strong')).toHaveText('15');
   await page.getByRole('button', { name: '현재 토너먼트 기록', exact: true }).click();
-  await expect(page.getByText('아직 기록이 없습니다.', { exact: true })).toBeVisible();
+  await expect(page.locator('.history-list')).toContainText('프리플랍');
   await releaseEvents(page);
 });
 

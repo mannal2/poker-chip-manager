@@ -49,6 +49,7 @@ type Tx<M extends StoreMode = 'readwrite'> = IDBPTransaction<
 export class LocalRepository {
   private db: Promise<IDBPDatabase<PokerDB>> | null = null;
   private invalid = false;
+  private disposed = false;
   private operations = new Set<() => void>();
   constructor(
     private name = 'poker-chip-manager',
@@ -56,7 +57,8 @@ export class LocalRepository {
     private onInvalidated: () => void = () => {},
   ) {}
   private connect() {
-    if (this.invalid) throw Error('저장 연결이 변경되었습니다. 앱을 다시 열어주세요.');
+    if (this.invalid || this.disposed)
+      throw Error('저장 연결이 변경되었습니다. 앱을 다시 열어주세요.');
     if (!this.db) {
       let expired = false;
       const raw = openDatabase(this.name, this.onBlocked, () => {
@@ -355,5 +357,9 @@ export class LocalRepository {
       () => {},
     );
     this.db = null;
+  }
+  dispose() {
+    this.disposed = true;
+    this.close();
   }
 }

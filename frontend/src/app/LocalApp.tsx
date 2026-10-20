@@ -13,7 +13,7 @@ import { getLegalActions } from '../game/transition';
 import { BetControls } from '../ui/BetControls';
 import type { GameCommand } from '../game/types';
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
-import { LocalRepository, type Request } from '../local/repository';
+import { LocalRepository, type Request, type ControlLease } from '../local/repository';
 import { LocalController } from '../local/controller';
 import { defaultSettings, validateSettings, type GameSettings } from '../game/settings';
 import { nextSeat } from '../game/positions';
@@ -38,12 +38,19 @@ export function LocalApp() {
   return <LocalWorkspace />;
 }
 function LocalWorkspace() {
-  const [recovery, setRecovery] = useState(0);
+  const [recovery, setRecovery] = useState({
+    version: 0,
+    inGame: false,
+    lease: null as ControlLease | null,
+  });
   return (
     <LocalGame
-      key={recovery}
-      restartOnMount={recovery > 0}
-      onRecover={() => setRecovery((version) => version + 1)}
+      key={recovery.version}
+      restartOnMount={recovery.version > 0}
+      recoveryContext={recovery}
+      onRecover={(inGame, lease) =>
+        setRecovery((previous) => ({ version: previous.version + 1, inGame, lease }))
+      }
     />
   );
 }
@@ -55,15 +62,20 @@ function AppRedirect() {
 }
 function LocalGame({
   restartOnMount,
+  recoveryContext,
   onRecover,
 }: {
   restartOnMount: boolean;
-  onRecover: () => void;
+  recoveryContext: { inGame: boolean; lease: ControlLease | null };
+  onRecover: (inGame: boolean, lease: ControlLease | null) => void;
 }) {
   const screen = useRef<HTMLElement>(null);
   useScreenFit(screen);
   const pwa = useLocalPWA();
-  const [app, setApp] = useReducer(appReducer, initialAppState),
+  const [app, setApp] = useReducer(appReducer, {
+      ...initialAppState,
+      home: !recoveryContext.inGame,
+    }),
     [dialog, setDialog] = useState(''),
     [toast, setToast] = useState(''),
     [renameId, setRenameId] = useState(''),
@@ -73,7 +85,7 @@ function LocalGame({
       winners: WinnerSelection;
       index: number;
     }>({ key: '', winners: {}, index: 0 });
-  const inGame = useRef(false);
+  const inGame = useRef(recoveryContext.inGame);
   const resumeRequested = useRef(false);
   const lock = useRef(false),
     toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -88,9 +100,14 @@ function LocalGame({
       () =>
         setApp({ status: 'restoreError', error: '저장소 연결이 변경되었습니다. 다시 열어주세요.' }),
     );
+    const controller = new LocalController(
+      repo,
+      recoveryContext.lease?.screenId ?? crypto.randomUUID(),
+    );
+    controller.lease = recoveryContext.lease ? { ...recoveryContext.lease } : null;
     return {
       repo,
-      controller: new LocalController(repo, crypto.randomUUID()),
+      controller,
       channel: typeof BroadcastChannel === 'undefined' ? null : new BroadcastChannel('poker-local'),
     };
   });
@@ -219,12 +236,13 @@ function LocalGame({
       window.removeEventListener('pageshow', resume);
       document.removeEventListener('resume', resume);
       runtime.channel?.close();
-      runtime.repo.close();
+      runtime.repo.dispose();
       if (toastTimer.current) clearTimeout(toastTimer.current);
     };
   }, [c, runtime, restore, cancelRestore, restartOnMount, finish]);
   function restartAfterFailure() {
-    if (confirm('현재 토너먼트와 전체 기록을 삭제하고 새 토너먼트를 시작할까요?')) onRecover();
+    if (confirm('현재 토너먼트와 전체 기록을 삭제하고 새 토너먼트를 시작할까요?'))
+      onRecover(inGame.current, c.lease);
   }
   async function dispatch(command: Request['command']) {
     const result = await c.dispatch(command);

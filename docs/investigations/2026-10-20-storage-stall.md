@@ -8,7 +8,7 @@
 
 - 사용자 보고: 갤럭시 S23의 설치된 PWA에서 준비 이름 수정 후 저장 대기, 새 토너먼트 복구도 진행 불가. 일반 브라우저에서는 정상. 앱 전환/키보드 닫힘 여부는 불확실.
 - 바이인은 보류. 최초 조사 단계에서는 제품 코드·사용자 저장 데이터·배포 설정을 변경하지 않았다. 이후 사용자의 수정 요청에 따른 변경은 4절에 기록한다.
-- 배포 HTML의 main-DRr3kgqy.js SHA-256은 로컬 production 빌드와 일치했다. 설치된 S23 PWA가 사용하는 SW/JS 버전은 기기에서 확인하지 못했다.
+- 배포 HTML의 main-DRr3kgqy.js SHA-256은 조사 시점 로컬 production 빌드와 일치했다. 설치된 S23 PWA가 사용하는 SW/JS 버전은 기기에서 확인하지 못했다.
 - **저장 완료 알림이 전달되지 않는 조건에서 무한 대기와 복구 교착을 재현했다.** 최초 알림 누락을 실제 S23에서 유발한 원인은 미확정이며 Android/Chrome 자체 결함으로 단정하지 않는다.
 
 ## 2. 원인 찾기 — 해당 코드 이해
@@ -88,7 +88,7 @@ npx vitest run --config .cache/storage-investigation-vitest.config.ts
 
 ## 3. 해결방법 구상
 
-아래는 아직 적용하지 않은 수정 방향과 지켜야 할 조건이다. 실제 선택과 변경 내용은 4절에 기록한다.
+아래는 수정 전에 구상한 방향과 지켜야 할 조건이다. 실제 선택과 변경 내용은 4절에 기록한다.
 
 1. 연결 이후 모든 저장·초기화·조작권 작업도 제한 시간 안에 반환시킨다. 오류 정리에서 완료 이벤트를 무제한 재대기하지 않는다.
 2. 시간 초과를 저장 실패로 단정하지 않는다. 요청ID/순번을 보존하고 같은 요청으로 재시도하여 중복 베팅/블라인드/지급을 막는다.
@@ -148,3 +148,19 @@ npx vitest run --config .cache/storage-investigation-vitest.config.ts
 - 각 메서드의 완료 알림 유실 테스트는 단순히 반환하는 것뿐 아니라 제한 오류로 반환하는지 확인하도록 강화. 전체 단위144 PASS/typecheck/lint PASS. 이 검사는 fake-indexeddb의 트랜잭션 모사이며 실제 OS 저장 장치 장애 검증은 아니다.
 
 - 검증 기록 정정: 추가 부분 쓰기 테스트의 최초 단위144/typecheck는 통과했으나 lint는 no-this-alias로 실패했다. 해당 출력을 확인하기 전에2f48ba0 커밋 및 lint PASS 기록을 진행한 실행 실수를 인정하고 정정한다. 테스트의 this 별칭을 lexical callback으로 바꾼 뒤 전체 단위144/typecheck/lint를 다시 실행하여 모두 PASS 확인. 제품 코드는 영향 없음.
+
+### 독립 리뷰
+
+- storage_recovery_review가 cebce76..ebc35b3의 저장소/복구/테스트/기록을 읽기 전용으로 검토했고 실행 가능한 추가 결함은 없었다.
+- Final: Ruling: S23에서 최초 알림이 끊긴 원인은 아직 단정하지 않는다 — 앱의 무응답 복구 결함을 모사로 재현하고 수정했으나 기기 로그/실기기 재현은 없기 때문 — 실제 기기에서 별도 원인이 함께 있는지 추가 확인 필요.
+- Final: Ruling: OS 정지 중 벽시계8초 복구를 보장하지 않는다 — JS 타이머도 멈출 수 있어 실행 가능한 시점의 제한 및 복귀 후 재검증이 앱의 보장 범위 — 실기기 동작 확인이 남는다.
+- 전체 회귀 결과는 아래 최종 검증 절에 실제 종료 결과를 기록한다.
+
+### 전체 회귀에서 발견한 복구 실패 후 화면 회귀 보완
+
+- 첫 전체 비PWA:329 PASS/2 FAIL/1 기존 WebKit CDP skip(4.8m). 양 브라우저 기존 tablet-restart의 교체 실패 후 다시 시도 시 POT15로 돌아오는 검사가 실패했다. 새 실행 상태가 이전 inGame/home/lease를 잃어 홈으로 복원된 것이 원인이다.
+- 새 실행 상태에는 이전 화면과 조작권 snapshot만 전달한다. 교체 성공이면 새 게임/새 세대로 전환하고 실패 후 다시 시도이면 원래 게임으로 복귀한다. 저장 세대가 이미 다른 창으로 바뀌었으면 기존처럼 lease를 버리고 조작권 인수를 요구한다.
+- 조작권 snapshot을 회복한 controller는 pending/running이 없을 때만 저장된 highWatermark를 확인해 다음 순번을 복원한다. 순번 복원 없이 같은 CALL이 REQUEST_CONFLICT로 거절되는 새 단위 RED를 먼저 확인했다.
+- 이전 화면 repository는 dispose로 영구 폐기한다. 활성 대기를 취소하고 reconnect로도 다시 사용할 수 없어, 교체 실패로 이전 세대가 보존돼도 오래된 비동기 후속 작업이 새로 쓰지 못한다. 폐기 후 작업 거절도 새 단위 RED→GREEN 확인.
+- 단위146 PASS/typecheck/lint PASS. 실패했던 기존 회귀와 신규 무응답 복구16 PASS. 교체 실패 후 홈을 거치지 않고 기존 이름으로 게임 시작/POT15가 가능한지도 강화했다. 전체 장부 snapshot 보존 검사는 유지한다.
+- 근거: verification-storage-fix-regression.log(최초 실패 보존), verification-storage-fix-context-{red,green}.log. 제품 보완 후 전체 회귀를 다시 실행한다.

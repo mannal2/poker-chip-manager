@@ -448,3 +448,4 @@ A00~A11 단일 기기 구현과 자동 검증을 마쳤다. 멀티플레이·실
 - 추가 검증: native 요청을 이어 활성 상태인 부분 쓰기 트랜잭션의 시간 초과 abort 및 slot/events/control 원자 rollback, 동일 요청 재시도 HAND_START1개/POT15 확인. 전체 단위144 PASS/typecheck/lint PASS. 최종 전체 회귀/독립 리뷰 진행.
 
 - 검증 기록 정정: 추가 부분 쓰기 테스트의 최초 단위144/typecheck는 통과했으나 lint는 no-this-alias로 실패했다. 해당 출력을 확인하기 전에2f48ba0 커밋 및 lint PASS 기록을 진행한 실행 실수를 인정하고 정정한다. 테스트의 this 별칭을 lexical callback으로 바꾼 뒤 전체 단위144/typecheck/lint를 다시 실행하여 모두 PASS 확인. 제품 코드는 영향 없음.
+- 첫 전체 비PWA329 PASS/2 FAIL/1 skip에서 실패한 교체 뒤 기존 화면 복원 회귀 발견. 화면/유효 lease snapshot 보존, controller highWatermark 순번 재확인, 폐기 repository 재연결 차단으로 보완. 새 단위2 RED→GREEN, 전체 단위146/typecheck/lint PASS, 관련 브라우저16 PASS. 최초 실패를 기록하며 전체 회귀 재실행 예정.

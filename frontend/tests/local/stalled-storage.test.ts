@@ -267,3 +267,24 @@ it('부분 쓰기 후 살아 있는 트랜잭션 시간 초과: 전체 rollback�
     repo.close();
   }
 });
+
+it('버린 화면의 저장소는 대기를 취소하고 늦은 작업·재연결도 거절한다', async () => {
+  const repo = new LocalRepository('disposed-screen');
+  const lease = await repo.takeControl('a');
+  await repo.initialize(defaultSettings, lease);
+  const gate = holdEvent('complete');
+  const pending = repo.load();
+  const rejected = expect(pending).rejects.toThrow();
+  try {
+    await gate.held;
+    repo.dispose();
+    await rejected;
+    gate.restore();
+    repo.reconnect();
+    await expect(repo.restart(defaultSettings, 'old')).rejects.toThrow();
+  } finally {
+    gate.restore();
+    gate.release();
+    repo.close();
+  }
+});

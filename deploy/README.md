@@ -101,10 +101,14 @@ See [job outputs](https://docs.github.com/en/actions/how-tos/write-workflows/cho
 and [workflow concurrency](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/control-workflow-concurrency).
 
 The server's Ubuntu account must support noninteractive `sudo` for systemd-run,
-journalctl, and the existing root Docker setup. Scripts and Compose are manually
-provisioned using the instructions above. This workflow executes the installed
-server script; it does not upload or update it. Upload and verify a changed
-deployment script or Compose configuration separately before relying on it.
+journalctl, and the existing root Docker setup. Actions checks out the exact
+commit being deployed and uploads its deployment script over SCP before running
+it. Each run and attempt gets a separate script filename in the project's
+`deploy/` directory, so an already-running script is not overwritten. Failed
+uploads stop deployment. These small script files are retained for diagnosis.
+App code and deployment script updates therefore follow PR checks and main
+merge without a manual script upload. Compose, edge configuration and the
+initial server setup remain separately provisioned infrastructure.
 
 The first automated deployment must still be verified in Actions and in the
 browser after merging this workflow. The server script alone does not prove

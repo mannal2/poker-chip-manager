@@ -333,3 +333,61 @@ A00~A11 단일 기기 구현과 자동 검증을 마쳤다. 멀티플레이·실
 - 일반 빌드390/320 실제 검사 PASS: 제목·정렬 버튼 중심 차이 모두0px, 가로 겹침 없음, 정렬 전환/홈 가운데/게임 팟15 복원/pageerror0(verification-header-menu-production.log). 첫 개별 bbox 측정에서320px 중심차이21.5px FAIL이 발생해 같은 레이아웃 시점에서 두 치수를 함께 poll하도록 진단 스크립트를 보완한 뒤 재검증 PASS. 제품 코드는 추가 변경하지 않았다. production-header-320.png 및 production-menu-320.png 직접 확인.
 - 독립 header_menu_review Important/Critical 없음. 기록 창만 기본 제목 숨김, 접근성 이름·다른 창 제목 유지 확인.
 - preview http://127.0.0.1:4173/local/ 실행 중. 멀티플레이·배포·저장 스키마·게임 로직 미변경.
+
+
+### 태블릿 PWA 복구·터치·화면 맞춤 — 2026-10-19 완료
+
+- 브랜치 codex/tablet-pwa-recovery, origin/main(154daa4) 기준. 기존 auto-deploy 커밋은 포함하지 않는다. 작업 트리 깨끗한 상태에서 분기.
+- 최신 승인: 기본 화면 스크롤 금지, 핸드 기록 창은 기존 내부 스크롤/더 보기 유지. 사용 가능한 너비와 높이에 맞춰 구성요소를 함께 축소·확대, 가로는 높이에 필요한 너비만 쓰고 중앙 배치. 실패 복구는 다시 시도/새 토너먼트 시작 두 선택지, 교체 확인·쓰기 성공 전 기존 저장 보존.
+- Step 1 저장 복귀 → verify: 무응답 제한/재시도/손상 저장 명시적 교체·실패 rollback/늦은 응답 무시/다른 창 권한 보존. 완료 시 커밋.
+- Step 2 터치 → verify: 카드 contextmenu 차단/이름 입력 예외/실제 touch 드래그/취소 상태 복구. 완료 시 커밋.
+- Step 3 화면 맞춤 → verify: 휴대폰/태블릿 세로·가로, 2~9인/창/입력/베팅/승자에서 스크롤 없음·겹침 없음·좌표 일치. 완료 시 커밋.
+- 기준선 단위13 files/130 PASS(verification-tablet-baseline.log). 갤럭시탭 S7 Chrome PWA 실제 복귀 원인은 원격 기기 로그 없이 확정하지 않으며 자동 검사와 실기기 검증을 구분한다. 배포/PR/merge/push는 이번 작업에서 하지 않는다.
+
+#### Step 1 저장 복귀 완료
+
+- 연결/읽기/복원/명시적 새 저장8초 제한, 타임아웃 시 읽기 트랜잭션 취소. 늦은 연결은 닫고 이전 복원은 세대 비교로 무시. visible/pageshow/resume에서 재연결·상태/조작권 검증. 저장 중/결과 불명 요청은 자동 재실행하지 않는다.
+- 복원 실패 전용 화면에 다시 시도/새 토너먼트 시작. 교체 확인 후 slot/events/control 한 트랜잭션으로 새 게임·새 세대 확정, 실패 rollback. 슬롯 읽기·검증 실패 상태에서도 쓰기가 가능하면 명시적 교체 가능.
+- 새 단위3개 RED 확인 후 전체14 files/133 PASS(verification-tablet-recovery-unit.log). 타입 테스트 코드 오류와 권한 탐색까지 차단했던 초기 다중창 테스트 실패는 수정하고 숨기지 않음. 기존 앱흐름/실제저장26개 PASS(verification-tablet-recovery-browser.log), 보완 복귀·교체8개 양 브라우저 PASS(verification-tablet-recovery-final.log). 고유 관련34개 PASS.
+- 루트 브랜치는 origin/main 기준. 사용자 요청에 따라 Step 1 완료 상태를 별도 커밋한다.
+
+#### Step 2 터치 드래그 검증
+
+- 카드 contextmenu만 취소하고 입력/textarea/contenteditable은 제외. WebKit callout도 카드에서 막고 이름 입력은 default 유지. primary 포인터만 처리하며 touch/pen은 누르기 전 이동 임계값을 넘으면 취소 대신 드래그 시작, mouse는 기존 길게 누르기 유지.
+- 새 검사2개 수정 전 RED(verification-tablet-touch-red.log). 처음 pointerdown 전체 취소는 WebKit 탭을 막아 제거하고 contextmenu 차단으로 범위를 좁혔다.
+- 기존 Chromium 반대편 드래그 검사는 수정 전 훅에서도 FAIL(verification-tablet-mouse-baseline.log). 인원 추가 직후 카드 transition 중간 좌표를 목적지로 저장하던 경합. 해당 검사에서 실제 카드 애니메이션 완료를 기다린 후 같은 기대 순서를 검증하도록 보완. 제품의 마우스 삽입 규칙은 변경하지 않았다.
+- 최신 사용자 정정: 기본 화면은 스크롤 금지, 핸드 기록 창은 기존 스크롤/더 보기 유지. 기록 페이지 전환 계획은 취소하고 구현하지 않는다.
+
+- Step 2 완료: 타입·소스/테스트 lint PASS, 양 브라우저47 PASS/2.3m(verification-tablet-touch-green.log). CDP 실제 터치1개는 Chromium에서 실행 PASS하며 WebKit에는 CDP가 없어1개 명시적 skip, WebKit 탭/편집/contextmenu/마우스 회귀는 별도 PASS. 각 단계 검증 후 두 번째 커밋.
+
+#### Step 3 화면 맞춤 구현·검증
+
+- body/root 스크롤 잠금. 공통 CSS 길이 단위와 실제 viewport/내용 ResizeObserver로 기본 화면·비기록 창 전체를 맞춤. transform으로 전체 앱을 확대하지 않으므로 포인터 좌표계 유지. 정상320/390은 기존 치수 유지, 태블릿 확대, 짧은 가로는 높이에 필요한 폭만 중앙 배치.
+- scrollable Dialog 예외는 기록에만 적용하여 내부 스크롤/더 보기/정렬 유지. 페이지 분할 코드 미구현. 기록120행 검사에서 실제 내부 scrollTop>0/문서 scrollY=0도 추가 검증.
+- 짧은844×390 기본 화면의 넘침 RED 확인(verification-tablet-layout-red.log). 초기 viewport 검사에서 준비 중 비활성 블라인드를 누르던 테스트/복수 textbox 선택 오류를 수정 후, 양 브라우저20 PASS/1.2m(verification-tablet-layout-final.log). 320×568/390×844/800×1280/1280×800/844×390/667×375/320×240, 2~9인·메뉴·블라인드·기록·이름·베팅·승자 검증. 기록만 스크롤 예외.
+- 전체 단위14 files/133 PASS(verification-tablet-unit-final.log). 최종 전체 브라우저 회귀와 일반 빌드 검증 진행 중. 독립 tablet_final_review Important/Critical 없음(읽기 전용 정적 검토, 실제 기기 동작은 별도).
+
+#### 최종 검증·완료
+
+- 추가 발견/수정: Table 숫자 맞춤이11px를 강제로 재지정해 태블릿 이름22.5641px/숫자11px가 되는 RED 재현(verification-tablet-number-red.log). 같은 CSS 단위를 사용하고 Table ResizeObserver에서 재맞춤하도록 수정. 기본 금액 숫자/이름 크기 일치와9,000,000 스트레스 원본 비교를 함께 PASS.
+- 첫 전체 실행은228 PASS/3 FAIL/55 미실행(verification-tablet-full-first.log): 이름 높이23px 고정 기대 양 브라우저2건은 반응형 이름줄 높이 일치 검사로 갱신. CDP 동결 시도는 실제 freeze/resume 이벤트를 발생시키지 않음(trace=[]/visible 유지) 확인 후 테스트 환경 한계로 구분하고 실제 resume 핸들러 이벤트·연결 재개/게임 보존을 양 브라우저에서 직접 검증. 실제 갤럭시탭 OS 앱 전환을 자동 검사했다고 주장하지 않는다. 부분 실행은 PASS로 둔갑시키지 않는다.
+- 최종 고유 브라우저285 PASS/1 skip: SW 파일을 변경하지 않는 독립 검사271 PASS/4.0m(verification-tablet-regression-pass.log, workers3) + PWA14 PASS/39.6s(verification-tablet-pwa-final.log, workers1). 전체 테스트 파일/양 브라우저 범위를 검증했다. skip1은 WebKit에 없는 Chrome CDP 실제 touch이며 Chromium에서 실행 PASS. 기록 실제 scrollTop>0/문서 scrollY=0, 손상 읽기/교체 확인·취소·쓰기 실패 원본 보존/권한 복귀/resume/실제 touch 및 기존 전체 게임 포함.
+- 최종 전체 단위14 files/133 PASS(verification-tablet-unit-final.log), typecheck·소스/테스트 lint PASS(.cache 생성 진단 파일만 제외), 일반 production build PASS/dist/e2e 없음(verification-tablet-build.log). 승인 원본 SHA256 DCB12611FAFAC9DF7E5AE8FD4D8AC78117C2DB94FCC1E86F5504070A2ABC5A92, 이미지 비교60개/기존0.2% 허용치 유지.
+- 일반 빌드 실측(verification-tablet-production.log): 800×1280 앱799.984×1143.094/글자·숫자22.5641px, 1280×800 앱557.141×796.078/15.7143px, 844×390 앱271.594×388.063/7.66071px. 모두 페이지 scroll=[0,0]. 9인36행동→승자→HAND02→기록 내부 스크롤→읽기 실패 두 버튼→재시도로 같은 HAND02/POT15 복원 PASS/pageerror0.
+- production-tablet-setup-800-1280.png/setup-1280-800.png/settlement-1280.png/history-scroll-1280.png/recovery-1280.png 직접 확인. computed font-family도 기존 system-ui/-apple-system/Segoe UI/sans-serif 유지 확인.
+- 독립 tablet_final_review Important/Critical 없음. 이후 추가 숫자 보완은 RED→GREEN 및 전체 회귀로 검증. 미뤄둔 제품 결함 없음. 실제 갤럭시탭S7 설치 앱의 OS 메뉴·전환·실제 키보드 검증은 배포 후 별도로 확인할 항목이다.
+- UX_SPEC/SYSTEM_SPEC/DESIGN_BASELINE/START_HERE/README 동기화. 사용자가 요청한 세 번째 작업 커밋 후 브랜치를 남긴다. preview http://127.0.0.1:4173/local/ 실행 중. 서버 배포/PR 생성/push/merge 미실행.
+
+## 2026-10-20 모바일 터치·깜빡임 수정
+
+- 진행 규칙: 앞으로 작업 하나가 완료될 때마다 관련 검증 후 로컬 커밋한다. AGENTS.md에 영구 기록. 기존 codex/tablet-pwa-recovery 브랜치 유지, 배포/push/PR 제외.
+- 계획: (1) 기본 터치 강조 제거 → 실제 탭·키보드 동작 검사. (2) 반응형 단위 오차 반복 계산 제거 → 유휴·클릭·회전 시 안정화와 화면 포함 검사. (3) 저장 중 불필요한 밝기 변화 제거 → 실제 지연 저장/연타/오류 검사. 기본 화면 스크롤 금지, 핸드 기록 내부 스크롤 유지.
+- 작업 1 완료: root에 투명 tap-highlight 설정. 기존 focus-visible/입력 편집/카드 터치 동작 유지.
+- 검증: Chrome 기본 파란값으로 회귀 RED → 수정 후 터치 브라우저 5 PASS/1 skip, 전체 단위 133 PASS. WebKit 데스크탑은 해당 속성 미지원(계산값 빈 문자열)이므로 지원 브라우저만 색상 검사, 실제 탭·편집·키보드는 양쪽 실행. skip은 기존 WebKit CDP touch 미지원. 최초 테스트 타입 오류와 WebKit 미지원 기대 실패를 수정 후 재검증했으며 제품 결함으로 숨기지 않음. 로그: verification-touch-highlight-{red,green,unit}.log.
+- 작업 2 완료: useScreenFit의 CSSOM 소수점 반올림 차이를 0.0001 CSS 단위 이하에서 무시. 실제 viewport 변경·컨텐츠 크기 감지는 유지하며 동일 viewport/창 위치도 중복 기록하지 않음. 극소 오차만 무시하므로 최대 화면 크기 오차는 0.1px 미만 수준이며 기존 1px 포함 검사 유지.
+- 검증: 유휴 15프레임 동안 style 변경 15회로 RED → 유휴/클릭/가로전환/메뉴창에서 반복 변경 0회 GREEN(양 브라우저). 기존 320×240~1280×800, 2~9인·입력·베팅·승자·창 포함 레이아웃 22 PASS, 전체 단위 133 PASS. 로그: verification-fit-stability-{red,green,unit}.log.
+- 작업 3 완료: 저장 중 aria-busy 구간에서만 임시 비활성 버튼/입력/회전의 투명도 변화를 억제. 저장 잠금·disabled/aria-disabled·성공 전 기존 상태·오류/재시도는 그대로 유지. 인원 2/9 제한, 취소 불가, 칩 부족, BET 입력 불가는 data-unavailable로 구분해 원래 흐린 표시 유지.
+- 검증: 실제 IndexedDB 완료 응답 보류에서 setup/betting 투명도 변경 RED2 → 양 브라우저 실제 탭·밝기 유지·연타 차단·성공 후 새로고침 상태 보존 4 PASS. 베팅은 시작 칩50으로 불가 칩 버튼도 함께 검사. 최초 보류 테스트는 WebKit에서 완료 이벤트가 release보다 늦게 오는 경우를 놓쳐 2 FAIL/나머지32 PASS였으며, release 후 도착 이벤트도 즉시 전달하도록 테스트만 보완 후 재실행 PASS. 테스트 작성 시 타입/린트 오류도 수정 후 재검증. 로그: verification-saving-appearance-{red,green,final,unit}.log.
+- 최종 검증: 전체 비PWA 브라우저 279 PASS/1 skip (4.1m, verification-touch-flicker-regression.log), 전체 단위14 files/133 PASS (verification-touch-flicker-unit-final.log), src/e2e/tests ESLint PASS, production build/typecheck PASS (verification-touch-flicker-build.log). skip은 기존 WebKit CDP touch 미지원이며 Chrome에서 실제 touch PASS. 디자인 원본 비교·기록 내부 스크롤·기본 화면 스크롤 금지·드래그·설정·게임·저장 오류·복구 모두 회귀 범위에 포함. 기존 PWA SW 변경 검사는 이번 범위에 변경이 없어 분리·미실행; PWA 전체 재검증을 주장하지 않음.
+- 실행 계획 스킬의 독립 read-only 최종 리뷰 touch_flicker_review: actionable bug 없음. 실제 Galaxy Tab Chrome/PWA 합성 깜빡임·네이티브 터치 렌더링은 하드웨어 없으므로 판단 범위 밖으로 명시; 실기기에서 제거됐다고 단정하지 않는다.
+- 로컬 production 빌드 갱신/dist/e2e 없음, http://127.0.0.1:4173/local/ HTTP200 확인. 배포/push/PR/merge 미실행. 브라우저 기존 SW는 앱 업데이트 적용 후 최신 UI를 확인할 수 있다.

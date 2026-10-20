@@ -419,3 +419,4 @@ A00~A11 단일 기기 구현과 자동 검증을 마쳤다. 멀티플레이·실
 - 브랜치 codex/ten-players-install: 최신 origin/main145ae70에 앞선 기존 모바일 수정6개를 포함하는17b6283에서 분기하여 이전 작업 보존.
 - 작업1 진행: 설정/저장10명 허용 및11명 거절,10명 좌석 추가. 설정·복원·결정적 토너먼트10명 확대 테스트의 기존 제한 RED3 확인 후 전체 단위134 PASS/production build PASS. UI 확대 검증 진행 중.
 - 작업1 완료: 단위134 PASS, build/typecheck 및 src/e2e/tests lint PASS. Chromium/WebKit 준비·레이아웃38 PASS + 10명 전용 드래그/전체 회전/긴 이름·큰 숫자 디자인10 PASS. 320px~태블릿/가로/320x240 기본 화면 넘침 없음, 기존2~9명 배치 유지. 기록 스크롤 정책 미변경. 로컬 렌더 이미지 확인. 초기 이미지 캡처는 테스트 서버 종료 직후 연결 거절로 실패하여 실행 중인4173 preview에서 다시 캡처함. verification-ten-players{,-extra}.log.
+- 작업1 시각 보완:10명 카드는 겹치지 않았으나 캡처에서 중앙10명 두 줄 표시를 발견. 단일 행 검사 RED 재현 → 숫자/명수 nowrap 최소1줄 보완 → 양 브라우저320/390px 4 PASS, 단위134 PASS/lint PASS. 최초 배치 검사에는 줄바꿈 검사가 없었던 한계를 보완함. verification-ten-count-{red,green}.log.

@@ -40,6 +40,7 @@
 }
 .pot strong {
   display: block;
+  white-space: nowrap;
   font-size: calc(25 * var(--u));
   letter-spacing: -1px;
 }

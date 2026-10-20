@@ -124,6 +124,9 @@ for (const width of [320, 390])
     await ready(page);
     for (let n = 2; n <= 10; n++) {
       await page.waitForTimeout(220);
+      expect(await page.locator('.pot strong').evaluate((e) =>
+        e.getBoundingClientRect().height <= parseFloat(getComputedStyle(e).lineHeight) + 1,
+      ), `${n}명은 한 줄로 표시`).toBe(true);
       const overlap = await page.evaluate(() => {
         const cards = [...document.querySelectorAll('.seat')].map((e) => e.getBoundingClientRect());
         const controlOverlap = [...document.querySelectorAll('.count-control,.view-rotate')].some((e) => {

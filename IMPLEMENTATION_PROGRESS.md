@@ -429,3 +429,12 @@ A00~A11 단일 기기 구현과 자동 검증을 마쳤다. 멀티플레이·실
 - 인계/계획 문서의 현행 인원 경계와 최대 전체 칩 총량을10명/10,000,000으로 동기화. 과거 시안9인 및 미래 멀티플레이 부하 이력은 변경하지 않음.
 - 최종 검증: 비PWA 전체319 PASS/1 기존 WebKit CDP 미지원 skip(4.3m, verification-ten-install-regression.log), 실제 SW/PWA14 PASS(30.5s, verification-ten-install-pwa.log). 고유 브라우저333 PASS/1 skip, 단위134 PASS. 저장 실패/권한 인수/전체 게임/기록 스크롤/기본 화면 스크롤 금지/기존 HTML 디자인 비교 유지.
 - 최종 production build/typecheck/lint PASS, dist/e2e 없음. 실제 SW 테스트 후 production 재빌드하고 http://127.0.0.1:4173/local/ preview 재실행/HTTP200 확인. 사용자 기존 탭의 이전 SW는 홈 앱 업데이트에서 적용 가능. 로컬 커밋만 수행하며 push/PR/merge/서버 배포 없음. 실제 OS 설치 실기기 검증은 남음.
+
+## 2026-10-20 — S23 PWA 저장 무한 대기 원인 조사
+
+- 바이인은 보류. codex/storage-stall-investigation에서 조사만 수행, 제품/배포/사용자 데이터 변경 없음. 상세 결과 docs/investigations/2026-10-20-storage-stall.md.
+- 배포 공개 JS main-DRr3kgqy SHA-256과 로컬 production 동일 확인. S23 설치 앱 캐시 버전과 최초 장애의 OS 트리거는 미확정.
+- 완료 알림 유실 주입으로 이름 저장60초 후에도 busy, resume 회복 불가, 연결 종료 후 복구 새 토너먼트 확인창0회, 새 창에서는 같은 이름 복원 및 게임 시작 정상 재현. Chromium/WebKit 6개 진단 통과. load/takeControl/initialize 무제한 대기와 restart 제한 반환의 차이4개 진단 통과. 이는 수정 PASS가 아닌 결함 존재 확인.
+- 원인: 일반 쓰기/조작권/초기화 제한 누락, load 오류 정리의 tx.done 무한 재대기, UI/controller 잠금으로 명시적 복구 차단, pending 중 앱 복귀 재검증 생략. 기존 단위134 PASS는 이 무응답 조합을 커버하지 못했음.
+- 초기 진단2건의 aria-disabled 클릭 자동 대기 실패를 기록하고 도구 보완 후6개 재검증. ignored .cache 진단 도구와 verification-storage-{investigation-all,deadlines}.log에 근거 보존. 실제 S23 OS 장애는 재현하지 않았으며 앱의 복구 결함과 구분.
+- 제품 수정 전 필요한 조건: 전체 작업 제한/abort 및 정리 유한화, 미확정 요청ID 보존 재시도, 명시적 재시작의 안전한 기존 작업 대체, 늦은 응답 세대 차단과 원자 교체 실패 원본 보존.

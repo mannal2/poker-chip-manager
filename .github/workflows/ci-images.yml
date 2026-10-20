@@ -67,6 +67,12 @@ jobs:
             -f frontend/Dockerfile \
             -t poker-frontend:ci .
 
+      - name: Check asset copying in production image
+        run: |
+          docker run --rm --network none --entrypoint sh \
+            --mount "type=bind,src=$PWD/deploy,dst=/deployment,readonly" \
+            poker-frontend:ci /deployment/test-copy-frontend-assets.sh
+
       - name: Check container response
         run: |
           docker run -d \

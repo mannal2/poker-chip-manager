@@ -73,6 +73,12 @@ replacement failure, HTTPS failure, incorrect HTTPS content, and rollback
 failure. They do not verify actual Docker behavior, kernel locking, systemd,
 or EC2 networking. Those require the server trial above.
 
+CI also runs `test-copy-frontend-assets.sh` inside the built Nginx image. This
+executes the deployment script's actual copy command with BusyBox and verifies
+that new files reach an existing shared directory without overwriting old files.
+Copying `assets/.` with BusyBox `cp -n` skips the already-existing destination
+directory, so the script passes Vite's asset files individually instead.
+
 ## GitHub Actions
 
 `.github/workflows/ci-images.yml` runs checks for PRs. For main, successful

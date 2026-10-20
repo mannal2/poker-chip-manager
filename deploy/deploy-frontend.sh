@@ -71,7 +71,10 @@ check_files() {
     curl --fail --silent --show-error --noproxy '*' \
       --connect-timeout 3 --max-time 5 \
       --resolve "${origin#https://}:443:127.0.0.1" \
-      --output "$state/response" "$origin/$path" || return 1
+      --output "$state/response" "$origin/$path" || {
+        printf 'HTTPS check failed: %s/%s\n' "$origin" "$path" >&2
+        return 1
+      }
     actual=$(sha256sum "$state/response") || return 1
     [[ "${actual%% *}" == "$hash" ]] || return 1
   done < "$1"
@@ -82,10 +85,11 @@ healthy "$previous_id" "$state/previous-files" || {
 
 # The shared volume keeps old hashed URLs available for already-open clients.
 # cp -n never overwrites an existing hashed asset. The HTTPS check detects mismatches.
+# Pass Vite's asset files individually: BusyBox cp -n skips existing directories.
 docker volume inspect poker-frontend-assets > /dev/null
 docker run --rm --network none --entrypoint sh \
   --mount type=volume,src=poker-frontend-assets,dst=/release-assets \
-  "$target" -c 'cp -an /usr/share/nginx/html/assets/. /release-assets/'
+  "$target" -c 'cp -an /usr/share/nginx/html/assets/* /release-assets/'
 cp .env "$state/previous.env"
 printf 'previous=%s\ntarget=%s\nrevision=%s\nphase=replacing\n' \
   "$rollback" "$target" "$revision" > "$state/pending.tmp"

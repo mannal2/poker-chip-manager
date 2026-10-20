@@ -1,5 +1,5 @@
 .dock {
-  min-height: calc(140 * var(--u));
+  min-height: calc(188 * var(--u));
   flex: none;
   display: flex;
   flex-direction: column;
@@ -86,14 +86,14 @@
   right: calc(8 * var(--u));
   top: 50%;
   transform: translateY(-50%);
-  font-size: calc(10 * var(--u));
+  font-size: calc(11 * var(--u));
   color: var(--muted);
   pointer-events: none;
 }
 .setup-fields input {
   margin: 0;
   padding: calc(8 * var(--u)) calc(29 * var(--u)) calc(8 * var(--u)) calc(8 * var(--u));
-  font-size: calc(12 * var(--u));
+  font-size: calc(14 * var(--u));
   appearance: textfield;
 }
 .setup-fields label:first-child input {

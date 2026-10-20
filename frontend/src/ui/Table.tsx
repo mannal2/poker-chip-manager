@@ -60,7 +60,7 @@ export const seatCoordinates: Record<number, number[][]> = {
     [28, 17],
     [72, 17],
     [86, 39],
-    [86, 62],
+    [86, 60],
     [81, 81],
   ],
   9: [
@@ -172,7 +172,7 @@ export function Table({
     if (!table) return;
     const fit = () =>
       table.querySelectorAll<HTMLElement>('.card-values>div').forEach((cell) => {
-        let size = 11;
+        let size = Number(getComputedStyle(table).getPropertyValue('--card-text'));
         cell.style.fontSize = `calc(${size} * var(--u))`;
         while (cell.scrollWidth > cell.clientWidth && size > 7) {
           size -= 0.25;

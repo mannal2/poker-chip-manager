@@ -121,7 +121,11 @@ test('Chrome 실제 터치 조기 이동·길게 누르기·취소 후 탭과 �
   await expect(first).toHaveClass(/dragging/);
   await cdp.send('Input.dispatchTouchEvent', { type: 'touchCancel', touchPoints: [] });
   await expect(page.locator('.seat.dragging')).toHaveCount(0);
-  await page.touchscreen.tap(b.x + b.width / 2, b.y + b.height / 2);
+  await first.evaluate(async (node) => {
+    await Promise.all(node.getAnimations().map((animation) => animation.finished.catch(() => {})));
+  });
+  const restored = (await first.locator('.card-values').boundingBox())!;
+  await page.touchscreen.tap(restored.x + restored.width / 2, restored.y + restored.height / 2);
   await expect(first.locator('.badge')).toContainText('D');
   await page.reload();
   await openLocal(page);

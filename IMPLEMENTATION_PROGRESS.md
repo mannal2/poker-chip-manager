@@ -456,3 +456,8 @@ A00~A11 단일 기기 구현과 자동 검증을 마쳤다. 멀티플레이·실
 - 이름 편집 중 첫 pointerdown이 blur보다 앞서 거부되는 문제를 재현. 편집 확정/저장 결과를 기다리는 포인터 세션으로 수정. 저장 차단은 유지하며 조기 해제/입력 오류/취소 시 이동하지 않음.
 - 관련 고유 브라우저 테스트 64 PASS/2 Chromium 전용 CDP의 WebKit skip, 단위146 PASS/typecheck/lint PASS. 최초 수정의 저장 재시도·키보드 회귀를 보완해 통과. 실제 터치 신규 테스트는 이동 후 DOM 순서 추적 오류를 ID 추적으로 수정해 별도 PASS.
 - 조사 과정: docs/investigations/2026-10-20-name-edit-drag.md. 실제 모바일 실기기 확인은 별도 필요.
+
+## 2026-10-20 베팅 조작부 3줄 확대
+- 행동 4개 / 칩 4개 / C·BET 3줄로 분리. 확정 줄 2:3, 행동 버튼 48·칩52 설계 단위로 확대. 색상과 액션·입력 제한 유지.
+- 배치 신규2 RED 확인 후 구현. 관련 game/readable-layout/tablet-layout 고유56 PASS. 첫 실행55 PASS/1 FAIL은 짧은 WebKit 화면 테스트가 이름 저장 완료 전에 딜러 선택을 시도한 경합. 저장 완료 및 첫 카드 딜러 배지를 확인하도록 보완해 Chromium/WebKit2 PASS. 추가 배지 검증의 복수 locator 오류도 수정 후 재검증.
+- 전체 단위146/typecheck/lint PASS. 이후 작업에서 카드·테이블 높이와 함께 최종 조정 예정.

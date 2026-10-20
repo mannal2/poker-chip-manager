@@ -138,3 +138,11 @@ npx vitest run --config .cache/storage-investigation-vitest.config.ts
 - 추가 원인: 연결 종료 뒤 UNKNOWN 재시도가 invalid 연결을 계속 재사용하는 RED1을 별도로 확인했다. 재시도 버튼은 repository.reconnect 후 원래 요청으로 확인하도록1줄 보완했다.
 - 검증: 새 브라우저 회귀12 PASS(각 브라우저6개), 기존 앱 흐름/태블릿 복구 포함34 PASS. 복구 취소 보존/즉시 새 게임/늦은 응답 무시, 실패한 교체의 slot·events·control 전체 snapshot 보존, 다시 시도로 원본 이름 복원, resume 재검증, 무효 연결 재시도 확인. 단위143 PASS/typecheck/lint PASS.
 - 근거: verification-storage-fix-ui-{red,green,final}.log 및 verification-storage-fix-retry-red.log. 최종 전체 회귀와 실제 S23 검증은 아직 완료로 기록하지 않는다.
+
+- 작업2 커밋:af83427.
+
+### 추가 검증 — 진행 중 트랜잭션 원자 취소
+
+- slot 쓰기와 events 변경 이후, native 요청을 이어 트랜잭션을 실제로 활성 상태에 둔 채 완료를 보류했다.8초 제한이 tx.abort를 수행하여 게임 상태·기록·조작권 전체가 이전 snapshot으로 rollback됨을 확인했다.
+- 동일 pending 요청 재시도 후 HAND_START1개/POT15, 뒤늦은 기존 요청 이벤트도 중복 반영하지 않음을 확인했다. 단순한 완료 응답 지연과 실제 미완료 트랜잭션을 구분하여 검증했다.
+- 각 메서드의 완료 알림 유실 테스트는 단순히 반환하는 것뿐 아니라 제한 오류로 반환하는지 확인하도록 강화. 전체 단위144 PASS/typecheck/lint PASS. 이 검사는 fake-indexeddb의 트랜잭션 모사이며 실제 OS 저장 장치 장애 검증은 아니다.

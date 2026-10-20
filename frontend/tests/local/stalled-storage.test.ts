@@ -95,7 +95,7 @@ for (const operation of [
     try {
       await gate.held;
       await vi.advanceTimersByTimeAsync(8001);
-      expect(outcome).not.toBe('pending');
+      expect(outcome).toBe('rejected');
     } finally {
       gate.restore();
       gate.release();
@@ -178,6 +178,90 @@ it('abort 알림 유실도 오류 정리에서 다시 기다리지 않는다', a
     gate.restore();
     IDBObjectStore.prototype.put = put;
     gate.release();
+    await work;
+    vi.useRealTimers();
+    repo.close();
+  }
+});
+
+it('부분 쓰기 후 살아 있는 트랜잭션 시간 초과: 전체 rollback·재시도 1회', async () => {
+  const repo = new LocalRepository('deadline-partial-write');
+  const controller = new LocalController(repo, 'a');
+  await controller.takeControl();
+  await repo.initialize({ ...defaultSettings, button: 0 }, controller.lease!);
+  await controller.refresh();
+  const before = await repo.load(),
+    owner = await repo.control();
+  const put = IDBObjectStore.prototype.put;
+  let entered!: () => void, release!: () => void;
+  const held = new Promise<void>((resolve) => {
+    entered = resolve;
+  });
+  let pumping = true;
+  function pump(store: IDBObjectStore) {
+    if (!pumping) return;
+    const request = store.get('current');
+    request.onsuccess = () => pump(store);
+    request.onerror = (event) => {
+      pumping = false;
+      event.preventDefault();
+    };
+  }
+  IDBObjectStore.prototype.put = function (...args) {
+    const request = put.apply(this, args);
+    if (this.name === 'slot') {
+      const store = this,
+        add = request.addEventListener;
+      request.addEventListener = function (
+        type: string,
+        listener: EventListenerOrEventListenerObject,
+        options?: boolean | AddEventListenerOptions,
+      ) {
+        if (type === 'success')
+          add.call(
+            this,
+            type,
+            (event) => {
+              release = () => {
+                if (typeof listener === 'function') listener.call(this, event);
+                else listener.handleEvent(event);
+              };
+              pump(store);
+              entered();
+            },
+            options,
+          );
+        else add.call(this, type, listener, options);
+      };
+    }
+    return request;
+  };
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+  let outcome = 'pending';
+  const work = controller.dispatch({ type: 'START_TOURNAMENT' }).then((r) => {
+    outcome = r.status;
+  });
+  try {
+    await held;
+    await vi.advanceTimersByTimeAsync(8001);
+    expect(outcome).toBe('UNKNOWN');
+    IDBObjectStore.prototype.put = put;
+    expect(await repo.load()).toEqual(before);
+    expect(await repo.control()).toEqual(owner);
+    expect(await repo.readEvents(before!.state.tournamentId, 0, 100)).toEqual([]);
+    expect((await controller.retry()).status).toBe('APPLIED');
+    release();
+    await work;
+    expect((await repo.load())!.state.pot).toBe(15);
+    expect(
+      (await repo.readEvents(before!.state.tournamentId, 0, 100)).filter(
+        (event) => event.type === 'HAND_START',
+      ),
+    ).toHaveLength(1);
+  } finally {
+    pumping = false;
+    IDBObjectStore.prototype.put = put;
+    release?.();
     await work;
     vi.useRealTimers();
     repo.close();

@@ -22,3 +22,9 @@ InlineName은 편집 시작 시 LocalApp의 renameId를 설정한다. LocalApp�
 - 확장 검증에서 저장 응답 유실 후 재시도 시 편집칸이 남는 회귀 및 키보드 테스트 실패를 발견했다. 유효 이름 확정 시 기존처럼 편집을 닫고, 드래그만 비동기 저장 결과를 기다리도록 보완하여 재검증을 통과했다.
 - 최종 관련 E2E: 63 PASS/1 FAIL/2 skip 후, 실패한 실제 터치 테스트의 DOM first() 추적 오류를 플레이어 ID 추적으로 바로잡아 해당 테스트 PASS. 드래그가 성공하면서 DOM 순서가 달라진 것이 테스트 실패 원인이었다. 고유 관련 테스트 64 PASS/2 Chromium 전용 CDP의 WebKit skip. 이름 편집, 지연 저장, 조기 해제, 중복 이름, 한글 조합, 실제 터치, 기존 키보드 및 저장 오류 복구를 포함한다.
 - 전체 단위 146 PASS, typecheck/lint PASS. 실제 모바일 기기에서의 키보드와 터치 확인은 별도 필요하다.
+
+### 독립 리뷰 보완: 편집기 폐기 뒤 남은 저장 함수
+- P1 결함: 복원/loading 또는 조작권 변경으로 InlineName이 사라져도 LocalApp의 finishName 참조가 남았다. 나중의 카드 누름이 이전 이름 초안과 당시 인원·스택 설정을 현재 lease/version으로 저장할 수 있었다.
+- Chromium에서 pageshow 복원 및 두 창 인수/3인·1500칩 설정 변경 두 시나리오 RED 확인.
+- InlineName이 사라질 때 layout-effect cleanup으로 등록을 해제한다. 등록은 토너먼트·조작권 scope·플레이어 키에 묶고, 이전 편집기의 해제가 다른 편집기의 등록을 지우지 못하게 검사한다. 카드 준비 시에도 현재 scope만 실행한다.
+- 보완 후 Chromium/WebKit 4 PASS, 전체 단위146/typecheck/lint PASS. 전체 회귀를 다시 실행해 최종 검증한다.

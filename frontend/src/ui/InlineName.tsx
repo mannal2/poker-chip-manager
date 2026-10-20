@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 export function InlineName({
   name,
   busy,
@@ -15,7 +15,12 @@ export function InlineName({
   const composing = useRef(false),
     skipBlur = useRef(false),
     value = useRef(name),
-    pending = useRef<Promise<boolean> | null>(null);
+    pending = useRef<Promise<boolean> | null>(null),
+    editingCallback = useRef(onEditing);
+  useLayoutEffect(() => {
+    editingCallback.current = onEditing;
+  });
+  useLayoutEffect(() => () => editingCallback.current(false), []);
   function close() {
     setEditing(false);
     onEditing(false);

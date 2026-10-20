@@ -88,7 +88,7 @@ function LocalGame({
   const inGame = useRef(recoveryContext.inGame);
   const resumeRequested = useRef(false);
   const lock = useRef(false),
-    finishName = useRef<(() => Promise<boolean>) | null>(null),
+    finishName = useRef<{ key: string; finish: () => Promise<boolean> } | null>(null),
     toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [runtime] = useState(() => {
     const repo = new LocalRepository(
@@ -411,7 +411,12 @@ function LocalGame({
     (id) => {
       if (s) saveSettings({ ...s.settings, button: s.players.findIndex((p) => p.id === id) });
     },
-    () => finishName.current?.() ?? Promise.resolve(!busy && !lock.current),
+    () => {
+      const editor = finishName.current;
+      return editor?.key.startsWith(draftScope + ':')
+        ? editor.finish()
+        : Promise.resolve(!busy && !lock.current);
+    },
   );
   function changeCount(add: boolean) {
     if (!s || busy || s.status !== 'setup') return;
@@ -684,8 +689,14 @@ function LocalGame({
               busy={busy}
               editScope={draftScope}
               onNameEditing={(id, editing, finish) => {
-                finishName.current = editing ? finish! : null;
-                setRenameId(editing ? draftScope + ':' + id : '');
+                const key = draftScope + ':' + id;
+                if (editing) {
+                  finishName.current = { key, finish: finish! };
+                  setRenameId(key);
+                } else if (finishName.current?.key === key) {
+                  finishName.current = null;
+                  setRenameId('');
+                }
               }}
               onRename={
                 s.status === 'setup'

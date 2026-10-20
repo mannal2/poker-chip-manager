@@ -423,3 +423,9 @@ A00~A11 단일 기기 구현과 자동 검증을 마쳤다. 멀티플레이·실
 - 작업2 진행: 홈 첫 설치 제안, 나중에/바깥 탭/Escape 닫기 기억, 홈 앱 설치 재접근, Chromium beforeinstallprompt 사용자 버튼 호출/1회 소비/취소 후 메뉴 안내, iPhone/iPad Safari 수동 안내, standalone/appinstalled 숨김. 게임 화면·다른 창 열림·복원 중 자동 제안 없음. 저장 기억 실패는 현재 방문에서만 억제하며 게임 저장과 분리.
 - 설치 제안 부재 RED1 → 첫 검사9 PASS/1 FAIL. WebKit 재방문 직후 beforeinstallprompt 모사를 앱 effect 등록 전에 전달해 이벤트를 놓친 테스트 초기화 순서 문제를 확인하고 홈 준비 후 전송하도록 보완(실제 WebKit의 native 설치 이벤트 지원으로 오해하지 않음). 추가 검증 진행.
 - 작업2 완료: 설치 모사16 PASS(Chromium/WebKit), 전체 단위134 PASS, build/typecheck/lint PASS. 최초 안내·닫기 기억·수동 재접근·취소 후 메뉴 안내·설치 실패·설치 대기 중 닫기 차단·게임 중 지연·standalone 숨김·iPad 데스크톱 UA·저장 기억 불가·가로 화면 맞춤 확인. iPhone 안내 렌더 이미지 직접 확인. 실제 iPhone/Android OS 설치 창은 실기기 미검증, API 모사를 native 지원/실제 설치 성공으로 보고하지 않음. verification-install-{red,green,final}.log. 전체 회귀 및 독립 리뷰 예정.
+- 독립 ten_install_review:17b6283..bd74da5 전체 변경 읽기 전용 리뷰에서 실행 가능한 결함 없음.
+- Final: Ruling: 실제 iPhone/iPad 안내 및 Android OS 설치 창은 브라우저 모사만으로 확정하지 않음 — 실기기 미검증으로 남김 — 기기별 설치 UI 차이는 실제 확인 필요.
+- Final: Ruling: 브라우저 설치 가능 조건/재제안 간격/이벤트 도착 시점은 앱이 보장하지 않음 — 이벤트가 제공될 때만 native 버튼 표시 — Chrome에서 첫 접속 즉시 안내가 항상 뜨지는 않을 수 있음.
+- 인계/계획 문서의 현행 인원 경계와 최대 전체 칩 총량을10명/10,000,000으로 동기화. 과거 시안9인 및 미래 멀티플레이 부하 이력은 변경하지 않음.
+- 최종 검증: 비PWA 전체319 PASS/1 기존 WebKit CDP 미지원 skip(4.3m, verification-ten-install-regression.log), 실제 SW/PWA14 PASS(30.5s, verification-ten-install-pwa.log). 고유 브라우저333 PASS/1 skip, 단위134 PASS. 저장 실패/권한 인수/전체 게임/기록 스크롤/기본 화면 스크롤 금지/기존 HTML 디자인 비교 유지.
+- 최종 production build/typecheck/lint PASS, dist/e2e 없음. 실제 SW 테스트 후 production 재빌드하고 http://127.0.0.1:4173/local/ preview 재실행/HTTP200 확인. 사용자 기존 탭의 이전 SW는 홈 앱 업데이트에서 적용 가능. 로컬 커밋만 수행하며 push/PR/merge/서버 배포 없음. 실제 OS 설치 실기기 검증은 남음.

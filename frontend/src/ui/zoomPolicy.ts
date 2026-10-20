@@ -7,15 +7,19 @@ export function installZoomPolicy() {
     },
     { passive: false },
   );
-  document.addEventListener('keydown', (event) => {
-    if (
-      (event.ctrlKey || event.metaKey) &&
-      !event.altKey &&
-      !event.isComposing &&
-      ['+', '-', '=', '_', '0'].includes(event.key)
-    )
-      event.preventDefault();
-  });
+  document.addEventListener(
+    'keydown',
+    (event) => {
+      if (
+        (event.ctrlKey || event.metaKey) &&
+        !event.altKey &&
+        !event.isComposing &&
+        ['+', '-', '=', '_', '0'].includes(event.key)
+      )
+        event.preventDefault();
+    },
+    { capture: true },
+  );
   const preventGesture = (event: Event) => event.preventDefault();
   document.addEventListener('gesturestart', preventGesture, { passive: false });
   document.addEventListener('gesturechange', preventGesture, { passive: false });

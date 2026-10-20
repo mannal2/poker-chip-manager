@@ -26,6 +26,7 @@ body,
   height: 100%;
   overflow: hidden;
   overscroll-behavior: none;
+  touch-action: pan-x pan-y;
 }
 body {
   height: var(--viewport-height, 100dvh);
@@ -128,6 +129,7 @@ a {
 }
 dialog {
   color: var(--ink);
+  touch-action: pan-x pan-y;
   background: var(--bg);
   border: calc(1 * var(--u)) solid var(--line);
   border-radius: calc(20 * var(--u));
@@ -246,6 +248,7 @@ select {
 
 /* Hand history keeps its own scrolling; the underlying app never scrolls. */
 dialog.scrollable {
+  touch-action: pan-y;
   max-height: calc(var(--viewport-height, 100dvh) * 0.85);
   overflow-y: auto;
   overscroll-behavior: contain;

@@ -398,3 +398,5 @@ A00~A11 단일 기기 구현과 자동 검증을 마쳤다. 멀티플레이·실
 - 최신 origin/main(145ae70)에 기존 태블릿·자동 배포 작업 병합 확인 후 codex/input-viewport-feedback 분기. 멀티플레이 구현·배포/push/PR은 범위 밖.
 - 작업 1: 세 진입 HTML의 initial/minimum/maximum-scale=1, user-scalable=no 적용. 미구현 online은 동일 진입 정책만 적용하며 기능 추가 없음. 입력 글자 크기는 변경하지 않음.
 - 검증: 기존 확대 제한 없음 RED, 실제 /local 진입이 별도 HTML임을 브라우저 검사에서 발견해 해당 파일까지 수정. 종료된 로컬 preview를 재시작 후 Chromium/WebKit 모바일 에뮬레이션에서 viewport 설정·시작칩12px/이름입력11px 유지 PASS. 전체 단위133 PASS, production build와 세 진입 HTML 검사 PASS. verification-focus-limit-{build,unit}.log. iPhone OS 입력 포커스 확대 차단을 실기기 검증했다고 주장하지 않음.
+- 작업 2 완료: CSS pan-x/pan-y로 확대 제스처를 제한하되 스크롤은 허용, 기록 창은 pan-y 유지. 페이지 수명 동안 Ctrl+휠/확대 단축키와 Safari gesturestart/change만 억제. 일반 휠·touchmove·복사·AltGr·문자 편집은 건드리지 않음. 브라우저 메뉴/OS 접근성 확대의 완전 차단은 범위 밖.
+- 검증: 기존 확대 이벤트 미차단 RED → 양 브라우저 편집/키보드 및 기존 실제 터치·기록/원형 드래그 35 PASS/1 기존 WebKit CDP skip. Chrome 실제 CDP touch pinch 후 scale=1 PASS. 전체 단위133 PASS. verification-zoom-policy-{red,green,unit}.log. viewport만으로 Safari 핀치가 막힌다고 주장하지 않음.

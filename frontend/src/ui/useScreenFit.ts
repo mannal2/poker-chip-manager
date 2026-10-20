@@ -93,6 +93,7 @@ export function useScreenFit(ref: RefObject<HTMLElement | null>, scrollable = fa
     };
     const observer = new ResizeObserver(schedule);
     observer.observe(node);
+    observer.observe(document.documentElement);
     window.addEventListener('resize', schedule);
     window.visualViewport?.addEventListener('resize', schedule);
     window.visualViewport?.addEventListener('scroll', schedule);

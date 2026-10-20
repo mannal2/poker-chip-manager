@@ -406,3 +406,5 @@ A00~A11 단일 기기 구현과 자동 검증을 마쳤다. 멀티플레이·실
 - 작업 4 완료: 준비 카드 이름 글자 외 누름 즉시 배경/테두리 강조,350ms 뒤 준비 그림자. 이동은 기존 dragging 표시 유지. 크기·좌표·회전 미변경. 놓기/취소/lost capture/추가 포인터/앱 전환에서 타이머와 표시 정리, 이름 편집·짧은 탭 딜러 선택 유지.
 - 검증: 기존 pressing 없음 RED2 → 양 브라우저 349ms에는 미준비/350ms 준비, 실제 위치·크기 동일, 취소/추가 포인터/이름편집 회귀 및 기존 터치/준비25 PASS/1 기존 CDP skip. 전체 단위133 PASS, lint PASS. verification-press-feedback-{red,green,unit}.log. UX_SPEC/DESIGN_BASELINE의 이전 키보드 축소 지침을 새 승인으로 갱신.
 - 독립 input_viewport_review에서 이름 편집 키 이벤트 stopPropagation이 확대 단축키 차단을 우회하는 P2 발견. 누름 작업 검증과 별개로 다음 보완 작업에서 실패를 재현하고 캡처 단계 차단으로 수정 예정. 전체 회귀는 실행 중이며 아직 완료로 기록하지 않음.
+- 회전 보완: 전체 비PWA 첫 실행290 PASS/1 FAIL/1 skip에서 WebKit 키보드 회전 실패가 다시 재현됨(verification-input-viewport-regression.log). resize 알림만으로는 변경 직후 새 viewport를 놓칠 수 있어 기존 ResizeObserver가 문서 루트의 실제 레이아웃 크기도 관찰하도록1줄 보완. 타이머 대기나 허용치 완화로 덮지 않음.
+- 실패하던 WebKit 키보드 회전을 workers3 부하에서8회 반복 PASS(verification-keyboard-rotation-repeat.log), 전체 단위133 PASS. 전체 회귀는 보완된 코드로 다시 실행 예정이며 최초 실패를 성공으로 기록하지 않음.

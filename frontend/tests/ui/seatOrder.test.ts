@@ -13,8 +13,8 @@ describe('원형 삽입', () => {
     expect(gapTarget(0, 4, 6)).toBe(5);
     expect(gapTarget(0, 5, 6)).toBe(0);
   });
-  it('2~9인 모든 출발·도착·화면 기준: 최단 구간만 이동, 다른 순서 보존', () => {
-    for (let n = 2; n <= 9; n++)
+  it('2~10인 모든 출발·도착·화면 기준: 최단 구간만 이동, 다른 순서 보존', () => {
+    for (let n = 2; n <= 10; n++)
       for (let view = 0; view < n; view++)
         for (let from = 0; from < n; from++)
           for (let to = 0; to < n; to++) {
@@ -34,8 +34,8 @@ describe('원형 삽입', () => {
   });
 });
 
-it('2~9인 모든 틈에 삽입하면 지정한 두 참가자 사이에 위치', () => {
-  for (let n = 2; n <= 9; n++)
+it('2~10인 모든 틈에 삽입하면 지정한 두 참가자 사이에 위치', () => {
+  for (let n = 2; n <= 10; n++)
     for (let from = 0; from < n; from++)
       for (let after = 0; after < n; after++) {
         const ids = Array.from({ length: n }, (_, i) => String(i)),

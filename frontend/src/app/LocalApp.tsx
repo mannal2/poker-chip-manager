@@ -364,7 +364,7 @@ function LocalGame() {
     if (!s || busy || s.status !== 'setup') return;
     const n = s.players.length;
     if (add) {
-      if (n >= 9) return;
+      if (n >= 10) return;
       const settings = { ...s.settings, names: [...s.settings.names, `P${n + 1}`] };
       const v = validateSettings(settings);
       if (!v.ok)

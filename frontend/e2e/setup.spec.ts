@@ -32,8 +32,16 @@ test('준비: 2인·인원 버튼·최근 추가 삭제·P3 재사용·복원', 
   await expect(page.locator('.seat .name')).toHaveText(['P2', 'P1']);
   await add(page);
   await expect(page.locator('.seat .name')).toHaveText(['P2', 'P1', 'P3']);
-  for (let i = 3; i < 9; i++) await add(page);
+  for (let i = 3; i < 10; i++) await add(page);
+  await expect(page.locator('.pot strong')).toHaveText('10명');
+  await expect(page.locator('.seat .name').last()).toHaveText('P10');
   await expect(page.getByRole('button', { name: '참가자 추가', exact: true })).toBeDisabled();
+  await page.reload();
+  await openLocal(page);
+  await expect(page.locator('.seat')).toHaveCount(10);
+  await page.getByRole('button', { name: '참가자 삭제', exact: true }).click();
+  await add(page);
+  await expect(page.locator('.seat .name').last()).toHaveText('P10');
   await page.getByRole('button', { name: '관리 메뉴', exact: true }).click();
   await expect(page.getByRole('button', { name: '참가자·좌석 설정' })).toHaveCount(0);
   await expect(page.getByRole('button', { name: '화면 기준 좌석', exact: true })).toHaveCount(0);
@@ -51,6 +59,24 @@ test('준비: 단일 탭 D·이름 직접 편집·드래그는 D 변경 없음',
   await expect(page.locator('.seat').first().locator('.badge')).toHaveText('D · SB');
   await drag(page, 1, 0);
   await expect(page.locator('.seat').nth(1).locator('.badge')).toHaveText('D · SB');
+  await page.getByRole('button', { name: '게임 시작', exact: true }).click();
+  await expect(page.locator('.seat.active')).toHaveCount(1);
+});
+
+test('10명: 드래그·전체 회전 뒤 딜러와 순서 보존', async ({ page }) => {
+  await ready(page);
+  for (let n = 2; n < 10; n++) await add(page);
+  await page.locator('.seat .card-values').last().click();
+  await expect(page.locator('.seat').last().locator('.badge')).toContainText('D');
+  await drag(page, 9, 0);
+  await expect(page.locator('.seat').first().locator('.name')).toHaveText('P10');
+  await expect(page.locator('.seat').first().locator('.badge')).toContainText('D');
+  const before = await page.locator('.seat').first().getAttribute('style');
+  for (let n = 0; n < 10; n++) {
+    await page.getByRole('button', { name: '화면 기준 한 자리 회전', exact: true }).click();
+    await expect(page.locator('main')).toHaveAttribute('aria-busy', 'false');
+  }
+  expect(await page.locator('.seat').first().getAttribute('style')).toBe(before);
   await page.getByRole('button', { name: '게임 시작', exact: true }).click();
   await expect(page.locator('.seat.active')).toHaveCount(1);
 });
@@ -96,19 +122,23 @@ for (const width of [320, 390])
   test(`준비: ${width}px 전 인원에서 중앙 조작과 카드 겹침 없음`, async ({ page }) => {
     await page.setViewportSize({ width, height: 844 });
     await ready(page);
-    for (let n = 2; n <= 9; n++) {
+    for (let n = 2; n <= 10; n++) {
       await page.waitForTimeout(220);
       const overlap = await page.evaluate(() => {
         const cards = [...document.querySelectorAll('.seat')].map((e) => e.getBoundingClientRect());
-        return [...document.querySelectorAll('.count-control,.view-rotate')].some((e) => {
+        const controlOverlap = [...document.querySelectorAll('.count-control,.view-rotate')].some((e) => {
           const a = e.getBoundingClientRect();
           return cards.some(
             (b) => a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top,
           );
         });
+        const cardOverlap = cards.some((a, i) => cards.slice(i + 1).some(
+          (b) => a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top,
+        ));
+        return controlOverlap || cardOverlap;
       });
       expect(overlap, `${n}명`).toBe(false);
-      if (n < 9) await add(page);
+      if (n < 10) await add(page);
     }
   });
 

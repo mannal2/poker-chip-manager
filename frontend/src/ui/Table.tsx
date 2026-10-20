@@ -74,6 +74,18 @@ export const seatCoordinates: Record<number, number[][]> = {
     [86, 58],
     [81, 79],
   ],
+  10: [
+    [50, 92],
+    [22, 83],
+    [14, 62],
+    [14, 41],
+    [22, 20],
+    [50, 8],
+    [78, 20],
+    [86, 41],
+    [86, 62],
+    [78, 83],
+  ],
 };
 export function Table({
   players,
@@ -208,8 +220,8 @@ export function Table({
             <button
               className="count-control"
               aria-label="참가자 추가"
-              disabled={busy || players.length >= 9}
-              data-unavailable={players.length >= 9}
+              disabled={busy || players.length >= 10}
+              data-unavailable={players.length >= 10}
               onClick={onAdd}
             >
               +

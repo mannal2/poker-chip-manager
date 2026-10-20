@@ -1,6 +1,14 @@
 import { it, expect } from 'vitest';
 import { validateStored } from '../../src/local/restore';
 import { fixtureState } from '../game/helpers';
+import { createTournament } from '../../src/game/transition';
+it('10명 게임과 최대 칩 총량을 복원한다', () => {
+  const state = fixtureState(10);
+  expect(() => validateStored({ schemaVersion: 1, rulesVersion: 1, eventSequence: 0, state })).not.toThrow();
+  const maximum = createTournament({ ...state.settings, initial: 1000000 }, { id: 'max', at: 'test' });
+  expect(maximum.initialTotal).toBe(10000000);
+  expect(() => validateStored({ schemaVersion: 1, rulesVersion: 1, eventSequence: 0, state: maximum })).not.toThrow();
+});
 it('설정 총량·이름·핸드 단계·응답자·예약·취소 snapshot 손상을 거절', () => {
   const base = { schemaVersion: 1, rulesVersion: 1, eventSequence: 0, state: fixtureState() };
   const changes = [

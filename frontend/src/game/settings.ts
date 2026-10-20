@@ -23,11 +23,11 @@ export function validateSettings(input: GameSettings): SettingsValidation {
   const names = input.names.map((n) => n.trim().normalize('NFC'));
   if (
     names.length < 2 ||
-    names.length > 9 ||
+    names.length > 10 ||
     names.some((n) => !/^[가-힣a-zA-Z0-9 ]{1,10}$/.test(n)) ||
     new Set(names.map((n) => n.toLowerCase())).size !== names.length
   )
-    return { ok: false, error: '이름은 1~10자의 한글·영문·숫자, 중복 없이 2~9명으로 설정하세요.' };
+    return { ok: false, error: '이름은 1~10자의 한글·영문·숫자, 중복 없이 2~10명으로 설정하세요.' };
   if (
     ![input.initial, input.sb, input.bb].every(validChips) ||
     input.sb >= input.bb ||

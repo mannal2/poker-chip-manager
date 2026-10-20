@@ -44,13 +44,13 @@ for (const amount of [-5, 0, 1.5, 7, 1005])
     expect(transition(s, { type: 'RAISE', additional: amount }, ctx).ok).toBe(false);
     expect(JSON.stringify(s)).toBe(before);
   });
-it('결정적 2~9인 토너먼트: 모든 성공 전환 보존·불변과 종료', () => {
+it('결정적 2~10인 토너먼트: 모든 성공 전환 보존·불변과 종료', () => {
   let seed = 81;
   const rand = () => {
     seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
     return seed / 4294967296;
   };
-  for (let n = 2; n <= 9; n++)
+  for (let n = 2; n <= 10; n++)
     for (let game = 0; game < 8; game++) {
       let s = fixtureState(n);
       let steps = 0;

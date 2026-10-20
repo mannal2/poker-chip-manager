@@ -21,7 +21,7 @@ export function validateStored(value: StoredGame): void {
     !['setup', 'playing', 'ended', 'aborted'].includes(s.status) ||
     !Array.isArray(s.players) ||
     s.players.length < 2 ||
-    s.players.length > 9 ||
+    s.players.length > 10 ||
     !validateSettings(s.settings).ok ||
     s.players.length !== s.settings.names.length
   )

@@ -412,3 +412,10 @@ A00~A11 단일 기기 구현과 자동 검증을 마쳤다. 멀티플레이·실
 - 최종 검증: 전체 비PWA293 PASS/1 skip(4.0m, verification-input-viewport-regression-final.log) + 실제 SW/PWA14 PASS(34.4s, verification-input-viewport-pwa-final.log), 고유 브라우저307 PASS/1 skip. skip은 기존 WebKit CDP 미지원이며 Chrome 실제 touch 테스트 실행 PASS. 최초 전체290 PASS/1 FAIL/1 skip과 회전8회 보완 검증을 보존했고 실패를 무시하지 않음.
 - 전체 단위14 files/133 PASS(verification-input-viewport-unit-final.log), src/e2e/tests lint PASS, production build/typecheck PASS/dist/e2e 없음(verification-input-viewport-build-final.log). 디자인 원본 비교·기록 내부 스크롤·기본 화면 스크롤 금지·전체 게임·저장 실패/복구 모두 유지. Chrome 실제 CDP 두 손가락 입력으로 누름 상태 취소 PASS, 준비 강조/키보드 영역 모사 입력 배치를 이미지로 직접 확인.
 - 최신 production preview http://127.0.0.1:4173/local/ 재시작/HTTP200 확인. 기존 SW 사용 중이면 앱 업데이트 적용 후 최신 UI를 확인한다. 실제 iPhone 입력 자동 확대·Safari/PWA 핀치·iPhone/Android OS 키보드는 실기기 미검증으로 남기며 모사 테스트를 실제 OS 검사로 표현하지 않음. 입력 폰트 변경 없음. 서버 배포/push/PR/merge 미실행.
+
+## 2026-10-20 — 10명 지원·첫 방문 설치 안내
+
+- 승인 범위: 최대10명(기존2~9명 배치 유지), 앱 홈에서 최초 설치 제안/닫기 기억/수동 재접근, Android 설치 이벤트와 iPhone 수동 추가 안내 구분. 멀티플레이·배포 제외.
+- 브랜치 codex/ten-players-install: 최신 origin/main145ae70에 앞선 기존 모바일 수정6개를 포함하는17b6283에서 분기하여 이전 작업 보존.
+- 작업1 진행: 설정/저장10명 허용 및11명 거절,10명 좌석 추가. 설정·복원·결정적 토너먼트10명 확대 테스트의 기존 제한 RED3 확인 후 전체 단위134 PASS/production build PASS. UI 확대 검증 진행 중.
+- 작업1 완료: 단위134 PASS, build/typecheck 및 src/e2e/tests lint PASS. Chromium/WebKit 준비·레이아웃38 PASS + 10명 전용 드래그/전체 회전/긴 이름·큰 숫자 디자인10 PASS. 320px~태블릿/가로/320x240 기본 화면 넘침 없음, 기존2~9명 배치 유지. 기록 스크롤 정책 미변경. 로컬 렌더 이미지 확인. 초기 이미지 캡처는 테스트 서버 종료 직후 연결 거절로 실패하여 실행 중인4173 preview에서 다시 캡처함. verification-ten-players{,-extra}.log.

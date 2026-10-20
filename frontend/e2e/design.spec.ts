@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 for (const width of [320, 360, 390, 430])
-  for (const count of [2, 3, 4, 5, 6, 7, 8, 9])
+  for (const count of [2, 3, 4, 5, 6, 7, 8, 9, 10])
     test(`디자인 ${width}px ${count}명`, async ({ page }) => {
       await page.setViewportSize({ width, height: 844 });
       let bounds: unknown;

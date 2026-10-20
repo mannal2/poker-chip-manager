@@ -35,7 +35,17 @@ export function LocalApp() {
       </main>
     );
   if (!location.pathname.startsWith('/local/')) return <AppRedirect />;
-  return <LocalGame />;
+  return <LocalWorkspace />;
+}
+function LocalWorkspace() {
+  const [recovery, setRecovery] = useState(0);
+  return (
+    <LocalGame
+      key={recovery}
+      restartOnMount={recovery > 0}
+      onRecover={() => setRecovery((version) => version + 1)}
+    />
+  );
 }
 function AppRedirect() {
   useEffect(() => {
@@ -43,7 +53,13 @@ function AppRedirect() {
   }, []);
   return <main className="phone home">앱 홈을 여는 중…</main>;
 }
-function LocalGame() {
+function LocalGame({
+  restartOnMount,
+  onRecover,
+}: {
+  restartOnMount: boolean;
+  onRecover: () => void;
+}) {
   const screen = useRef<HTMLElement>(null);
   useScreenFit(screen);
   const pwa = useLocalPWA();
@@ -58,6 +74,7 @@ function LocalGame() {
       index: number;
     }>({ key: '', winners: {}, index: 0 });
   const inGame = useRef(false);
+  const resumeRequested = useRef(false);
   const lock = useRef(false),
     toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [runtime] = useState(() => {
@@ -151,10 +168,35 @@ function LocalGame() {
     restoreVersion.current++;
     c.cancelRefresh();
   }, [c]);
+  const finish = useCallback(() => {
+    lock.current = false;
+    if (resumeRequested.current) {
+      resumeRequested.current = false;
+      void restore(true);
+    }
+  }, [restore]);
   useEffect(() => {
-    void restore();
+    if (restartOnMount) {
+      lock.current = true;
+      void c
+        .restart(defaultSettings)
+        .then(
+          () => {
+            inGame.current = true;
+            setApp({ game: c.state, status: 'ready', home: false, error: '' });
+            runtime.channel?.postMessage('changed');
+          },
+          (error) => setApp({ status: 'restoreError', error: String(error) }),
+        )
+        .finally(finish);
+    } else void restore();
     const resume = () => {
-      if (document.visibilityState === 'hidden' || lock.current || c.pending) return;
+      if (document.visibilityState === 'hidden') return;
+      if (lock.current) {
+        resumeRequested.current = true;
+        return;
+      }
+      resumeRequested.current = false;
       void restore(true);
     };
     document.addEventListener('visibilitychange', resume);
@@ -171,6 +213,7 @@ function LocalGame() {
         void restore();
       };
     return () => {
+      resumeRequested.current = false;
       cancelRestore();
       document.removeEventListener('visibilitychange', resume);
       window.removeEventListener('pageshow', resume);
@@ -179,25 +222,9 @@ function LocalGame() {
       runtime.repo.close();
       if (toastTimer.current) clearTimeout(toastTimer.current);
     };
-  }, [c, runtime, restore, cancelRestore]);
-  async function restartAfterFailure() {
-    if (lock.current || !confirm('현재 토너먼트와 전체 기록을 삭제하고 새 토너먼트를 시작할까요?'))
-      return;
-    lock.current = true;
-    restoreVersion.current++;
-    setApp({ status: 'loading', error: '' });
-    try {
-      runtime.repo.reconnect();
-      await c.restart(defaultSettings);
-      inGame.current = true;
-      setDialog('');
-      setApp({ game: c.state, status: 'ready', home: false, error: '' });
-      runtime.channel?.postMessage('changed');
-    } catch (error) {
-      setApp({ status: 'restoreError', error: String(error) });
-    } finally {
-      lock.current = false;
-    }
+  }, [c, runtime, restore, cancelRestore, restartOnMount, finish]);
+  function restartAfterFailure() {
+    if (confirm('현재 토너먼트와 전체 기록을 삭제하고 새 토너먼트를 시작할까요?')) onRecover();
   }
   async function dispatch(command: Request['command']) {
     const result = await c.dispatch(command);
@@ -240,7 +267,7 @@ function LocalGame() {
     } catch (e) {
       setApp({ status: 'storageError', error: String(e) });
     } finally {
-      lock.current = false;
+      finish();
     }
   }
   function saveSettings(settings: GameSettings, order?: string[]) {
@@ -303,7 +330,10 @@ function LocalGame() {
     });
   }
   async function newGame() {
-    if (lock.current || c.pending) return;
+    if (lock.current || c.pending) {
+      restartAfterFailure();
+      return;
+    }
     if (s && !confirm('현재 토너먼트와 전체 기록을 삭제하고 새 토너먼트를 준비할까요?')) return;
     await run(async () => {
       await c.takeControl();
@@ -487,6 +517,7 @@ function LocalGame() {
             <button
               onClick={() =>
                 void run(async () => {
+                  runtime.repo.reconnect();
                   if (c.pending) {
                     const r = await c.retry();
                     setApp({

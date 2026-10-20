@@ -444,3 +444,4 @@ A00~A11 단일 기기 구현과 자동 검증을 마쳤다. 멀티플레이·실
 ## 2026-10-20 — 저장 교착 수정
 
 - codex/storage-stall-recovery에서 수정 시작. 작업1: repository 모든 작업의8초 제한/활성 작업 취소/tx.abort/오류 정리 무한 대기 제거. 시간 초과 UNKNOWN과 원래 요청ID 보존, 저장 전·후 유실 재시도1회 반영 검증. 새 회귀9개/전체 단위143 PASS, build/typecheck/lint PASS, 기존 실제 저장·대기표시·복구20 PASS. 초기 RED 및 테스트 초기화·타입 오류 보완 경위는 해결 문서4절에 기록. 복구 UI/앱 복귀 작업은 다음 단계.
+- 작업2 완료: 명시적 새 토너먼트 복구 시 keyed LocalGame 교체로 기존 잠금/늦은 UI 응답 분리, old repository 작업 취소·연결 정리. 저장 중 resume은 완료/제한 후 재검증하고 미확정 ID 보존. invalid 연결 반복 재시도 RED1 후 새 연결 확보 보완. UI 초기 RED4 → 신규12/관련기존 포함34 PASS, 단위143/typecheck/lint PASS. 실패 교체의 전체 장부 snapshot 보존 확인. 전체 회귀/독립 리뷰는 다음 단계.

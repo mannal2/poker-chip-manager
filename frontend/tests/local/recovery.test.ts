@@ -64,3 +64,22 @@ it('이전 복원 응답이 새 복원 결과를 덮어쓰지 않는다', async 
   expect(controller.state?.tournamentId).toBe(saved.state.tournamentId);
   repo.close();
 });
+
+it('복구 교체 실패 후 같은 조작권으로 돌아오면 저장된 순번 다음부터 진행한다', async () => {
+  const repo = new LocalRepository('recovery-lease-sequence');
+  const previous = new LocalController(repo, 'same-screen');
+  await previous.takeControl();
+  await repo.initialize({ ...defaultSettings, button: 0 }, previous.lease!);
+  await previous.refresh();
+  expect((await previous.dispatch({ type: 'START_TOURNAMENT' })).status).toBe('APPLIED');
+  const recovered = new LocalController(repo, 'same-screen');
+  recovered.lease = { ...previous.lease! };
+  await recovered.refresh();
+  expect((await recovered.dispatch({ type: 'CALL' })).status).toBe('APPLIED');
+  expect(recovered.state!.pot).toBe(20);
+  await repo.takeControl('other-screen');
+  await recovered.refresh();
+  expect(recovered.lease).toBeNull();
+  expect((await repo.control())!.screenId).toBe('other-screen');
+  repo.close();
+});

@@ -13,7 +13,7 @@ import { getLegalActions } from '../game/transition';
 import { BetControls } from '../ui/BetControls';
 import type { GameCommand } from '../game/types';
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
-import { LocalRepository, type Request } from '../local/repository';
+import { LocalRepository, type Request, type ControlLease } from '../local/repository';
 import { LocalController } from '../local/controller';
 import { defaultSettings, validateSettings, type GameSettings } from '../game/settings';
 import { nextSeat } from '../game/positions';
@@ -35,7 +35,24 @@ export function LocalApp() {
       </main>
     );
   if (!location.pathname.startsWith('/local/')) return <AppRedirect />;
-  return <LocalGame />;
+  return <LocalWorkspace />;
+}
+function LocalWorkspace() {
+  const [recovery, setRecovery] = useState({
+    version: 0,
+    inGame: false,
+    lease: null as ControlLease | null,
+  });
+  return (
+    <LocalGame
+      key={recovery.version}
+      restartOnMount={recovery.version > 0}
+      recoveryContext={recovery}
+      onRecover={(inGame, lease) =>
+        setRecovery((previous) => ({ version: previous.version + 1, inGame, lease }))
+      }
+    />
+  );
 }
 function AppRedirect() {
   useEffect(() => {
@@ -43,11 +60,22 @@ function AppRedirect() {
   }, []);
   return <main className="phone home">앱 홈을 여는 중…</main>;
 }
-function LocalGame() {
+function LocalGame({
+  restartOnMount,
+  recoveryContext,
+  onRecover,
+}: {
+  restartOnMount: boolean;
+  recoveryContext: { inGame: boolean; lease: ControlLease | null };
+  onRecover: (inGame: boolean, lease: ControlLease | null) => void;
+}) {
   const screen = useRef<HTMLElement>(null);
   useScreenFit(screen);
   const pwa = useLocalPWA();
-  const [app, setApp] = useReducer(appReducer, initialAppState),
+  const [app, setApp] = useReducer(appReducer, {
+      ...initialAppState,
+      home: !recoveryContext.inGame,
+    }),
     [dialog, setDialog] = useState(''),
     [toast, setToast] = useState(''),
     [renameId, setRenameId] = useState(''),
@@ -57,7 +85,8 @@ function LocalGame() {
       winners: WinnerSelection;
       index: number;
     }>({ key: '', winners: {}, index: 0 });
-  const inGame = useRef(false);
+  const inGame = useRef(recoveryContext.inGame);
+  const resumeRequested = useRef(false);
   const lock = useRef(false),
     toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [runtime] = useState(() => {
@@ -71,9 +100,14 @@ function LocalGame() {
       () =>
         setApp({ status: 'restoreError', error: '저장소 연결이 변경되었습니다. 다시 열어주세요.' }),
     );
+    const controller = new LocalController(
+      repo,
+      recoveryContext.lease?.screenId ?? crypto.randomUUID(),
+    );
+    controller.lease = recoveryContext.lease ? { ...recoveryContext.lease } : null;
     return {
       repo,
-      controller: new LocalController(repo, crypto.randomUUID()),
+      controller,
       channel: typeof BroadcastChannel === 'undefined' ? null : new BroadcastChannel('poker-local'),
     };
   });
@@ -151,10 +185,35 @@ function LocalGame() {
     restoreVersion.current++;
     c.cancelRefresh();
   }, [c]);
+  const finish = useCallback(() => {
+    lock.current = false;
+    if (resumeRequested.current) {
+      resumeRequested.current = false;
+      void restore(true);
+    }
+  }, [restore]);
   useEffect(() => {
-    void restore();
+    if (restartOnMount) {
+      lock.current = true;
+      void c
+        .restart(defaultSettings)
+        .then(
+          () => {
+            inGame.current = true;
+            setApp({ game: c.state, status: 'ready', home: false, error: '' });
+            runtime.channel?.postMessage('changed');
+          },
+          (error) => setApp({ status: 'restoreError', error: String(error) }),
+        )
+        .finally(finish);
+    } else void restore();
     const resume = () => {
-      if (document.visibilityState === 'hidden' || lock.current || c.pending) return;
+      if (document.visibilityState === 'hidden') return;
+      if (lock.current) {
+        resumeRequested.current = true;
+        return;
+      }
+      resumeRequested.current = false;
       void restore(true);
     };
     document.addEventListener('visibilitychange', resume);
@@ -171,33 +230,19 @@ function LocalGame() {
         void restore();
       };
     return () => {
+      resumeRequested.current = false;
       cancelRestore();
       document.removeEventListener('visibilitychange', resume);
       window.removeEventListener('pageshow', resume);
       document.removeEventListener('resume', resume);
       runtime.channel?.close();
-      runtime.repo.close();
+      runtime.repo.dispose();
       if (toastTimer.current) clearTimeout(toastTimer.current);
     };
-  }, [c, runtime, restore, cancelRestore]);
-  async function restartAfterFailure() {
-    if (lock.current || !confirm('현재 토너먼트와 전체 기록을 삭제하고 새 토너먼트를 시작할까요?'))
-      return;
-    lock.current = true;
-    restoreVersion.current++;
-    setApp({ status: 'loading', error: '' });
-    try {
-      runtime.repo.reconnect();
-      await c.restart(defaultSettings);
-      inGame.current = true;
-      setDialog('');
-      setApp({ game: c.state, status: 'ready', home: false, error: '' });
-      runtime.channel?.postMessage('changed');
-    } catch (error) {
-      setApp({ status: 'restoreError', error: String(error) });
-    } finally {
-      lock.current = false;
-    }
+  }, [c, runtime, restore, cancelRestore, restartOnMount, finish]);
+  function restartAfterFailure() {
+    if (confirm('현재 토너먼트와 전체 기록을 삭제하고 새 토너먼트를 시작할까요?'))
+      onRecover(inGame.current, c.lease);
   }
   async function dispatch(command: Request['command']) {
     const result = await c.dispatch(command);
@@ -240,7 +285,7 @@ function LocalGame() {
     } catch (e) {
       setApp({ status: 'storageError', error: String(e) });
     } finally {
-      lock.current = false;
+      finish();
     }
   }
   function saveSettings(settings: GameSettings, order?: string[]) {
@@ -303,7 +348,10 @@ function LocalGame() {
     });
   }
   async function newGame() {
-    if (lock.current || c.pending) return;
+    if (lock.current || c.pending) {
+      restartAfterFailure();
+      return;
+    }
     if (s && !confirm('현재 토너먼트와 전체 기록을 삭제하고 새 토너먼트를 준비할까요?')) return;
     await run(async () => {
       await c.takeControl();
@@ -487,6 +535,7 @@ function LocalGame() {
             <button
               onClick={() =>
                 void run(async () => {
+                  runtime.repo.reconnect();
                   if (c.pending) {
                     const r = await c.retry();
                     setApp({

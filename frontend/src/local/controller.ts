@@ -38,6 +38,7 @@ export class LocalController {
       this.lease = null;
       this.pending = null;
     }
+    if (this.lease && c && !this.running && !this.pending) this.sequence = c.highWatermark;
   }
   cancelRefresh() {
     this.refreshVersion++;

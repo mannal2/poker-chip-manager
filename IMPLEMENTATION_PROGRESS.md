@@ -429,3 +429,24 @@ A00~A11 단일 기기 구현과 자동 검증을 마쳤다. 멀티플레이·실
 - 인계/계획 문서의 현행 인원 경계와 최대 전체 칩 총량을10명/10,000,000으로 동기화. 과거 시안9인 및 미래 멀티플레이 부하 이력은 변경하지 않음.
 - 최종 검증: 비PWA 전체319 PASS/1 기존 WebKit CDP 미지원 skip(4.3m, verification-ten-install-regression.log), 실제 SW/PWA14 PASS(30.5s, verification-ten-install-pwa.log). 고유 브라우저333 PASS/1 skip, 단위134 PASS. 저장 실패/권한 인수/전체 게임/기록 스크롤/기본 화면 스크롤 금지/기존 HTML 디자인 비교 유지.
 - 최종 production build/typecheck/lint PASS, dist/e2e 없음. 실제 SW 테스트 후 production 재빌드하고 http://127.0.0.1:4173/local/ preview 재실행/HTTP200 확인. 사용자 기존 탭의 이전 SW는 홈 앱 업데이트에서 적용 가능. 로컬 커밋만 수행하며 push/PR/merge/서버 배포 없음. 실제 OS 설치 실기기 검증은 남음.
+
+## 2026-10-20 — S23 PWA 저장 무한 대기 원인 조사
+
+- 바이인은 보류. codex/storage-stall-investigation에서 조사만 수행, 제품/배포/사용자 데이터 변경 없음. 상세 결과 docs/investigations/2026-10-20-storage-stall.md.
+- 배포 공개 JS main-DRr3kgqy SHA-256과 로컬 production 동일 확인. S23 설치 앱 캐시 버전과 최초 장애의 OS 트리거는 미확정.
+- 완료 알림 유실 주입으로 이름 저장60초 후에도 busy, resume 회복 불가, 연결 종료 후 복구 새 토너먼트 확인창0회, 새 창에서는 같은 이름 복원 및 게임 시작 정상 재현. Chromium/WebKit 6개 진단 통과. load/takeControl/initialize 무제한 대기와 restart 제한 반환의 차이4개 진단 통과. 이는 수정 PASS가 아닌 결함 존재 확인.
+- 원인: 일반 쓰기/조작권/초기화 제한 누락, load 오류 정리의 tx.done 무한 재대기, UI/controller 잠금으로 명시적 복구 차단, pending 중 앱 복귀 재검증 생략. 기존 단위134 PASS는 이 무응답 조합을 커버하지 못했음.
+- 초기 진단2건의 aria-disabled 클릭 자동 대기 실패를 기록하고 도구 보완 후6개 재검증. ignored .cache 진단 도구와 verification-storage-{investigation-all,deadlines}.log에 근거 보존. 실제 S23 OS 장애는 재현하지 않았으며 앱의 복구 결함과 구분.
+- 제품 수정 전 필요한 조건: 전체 작업 제한/abort 및 정리 유한화, 미확정 요청ID 보존 재시도, 명시적 재시작의 안전한 기존 작업 대체, 늦은 응답 세대 차단과 원자 교체 실패 원본 보존.
+
+- 해결 기록 정리: 조사 문서를 사용자 요청 순서(1 결함 현상 /2 원인 찾기·해당 코드 이해 /3 해결방법 구상 /4 해결)로 재구성. 코드별 역할·저장 흐름과 수정 작업별 상태/완료 기준/검증/커밋 기록 방식을 추가했다. 조사 근거와 한계는 보존하고 제품 수정은 미착수로 명시. 이번 변경은 문서만 해당.
+
+## 2026-10-20 — 저장 교착 수정
+
+- codex/storage-stall-recovery에서 수정 시작. 작업1: repository 모든 작업의8초 제한/활성 작업 취소/tx.abort/오류 정리 무한 대기 제거. 시간 초과 UNKNOWN과 원래 요청ID 보존, 저장 전·후 유실 재시도1회 반영 검증. 새 회귀9개/전체 단위143 PASS, build/typecheck/lint PASS, 기존 실제 저장·대기표시·복구20 PASS. 초기 RED 및 테스트 초기화·타입 오류 보완 경위는 해결 문서4절에 기록. 복구 UI/앱 복귀 작업은 다음 단계.
+- 작업2 완료: 명시적 새 토너먼트 복구 시 keyed LocalGame 교체로 기존 잠금/늦은 UI 응답 분리, old repository 작업 취소·연결 정리. 저장 중 resume은 완료/제한 후 재검증하고 미확정 ID 보존. invalid 연결 반복 재시도 RED1 후 새 연결 확보 보완. UI 초기 RED4 → 신규12/관련기존 포함34 PASS, 단위143/typecheck/lint PASS. 실패 교체의 전체 장부 snapshot 보존 확인. 전체 회귀/독립 리뷰는 다음 단계.
+- 추가 검증: native 요청을 이어 활성 상태인 부분 쓰기 트랜잭션의 시간 초과 abort 및 slot/events/control 원자 rollback, 동일 요청 재시도 HAND_START1개/POT15 확인. 전체 단위144 PASS/typecheck/lint PASS. 최종 전체 회귀/독립 리뷰 진행.
+
+- 검증 기록 정정: 추가 부분 쓰기 테스트의 최초 단위144/typecheck는 통과했으나 lint는 no-this-alias로 실패했다. 해당 출력을 확인하기 전에2f48ba0 커밋 및 lint PASS 기록을 진행한 실행 실수를 인정하고 정정한다. 테스트의 this 별칭을 lexical callback으로 바꾼 뒤 전체 단위144/typecheck/lint를 다시 실행하여 모두 PASS 확인. 제품 코드는 영향 없음.
+- 첫 전체 비PWA329 PASS/2 FAIL/1 skip에서 실패한 교체 뒤 기존 화면 복원 회귀 발견. 화면/유효 lease snapshot 보존, controller highWatermark 순번 재확인, 폐기 repository 재연결 차단으로 보완. 새 단위2 RED→GREEN, 전체 단위146/typecheck/lint PASS, 관련 브라우저16 PASS. 최초 실패를 기록하며 전체 회귀 재실행 예정.
+- 최종 완료: 전체 비PWA331 PASS/1 기존 WebKit CDP skip(4.3m) + 실제 SW/PWA14 PASS(30.3s), 고유 브라우저345 PASS/1 skip. 단위146 PASS/build/typecheck/lint PASS/dist/e2e 없음. 독립 리뷰(cebce76..ebc35b3) 후 전체 회귀에서 찾은 화면 복원2 FAIL은 새 단위 RED→GREEN 및 관련16 PASS/전체 재실행으로 보완. 첫 실패 및 lint 기록 정정 보존. 최종 production preview4173 재시작/HTTP200 확인, 실제 S23 OS 트리거/실기기 확인은 남음. push/PR/merge/서버 배포 없음.

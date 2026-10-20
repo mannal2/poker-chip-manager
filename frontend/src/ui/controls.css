@@ -192,3 +192,11 @@ fieldset {
   font-size: calc(12 * var(--u));
   margin-top: calc(6 * var(--u));
 }
+
+.install-actions {
+  display: flex;
+  gap: calc(8 * var(--u));
+}
+.install-actions > * {
+  flex: 1;
+}

@@ -1,6 +1,8 @@
 import { useScreenFit } from '../ui/useScreenFit';
 import { useLocalPWA } from '../pwa/register';
 import { UpdateNotice } from '../pwa/UpdateNotice';
+import { useInstallPrompt } from '../pwa/useInstallPrompt';
+import { InstallNotice } from '../pwa/InstallNotice';
 import { HistoryPanel } from '../ui/HistoryPanel';
 import { BlindSettings } from '../ui/BlindSettings';
 import { ManagerMenu } from '../ui/ManagerMenu';
@@ -78,6 +80,7 @@ function LocalGame() {
   const c = runtime.controller,
     s = app.game,
     busy = app.status !== 'ready';
+  const install = useInstallPrompt(app.home && !busy && !dialog);
   const draftScope = s?.tournamentId + ':' + c.lease?.generation;
   const legal = s ? getLegalActions(s) : null,
     draftAmount =
@@ -533,6 +536,7 @@ function LocalGame() {
             void pwa.check();
           }}
           hasUpdate={pwa.hasUpdate}
+          onInstall={install.available ? install.open : undefined}
         />
       ) : (
         s && (
@@ -851,6 +855,7 @@ function LocalGame() {
           />
         </Dialog>
       )}
+      <InstallNotice install={install} />
       {toast && (
         <div className="toast" role="status">
           {toast}

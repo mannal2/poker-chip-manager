@@ -1,7 +1,7 @@
 # 저장 무한 대기·복구 버튼 무반응 해결 기록
 
 - 작성일: 2026-10-20
-- 현재 단계: **저장소·복구·앱 복귀 수정 완료 / 전체 회귀·독립 리뷰 진행**
+- 현재 단계: **제품 수정·자동 회귀 완료 / S23 실기기 확인 필요**
 - 기록 순서: 결함 현상 → 원인 찾기·해당 코드 이해 → 해결방법 구상 → 해결.
 
 ## 1. 결함 현상
@@ -79,7 +79,7 @@ npx playwright test --config .cache/storage-investigation.config.ts
 npx vitest run --config .cache/storage-investigation-vitest.config.ts
 ```
 
-진단 테스트는 **현재 결함의 존재를 확인하는 도구**이며 수정 후 통과해야 할 정식 회귀 테스트와 별개다. 수정 시 원하는 복구 결과를 검증하는 회귀로 전환해야 한다.
+위 ignored 진단 도구는 **수정 전 결함의 존재를 확인했던 도구**다. 수정 후에는 tests/local/stalled-storage.test.ts, tests/local/recovery.test.ts, e2e/stalled-save.spec.ts의 정식 회귀로 정상 복구 결과를 검증한다.
 
 ### 2.4 공식 동작 참고
 
@@ -99,7 +99,7 @@ npx vitest run --config .cache/storage-investigation-vitest.config.ts
 
 ## 4. 해결
 
-**상태: 수정 진행 중.** 아래 작업은 실제 검증한 범위만 완료로 표시한다.
+**상태: 제품 수정 및 자동 검증 완료.** 실제 S23 최초 발생 조건과 OS 정지/복귀는 실기기 미검증으로 남긴다.
 
 | 작업 | 상태 | 완료 확인 기준 |
 |---|---|---|
@@ -107,7 +107,8 @@ npx vitest run --config .cache/storage-investigation-vitest.config.ts
 | 미확정 요청 재시도 | 완료(작업 1) | 요청 ID를 유지하고 베팅·블라인드·지급이 중복 반영되지 않음 |
 | 명시적 새 토너먼트 복구 | 완료(작업 2) | 오래된 작업 잠금을 대체하고, 교체 실패 시 기존 저장 보존 |
 | 앱 복귀·늦은 응답 처리 | 완료(작업 2) | 미확정 작업을 재검증하고 이전 응답이 복구 후 상태를 덮지 않음 |
-| 회귀·실기기 확인 | 미착수 | 재현 조건에서 정상 복구, 기존 게임·저장 테스트 통과, S23 확인 결과 구분 |
+| 자동 회귀 확인 | 완료 | 단위146, 전체 브라우저345 PASS/1 기존 미지원 skip |
+| S23 실기기 확인 | 미검증 | 배포 후 실제 설치 앱에서 이름 저장·앱 전환·복귀 및 복구 확인 |
 
 각 수정 작업은 다음 순서로 이 절에 누적 기록한다.
 
@@ -164,3 +165,12 @@ npx vitest run --config .cache/storage-investigation-vitest.config.ts
 - 이전 화면 repository는 dispose로 영구 폐기한다. 활성 대기를 취소하고 reconnect로도 다시 사용할 수 없어, 교체 실패로 이전 세대가 보존돼도 오래된 비동기 후속 작업이 새로 쓰지 못한다. 폐기 후 작업 거절도 새 단위 RED→GREEN 확인.
 - 단위146 PASS/typecheck/lint PASS. 실패했던 기존 회귀와 신규 무응답 복구16 PASS. 교체 실패 후 홈을 거치지 않고 기존 이름으로 게임 시작/POT15가 가능한지도 강화했다. 전체 장부 snapshot 보존 검사는 유지한다.
 - 근거: verification-storage-fix-regression.log(최초 실패 보존), verification-storage-fix-context-{red,green}.log. 제품 보완 후 전체 회귀를 다시 실행한다.
+
+### 최종 검증 및 완료 상태
+
+- 전체 비PWA 재실행331 PASS/1 기존 WebKit CDP 미지원 skip(4.3m). 최초329 PASS/2 FAIL/1 skip을 숨기지 않고 양 브라우저의 복구 실패 후 원래 화면 회귀를 보완한 뒤 다시 통과했다. verification-storage-fix-regression-final.log.
+- 실제 SW/PWA14 PASS(30.3s): 오프라인 실행·새로고침·업데이트·저장 보존·확인/적용 오류 회귀. verification-storage-fix-pwa-final.log. 고유 브라우저345 PASS/1 skip.
+- 단위15 files/146 PASS, production build/typecheck 및 src/e2e/tests lint PASS. dist/e2e 없음. 최종 JS main-Bjrb9rBC.js. 기존 UI 디자인·2~10명·이름 입력·키보드 배율·기록 내부 스크롤·블라인드/정산/되돌리기 유지.
+- 작업별 로컬 커밋:83039b4(저장 제한/취소),af83427(복구/복귀),2f48ba0(부분 쓰기 rollback 검증),ebc35b3(테스트 lint 및 검증 기록 정정),c42590e(교체 실패 후 기존 화면/조작권/순번 복원).
+- production 미리보기 http://127.0.0.1:4173/local/ 재시작/HTTP200 확인. 실제 서버 배포/push/PR/merge는 수행하지 않았다. 기존 탭의 이전 SW는 홈 앱 업데이트로 새 빌드 적용 가능.
+- 남은 확인은 실제 S23 PWA의 최초 장애 트리거와 OS 정지·복귀 조건이다. 모사 검증을 실기기 해결 보장으로 표현하지 않는다.

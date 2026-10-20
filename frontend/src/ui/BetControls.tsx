@@ -36,13 +36,6 @@ export function BetControls({
         </button>
       </div>
       <div className="bet-bottom">
-        <button
-          aria-disabled={busy}
-          aria-label="미확정 입력 초기화"
-          onClick={() => onAction('CLEAR')}
-        >
-          C
-        </button>
         {[5, 10, 50, 100].map((n) => (
           <button
             key={n}
@@ -56,6 +49,15 @@ export function BetControls({
             <span>{n}</span>
           </button>
         ))}
+      </div>
+      <div className="bet-confirm">
+        <button
+          aria-disabled={busy}
+          aria-label="미확정 입력 초기화"
+          onClick={() => onAction('CLEAR')}
+        >
+          C
+        </button>
         <button
           className="primary"
           aria-disabled={busy || !submitAllowed}

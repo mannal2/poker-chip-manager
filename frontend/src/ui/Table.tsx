@@ -60,7 +60,7 @@ export const seatCoordinates: Record<number, number[][]> = {
     [28, 17],
     [72, 17],
     [86, 39],
-    [86, 62],
+    [86, 60],
     [81, 81],
   ],
   9: [
@@ -117,8 +117,8 @@ export function Table({
   onRemove?: () => void;
   onRotate?: () => void;
   busy?: boolean;
-  onRename?: (id: string, name: string) => boolean;
-  onNameEditing?: (id: string, editing: boolean) => void;
+  onRename?: (id: string, name: string) => boolean | Promise<boolean>;
+  onNameEditing?: (id: string, editing: boolean, finish?: () => Promise<boolean>) => void;
   editScope?: string;
   handKey?: string;
   viewSeat?: number;
@@ -172,7 +172,7 @@ export function Table({
     if (!table) return;
     const fit = () =>
       table.querySelectorAll<HTMLElement>('.card-values>div').forEach((cell) => {
-        let size = 11;
+        let size = Number(getComputedStyle(table).getPropertyValue('--card-text'));
         cell.style.fontSize = `calc(${size} * var(--u))`;
         while (cell.scrollWidth > cell.clientWidth && size > 7) {
           size -= 0.25;
@@ -289,7 +289,7 @@ export function Table({
                   name={p.name}
                   busy={!!busy}
                   onSave={(name) => onRename(p.id, name)}
-                  onEditing={(editing) => onNameEditing?.(p.id, editing)}
+                  onEditing={(editing, finish) => onNameEditing?.(p.id, editing, finish)}
                 />
               ) : (
                 p.name

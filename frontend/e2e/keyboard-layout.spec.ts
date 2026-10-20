@@ -84,17 +84,23 @@ test('키보드 중 회전은 반영하고 일반 창 높이 변경도 맞춘다
 test('이름 입력과 블라인드 창도 키보드 중 크기·편집 유지', async ({ page }) => {
   await page.goto('/local/');
   await openLocal(page);
+  const nameFont = await page
+    .locator('.seat .name')
+    .first()
+    .evaluate((e) => getComputedStyle(e).fontSize);
   await page.getByRole('button', { name: 'P1 이름 수정', exact: true }).click();
   await visibleHeight(page, 300);
   await inputVisible(page, 'P1 이름 수정');
   await expect(page.getByRole('textbox', { name: 'P1 이름 수정', exact: true })).toHaveCSS(
     'font-size',
-    '11px',
+    nameFont,
   );
   await page.getByRole('textbox', { name: 'P1 이름 수정', exact: true }).fill('이름유지');
   await page.getByRole('textbox', { name: 'P1 이름 수정', exact: true }).press('Enter');
+  await expect(page.locator('main')).toHaveAttribute('aria-busy', 'false');
   await visibleHeight(page);
   await page.locator('.seat .card-values').first().click();
+  await expect(page.locator('main')).toHaveAttribute('aria-busy', 'false');
   await page.getByRole('button', { name: '게임 시작', exact: true }).click();
   await page.getByRole('button', { name: '다음 핸드 블라인드 설정', exact: true }).click();
   const before = await page.getByRole('dialog').boundingBox();

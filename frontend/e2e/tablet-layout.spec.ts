@@ -128,7 +128,10 @@ for (const [width, height] of [
       .getByRole('textbox', { name: 'P1 이름 수정', exact: true })
       .fill('가나다라마바사아자차');
     await page.getByRole('textbox', { name: 'P1 이름 수정', exact: true }).press('Enter');
+    await expect(page.locator('main')).toHaveAttribute('aria-busy', 'false');
     await page.locator('.seat .card-values').first().click();
+    await expect(page.locator('.seat').first().locator('.badge')).toContainText('D');
+    await expect(page.locator('main')).toHaveAttribute('aria-busy', 'false');
     await page.getByRole('button', { name: '게임 시작', exact: true }).click();
     await contained(page);
     for (let i = 0; i < 8; i++) {

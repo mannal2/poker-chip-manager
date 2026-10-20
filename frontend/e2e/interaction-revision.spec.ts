@@ -20,6 +20,117 @@ async function positions(page: Page) {
       ),
     );
 }
+for (const changed of [false, true])
+  test(`이름 편집에서 같은 누름으로 카드 드래그 전환 ${changed}`, async ({ page }) => {
+    await ready(page);
+    const before = await positions(page);
+    await page.getByRole('button', { name: 'P1 이름 수정', exact: true }).click();
+    const input = page.getByRole('textbox', { name: 'P1 이름 수정', exact: true });
+    if (changed) await input.fill('새이름');
+    const card = page.locator('.seat').first();
+    const a = (await card.locator('.card-values').boundingBox())!;
+    const b = (await page.getByRole('group', { name: 'P6', exact: true }).boundingBox())!;
+    await page.mouse.move(a.x + a.width / 2, a.y + a.height / 2);
+    await page.mouse.down();
+    await expect(card).toHaveClass(/drag-ready/);
+    await expect(page.locator('.inline-name input')).toHaveCount(0);
+    await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2, { steps: 12 });
+    await page.mouse.up();
+    await expect(page.locator('main')).toHaveAttribute('aria-busy', 'false');
+    expect((await positions(page))[changed ? '새이름' : 'P1']).toEqual(before.P6);
+    await page.reload();
+    await openLocal(page);
+    expect((await positions(page))[changed ? '새이름' : 'P1']).toEqual(before.P6);
+  });
+
+for (const releaseEarly of [false, true])
+  test(`이름 저장 대기 중 누름 유지와 해제 ${releaseEarly}`, async ({ page }) => {
+    await ready(page);
+    const before = await positions(page);
+    await page.getByRole('button', { name: 'P1 이름 수정', exact: true }).click();
+    await page.getByRole('textbox', { name: 'P1 이름 수정', exact: true }).fill('저장대기');
+    await page.evaluate(() => {
+      const original = IDBTransaction.prototype.addEventListener;
+      IDBTransaction.prototype.addEventListener = function (
+        type: string,
+        listener: EventListenerOrEventListenerObject,
+        options?: boolean | AddEventListenerOptions,
+      ) {
+        if (type === 'complete' && this.mode === 'readwrite' && listener) {
+          original.call(
+            this,
+            type,
+            (event) => {
+              setTimeout(() => {
+                if (typeof listener === 'function') listener.call(this, event);
+                else listener.handleEvent(event);
+              }, 600);
+            },
+            options,
+          );
+        } else original.call(this, type, listener, options);
+      };
+    });
+    const card = page.locator('.seat').first();
+    const a = (await card.locator('.card-values').boundingBox())!;
+    const b = (await page.getByRole('group', { name: 'P6', exact: true }).boundingBox())!;
+    await page.mouse.move(a.x + a.width / 2, a.y + a.height / 2);
+    await page.mouse.down();
+    await expect(page.locator('main')).toHaveAttribute('aria-busy', 'true');
+    await expect(card).not.toHaveClass(/drag-ready/);
+    if (releaseEarly) await page.mouse.up();
+    await expect(page.locator('main')).toHaveAttribute('aria-busy', 'false');
+    if (releaseEarly) {
+      await expect(card).not.toHaveClass(/pressing|drag-ready|dragging/);
+      expect((await positions(page)).저장대기).toEqual(before.P1);
+      await expect(page.locator('.seat .badge')).toHaveCount(0);
+    } else {
+      await expect(card).toHaveClass(/drag-ready/);
+      await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2, { steps: 12 });
+      await page.mouse.up();
+      await expect(page.locator('main')).toHaveAttribute('aria-busy', 'false');
+      expect((await positions(page)).저장대기).toEqual(before.P6);
+    }
+  });
+
+test('잘못된 이름은 좌석 이동 없이 수정 가능하게 유지', async ({ page }) => {
+  await ready(page);
+  const before = await positions(page);
+  await page.getByRole('button', { name: 'P1 이름 수정', exact: true }).click();
+  const input = page.getByRole('textbox', { name: 'P1 이름 수정', exact: true });
+  await input.fill('P2');
+  const r = (await page.locator('.seat').first().locator('.card-values').boundingBox())!;
+  await page.mouse.move(r.x + r.width / 2, r.y + r.height / 2);
+  await page.mouse.down();
+  await page.waitForTimeout(450);
+  await page.mouse.up();
+  await expect(page.locator('.seat.pressing,.seat.drag-ready,.seat.dragging')).toHaveCount(0);
+  await expect(input).toBeVisible();
+  await input.fill('수정완료');
+  await input.press('Enter');
+  await expect(page.getByRole('button', { name: '수정완료 이름 수정', exact: true })).toBeVisible();
+  expect((await positions(page)).수정완료).toEqual(before.P1);
+  await expect(page.locator('.seat .badge')).toHaveCount(0);
+});
+
+test('한글 조합 중 누름은 저장·이동하지 않고 조합 완료 후 확정 가능', async ({ page }) => {
+  await ready(page, 2);
+  await page.getByRole('button', { name: 'P1 이름 수정', exact: true }).click();
+  const input = page.getByRole('textbox', { name: 'P1 이름 수정', exact: true });
+  await input.dispatchEvent('compositionstart');
+  await input.fill('한글');
+  const r = (await page.locator('.seat').first().locator('.card-values').boundingBox())!;
+  await page.mouse.move(r.x + r.width / 2, r.y + r.height / 2);
+  await page.mouse.down();
+  await page.waitForTimeout(450);
+  await page.mouse.up();
+  await expect(input).toBeVisible();
+  await expect(page.locator('.seat.drag-ready,.seat.dragging')).toHaveCount(0);
+  await input.dispatchEvent('compositionend');
+  await input.press('Enter');
+  await expect(page.getByRole('button', { name: '한글 이름 수정', exact: true })).toBeVisible();
+});
+
 for (const rotated of [false, true])
   test(`원형 경계 삽입은 전체 회전 없이 인접 카드만 이동 ${rotated}`, async ({ page }) => {
     await ready(page);

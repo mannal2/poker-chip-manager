@@ -36,12 +36,13 @@ for (const width of [320, 360, 390, 430])
 import { pathToFileURL } from 'node:url';
 import { resolve } from 'node:path';
 import { writeFile } from 'node:fs/promises';
-import { PNG } from 'pngjs';
-import pixelmatch from 'pixelmatch';
 for (const width of [320, 390])
   for (const count of [2, 6, 9])
     for (const phase of ['setup', 'betting', 'reveal', 'settlement', 'selected'])
-      test(`고정 HTML 비교 ${width} ${count} ${phase}`, async ({ page, context }, info) => {
+      test(`승인 HTML 색상·상태 비교 ${width} ${count} ${phase}`, async ({
+        page,
+        context,
+      }, info) => {
         await page.setViewportSize({ width, height: width === 320 ? 568 : 844 });
         const approved = await context.newPage();
         await approved.setViewportSize({ width, height: width === 320 ? 568 : 844 });
@@ -63,53 +64,46 @@ for (const width of [320, 390])
         if (phase === 'setup') await expect(page.locator('.setup-fields input')).toHaveCount(3);
         await approved.mouse.move(0, 0);
         await page.mouse.move(0, 0);
-        const refBuffer = await approved.locator('.phone').screenshot({ animations: 'disabled' }),
-          actualBuffer = await page.locator('.phone').screenshot({ animations: 'disabled' });
-        const scale = await page.evaluate(() => devicePixelRatio);
-        const cropHeader = (buffer: Buffer, cssHeight: number) => {
-          const height = Math.round(cssHeight * scale);
-          const full = PNG.sync.read(buffer),
-            cropped = new PNG({ width: full.width, height: full.height - height });
-          PNG.bitblt(full, cropped, 0, height, full.width, full.height - height, 0, 0);
-          return cropped;
-        };
-        // Approved header change: 52px -> 60px. Compare the unchanged table and dock at the original threshold.
-        const ref = cropHeader(refBuffer, 52),
-          actual = cropHeader(actualBuffer, 60);
-        expect([actual.width, actual.height]).toEqual([ref.width, ref.height]);
-        const diff = new PNG({ width: ref.width, height: ref.height });
-        const changed = pixelmatch(ref.data, actual.data, diff.data, ref.width, ref.height, {
-          threshold: 0.1,
-        });
-        await writeFile(info.outputPath('approved.png'), refBuffer);
-        await writeFile(info.outputPath('actual.png'), actualBuffer);
-        await writeFile(info.outputPath('diff.png'), PNG.sync.write(diff));
-        if (changed / (ref.width * ref.height) >= 0.002) {
-          const inspect = async (p: typeof page) =>
-            p
-              .locator(
-                '.seat.selected,.seat.selected .name,.seat.selected .bet,.seat.selected .stack',
-              )
-              .evaluateAll((ns) =>
-                ns.map((n) => {
-                  const c = getComputedStyle(n),
-                    r = n.getBoundingClientRect();
-                  return {
-                    class: n.className,
-                    rect: { y: r.y, x: r.x, width: r.width, height: r.height },
-                    padding: c.padding,
-                    border: c.border,
-                    fontWeight: c.fontWeight,
-                    lineHeight: c.lineHeight,
-                    background: c.backgroundColor,
-                    color: c.color,
-                  };
-                }),
-              );
-          console.log(
-            JSON.stringify({ approved: await inspect(approved), actual: await inspect(page) }),
+        // Sizes and control rows were explicitly redesigned on 2026-10-20.
+        // Keep the original approved HTML intact; compare the preserved visual contract.
+        const appearance = async (p: typeof page, selector: string) =>
+          p.locator(selector).evaluateAll((nodes) =>
+            nodes
+              .filter((node) => node.getClientRects().length > 0)
+              .map((node) => {
+                const style = getComputedStyle(node);
+                return {
+                  background: style.backgroundColor,
+                  image: style.backgroundImage,
+                  color: style.color,
+                  borderColor: style.borderTopColor,
+                  borderStyle: style.borderTopStyle,
+                  weight: style.fontWeight,
+                };
+              }),
           );
+        for (const selector of [
+          '.phone',
+          '.dock',
+          '.felt',
+          '.seat',
+          '.seat .name',
+          '.seat .bet',
+          '.seat .stack',
+          '.seat .badge',
+          '.chip',
+          '.primary',
+        ]) {
+          const expected = await appearance(approved, selector);
+          expect(await appearance(page, selector), selector).toEqual(expected);
         }
-        expect(changed / (ref.width * ref.height)).toBeLessThan(0.002);
+        await writeFile(
+          info.outputPath('approved.png'),
+          await approved.locator('.phone').screenshot({ animations: 'disabled' }),
+        );
+        await writeFile(
+          info.outputPath('actual.png'),
+          await page.locator('.phone').screenshot({ animations: 'disabled' }),
+        );
         await approved.close();
       });

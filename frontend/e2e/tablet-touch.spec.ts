@@ -44,6 +44,36 @@ test('카드 기본 메뉴 차단, 이름 입력의 편집 메뉴는 유지', as
   await expect(card.locator('.name')).toHaveText('테스트');
 });
 
+test('Chrome 이름 입력 중 터치를 유지하면 같은 카드 드래그로 전환', async ({
+  page,
+  context,
+}, info) => {
+  test.skip(info.project.name !== 'chromium', 'CDP 실제 touch는 Chromium 전용');
+  await page.goto('/local/');
+  await openLocal(page);
+  await page.getByRole('button', { name: 'P1 이름 수정', exact: true }).tap();
+  await page.getByRole('textbox', { name: 'P1 이름 수정', exact: true }).fill('터치이름');
+  const card = page.locator('.seat[data-player="p0"]');
+  const a = (await card.locator('.card-values').boundingBox())!;
+  const b = (await page.locator('.seat').nth(1).boundingBox())!;
+  const before = await card.evaluate((e) => (e as HTMLElement).style.top);
+  const cdp = await context.newCDPSession(page);
+  await cdp.send('Input.dispatchTouchEvent', {
+    type: 'touchStart',
+    touchPoints: [{ x: a.x + a.width / 2, y: a.y + a.height / 2 }],
+  });
+  await expect(card).toHaveClass(/drag-ready/);
+  await cdp.send('Input.dispatchTouchEvent', {
+    type: 'touchMove',
+    touchPoints: [{ x: b.x + b.width / 2, y: b.y + b.height / 2 }],
+  });
+  await expect(card).toHaveClass(/dragging/);
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  await expect(page.locator('main')).toHaveAttribute('aria-busy', 'false');
+  await expect(card.locator('.name')).toHaveText('터치이름');
+  expect(await card.evaluate((e) => (e as HTMLElement).style.top)).not.toBe(before);
+});
+
 test('Chrome 실제 터치 조기 이동·길게 누르기·취소 후 탭과 순서 저장', async ({
   page,
   context,

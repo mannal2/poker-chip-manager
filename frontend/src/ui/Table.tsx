@@ -117,8 +117,8 @@ export function Table({
   onRemove?: () => void;
   onRotate?: () => void;
   busy?: boolean;
-  onRename?: (id: string, name: string) => boolean;
-  onNameEditing?: (id: string, editing: boolean) => void;
+  onRename?: (id: string, name: string) => boolean | Promise<boolean>;
+  onNameEditing?: (id: string, editing: boolean, finish?: () => Promise<boolean>) => void;
   editScope?: string;
   handKey?: string;
   viewSeat?: number;
@@ -289,7 +289,7 @@ export function Table({
                   name={p.name}
                   busy={!!busy}
                   onSave={(name) => onRename(p.id, name)}
-                  onEditing={(editing) => onNameEditing?.(p.id, editing)}
+                  onEditing={(editing, finish) => onNameEditing?.(p.id, editing, finish)}
                 />
               ) : (
                 p.name

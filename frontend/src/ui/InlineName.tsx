@@ -7,23 +7,31 @@ export function InlineName({
 }: {
   name: string;
   busy: boolean;
-  onSave: (name: string) => boolean;
-  onEditing: (editing: boolean) => void;
+  onSave: (name: string) => boolean | Promise<boolean>;
+  onEditing: (editing: boolean, finish?: () => Promise<boolean>) => void;
 }) {
   const [editing, setEditing] = useState(false),
     [draft, setDraft] = useState(name);
   const composing = useRef(false),
-    skipBlur = useRef(false);
+    skipBlur = useRef(false),
+    value = useRef(name),
+    pending = useRef<Promise<boolean> | null>(null);
   function close() {
     setEditing(false);
     onEditing(false);
   }
-  function save() {
-    if (skipBlur.current || composing.current || busy) return;
-    if (onSave(draft)) {
-      skipBlur.current = true;
-      close();
-    }
+  function save(): Promise<boolean> {
+    if (pending.current) return pending.current;
+    if (skipBlur.current || composing.current || busy) return Promise.resolve(false);
+    const result = onSave(value.current);
+    if (result === false) return Promise.resolve(false);
+    skipBlur.current = true;
+    close();
+    pending.current = Promise.resolve(result).then((saved) => {
+      pending.current = null;
+      return saved;
+    });
+    return pending.current;
   }
   return (
     <span
@@ -39,7 +47,10 @@ export function InlineName({
           value={draft}
           maxLength={10}
           onFocus={(e) => e.target.select()}
-          onChange={(e) => setDraft(e.target.value)}
+          onChange={(e) => {
+            value.current = e.target.value;
+            setDraft(value.current);
+          }}
           onCompositionStart={() => {
             composing.current = true;
           }}
@@ -65,9 +76,10 @@ export function InlineName({
           disabled={busy}
           onClick={() => {
             skipBlur.current = false;
+            value.current = name;
             setDraft(name);
             setEditing(true);
-            onEditing(true);
+            onEditing(true, save);
           }}
         >
           {name}

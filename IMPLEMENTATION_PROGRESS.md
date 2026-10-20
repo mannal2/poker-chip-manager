@@ -450,3 +450,9 @@ A00~A11 단일 기기 구현과 자동 검증을 마쳤다. 멀티플레이·실
 - 검증 기록 정정: 추가 부분 쓰기 테스트의 최초 단위144/typecheck는 통과했으나 lint는 no-this-alias로 실패했다. 해당 출력을 확인하기 전에2f48ba0 커밋 및 lint PASS 기록을 진행한 실행 실수를 인정하고 정정한다. 테스트의 this 별칭을 lexical callback으로 바꾼 뒤 전체 단위144/typecheck/lint를 다시 실행하여 모두 PASS 확인. 제품 코드는 영향 없음.
 - 첫 전체 비PWA329 PASS/2 FAIL/1 skip에서 실패한 교체 뒤 기존 화면 복원 회귀 발견. 화면/유효 lease snapshot 보존, controller highWatermark 순번 재확인, 폐기 repository 재연결 차단으로 보완. 새 단위2 RED→GREEN, 전체 단위146/typecheck/lint PASS, 관련 브라우저16 PASS. 최초 실패를 기록하며 전체 회귀 재실행 예정.
 - 최종 완료: 전체 비PWA331 PASS/1 기존 WebKit CDP skip(4.3m) + 실제 SW/PWA14 PASS(30.3s), 고유 브라우저345 PASS/1 skip. 단위146 PASS/build/typecheck/lint PASS/dist/e2e 없음. 독립 리뷰(cebce76..ebc35b3) 후 전체 회귀에서 찾은 화면 복원2 FAIL은 새 단위 RED→GREEN 및 관련16 PASS/전체 재실행으로 보완. 첫 실패 및 lint 기록 정정 보존. 최종 production preview4173 재시작/HTTP200 확인, 실제 S23 OS 트리거/실기기 확인은 남음. push/PR/merge/서버 배포 없음.
+
+## 2026-10-20 이름 편집 후 드래그 수정
+- 작업 브랜치: codex/readable-table-name-drag. 계획: docs/superpowers/plans/2026-10-20-readable-table-and-name-drag.md.
+- 이름 편집 중 첫 pointerdown이 blur보다 앞서 거부되는 문제를 재현. 편집 확정/저장 결과를 기다리는 포인터 세션으로 수정. 저장 차단은 유지하며 조기 해제/입력 오류/취소 시 이동하지 않음.
+- 관련 고유 브라우저 테스트 64 PASS/2 Chromium 전용 CDP의 WebKit skip, 단위146 PASS/typecheck/lint PASS. 최초 수정의 저장 재시도·키보드 회귀를 보완해 통과. 실제 터치 신규 테스트는 이동 후 DOM 순서 추적 오류를 ID 추적으로 수정해 별도 PASS.
+- 조사 과정: docs/investigations/2026-10-20-name-edit-drag.md. 실제 모바일 실기기 확인은 별도 필요.

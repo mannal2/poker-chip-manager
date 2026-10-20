@@ -88,6 +88,7 @@ function LocalGame({
   const inGame = useRef(recoveryContext.inGame);
   const resumeRequested = useRef(false);
   const lock = useRef(false),
+    finishName = useRef<(() => Promise<boolean>) | null>(null),
     toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [runtime] = useState(() => {
     const repo = new LocalRepository(
@@ -410,6 +411,7 @@ function LocalGame({
     (id) => {
       if (s) saveSettings({ ...s.settings, button: s.players.findIndex((p) => p.id === id) });
     },
+    () => finishName.current?.() ?? Promise.resolve(!busy && !lock.current),
   );
   function changeCount(add: boolean) {
     if (!s || busy || s.status !== 'setup') return;
@@ -681,7 +683,10 @@ function LocalGame({
               drag={s.status === 'setup' ? drag : undefined}
               busy={busy}
               editScope={draftScope}
-              onNameEditing={(id, editing) => setRenameId(editing ? draftScope + ':' + id : '')}
+              onNameEditing={(id, editing, finish) => {
+                finishName.current = editing ? finish! : null;
+                setRenameId(editing ? draftScope + ':' + id : '');
+              }}
               onRename={
                 s.status === 'setup'
                   ? (id, name) => {
@@ -694,9 +699,14 @@ function LocalGame({
                         notify(v.error);
                         return false;
                       }
-                      if (JSON.stringify(v.settings) !== JSON.stringify(s.settings))
-                        saveSettings(v.settings);
-                      return true;
+                      if (JSON.stringify(v.settings) === JSON.stringify(s.settings)) return true;
+                      return (async () => {
+                        let saved = false;
+                        await run(async () => {
+                          saved = await dispatch({ type: 'SETUP_UPDATE', settings: v.settings });
+                        });
+                        return saved;
+                      })();
                     }
                   : undefined
               }

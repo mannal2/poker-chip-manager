@@ -7,6 +7,7 @@ export function useSeatDrag(
   viewSeat: number,
   onCommit: (ids: string[]) => void,
   onTap?: (id: string) => void,
+  prepare?: () => Promise<boolean>,
 ) {
   const [order, setOrder] = useState<string[] | null>(null),
     [position, setPosition] = useState<{ id: string; x: number; y: number } | null>(null),
@@ -18,6 +19,7 @@ export function useSeatDrag(
     startY: number;
     timer: ReturnType<typeof setTimeout>;
     active: boolean;
+    waiting: boolean;
     order: string[];
     gap: number | null;
   } | null>(null);
@@ -52,11 +54,11 @@ export function useSeatDrag(
       window.removeEventListener('blur', cancel);
       clear();
     };
-  }, [key, enabled, viewSeat, clear]);
+  }, [key, viewSeat, clear]);
   function handlers(id: string) {
     return {
       onPointerDown: (e: PointerEvent<HTMLElement>) => {
-        if (!enabled || e.button !== 0 || !e.isPrimary) return;
+        if ((!enabled && !prepare) || e.button !== 0 || !e.isPrimary) return;
         suppressClick.current = false;
         setPressed(id);
         e.currentTarget.setPointerCapture(e.pointerId);
@@ -66,20 +68,36 @@ export function useSeatDrag(
           startY: e.clientY,
           timer: setTimeout(() => {}, 0),
           active: false,
+          waiting: !!prepare,
           order: ids,
           gap: null as number | null,
         };
         clearTimeout(s.timer);
-        s.timer = setTimeout(() => {
-          s.active = true;
-          setReady(id);
-          setOrder(ids);
-        }, 350);
         session.current = s;
+        const started = performance.now();
+        const begin = (allowed: boolean) => {
+          if (session.current !== s) return;
+          if (!allowed) {
+            suppressClick.current = true;
+            clear();
+            return;
+          }
+          s.waiting = false;
+          s.timer = setTimeout(
+            () => {
+              s.active = true;
+              setReady(id);
+              setOrder(ids);
+            },
+            Math.max(0, 350 - (performance.now() - started)),
+          );
+        };
+        if (prepare) void prepare().then(begin, () => begin(false));
+        else begin(true);
       },
       onPointerMove: (e: PointerEvent<HTMLElement>) => {
         const s = session.current;
-        if (!s || s.id !== id) return;
+        if (!s || s.id !== id || s.waiting || !enabled) return;
         if (!s.active) {
           if (Math.hypot(e.clientX - s.startX, e.clientY - s.startY) > 10) {
             if (e.pointerType === 'touch' || e.pointerType === 'pen') {
@@ -132,8 +150,9 @@ export function useSeatDrag(
       onPointerUp: (e: PointerEvent<HTMLElement>) => {
         const s = session.current,
           r = e.currentTarget.parentElement!.getBoundingClientRect();
-        if (s?.active) suppressClick.current = true;
+        if (s?.active || s?.waiting) suppressClick.current = true;
         if (
+          enabled &&
           s?.active &&
           e.clientX >= r.x &&
           e.clientX <= r.right &&

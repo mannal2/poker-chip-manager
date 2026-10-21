@@ -50,3 +50,34 @@ test('올인 승자 확정 후 종료 화면에서도 무르기', async ({ page 
     'true',
   );
 });
+
+test('무르기 저장 실패 후 재시도는 이전 승자 초안을 버린다', async ({ page }) => {
+  await start(page);
+  await page.getByRole('button', { name: '올인', exact: true }).click();
+  await page.getByRole('button', { name: 'BET', exact: true }).click();
+  await expect(page.locator('main')).toHaveAttribute('aria-busy', 'false');
+  await page.getByRole('button', { name: /^콜 / }).click();
+  await expect(page.locator('.settlement-count')).toBeVisible();
+  await page.locator('.seat').first().click();
+  await page.getByRole('button', { name: 'WIN', exact: true }).click();
+  await expect(page.locator('.summary')).toContainText('토너먼트 종료');
+  await page.evaluate(() => {
+    const original = IDBObjectStore.prototype.put;
+    (window as unknown as { restorePut: () => void }).restorePut = () => {
+      IDBObjectStore.prototype.put = original;
+    };
+    IDBObjectStore.prototype.put = function (...args) {
+      if (this.name === 'events') throw new DOMException('용량 부족', 'QuotaExceededError');
+      return original.apply(this, args);
+    };
+  });
+  await page.getByRole('button', { name: '무르기', exact: true }).click();
+  await expect(page.getByRole('alert')).toContainText('재시도');
+  await page.evaluate(() => (window as unknown as { restorePut: () => void }).restorePut());
+  await page.getByRole('button', { name: '재시도', exact: true }).click();
+  await expect(page.locator('.settlement-count')).toHaveText('0명 선택');
+  await page.locator('.seat').last().click();
+  await expect(page.locator('.settlement-count')).toHaveText('1명 선택');
+  await page.getByRole('button', { name: 'WIN', exact: true }).click();
+  await expect(page.locator('.summary')).toContainText('P2 우승');
+});

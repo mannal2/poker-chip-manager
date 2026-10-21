@@ -558,7 +558,12 @@ function LocalGame({
                 void run(async () => {
                   runtime.repo.reconnect();
                   if (c.pending) {
+                    const command = c.pending.command;
                     const r = await c.retry();
+                    if (r.status === 'APPLIED' && command.type === 'UNDO') {
+                      setWinnerDraft({ key: '', winners: {}, index: 0 });
+                      setToast('');
+                    }
                     setApp({
                       game: c.state,
                       status: !c.lease

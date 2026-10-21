@@ -23,7 +23,7 @@ export function BetControls({
           data-unavailable={!canUndo}
           onClick={() => onAction('UNDO')}
         >
-          베팅 취소
+          무르기
         </button>
         <button aria-disabled={busy} onClick={() => onAction(call ? 'CALL' : 'CHECK')}>
           {call ? `콜 ${call.toLocaleString('ko-KR')}` : '체크'}

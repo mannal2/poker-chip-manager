@@ -451,6 +451,16 @@ function LocalGame({
           ? '다른 화면에서 조작 중입니다.'
           : '저장 완료 또는 재시도를 기다려주세요.',
       );
+    if (action === 'UNDO') {
+      if (!s?.undo) return notify('무를 직전 행동이 없습니다.');
+      void run(async () => {
+        if (await dispatch({ type: 'UNDO' })) {
+          setWinnerDraft({ key: '', winners: {}, index: 0 });
+          setToast('');
+        }
+      });
+      return;
+    }
     if (!s || !legal?.actor) return notify('지금은 베팅 차례가 아닙니다.');
     if (action === 'CLEAR') {
       setDraft({ scope: draftScope, version: s.version, amount: 0 });
@@ -466,13 +476,6 @@ function LocalGame({
       setDraft({ scope: draftScope, version: s.version, amount: legal.maxAdditional });
       return;
     }
-    if (action === 'UNDO' && !s.undo) return notify('취소할 이전 베팅이 없습니다.');
-    if (
-      action === 'FOLD' &&
-      s.players.filter((p) => !p.folded && !p.eliminated).length === 2 &&
-      !confirm('마지막 폴드입니다. 남은 참가자에게 팟을 지급하고 다음 핸드로 진행할까요?')
-    )
-      return;
     let command: GameCommand = { type: action as GameCommand['type'] };
     if (action === 'SUBMIT') {
       if (
@@ -494,7 +497,18 @@ function LocalGame({
       }
     }
     void run(async () => {
-      await dispatch(command);
+      if (await dispatch(command)) {
+        if (action === 'FOLD' && s.players.filter((p) => !p.folded && !p.eliminated).length === 2) {
+          const winner = s.players.find(
+            (p) => !p.folded && !p.eliminated && p.id !== legal.actor!.id,
+          )!;
+          const returned = Math.max(
+            0,
+            winner.B - Math.max(...s.players.filter((p) => p.id !== winner.id).map((p) => p.B)),
+          );
+          notify(`${winner.name} · ${(s.pot - returned).toLocaleString('ko-KR')}칩 획득`);
+        }
+      }
     });
   }
   if (app.status === 'loading')
@@ -738,6 +752,15 @@ function LocalGame({
               }
             />
             <section className="dock">
+              {(currentPot || s.status === 'ended') && (
+                <button
+                  aria-disabled={busy || !s.undo}
+                  data-unavailable={!s.undo}
+                  onClick={() => bettingAction('UNDO')}
+                >
+                  무르기
+                </button>
+              )}
               {currentPot && (
                 <SettlementPanel
                   count={winners[currentPot.id].length}

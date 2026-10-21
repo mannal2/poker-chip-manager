@@ -232,21 +232,51 @@ export function Table({
               )}
             </>
           ) : (
-            <div
-              ref={boardRef}
-              className="board"
-              role="img"
-              data-street={street}
-              aria-label={`${phase === 'settlement' ? '쇼다운' : ({ PREFLOP: '프리플랍', FLOP: '플랍', TURN: '턴', RIVER: '리버' }[street] ?? street)} 보드 ${count}장`}
-            >
-              {Array.from({ length: count }, (_, i) => (
-                <span
-                  key={i}
-                  aria-hidden="true"
-                  className={`board-card ${phase !== 'settlement' && (count === 3 || i === count - 1) ? 'current' : ''}`}
-                />
-              ))}
-            </div>
+            <>
+              <div className="pot-strip">
+                {phase !== 'setup' && (
+                  <>
+                    {navigation && (
+                      <button aria-label="이전 팟" onClick={navigation.previous}>
+                        ‹
+                      </button>
+                    )}
+                    <button className="pot" onClick={onPot} aria-label="팟 상세">
+                      <small>{potLabel || 'POT'}</small>{' '}
+                      <strong>{pot.toLocaleString('ko-KR')}</strong>
+                      {(phase === 'settlement' || notice) && (
+                        <span>
+                          {phase === 'settlement' ? '승자 선택' : ''}
+                          {navigation && ` · ${navigation.index}/${navigation.count}`}
+                          {notice && ` · ${notice}`}
+                        </span>
+                      )}
+                    </button>
+                    {navigation && (
+                      <button aria-label="다음 팟" onClick={navigation.next}>
+                        ›
+                      </button>
+                    )}
+                  </>
+                )}
+              </div>
+
+              <div
+                ref={boardRef}
+                className="board"
+                role="img"
+                data-street={street}
+                aria-label={`${phase === 'settlement' ? '쇼다운' : ({ PREFLOP: '프리플랍', FLOP: '플랍', TURN: '턴', RIVER: '리버' }[street] ?? street)} 보드 ${count}장`}
+              >
+                {Array.from({ length: count }, (_, i) => (
+                  <span
+                    key={i}
+                    aria-hidden="true"
+                    className={`board-card ${phase !== 'settlement' && (count === 3 || i === count - 1) ? 'current' : ''}`}
+                  />
+                ))}
+              </div>
+            </>
           )}
         </div>
         {players.map((p, i) => {
@@ -310,32 +340,6 @@ export function Table({
             </Card>
           );
         })}
-      </div>
-      <div className="pot-strip" style={phase === 'setup' ? { visibility: 'hidden' } : undefined}>
-        {phase !== 'setup' && (
-          <>
-            {navigation && (
-              <button aria-label="이전 팟" onClick={navigation.previous}>
-                ‹
-              </button>
-            )}
-            <button className="pot" onClick={onPot} aria-label="팟 상세">
-              <small>{potLabel || 'POT'}</small> <strong>{pot.toLocaleString('ko-KR')}</strong>
-              {(phase === 'settlement' || notice) && (
-                <span>
-                  {phase === 'settlement' ? '승자 선택' : ''}
-                  {navigation && ` · ${navigation.index}/${navigation.count}`}
-                  {notice && ` · ${notice}`}
-                </span>
-              )}
-            </button>
-            {navigation && (
-              <button aria-label="다음 팟" onClick={navigation.next}>
-                ›
-              </button>
-            )}
-          </>
-        )}
       </div>
     </>
   );

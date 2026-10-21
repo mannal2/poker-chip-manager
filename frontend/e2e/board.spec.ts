@@ -22,14 +22,15 @@ test('보드 0/3/4/5장과 현재 카드 강조, 팟 위치·CLEAR·무르기', 
     await expect(page.locator('.board-card')).toHaveCount(count);
     await expect(page.locator('.board-card.current')).toHaveCount(active);
   }
-  await page.getByRole('button', { name: '무르기', exact: true }).click();
+  await page.getByRole('button', { name: '취소', exact: true }).click();
   await expect(page.locator('.board-card')).toHaveCount(4);
   const table = (await page.locator('.table').boundingBox())!,
     pot = (await page.locator('.pot-strip').boundingBox())!,
     controls = (await page.locator('.bet-top').boundingBox())!;
-  expect(pot.y).toBeGreaterThanOrEqual(table.y + table.height - 1);
+  expect(pot.y).toBeGreaterThan(table.y);
+  expect(pot.y + pot.height).toBeLessThan((await page.locator('.board').boundingBox())!.y);
   expect(pot.y + pot.height).toBeLessThanOrEqual(controls.y + 1);
-  await expect(page.locator('.table-center')).not.toContainText(/POT|FLOP|TURN|RIVER/);
+  await expect(page.locator('.table-center')).not.toContainText(/FLOP|TURN|RIVER/);
 });
 
 for (const [width, height] of [

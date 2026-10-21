@@ -757,18 +757,20 @@ function LocalGame({
               }
             />
             <section className="dock">
-              {(currentPot || s.status === 'ended') && (
+              {s.status === 'ended' && (
                 <button
                   aria-disabled={busy || !s.undo}
                   data-unavailable={!s.undo}
                   onClick={() => bettingAction('UNDO')}
                 >
-                  무르기
+                  취소
                 </button>
               )}
               {currentPot && (
                 <SettlementPanel
                   count={winners[currentPot.id].length}
+                  canUndo={!!s.undo}
+                  onUndo={() => bettingAction('UNDO')}
                   busy={busy}
                   onWin={() => {
                     if (busy) return notify('저장 완료 또는 재시도를 기다려주세요.');

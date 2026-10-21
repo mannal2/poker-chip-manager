@@ -508,3 +508,8 @@ A00~A11 단일 기기 구현과 자동 검증을 마쳤다. 멀티플레이·실
 - 독립 리뷰 Important1건(무르기 재시도 후 승자 초안 잔류)을 재현 후 수정·검증. 실제 Galaxy/iPhone 하드웨어와 배포 환경은 이번 작업에서 검증하지 않음.
 - 최신 preview http://127.0.0.1:4173/local/ 실행. main-gYfVBm6N.js / main-Bh8nEw-7.css, production dist에 e2e 미포함.
 - origin/main 533a844 기반 codex/board-single-undo-main. 작업별 로컬 커밋 완료. push/PR/merge/배포 없음.
+
+## 2026-10-21 후속 — 중앙 팟·고정 보드·정산 버튼
+- 기존 codex/board-single-undo-main에서 계속. 취소로 문구 변경, 팟을 중앙 보드 위로 이동. 보드136u 5자리 고정으로 세번째 카드가 항상 중앙.
+- 정산 취소/WIN을 베팅 첫 행동줄과 같은 위치·높이, WIN 우측3칸으로 변경. 보이지 않는 하단 버튼 영역 유지.
+- 신규 위치 검사 기존 RED2건 확인 → 관련 브라우저28건 PASS. 단위152건·전체 src/e2e/tests ESLint PASS. 칩 이동 작업은 다음 커밋으로 진행.

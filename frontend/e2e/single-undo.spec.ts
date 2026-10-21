@@ -21,10 +21,10 @@ test('마지막 폴드는 확인 없이 다음 핸드, 재접속 후 무르기 �
   expect(dialogs).toBe(0);
   await page.reload();
   await openLocal(page);
-  await page.getByRole('button', { name: '무르기', exact: true }).click();
+  await page.getByRole('button', { name: '취소', exact: true }).click();
   await expect(page.getByLabel('현재 토너먼트 기록', { exact: true })).toContainText('01');
   await expect(page.locator('.seat .stack').first()).toHaveText('995');
-  await expect(page.getByRole('button', { name: '무르기', exact: true })).toHaveAttribute(
+  await expect(page.getByRole('button', { name: '취소', exact: true })).toHaveAttribute(
     'aria-disabled',
     'true',
   );
@@ -42,10 +42,10 @@ test('올인 승자 확정 후 종료 화면에서도 무르기', async ({ page 
   await page.locator('.seat').first().click();
   await page.getByRole('button', { name: 'WIN', exact: true }).click();
   await expect(page.locator('.summary')).toContainText('토너먼트 종료');
-  await page.getByRole('button', { name: '무르기', exact: true }).click();
+  await page.getByRole('button', { name: '취소', exact: true }).click();
   await expect(page.locator('.settlement-count')).toBeVisible();
   await expect(page.locator('.seat .stack').first()).toHaveText('0');
-  await expect(page.getByRole('button', { name: '무르기', exact: true })).toHaveAttribute(
+  await expect(page.getByRole('button', { name: '취소', exact: true })).toHaveAttribute(
     'aria-disabled',
     'true',
   );
@@ -71,7 +71,7 @@ test('무르기 저장 실패 후 재시도는 이전 승자 초안을 버린다
       return original.apply(this, args);
     };
   });
-  await page.getByRole('button', { name: '무르기', exact: true }).click();
+  await page.getByRole('button', { name: '취소', exact: true }).click();
   await expect(page.getByRole('alert')).toContainText('재시도');
   await page.evaluate(() => (window as unknown as { restorePut: () => void }).restorePut());
   await page.getByRole('button', { name: '재시도', exact: true }).click();

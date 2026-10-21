@@ -500,3 +500,11 @@ A00~A11 단일 기기 구현과 자동 검증을 마쳤다. 멀티플레이·실
 - 독립 리뷰에서 UNDO 저장 실패 후 재시도 시 이전 승자 선택 초안이 남는 경로 발견. 후속 회귀 테스트와 별도 수정 커밋 예정.
 - 리뷰 후속: UNDO 저장 실패→재시도 성공 시 이전 승자 초안 초기화 누락을 Chromium/WebKit에서 RED 확인. 재시도 APPLIED/UNDO에서 초안·안내를 초기화하도록 수정. 무르기 브라우저6건·전체 단위152건·전체 소스 린트 PASS.
 - 전체 브라우저 검사에서 관리메뉴 테스트가 삭제된 마지막 폴드 확인창을 기대해 실패. 자동 다음 핸드·예약 소비·기록·홈 복원·새 토너먼트 확인을 검증하도록 갱신, Chromium/WebKit 2건 PASS. 제품 변경 없음. PWA14건 및 production build PASS, dist/e2e 미포함·4173 최신 빌드 HTTP200 확인.
+
+### 최종 검증 / 2026-10-21
+- 단위: 16파일152건 PASS. src/e2e/tests ESLint 및 TypeScript/production build PASS.
+- 전체 비-PWA 브라우저 실행: 372 PASS / 2 FAIL / 2 SKIP (4.5분). 실패2건은 폐기한 마지막 폴드 확인창을 기대하던 manager.spec의 구형 dialog 핸들러. 갱신 후 동일 Chromium/WebKit2건 별도 실행 PASS. 이후 제품 코드는 변경하지 않았고, 전체376건을 다시 한 명령으로 실행하지는 않았다.
+- 최종 시나리오 기준 비-PWA374건 PASS, PWA14건 PASS. WebKit2건은 Chrome CDP 터치 전용이라 제외(Chrome에서는 실행·통과).
+- 독립 리뷰 Important1건(무르기 재시도 후 승자 초안 잔류)을 재현 후 수정·검증. 실제 Galaxy/iPhone 하드웨어와 배포 환경은 이번 작업에서 검증하지 않음.
+- 최신 preview http://127.0.0.1:4173/local/ 실행. main-gYfVBm6N.js / main-Bh8nEw-7.css, production dist에 e2e 미포함.
+- origin/main 533a844 기반 codex/board-single-undo-main. 작업별 로컬 커밋 완료. push/PR/merge/배포 없음.

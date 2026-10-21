@@ -1,3 +1,4 @@
+import { useChipMotion } from '../ui/useChipMotion';
 import { useScreenFit } from '../ui/useScreenFit';
 import { useLocalPWA } from '../pwa/register';
 import { UpdateNotice } from '../pwa/UpdateNotice';
@@ -115,6 +116,14 @@ function LocalGame({
   const c = runtime.controller,
     s = app.game,
     busy = app.status !== 'ready';
+  const motion = useChipMotion(
+    screen,
+    `${app.home}/${s?.tournamentId}/${c.lease?.generation}/${app.status === 'controlLost'}`,
+  );
+  const pendingMotion = useRef<{
+    requestId: string;
+    prepared: ReturnType<typeof motion.prepare>;
+  } | null>(null);
   const install = useInstallPrompt(app.home && !busy && !dialog);
   const draftScope = s?.tournamentId + ':' + c.lease?.generation;
   const legal = s ? getLegalActions(s) : null,
@@ -246,7 +255,10 @@ function LocalGame({
       onRecover(inGame.current, c.lease);
   }
   async function dispatch(command: Request['command']) {
+    const prepared = c.state ? motion.prepare(c.state, command) : null;
     const result = await c.dispatch(command);
+    pendingMotion.current =
+      result.status === 'UNKNOWN' ? { requestId: result.requestId, prepared } : null;
     if (!c.lease) {
       setApp({
         game: c.state,
@@ -271,6 +283,7 @@ function LocalGame({
       notify(result.reason ?? '처리할 수 없습니다.');
       return false;
     }
+    if (result.resultVersion === result.state?.version) motion.play(prepared);
     runtime.channel?.postMessage('changed');
     return true;
   }
@@ -560,6 +573,13 @@ function LocalGame({
                   if (c.pending) {
                     const command = c.pending.command;
                     const r = await c.retry();
+                    if (
+                      pendingMotion.current?.requestId === r.requestId &&
+                      r.status === 'APPLIED' &&
+                      r.resultVersion === r.state?.version
+                    )
+                      motion.play(pendingMotion.current.prepared);
+                    if (r.status !== 'UNKNOWN') pendingMotion.current = null;
                     if (r.status === 'APPLIED' && command.type === 'UNDO') {
                       setWinnerDraft({ key: '', winners: {}, index: 0 });
                       setToast('');

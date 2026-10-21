@@ -216,3 +216,25 @@ fieldset {
   bottom: calc(100% + 6 * var(--u));
   width: 100%;
 }
+
+.chip-flight {
+  position: fixed;
+  z-index: 20;
+  pointer-events: none;
+  contain: layout style;
+}
+.chip-flight i {
+  position: absolute;
+  inset: 0;
+  border: 2px dashed #f0dfb0;
+  border-radius: 50%;
+  background: #a96037;
+  box-shadow: 0 1px 3px #0007;
+}
+.chip-flight i:nth-child(2) {
+  translate: 2px -2px;
+}
+.chip-flight i:nth-child(3) {
+  translate: 4px -4px;
+  background: #b8944a;
+}

@@ -14,7 +14,7 @@ export function SettlementPanel({
   return (
     <div className="settlement-controls">
       <div className="settlement-count" aria-live="polite">
-        {count}명 선택
+        {count > 0 ? `${count}명 선택` : '승자 선택'}
       </div>
       <div className="bet-top">
         <button aria-disabled={busy || !canUndo} data-unavailable={!canUndo} onClick={onUndo}>

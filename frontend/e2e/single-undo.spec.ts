@@ -75,7 +75,7 @@ test('무르기 저장 실패 후 재시도는 이전 승자 초안을 버린다
   await expect(page.getByRole('alert')).toContainText('재시도');
   await page.evaluate(() => (window as unknown as { restorePut: () => void }).restorePut());
   await page.getByRole('button', { name: '재시도', exact: true }).click();
-  await expect(page.locator('.settlement-count')).toHaveText('0명 선택');
+  await expect(page.locator('.settlement-count')).toHaveText('승자 선택');
   await page.locator('.seat').last().click();
   await expect(page.locator('.settlement-count')).toHaveText('1명 선택');
   await page.getByRole('button', { name: 'WIN', exact: true }).click();

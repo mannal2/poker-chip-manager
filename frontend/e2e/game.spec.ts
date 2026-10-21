@@ -149,7 +149,7 @@ test('A07 모든 스트리트·H20+60=80・WIN 다음 핸드', async ({ page }) 
   await actRound(page, 5);
   await actRound(page);
   await actRound(page);
-  await expect(page.locator('.settlement-count')).toHaveText('0명 선택');
+  await expect(page.locator('.settlement-count')).toHaveText('승자 선택');
   await page.locator('.seat').nth(0).click();
   await page.locator('.seat').nth(1).click();
   await expect(page.locator('.settlement-count')).toHaveText('2명 선택');
@@ -210,7 +210,7 @@ test('A07 side pot 모순 거절·초안 새로고침 폐기·동률', async ({ 
   await expect(page.locator('.meta')).toContainText('02');
   await page.reload();
   await openLocal(page);
-  await expect(page.locator('.settlement-count')).toHaveText('0명 선택');
+  await expect(page.locator('.settlement-count')).toHaveText('승자 선택');
   await page.locator('.seat').nth(2).click();
   await page.getByRole('button', { name: '다음 팟', exact: true }).click({ timeout: 5000 });
   await page.locator('.seat').nth(1).click();

@@ -526,3 +526,7 @@ A00~A11 단일 기기 구현과 자동 검증을 마쳤다. 멀티플레이·실
 - 일괄 테스트 파일 재쓰기에서 콘텐츠 차이 없는12파일이 modified로 표시됨. restore 일괄 요청은 자동 검토에서 거절. 각 HEAD/working 정규화 해시 동일함을 읽기 전용 확인 후, 파일 내용 변경 없이 동일 blob으로 인덱스 갱신. 사용자 변경 폐기 없음.
 - 최신 preview http://127.0.0.1:4173/local/ HTTP200. main-H9t9OSxP.js / main-DH0qAZDy.css, production e2e 경로 미포함.
 - 기존 codex/board-single-undo-main 유지. 작업별 로컬 커밋, push/PR/merge/배포 없음.
+
+## 2026-10-21 후속 — 취소 안내·승자 안내 통합
+- 취소 불가 안내를 '취소할 직전 행동이 없습니다.'로 변경. 승자 선택0명은 '승자 선택', 양수는 n명 선택. 중앙 중복 안내 제거, 사이드팟 번호/이동 유지.
+- 기존 화면 RED1 확인 후 선택/해제·정산 취소/재시도 브라우저8 PASS, 단위156 PASS, src/e2e/tests ESLint PASS.

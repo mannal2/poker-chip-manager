@@ -244,10 +244,9 @@ export function Table({
                     <button className="pot" onClick={onPot} aria-label="팟 상세">
                       <small>{potLabel || 'POT'}</small>{' '}
                       <strong>{pot.toLocaleString('ko-KR')}</strong>
-                      {(phase === 'settlement' || notice) && (
+                      {(navigation || notice) && (
                         <span>
-                          {phase === 'settlement' ? '승자 선택' : ''}
-                          {navigation && ` · ${navigation.index}/${navigation.count}`}
+                          {navigation && `${navigation.index}/${navigation.count}`}
                           {notice && ` · ${notice}`}
                         </span>
                       )}

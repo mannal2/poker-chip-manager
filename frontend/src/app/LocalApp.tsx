@@ -465,7 +465,7 @@ function LocalGame({
           : '저장 완료 또는 재시도를 기다려주세요.',
       );
     if (action === 'UNDO') {
-      if (!s?.undo) return notify('무를 직전 행동이 없습니다.');
+      if (!s?.undo) return notify('취소할 직전 행동이 없습니다.');
       void run(async () => {
         if (await dispatch({ type: 'UNDO' })) {
           setWinnerDraft({ key: '', winners: {}, index: 0 });

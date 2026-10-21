@@ -38,6 +38,12 @@ test('보드는 세번째 자리를 중심으로 고정, 팟은 위, 정산 취�
     await page.getByRole('button', { name: '체크', exact: true }).click();
     await expect(page.locator('main')).toHaveAttribute('aria-busy', 'false');
   }
+  await expect(page.locator('.settlement-count')).toHaveText('승자 선택');
+  await expect(page.locator('.table')).not.toContainText('승자 선택');
+  await page.locator('.seat').first().click();
+  await expect(page.locator('.settlement-count')).toHaveText('1명 선택');
+  await page.locator('.seat').first().click();
+  await expect(page.locator('.settlement-count')).toHaveText('승자 선택');
   const after = (await undo.boundingBox())!,
     win = (await page.getByRole('button', { name: 'WIN', exact: true }).boundingBox())!;
   for (const key of ['x', 'y', 'width', 'height'] as const)

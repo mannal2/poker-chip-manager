@@ -36,9 +36,10 @@ test('초안은 이동 없음, 납부는 카드에서 팟, 취소·회전·복�
       (e.getAnimations()[0].effect as KeyframeEffect).getKeyframes().at(-1)!.transform as string,
   );
   expect(end).toContain('translate');
+  expect(await flight.evaluate((e) => e.getAnimations()[0].effect!.getTiming().duration)).toBe(720);
   expect(target.width).toBeGreaterThan(0);
   const destination = await flight.evaluate((e) => {
-    e.getAnimations()[0].currentTime = 359.99;
+    e.getAnimations()[0].currentTime = 719.99;
     const r = e.getBoundingClientRect();
     return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
   });
@@ -123,7 +124,7 @@ test('반환 후 지급 순서, 애니메이션 완료 제거와 홈 이탈 정�
   await expect(returns).toHaveCount(1);
   await expect(payouts).toHaveCount(1);
   expect(await returns.evaluate((e) => e.getAnimations()[0].effect!.getTiming().delay)).toBe(0);
-  expect(await payouts.evaluate((e) => e.getAnimations()[0].effect!.getTiming().delay)).toBe(360);
+  expect(await payouts.evaluate((e) => e.getAnimations()[0].effect!.getTiming().delay)).toBe(720);
   await page
     .locator('.chip-flight')
     .evaluateAll((es) => es.forEach((e) => e.getAnimations().forEach((a) => a.finish())));

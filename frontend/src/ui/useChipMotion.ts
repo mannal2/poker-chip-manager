@@ -109,7 +109,7 @@ export function useChipMotion(screen: RefObject<HTMLElement | null>, scope: stri
             opacity: 0,
           },
         ],
-        { duration: 360, delay: move.delay, easing: 'ease-in-out', fill: 'both' },
+        { duration: 720, delay: move.delay, easing: 'ease-in-out', fill: 'both' },
       );
       animation.onfinish = () => {
         node.remove();

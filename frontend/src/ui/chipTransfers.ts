@@ -31,7 +31,7 @@ export function chipTransfers(state: GameState, command: GameCommand): ChipTrans
         if (amount > 0) group.push({ from: 'pot', to, amount, delay, kind: 'payout' });
     if (group.length) {
       moves.push(...group);
-      delay += 360;
+      delay += 720;
     }
   }
   return moves;

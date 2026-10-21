@@ -12,7 +12,7 @@ it('실제 납부만 이동하고 체크·취소·새 핸드 블라인드는 생
 it('마지막 폴드는 미콜 반환 후 지급, 새 블라인드 이동 없음', () => {
   expect(chipTransfers(fixtureState(2), { type: 'FOLD' })).toEqual([
     { from: 'pot', to: 'p1', amount: 5, delay: 0, kind: 'return' },
-    { from: 'pot', to: 'p1', amount: 10, delay: 360, kind: 'payout' },
+    { from: 'pot', to: 'p1', amount: 10, delay: 720, kind: 'payout' },
   ]);
 });
 it('공동 우승 지급은 모든 수령자에게 동시에', () => {

@@ -170,3 +170,35 @@ it('최신 규칙과 다른 형식·손상 장부는 쓰기 전에 거절한다'
   ])
     expect(() => validateStored(saved)).toThrow();
 });
+
+it('자동 다음 핸드 저장·연결 재개 후 1회 무르기와 기록을 원자적으로 복원', async () => {
+  const name = `undo-reload-${n++}`;
+  let r = new LocalRepository(name);
+  let lease = await r.takeControl('a');
+  await r.initialize({ ...defaultSettings, button: 0 }, lease);
+  let sequence = 0;
+  async function send(command: GameCommand) {
+    const state = (await r.load())!.state;
+    const result = await r.dispatch({
+      requestId: `undo-${++sequence}`,
+      sequence,
+      lease,
+      expectedVersion: state.version,
+      tournamentId: state.tournamentId,
+      command,
+    });
+    expect(result.status).toBe('APPLIED');
+    return result.state!;
+  }
+  const before = await send({ type: 'START_TOURNAMENT' });
+  await send({ type: 'FOLD' });
+  r.close();
+  r = new LocalRepository(name);
+  lease = await r.takeControl('b');
+  sequence = 0;
+  expect((await r.load())!.state.hand?.number).toBe(2);
+  const result = await send({ type: 'UNDO' });
+  expect(result).toEqual({ ...before, version: result.version, undo: null });
+  expect((await r.load())!.state.undo).toBeNull();
+  r.close();
+});

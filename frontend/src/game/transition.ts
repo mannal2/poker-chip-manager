@@ -280,19 +280,20 @@ export function transition(
       );
       s.settings.viewSeat = cmd.viewSeat!;
     } else {
-      requireRule(s.status === 'playing');
+      requireRule(s.status === 'playing' || (cmd.type === 'UNDO' && s.status === 'ended'));
       const h = s.hand!;
       if (cmd.type === 'UNDO') {
         requireRule(s.undo, 'UNDO_LOCKED');
-        const pending = s.pendingBlinds,
+        const pending = s.hand?.id === s.undo.hand?.id ? s.pendingBlinds : s.undo.pendingBlinds,
           view = s.settings.viewSeat,
           version = s.version;
-        Object.assign(s, s.undo);
+        const { eventIds, ...snapshot } = s.undo;
+        Object.assign(s, snapshot);
         s.version = version;
         s.pendingBlinds = pending;
         s.settings.viewSeat = view;
         s.undo = null;
-        emit(s, c, events, 'UNDO', {});
+        emit(s, c, events, 'UNDO', eventIds ? { eventIds } : {});
       } else if (cmd.type === 'BEGIN_REVEAL') {
         requireRule(h.phase === 'revealPending');
         s.undo = null;
@@ -310,6 +311,7 @@ export function transition(
           'INVALID_BLINDS',
         );
         s.pendingBlinds = { sb: cmd.sb!, bb: cmd.bb! };
+        if (s.undo) s.undo.pendingBlinds = structuredClone(s.pendingBlinds);
         emit(s, c, events, 'BLINDS_SCHEDULED', s.pendingBlinds);
       } else if (cmd.type === 'SETTLE_HAND') {
         requireRule(h.phase === 'settlement' && cmd.winners);
@@ -324,11 +326,6 @@ export function transition(
         const legal = getLegalActions(s),
           p = legal.actor;
         requireRule(p && (!cmd.playerId || cmd.playerId === p.id));
-        const snapshot = structuredClone(s);
-        snapshot.undo = null;
-        const { undo: ignored, ...undo } = snapshot;
-        void ignored;
-        s.undo = undo;
         let amount = 0;
         if (cmd.type === 'CHECK') requireRule(legal.canCheck);
         else if (cmd.type === 'CALL') {
@@ -374,6 +371,11 @@ export function transition(
         emit(s, c, events, cmd.type, { playerId: p.id, additional: amount });
         resolveRound(s, s.players.indexOf(p), c, events);
       }
+    }
+    if (['CHECK', 'CALL', 'BET', 'RAISE', 'FOLD', 'ALL_IN', 'SETTLE_HAND'].includes(cmd.type)) {
+      const { undo: ignored, ...snapshot } = structuredClone(input);
+      void ignored;
+      s.undo = { ...snapshot, eventIds: events.map((event) => event.id) };
     }
     s.version = input.version + 1;
     assertInvariants(s);

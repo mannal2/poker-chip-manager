@@ -104,9 +104,16 @@ export function validateStored(value: StoredGame): void {
     if (
       old.version >= s.version ||
       old.tournamentId !== s.tournamentId ||
-      old.hand?.id !== s.hand?.id ||
-      s.hand?.phase === 'settlement' ||
-      s.hand?.phase === 'revealed'
+      old.status !== 'playing' ||
+      old.initialTotal !== s.initialTotal ||
+      old.players.map((p) => p.id).join(',') !== s.players.map((p) => p.id).join(',') ||
+      !old.hand ||
+      !s.hand ||
+      ![old.hand.number, old.hand.number + 1].includes(s.hand.number) ||
+      (s.undo.eventIds !== undefined &&
+        (!Array.isArray(s.undo.eventIds) ||
+          !s.undo.eventIds.length ||
+          s.undo.eventIds.some((id) => typeof id !== 'string' || !id)))
     )
       throw Error('저장 취소 경계가 손상되었습니다.');
   }

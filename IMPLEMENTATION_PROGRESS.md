@@ -517,3 +517,12 @@ A00~A11 단일 기기 구현과 자동 검증을 마쳤다. 멀티플레이·실
 - 칩 이동: 순수 규칙 이벤트의 실제 납부·RETURN·PAYOUT으로 계산, 정산 직전 좌표 확보. 저장 성공/재시도 APPLIED에서만360ms 재생. 공동 수령은 동시, 반환 후 지급 순서 유지, 새 블라인드 생략.
 - 취소/화면 이탈/회전/백그라운드/동작 줄이기 변경은 효과와 대기 좌표를 무효화. 기본 입력 차단 없음.
 - 검증: 금액 계산 RED4 → GREEN4, 실제 UI RED1 → 납부/공동지급/실패재시도/동작줄이기/도착좌표/제거/홈이탈 브라우저8 PASS. 전체 단위156 PASS, 전체 src/e2e/tests ESLint PASS.
+
+### 후속 최종 검증
+- 전체 비-PWA 브라우저384 PASS / Chrome CDP 전용 WebKit2 SKIP / 실패0 (4.8분). 단위17파일156 PASS. src/e2e/tests ESLint·TypeScript·production build PASS.
+- PWA 최초 실행은4173 서버 중단에 따른 ERR_CONNECTION_REFUSED14건. 제품 결함으로 간주하지 않고 서버 재실행 후 전체14건 PASS(28초).
+- 독립 리뷰 Important/Critical 없음. 경미한 검토 사항: viewport 변경 없는 내용 기반 재배치에는 좌표 재수집하지 않음. 이번 효과는 승인된 동작대로 확정 직전 좌표를 보존하며 viewport/이탈 변화는 epoch로 무효화.
+- 실제 phone 베팅/승자 화면 스크린샷 확인. 실물 Galaxy/iPhone 하드웨어 검증·배포는 수행하지 않음.
+- 일괄 테스트 파일 재쓰기에서 콘텐츠 차이 없는12파일이 modified로 표시됨. restore 일괄 요청은 자동 검토에서 거절. 각 HEAD/working 정규화 해시 동일함을 읽기 전용 확인 후, 파일 내용 변경 없이 동일 blob으로 인덱스 갱신. 사용자 변경 폐기 없음.
+- 최신 preview http://127.0.0.1:4173/local/ HTTP200. main-H9t9OSxP.js / main-DH0qAZDy.css, production e2e 경로 미포함.
+- 기존 codex/board-single-undo-main 유지. 작업별 로컬 커밋, push/PR/merge/배포 없음.

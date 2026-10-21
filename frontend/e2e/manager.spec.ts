@@ -10,17 +10,13 @@ async function two(page: import('@playwright/test').Page) {
 async function menu(page: import('@playwright/test').Page) {
   await page.getByRole('button', { name: '관리 메뉴', exact: true }).click();
 }
-test('A08 블라인드 예약·마지막 fold 확인·기록·홈 복원·새 게임 재사용', async ({ page }) => {
+test('A08 블라인드 예약·마지막 fold 자동 진행·기록·홈 복원·새 게임 재사용', async ({ page }) => {
   await two(page);
   await page.getByRole('button', { name: '다음 핸드 블라인드 설정', exact: true }).click();
   await page.getByLabel('다음 SB', { exact: true }).fill('10');
   await page.getByLabel('다음 BB', { exact: true }).fill('20');
   await page.getByRole('button', { name: '예약', exact: true }).click();
   await expect(page.locator('#blinds')).toHaveText('5 / 10 → 10 / 20');
-  page.once('dialog', (d) => d.dismiss());
-  await page.getByRole('button', { name: '폴드', exact: true }).click();
-  await expect(page.locator('.pot strong')).toHaveText('15');
-  page.once('dialog', (d) => d.accept());
   await page.getByRole('button', { name: '폴드', exact: true }).click();
   await expect(page.locator('.meta')).toContainText('02');
   await expect(page.locator('#blinds')).toHaveText('10 / 20');

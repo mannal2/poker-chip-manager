@@ -56,7 +56,7 @@ export function BetControls({
           aria-label="미확정 입력 초기화"
           onClick={() => onAction('CLEAR')}
         >
-          C
+          CLEAR
         </button>
         <button
           className="primary"

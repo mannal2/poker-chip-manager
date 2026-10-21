@@ -289,7 +289,54 @@ button.card-values {
   color: inherit;
 }
 
-.stage-label:not(:empty) {
-  display: inline-block;
-  transform-origin: center;
+.board {
+  display: flex;
+  justify-content: center;
+  gap: calc(4 * var(--u));
+  width: calc(136 * var(--u));
+  height: calc(38 * var(--u));
+}
+.board-card {
+  flex: none;
+  width: calc(24 * var(--u));
+  height: calc(36 * var(--u));
+  border: calc(1.5 * var(--u)) solid #6d8073;
+  border-radius: calc(4 * var(--u));
+  background: linear-gradient(145deg, #344a3b, #1b3023);
+  box-shadow: 0 calc(2 * var(--u)) calc(4 * var(--u)) #0003;
+}
+.board-card.current {
+  border-color: var(--gold);
+  box-shadow: 0 0 calc(6 * var(--u)) #e2bd7533;
+}
+.pot-strip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: calc(36 * var(--u));
+  flex: none;
+  gap: calc(8 * var(--u));
+}
+.pot-strip .pot {
+  position: static;
+  transform: none;
+  width: auto;
+  min-height: 0;
+  line-height: calc(18 * var(--u));
+}
+.pot-strip .pot strong {
+  display: inline;
+  font-size: calc(19 * var(--u));
+  letter-spacing: 0;
+}
+.pot-strip .pot span {
+  display: block;
+  line-height: calc(12 * var(--u));
+}
+.pot-strip > button:not(.pot) {
+  min-height: calc(32 * var(--u));
+  width: calc(32 * var(--u));
+  padding: 0;
+  border: 0;
+  background: transparent;
 }

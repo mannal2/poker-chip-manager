@@ -107,7 +107,7 @@ test('이름 저장 응답 유실은 제한 후 재시도·핸드 시작 1회·�
   await page.getByRole('button', { name: '게임 시작', exact: true }).click();
   await expect(page.locator('.pot strong')).toHaveText('15');
   await releaseEvents(page);
-  await expect(page.locator('.stage-label')).toHaveText('PREFLOP');
+  await expect(page.locator('.board')).toHaveAttribute('data-street', 'PREFLOP');
   await page.reload();
   await openLocal(page);
   await expect(page.locator('.pot strong')).toHaveText('15');

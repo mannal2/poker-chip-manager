@@ -38,7 +38,7 @@ export interface GameState {
   hand: Hand | null;
   pot: number;
   pendingBlinds: { sb: number; bb: number } | null;
-  undo: Omit<GameState, 'undo'> | null;
+  undo: (Omit<GameState, 'undo'> & { eventIds?: string[] }) | null;
 }
 export type WinnerSelection = Record<string, string[]>;
 export type GameCommand = {

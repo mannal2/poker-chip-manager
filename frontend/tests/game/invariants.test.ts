@@ -23,7 +23,7 @@ it('재정렬·인원 축소 후 추가해도 ID 유일성을 보존한다', () 
   expect(new Set(s.players.map((p) => p.id)).size).toBe(3);
   expect(s.players.slice(0, 2).map((p) => p.id)).toEqual(['p2', 'p1']);
 });
-it('반환을 포함한 자동 정산 진입은 undo 잠금과 반환을 보존한다', () => {
+it('반환을 포함한 자동 정산 진입은 undo snapshot과 반환을 보존한다', () => {
   let s = fixtureState(3);
   s.players[0].stack = 100;
   s.players[1].stack = 60;
@@ -34,8 +34,8 @@ it('반환을 포함한 자동 정산 진입은 undo 잠금과 반환을 보존�
   s = apply(s, { type: 'CALL' });
   expect(s.players[0].H).toBe(65);
   expect(s.hand!.phase).toBe('settlement');
-  expect(s.undo).toBeNull();
-  expect(transition(s, { type: 'UNDO' }, ctx).ok).toBe(false);
+  expect(s.undo).not.toBeNull();
+  expect(transition(s, { type: 'UNDO' }, ctx).ok).toBe(true);
 });
 for (const amount of [-5, 0, 1.5, 7, 1005])
   it(`잘못된 베팅 ${amount} 입력 불변`, () => {

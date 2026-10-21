@@ -60,7 +60,8 @@ test('단계 강조는 시작·전환에만 실행하고 같은 단계 행동으
     monitor.stageAnimations = [];
     const original = Element.prototype.animate;
     Element.prototype.animate = function (frames, options) {
-      if (this.matches('.stage-label')) monitor.stageAnimations.push(this.textContent ?? '');
+      if (this.matches('.board-card'))
+        monitor.stageAnimations.push(this.parentElement?.getAttribute('data-street') ?? '');
       return original.call(this, frames, options);
     };
   });
@@ -69,23 +70,31 @@ test('단계 강조는 시작·전환에만 실행하고 같은 단계 행동으
   await idle(page);
   const calls = () =>
     page.evaluate(() => (window as unknown as { stageAnimations: string[] }).stageAnimations);
-  await expect.poll(calls).toEqual(['PREFLOP']);
+  await expect.poll(calls).toEqual([]);
   await act(page);
-  expect(await calls()).toEqual(['PREFLOP']);
+  expect(await calls()).toEqual([]);
   await act(page);
-  await expect.poll(calls).toEqual(['PREFLOP', 'FLOP']);
+  await expect.poll(calls).toEqual(['FLOP', 'FLOP', 'FLOP']);
   await act(page);
-  expect(await calls()).toEqual(['PREFLOP', 'FLOP']);
+  expect(await calls()).toEqual(['FLOP', 'FLOP', 'FLOP']);
   await page.reload();
   await openLocal(page);
-  expect(await page.locator('.stage-label').evaluate((e) => e.getAnimations().length)).toBe(0);
+  expect(
+    await page
+      .locator('.board-card')
+      .evaluateAll((es) => es.flatMap((e) => e.getAnimations()).length),
+  ).toBe(0);
 });
 test('동작 줄이기에서는 단계 강조 애니메이션 생략', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await start(page);
   await act(page);
   await act(page);
-  expect(await page.locator('.stage-label').evaluate((e) => e.getAnimations().length)).toBe(0);
+  expect(
+    await page
+      .locator('.board-card')
+      .evaluateAll((es) => es.flatMap((e) => e.getAnimations()).length),
+  ).toBe(0);
 });
 
 test('페이지 드래그 텍스트 선택 차단, 설정·이름 입력 선택 유지', async ({ page }) => {
@@ -131,35 +140,27 @@ test('페이지 드래그 텍스트 선택 차단, 설정·이름 입력 선택 
   await page.mouse.up();
   expect(await page.evaluate(() => window.getSelection()?.toString())).toBe('');
 });
-test('단계 강조는 더 크고 굵게, 완료 후 기존 크기와 굵기로 복귀', async ({ page }) => {
-  await page.goto('/local/');
-  await openLocal(page);
-  const base = await page.locator('.stage-label').evaluate((e) => getComputedStyle(e).fontWeight);
+test('새 카드 등장 효과는 잠깐 확대 후 원래 크기로 복귀', async ({ page }) => {
+  await start(page);
   await page.evaluate(() => {
     const original = Element.prototype.animate;
     Element.prototype.animate = function (frames, options) {
       const a = original.call(this, frames, options);
-      if (this.matches('.stage-label')) {
+      if (this.matches('.board-card')) {
         a.pause();
-        a.currentTime = 130;
+        a.currentTime = 208;
       }
       return a;
     };
   });
-  await page.locator('.seat .card-values').first().click();
-  await page.getByRole('button', { name: '게임 시작', exact: true }).click();
-  await idle(page);
-  const peak = await page
-    .locator('.stage-label')
-    .evaluate((e) => ({
-      scale: new DOMMatrix(getComputedStyle(e).transform).a,
-      weight: Number(getComputedStyle(e).fontWeight),
-    }));
-  expect(peak.scale).toBeGreaterThan(1.15);
-  expect(peak.weight).toBeGreaterThanOrEqual(Number(base) + 200);
-  await page.locator('.stage-label').evaluate((e) => e.getAnimations().forEach((a) => a.finish()));
-  await expect(page.locator('.stage-label')).toHaveCSS('font-weight', base);
-  expect(await page.locator('.stage-label').evaluate((e) => getComputedStyle(e).transform)).toBe(
-    'none',
-  );
+  await act(page);
+  await act(page);
+  const card = page.locator('.board-card').first();
+  expect(
+    await card.evaluate((e) => new DOMMatrix(getComputedStyle(e).transform).a),
+  ).toBeGreaterThan(1.05);
+  await page
+    .locator('.board-card')
+    .evaluateAll((es) => es.forEach((e) => e.getAnimations().forEach((a) => a.finish())));
+  expect(await card.evaluate((e) => getComputedStyle(e).transform)).toBe('none');
 });

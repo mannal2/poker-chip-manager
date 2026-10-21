@@ -93,7 +93,7 @@ test('A06 칩 초안·C·BET 추가액만 차감, CALL은 초안 무시', async 
   const next = await actor.getAttribute('data-player');
   await page.getByRole('button', { name: /^콜 / }).click();
   await expect(page.locator(`[data-player="${next}"] .bet`)).toHaveText('60');
-  await page.getByRole('button', { name: '베팅 취소', exact: true }).click();
+  await page.getByRole('button', { name: '취소', exact: true }).click();
   await expect(page.locator('.seat.active .bet')).toHaveText('0');
 });
 test('A06 저장 실패: 확정잔액 보존·재시도1회', async ({ page }) => {
@@ -130,9 +130,9 @@ test('A07 모든 스트리트·H20+60=80・WIN 다음 핸드', async ({ page }) 
   await page.getByRole('button', { name: '10칩 추가', exact: true }).click();
   await page.getByRole('button', { name: 'BET', exact: true }).click();
   await actRound(page, 5);
-  await expect(page.getByRole('button', { name: '베팅 취소', exact: true })).toHaveAttribute(
+  await expect(page.getByRole('button', { name: '취소', exact: true })).toHaveAttribute(
     'aria-disabled',
-    'true',
+    'false',
   );
   await expect(page.locator('.seat.active .bet')).toHaveText('20');
   await page.getByRole('button', { name: '50칩 추가', exact: true }).click();
@@ -149,7 +149,7 @@ test('A07 모든 스트리트·H20+60=80・WIN 다음 핸드', async ({ page }) 
   await actRound(page, 5);
   await actRound(page);
   await actRound(page);
-  await expect(page.locator('.settlement-count')).toHaveText('0명 선택');
+  await expect(page.locator('.settlement-count')).toHaveText('승자 선택');
   await page.locator('.seat').nth(0).click();
   await page.locator('.seat').nth(1).click();
   await expect(page.locator('.settlement-count')).toHaveText('2명 선택');
@@ -210,7 +210,7 @@ test('A07 side pot 모순 거절·초안 새로고침 폐기·동률', async ({ 
   await expect(page.locator('.meta')).toContainText('02');
   await page.reload();
   await openLocal(page);
-  await expect(page.locator('.settlement-count')).toHaveText('0명 선택');
+  await expect(page.locator('.settlement-count')).toHaveText('승자 선택');
   await page.locator('.seat').nth(2).click();
   await page.getByRole('button', { name: '다음 팟', exact: true }).click({ timeout: 5000 });
   await page.locator('.seat').nth(1).click();

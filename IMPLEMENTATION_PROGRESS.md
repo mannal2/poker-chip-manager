@@ -484,3 +484,61 @@ A00~A11 단일 기기 구현과 자동 검증을 마쳤다. 멀티플레이·실
 - 최종 전체 단위15파일146 PASS, src/e2e/tests ESLint PASS, 타입 검사 포함 production build PASS. dist/e2e 없음. 로컬 http://127.0.0.1:4173/local/ HTTP200, main-BuzB8HBg.js / main-BhF6c6K8.css 최신 생산 자산 확인.
 - 독립 리뷰 P1(폐기된 이름 편집 저장 함수) RED→GREEN 및 scope/편집기 수명 보완 완료. 실제 S23/아이폰/태블릿 하드웨어 키보드·터치는 미검증. 극단적으로 낮은 가로 화면과 큰 금액은 스크롤 금지/숫자 보존을 위해 글자 축소 가능.
 - 작업별 로컬 커밋 완료. 기존 승인 HTML 보존, 진행 계획 체크 완료. push/PR/merge/실제 배포 없음.
+
+## 2026-10-21 — 직전 게임 행동 1회 무르기
+- origin/main 533a844에서 codex/board-single-undo-main 분기. 기존 작업 브랜치에서 변경하지 않음.
+- 단계 전환·정산·다음 핸드·토너먼트 종료를 포함한 직전 행동 snapshot 1개 유지. UNDO 후 소진, 새 확정 행동 후 재사용.
+- 취소 대상 이벤트 ID로 RETURN/PAYOUT/HAND_START까지 기록에서 함께 제외. 구버전 기록 해석 유지.
+- 예약 블라인드 소비도 복원하며 후속 예약/화면 기준은 기회를 소모하지 않음.
+- 검증: 새 경계 테스트 4건 기존 코드 실패 확인 후 수정, 전체 단위151개 및 타입 검사 통과. 저장 재연결 검증 추가 진행.
+- 저장 연결을 닫고 다시 열어 자동 다음 핸드에서 무르기·재로드까지 검증: 전체 단위152개 통과.
+
+- 화면 작업: 베팅/정산/종료에서 무르기 제공, 마지막 폴드 확인 제거·자동 다음 핸드·짧은 지급 안내. Chromium/WebKit 신규4건 RED 확인 후 게임 회귀 포함34건 PASS. 단위152건·변경 소스 ESLint PASS.
+
+- 보드/CLEAR/팟 작업: 단계 글자 제거, 0/3/4/5장·현재 카드 금색·520ms 등장 효과. 팟/사이드팟 이동을 테이블 아래로 이동. 쇼다운5장, reduced-motion/복원/무르기 재생 억제.
+- 검증: 신규 보드 테스트2건 RED 후 PASS. 기존 단계 글자 locator 실패8건은 승인된 보드 상태 검사로 교체. 관련 브라우저206건, 10인 보드 충돌 추가 포함8건, 단위152건, src/e2e/tests ESLint PASS. 실제 스크린샷 확인.
+- 독립 리뷰에서 UNDO 저장 실패 후 재시도 시 이전 승자 선택 초안이 남는 경로 발견. 후속 회귀 테스트와 별도 수정 커밋 예정.
+- 리뷰 후속: UNDO 저장 실패→재시도 성공 시 이전 승자 초안 초기화 누락을 Chromium/WebKit에서 RED 확인. 재시도 APPLIED/UNDO에서 초안·안내를 초기화하도록 수정. 무르기 브라우저6건·전체 단위152건·전체 소스 린트 PASS.
+- 전체 브라우저 검사에서 관리메뉴 테스트가 삭제된 마지막 폴드 확인창을 기대해 실패. 자동 다음 핸드·예약 소비·기록·홈 복원·새 토너먼트 확인을 검증하도록 갱신, Chromium/WebKit 2건 PASS. 제품 변경 없음. PWA14건 및 production build PASS, dist/e2e 미포함·4173 최신 빌드 HTTP200 확인.
+
+### 최종 검증 / 2026-10-21
+- 단위: 16파일152건 PASS. src/e2e/tests ESLint 및 TypeScript/production build PASS.
+- 전체 비-PWA 브라우저 실행: 372 PASS / 2 FAIL / 2 SKIP (4.5분). 실패2건은 폐기한 마지막 폴드 확인창을 기대하던 manager.spec의 구형 dialog 핸들러. 갱신 후 동일 Chromium/WebKit2건 별도 실행 PASS. 이후 제품 코드는 변경하지 않았고, 전체376건을 다시 한 명령으로 실행하지는 않았다.
+- 최종 시나리오 기준 비-PWA374건 PASS, PWA14건 PASS. WebKit2건은 Chrome CDP 터치 전용이라 제외(Chrome에서는 실행·통과).
+- 독립 리뷰 Important1건(무르기 재시도 후 승자 초안 잔류)을 재현 후 수정·검증. 실제 Galaxy/iPhone 하드웨어와 배포 환경은 이번 작업에서 검증하지 않음.
+- 최신 preview http://127.0.0.1:4173/local/ 실행. main-gYfVBm6N.js / main-Bh8nEw-7.css, production dist에 e2e 미포함.
+- origin/main 533a844 기반 codex/board-single-undo-main. 작업별 로컬 커밋 완료. push/PR/merge/배포 없음.
+
+## 2026-10-21 후속 — 중앙 팟·고정 보드·정산 버튼
+- 기존 codex/board-single-undo-main에서 계속. 취소로 문구 변경, 팟을 중앙 보드 위로 이동. 보드136u 5자리 고정으로 세번째 카드가 항상 중앙.
+- 정산 취소/WIN을 베팅 첫 행동줄과 같은 위치·높이, WIN 우측3칸으로 변경. 보이지 않는 하단 버튼 영역 유지.
+- 신규 위치 검사 기존 RED2건 확인 → 관련 브라우저28건 PASS. 단위152건·전체 src/e2e/tests ESLint PASS. 칩 이동 작업은 다음 커밋으로 진행.
+
+- 칩 이동: 순수 규칙 이벤트의 실제 납부·RETURN·PAYOUT으로 계산, 정산 직전 좌표 확보. 저장 성공/재시도 APPLIED에서만360ms 재생. 공동 수령은 동시, 반환 후 지급 순서 유지, 새 블라인드 생략.
+- 취소/화면 이탈/회전/백그라운드/동작 줄이기 변경은 효과와 대기 좌표를 무효화. 기본 입력 차단 없음.
+- 검증: 금액 계산 RED4 → GREEN4, 실제 UI RED1 → 납부/공동지급/실패재시도/동작줄이기/도착좌표/제거/홈이탈 브라우저8 PASS. 전체 단위156 PASS, 전체 src/e2e/tests ESLint PASS.
+
+### 후속 최종 검증
+- 전체 비-PWA 브라우저384 PASS / Chrome CDP 전용 WebKit2 SKIP / 실패0 (4.8분). 단위17파일156 PASS. src/e2e/tests ESLint·TypeScript·production build PASS.
+- PWA 최초 실행은4173 서버 중단에 따른 ERR_CONNECTION_REFUSED14건. 제품 결함으로 간주하지 않고 서버 재실행 후 전체14건 PASS(28초).
+- 독립 리뷰 Important/Critical 없음. 경미한 검토 사항: viewport 변경 없는 내용 기반 재배치에는 좌표 재수집하지 않음. 이번 효과는 승인된 동작대로 확정 직전 좌표를 보존하며 viewport/이탈 변화는 epoch로 무효화.
+- 실제 phone 베팅/승자 화면 스크린샷 확인. 실물 Galaxy/iPhone 하드웨어 검증·배포는 수행하지 않음.
+- 일괄 테스트 파일 재쓰기에서 콘텐츠 차이 없는12파일이 modified로 표시됨. restore 일괄 요청은 자동 검토에서 거절. 각 HEAD/working 정규화 해시 동일함을 읽기 전용 확인 후, 파일 내용 변경 없이 동일 blob으로 인덱스 갱신. 사용자 변경 폐기 없음.
+- 최신 preview http://127.0.0.1:4173/local/ HTTP200. main-H9t9OSxP.js / main-DH0qAZDy.css, production e2e 경로 미포함.
+- 기존 codex/board-single-undo-main 유지. 작업별 로컬 커밋, push/PR/merge/배포 없음.
+
+## 2026-10-21 후속 — 취소 안내·승자 안내 통합
+- 취소 불가 안내를 '취소할 직전 행동이 없습니다.'로 변경. 승자 선택0명은 '승자 선택', 양수는 n명 선택. 중앙 중복 안내 제거, 사이드팟 번호/이동 유지.
+- 기존 화면 RED1 확인 후 선택/해제·정산 취소/재시도 브라우저8 PASS, 단위156 PASS, src/e2e/tests ESLint PASS.
+
+- 칩 이동 속도: duration360→720ms, 반환 후 지급 대기360→720ms. 보드 등장 효과는 변경 없음.
+- 검증: 반환 간격 RED1 → 단위156 PASS. 720ms 실제 duration·도착좌표·순차 지급·공동 지급·중간 취소/버튼·실패재시도 및 게임/사이드팟 브라우저16 PASS. 앞선 안내 통합 브라우저8 PASS. 전체 src/e2e/tests ESLint·TypeScript·production build PASS.
+- 최신 preview4173 HTTP200(main-B7g5HEZ1.js). 이번 작은 수정은 관련 브라우저 검사를 실행했으며 전체 브라우저/PWA 재실행은 하지 않음. 실기기/배포 제외, 기존 브랜치·작업별 커밋 유지.
+
+## 2026-10-21 폴드 자동 정산 효과 중복 수정
+- 결함 원인: RETURN과 PAYOUT을720ms 간격으로 각각 표시해 같은 수령자에게2회 이동. SB5/BB10 폴드 시 반환5+팟지급10이 같은 BB로 향함.
+- 해결: FOLD 명령에서 자동 PAYOUT 발생 시 시각 효과만 수령자별 합산해 지연0으로1회 표시. 일반 미정산 폴드·다른 납부·쇼다운 계산은 유지. 획득 toast 생성 코드 제거.
+- 기록/규칙/저장 형식 변경 없음. 단일 효과15칩이어도 실제 기록은 미콜5 반환 및10 지급으로 유지.
+- 검증: 반환 합산 단위 RED1, UI 효과중복 RED1, 획득toast는 순간 부재 검사로 놓칠 수 있어 DOM 생성 이력으로 RED 확인. 수정 후 전체 단위157 PASS, 관련 브라우저16+폴드 저장재시도2 PASS(Chromium/WebKit), src/e2e/tests ESLint·타입·production build PASS.
+- 반환 없는 최종 폴드·일반 폴드·공동 지급·실패/재시도·기록 보존·취소 복원 확인. 실기기/전체 브라우저/PWA 재실행은 이번 범위에서 하지 않음.
+- preview4173 HTTP200, main-DjIBZ_q_.js. 기존 브랜치 로컬 커밋, push/PR/merge/배포 없음.

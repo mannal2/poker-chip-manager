@@ -73,7 +73,7 @@ for (const screen of ['setup', 'betting']) {
       await page.reload();
       await openLocal(page);
       await expect(page.locator('.pot strong')).toHaveText('20');
-      await expect(page.locator('.stage-label')).toHaveText('PREFLOP');
+      await expect(page.locator('.board')).toHaveAttribute('data-street', 'PREFLOP');
     } else {
       await expect(page.locator('.seat')).toHaveCount(2);
       await expect(page.locator('.badge').first()).toContainText('D');

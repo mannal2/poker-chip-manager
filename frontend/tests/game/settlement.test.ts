@@ -53,7 +53,7 @@ describe('승자 W01~W10', () => {
       if (f.payouts) expect(r.payouts).toEqual(f.payouts);
     });
 });
-it('직전 행동만 취소, 예약 보존, 공개 이후 거절', () => {
+it('직전 행동만 취소, 예약 보존, 한 번 사용 후 거절', () => {
   let s = fixtureState();
   s = apply(s, { type: 'CALL' });
   s = apply(s, { type: 'SCHEDULE_BLINDS', sb: 10, bb: 20 });
@@ -96,11 +96,11 @@ it('최종 올인 우승은 다음 핸드 없음, 중단은 장부 보존', () =
   expect(a.pot).toBe(15);
   expect(transition(a, { type: 'CALL' }, { id: 'x', at: 't' }).ok).toBe(false);
 });
-it('마지막 폴드는 반환과 지급 후 다음 핸드, 취소 불가', () => {
+it('마지막 폴드는 반환과 지급 후 다음 핸드, 직전 폴드 복원 가능', () => {
   let s = fixtureState(2);
   s = apply(s, { type: 'FOLD' });
   expect(s.hand?.number).toBe(2);
-  expect(s.undo).toBeNull();
+  expect(s.undo).not.toBeNull();
   expect(s.players.map((p) => p.stack)).toEqual([985, 1000]);
 });
 

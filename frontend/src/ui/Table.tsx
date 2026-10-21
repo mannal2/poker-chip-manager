@@ -135,38 +135,37 @@ export function Table({
   };
 }) {
   const ref = useRef<HTMLDivElement>(null);
-  const stageRef = useRef<HTMLSpanElement>(null),
-    previousStage = useRef<string | null>(null);
-  const stageKey =
+  const boardRef = useRef<HTMLDivElement>(null);
+  const previousBoard = useRef<{ hand?: string; count: number } | null>(null);
+  const count =
     phase === 'setup'
-      ? 'setup'
-      : `${handKey ?? ''}/${phase === 'settlement' ? 'settlement' : street}`;
+      ? 0
+      : phase === 'settlement'
+        ? 5
+        : ({ PREFLOP: 0, FLOP: 3, TURN: 4, RIVER: 5 }[street] ?? 0);
   useLayoutEffect(() => {
-    const previous = previousStage.current;
-    previousStage.current = stageKey;
+    const previous = previousBoard.current;
+    previousBoard.current = { hand: handKey, count };
     if (
-      previous === null ||
-      previous === stageKey ||
-      stageKey === 'setup' ||
+      !previous ||
+      previous.hand !== handKey ||
+      count <= previous.count ||
       window.matchMedia('(prefers-reduced-motion: reduce)').matches
     )
       return;
-    const label = stageRef.current;
-    if (!label) return;
-    const style = getComputedStyle(label);
-    const color = style.color,
-      fontWeight = style.fontWeight;
-    const gold = getComputedStyle(document.documentElement).getPropertyValue('--gold').trim();
-    const animation = label.animate(
-      [
-        { color, fontWeight, transform: 'scale(1)', offset: 0 },
-        { color: gold, fontWeight: 750, transform: 'scale(1.22)', offset: 0.25 },
-        { color, fontWeight, transform: 'scale(1)', offset: 1 },
-      ],
-      { duration: 520, easing: 'ease-out' },
+    const cards = [...(boardRef.current?.querySelectorAll('.board-card') ?? [])];
+    const animations = cards.slice(previous.count).map((card) =>
+      card.animate(
+        [
+          { opacity: 0.4, transform: 'scale(0.92)' },
+          { opacity: 1, transform: 'scale(1.08)', borderColor: '#e2bd75', offset: 0.4 },
+          { opacity: 1, transform: 'scale(1)' },
+        ],
+        { duration: 520, easing: 'ease-out' },
+      ),
     );
-    return () => animation.cancel();
-  }, [stageKey]);
+    return () => animations.forEach((animation) => animation.cancel());
+  }, [count, handKey]);
   useLayoutEffect(() => {
     const table = ref.current;
     if (!table) return;
@@ -185,135 +184,162 @@ export function Table({
     return () => observer.disconnect();
   });
   return (
-    <div ref={ref} className="table" aria-label="포커 테이블">
-      <div className="felt" />
-      <div className={`table-center ${phase === 'setup' ? 'setup-center' : ''}`}>
-        <div className={`count-row ${phase === 'setup' ? 'setup-count-row' : ''}`}>
-          {phase === 'setup' && onRemove && (
-            <button
-              className="count-control"
-              aria-label="참가자 삭제"
-              disabled={busy || players.length <= 2}
-              data-unavailable={players.length <= 2}
-              onClick={onRemove}
-            >
-              −
-            </button>
-          )}
-          <button className="pot" onClick={onPot} aria-label="팟 상세">
-            <small>{phase === 'setup' ? 'TABLE' : potLabel || 'POT'}</small>
-            <strong>
-              {phase === 'setup' ? `${players.length}명` : pot.toLocaleString('ko-KR')}
-            </strong>
-            <span ref={stageRef} className="stage-label">
-              {phase === 'settlement' ? '승자 선택' : phase === 'setup' ? '' : street}
-              {navigation && (
-                <>
-                  {' '}
-                  · {navigation.index}/{navigation.count}
-                </>
+    <>
+      <div ref={ref} className="table" aria-label="포커 테이블">
+        <div className="felt" />
+        <div className={`table-center ${phase === 'setup' ? 'setup-center' : ''}`}>
+          {phase === 'setup' ? (
+            <>
+              <div className="count-row setup-count-row">
+                {onRemove && (
+                  <button
+                    className="count-control"
+                    aria-label="참가자 삭제"
+                    disabled={busy || players.length <= 2}
+                    data-unavailable={players.length <= 2}
+                    onClick={onRemove}
+                  >
+                    −
+                  </button>
+                )}
+                <div className="pot">
+                  <small>TABLE</small>
+                  <strong>{players.length}명</strong>
+                </div>
+                {onAdd && (
+                  <button
+                    className="count-control"
+                    aria-label="참가자 추가"
+                    disabled={busy || players.length >= 10}
+                    data-unavailable={players.length >= 10}
+                    onClick={onAdd}
+                  >
+                    +
+                  </button>
+                )}
+              </div>
+              {onRotate && (
+                <div className="view-actions">
+                  <button
+                    className="view-rotate"
+                    aria-label="화면 기준 한 자리 회전"
+                    disabled={busy}
+                    onClick={onRotate}
+                  >
+                    ↻
+                  </button>
+                </div>
               )}
-              {notice && <> · {notice}</>}
-            </span>
-          </button>
-          {phase === 'setup' && onAdd && (
-            <button
-              className="count-control"
-              aria-label="참가자 추가"
-              disabled={busy || players.length >= 10}
-              data-unavailable={players.length >= 10}
-              onClick={onAdd}
-            >
-              +
-            </button>
+            </>
+          ) : (
+            <>
+              <div className="pot-strip">
+                {phase !== 'setup' && (
+                  <>
+                    {navigation && (
+                      <button aria-label="이전 팟" onClick={navigation.previous}>
+                        ‹
+                      </button>
+                    )}
+                    <button className="pot" onClick={onPot} aria-label="팟 상세">
+                      <small>{potLabel || 'POT'}</small>{' '}
+                      <strong>{pot.toLocaleString('ko-KR')}</strong>
+                      {(navigation || notice) && (
+                        <span>
+                          {navigation && `${navigation.index}/${navigation.count}`}
+                          {notice && ` · ${notice}`}
+                        </span>
+                      )}
+                    </button>
+                    {navigation && (
+                      <button aria-label="다음 팟" onClick={navigation.next}>
+                        ›
+                      </button>
+                    )}
+                  </>
+                )}
+              </div>
+
+              <div
+                ref={boardRef}
+                className="board"
+                role="img"
+                data-street={street}
+                aria-label={`${phase === 'settlement' ? '쇼다운' : ({ PREFLOP: '프리플랍', FLOP: '플랍', TURN: '턴', RIVER: '리버' }[street] ?? street)} 보드 ${count}장`}
+              >
+                {Array.from({ length: count }, (_, i) => (
+                  <span
+                    key={i}
+                    aria-hidden="true"
+                    className={`board-card ${phase !== 'settlement' && (count === 3 || i === count - 1) ? 'current' : ''}`}
+                  />
+                ))}
+              </div>
+            </>
           )}
         </div>
-        {(onRotate || navigation) && (
-          <div className="view-actions">
-            {navigation && (
-              <button aria-label="이전 팟" onClick={navigation.previous}>
-                ‹
-              </button>
-            )}
-            {phase === 'setup' && onRotate && (
-              <button
-                className="view-rotate"
-                aria-label="화면 기준 한 자리 회전"
-                disabled={busy}
-                onClick={onRotate}
-              >
-                ↻
-              </button>
-            )}
-            {navigation && (
-              <button aria-label="다음 팟" onClick={navigation.next}>
-                ›
-              </button>
-            )}
-          </div>
-        )}
-      </div>
-      {players.map((p, i) => {
-        const slot = drag ? drag.order.indexOf(p.id) : i;
-        const [x, y] =
-          seatCoordinates[players.length][(slot - viewSeat + players.length) % players.length];
-        const Card = onRename ? 'div' : 'button';
-        const Values = onRename ? 'button' : 'div';
-        return (
-          <Card
-            key={p.id}
-            type="button"
-            role={onRename ? 'group' : undefined}
-            data-player={p.id}
-            className={`seat ${p.active ? 'active' : ''} ${p.selected ? 'selected' : ''} ${p.out || p.folded ? 'out' : ''} ${drag?.pressed === p.id ? 'pressing' : ''} ${drag?.ready === p.id ? 'drag-ready' : ''} ${drag?.position?.id === p.id ? 'dragging' : ''}`}
-            style={{
-              left: drag?.position?.id === p.id ? drag.position.x : `${x}%`,
-              top: drag?.position?.id === p.id ? drag.position.y : `${y}%`,
-              touchAction: drag ? 'none' : undefined,
-            }}
-            aria-label={`${p.name}${p.active ? ' 현재 차례' : ''}${p.folded ? ' 폴드' : ''}${p.out ? ' 탈락' : ''}`}
-            aria-pressed={phase === 'settlement' ? !!p.selected : undefined}
-            aria-disabled={phase === 'settlement' && !p.eligible}
-            onContextMenu={(e) => {
-              if (!(e.target as HTMLElement).closest('input, textarea, [contenteditable="true"]'))
-                e.preventDefault();
-            }}
-            onClick={() => onSelect?.(p.id)}
-            {...drag?.handlers(p.id)}
-          >
-            {p.roles && <span className="badge">{p.roles}</span>}
-            <div className="name">
-              {onRename ? (
-                <InlineName
-                  key={p.id + ':' + editScope}
-                  name={p.name}
-                  busy={!!busy}
-                  onSave={(name) => onRename(p.id, name)}
-                  onEditing={(editing, finish) => onNameEditing?.(p.id, editing, finish)}
-                />
-              ) : (
-                p.name
-              )}
-            </div>
-            <Values
-              className="card-values"
-              type={onRename ? 'button' : undefined}
-              aria-label={onRename ? p.name + ' 첫 딜러 선택' : undefined}
+        {players.map((p, i) => {
+          const slot = drag ? drag.order.indexOf(p.id) : i;
+          const [x, y] =
+            seatCoordinates[players.length][(slot - viewSeat + players.length) % players.length];
+          const Card = onRename ? 'div' : 'button';
+          const Values = onRename ? 'button' : 'div';
+          return (
+            <Card
+              key={p.id}
+              type="button"
+              role={onRename ? 'group' : undefined}
+              data-player={p.id}
+              className={`seat ${p.active ? 'active' : ''} ${p.selected ? 'selected' : ''} ${p.out || p.folded ? 'out' : ''} ${drag?.pressed === p.id ? 'pressing' : ''} ${drag?.ready === p.id ? 'drag-ready' : ''} ${drag?.position?.id === p.id ? 'dragging' : ''}`}
+              style={{
+                left: drag?.position?.id === p.id ? drag.position.x : `${x}%`,
+                top: drag?.position?.id === p.id ? drag.position.y : `${y}%`,
+                touchAction: drag ? 'none' : undefined,
+              }}
+              aria-label={`${p.name}${p.active ? ' 현재 차례' : ''}${p.folded ? ' 폴드' : ''}${p.out ? ' 탈락' : ''}`}
+              aria-pressed={phase === 'settlement' ? !!p.selected : undefined}
+              aria-disabled={phase === 'settlement' && !p.eligible}
+              onContextMenu={(e) => {
+                if (!(e.target as HTMLElement).closest('input, textarea, [contenteditable="true"]'))
+                  e.preventDefault();
+              }}
+              onClick={() => onSelect?.(p.id)}
+              {...drag?.handlers(p.id)}
             >
-              <div
-                className={`bet ${p.pending ? 'pending' : ''}`}
-                aria-label={`핸드 누적액 ${p.contribution}`}
+              {p.roles && <span className="badge">{p.roles}</span>}
+              <div className="name">
+                {onRename ? (
+                  <InlineName
+                    key={p.id + ':' + editScope}
+                    name={p.name}
+                    busy={!!busy}
+                    onSave={(name) => onRename(p.id, name)}
+                    onEditing={(editing, finish) => onNameEditing?.(p.id, editing, finish)}
+                  />
+                ) : (
+                  p.name
+                )}
+              </div>
+              <Values
+                className="card-values"
+                type={onRename ? 'button' : undefined}
+                aria-label={onRename ? p.name + ' 첫 딜러 선택' : undefined}
               >
-                {p.contribution.toLocaleString('ko-KR')}
-              </div>
-              <div className="stack" aria-label={`남은 칩 ${p.stack}`}>
-                {p.stack.toLocaleString('ko-KR')}
-              </div>
-            </Values>
-            {p.active && <span className="turn" />}
-          </Card>
-        );
-      })}
-    </div>
+                <div
+                  className={`bet ${p.pending ? 'pending' : ''}`}
+                  aria-label={`핸드 누적액 ${p.contribution}`}
+                >
+                  {p.contribution.toLocaleString('ko-KR')}
+                </div>
+                <div className="stack" aria-label={`남은 칩 ${p.stack}`}>
+                  {p.stack.toLocaleString('ko-KR')}
+                </div>
+              </Values>
+              {p.active && <span className="turn" />}
+            </Card>
+          );
+        })}
+      </div>
+    </>
   );
 }

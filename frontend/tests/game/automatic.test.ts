@@ -11,7 +11,7 @@ function act(s: GameState, command: GameCommand) {
 function start() {
   return act(createTournament({ ...defaultSettings, button: 0 }, c), { type: 'START_TOURNAMENT' });
 }
-it('베팅 완료는 같은 저장 변경에서 다음 스트리트, B만 초기화·H 유지·취소 잠금', () => {
+it('베팅 완료는 같은 저장 변경에서 다음 스트리트, B만 초기화·H 유지·직전 행동 복원', () => {
   let s = start();
   s = act(s, { type: 'CALL' });
   const before = s.version;
@@ -20,8 +20,8 @@ it('베팅 완료는 같은 저장 변경에서 다음 스트리트, B만 초기
   expect(s.hand).toMatchObject({ street: 1, phase: 'betting', actorId: 'p1', W: 0, R: 10 });
   expect(s.players.map((p) => p.H)).toEqual([10, 10]);
   expect(s.players.map((p) => p.B)).toEqual([0, 0]);
-  expect(s.undo).toBeNull();
-  expect(transition(s, { type: 'UNDO' }, c).ok).toBe(false);
+  expect(s.undo).not.toBeNull();
+  expect(transition(s, { type: 'UNDO' }, c).ok).toBe(true);
   for (let i = 0; i < 6; i++) s = act(s, { type: 'CHECK' });
   expect(s.hand).toMatchObject({ street: 3, phase: 'settlement', actorId: null });
 });
@@ -29,7 +29,7 @@ it('올인 응답 완료는 공개/시작 명령 없이 승자 선택', () => {
   let s = act(start(), { type: 'ALL_IN' });
   s = act(s, { type: 'CALL' });
   expect(s.hand).toMatchObject({ phase: 'settlement', showdown: true, actorId: null });
-  expect(s.undo).toBeNull();
+  expect(s.undo).not.toBeNull();
   expect(s.pot).toBe(2000);
 });
 it('이전 저장의 공개 대기·공개 완료를 한 번 정규화', () => {

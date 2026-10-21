@@ -111,7 +111,7 @@ test('실제 두 탭 L03/X03: 저장→인수 / 인수→이전 쓰기', async (
   ]);
   expect(leases[0].generation).not.toBe(leases[1].generation);
 });
-test('L05 공개 잠금 복원 / L06 알 수 없는 형식 원본 보존', async ({ page }) => {
+test('L05 직전 행동 복원 / L06 알 수 없는 형식 원본 보존', async ({ page }) => {
   const result = await page.evaluate(async () => {
     const { repo, defaultSettings } = window.storageHarness;
     const lease = await repo.takeControl('a');
@@ -161,7 +161,8 @@ test('L05 공개 잠금 복원 / L06 알 수 없는 형식 원본 보존', async
     return { phase: restored?.state.hand?.phase, undo, blocked };
   });
   expect(result.phase).toBe('betting');
-  expect(result.undo.status).toBe('REJECTED');
+  expect(result.undo.status).toBe('APPLIED');
+  expect(result.undo.state?.hand?.street).toBe(0);
   expect(result.blocked).toBe(true);
 });
 

@@ -20,7 +20,7 @@ for (const [width, height, minimumFont] of [
     await expect(page.locator('main')).toHaveAttribute('aria-busy', 'false');
     await page.getByRole('button', { name: '게임 시작', exact: true }).click();
     await expect(page.locator('main')).toHaveAttribute('aria-busy', 'false');
-    await expect(page.locator('.stage-label')).toHaveText('PREFLOP');
+    await expect(page.locator('.board')).toHaveAttribute('data-street', 'PREFLOP');
     await page.locator('.seat').evaluateAll(async (nodes) => {
       await Promise.all(
         nodes.flatMap((node) => node.getAnimations().map((a) => a.finished.catch(() => {}))),

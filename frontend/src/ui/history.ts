@@ -20,6 +20,12 @@ export function historyRows(
   const active: GameEvent[] = [];
   for (const event of events) {
     if (event.type === 'UNDO') {
+      const ids = (event.details as { eventIds?: string[] }).eventIds;
+      if (ids) {
+        for (let i = active.length - 1; i >= 0; i--)
+          if (ids.includes(active[i].id)) active.splice(i, 1);
+        continue;
+      }
       for (let i = active.length - 1; i >= 0 && active[i].hand === event.hand; i--) {
         if (actions[active[i].type]) {
           active.splice(i, 1);

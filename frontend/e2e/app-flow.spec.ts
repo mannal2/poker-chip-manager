@@ -43,7 +43,7 @@ test('상단 클릭 기록·예약 표시와 자동 스트리트·다음 핸드 
   for (let street = 0; street < 4; street++) {
     await round(page);
     if (street < 3)
-      await expect(page.locator('.pot span')).toContainText(['FLOP', 'TURN', 'RIVER'][street]);
+      await expect(page.locator('.board')).toHaveAttribute('data-street', ['FLOP', 'TURN', 'RIVER'][street]);
   }
   await expect(page.getByRole('button', { name: '카드 공개', exact: true })).toHaveCount(0);
   await expect(
@@ -124,14 +124,14 @@ test('자동 스트리트 저장 실패는 이전 상태 유지·같은 요청 �
   });
   await page.getByRole('button', { name: '체크', exact: true }).click();
   await expect(page.getByRole('alert')).toContainText('재시도');
-  await expect(page.locator('.pot span')).toHaveText('PREFLOP');
+  await expect(page.locator('.board')).toHaveAttribute('data-street', 'PREFLOP');
   await page.evaluate(() => (window as unknown as { restorePut: () => void }).restorePut());
   await page.getByRole('button', { name: '재시도', exact: true }).click();
-  await expect(page.locator('.pot span')).toHaveText('FLOP');
+  await expect(page.locator('.board')).toHaveAttribute('data-street', 'FLOP');
   await expect(page.locator('.seat .bet')).toHaveText(['10', '10']);
   await page.reload();
   await page.getByRole('button', { name: '단일 기기 모드', exact: true }).click();
-  await expect(page.locator('.pot span')).toHaveText('FLOP');
+  await expect(page.locator('.board')).toHaveAttribute('data-street', 'FLOP');
 });
 test('구형 공개 대기 저장 복원은 자동 진행 한 번, 재실행은 같은 스트리트', async ({ page }) => {
   await enter(page);
@@ -167,10 +167,10 @@ test('구형 공개 대기 저장 복원은 자동 진행 한 번, 재실행은 
   });
   await page.reload();
   await page.getByRole('button', { name: '단일 기기 모드', exact: true }).click();
-  await expect(page.locator('.pot span')).toHaveText('FLOP');
+  await expect(page.locator('.board')).toHaveAttribute('data-street', 'FLOP');
   await page.reload();
   await page.getByRole('button', { name: '단일 기기 모드', exact: true }).click();
-  await expect(page.locator('.pot span')).toHaveText('FLOP');
+  await expect(page.locator('.board')).toHaveAttribute('data-street', 'FLOP');
 });
 
 test('리뷰: 이름 입력 중 시작은 초안을 버리지 않고 완료 안내', async ({ page }) => {

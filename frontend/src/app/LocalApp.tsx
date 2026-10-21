@@ -1,3 +1,4 @@
+import { useChipMotion } from '../ui/useChipMotion';
 import { useScreenFit } from '../ui/useScreenFit';
 import { useLocalPWA } from '../pwa/register';
 import { UpdateNotice } from '../pwa/UpdateNotice';
@@ -115,6 +116,14 @@ function LocalGame({
   const c = runtime.controller,
     s = app.game,
     busy = app.status !== 'ready';
+  const motion = useChipMotion(
+    screen,
+    `${app.home}/${s?.tournamentId}/${c.lease?.generation}/${app.status === 'controlLost'}`,
+  );
+  const pendingMotion = useRef<{
+    requestId: string;
+    prepared: ReturnType<typeof motion.prepare>;
+  } | null>(null);
   const install = useInstallPrompt(app.home && !busy && !dialog);
   const draftScope = s?.tournamentId + ':' + c.lease?.generation;
   const legal = s ? getLegalActions(s) : null,
@@ -246,7 +255,10 @@ function LocalGame({
       onRecover(inGame.current, c.lease);
   }
   async function dispatch(command: Request['command']) {
+    const prepared = c.state ? motion.prepare(c.state, command) : null;
     const result = await c.dispatch(command);
+    pendingMotion.current =
+      result.status === 'UNKNOWN' ? { requestId: result.requestId, prepared } : null;
     if (!c.lease) {
       setApp({
         game: c.state,
@@ -271,6 +283,7 @@ function LocalGame({
       notify(result.reason ?? '처리할 수 없습니다.');
       return false;
     }
+    if (result.resultVersion === result.state?.version) motion.play(prepared);
     runtime.channel?.postMessage('changed');
     return true;
   }
@@ -451,6 +464,16 @@ function LocalGame({
           ? '다른 화면에서 조작 중입니다.'
           : '저장 완료 또는 재시도를 기다려주세요.',
       );
+    if (action === 'UNDO') {
+      if (!s?.undo) return notify('취소할 직전 행동이 없습니다.');
+      void run(async () => {
+        if (await dispatch({ type: 'UNDO' })) {
+          setWinnerDraft({ key: '', winners: {}, index: 0 });
+          setToast('');
+        }
+      });
+      return;
+    }
     if (!s || !legal?.actor) return notify('지금은 베팅 차례가 아닙니다.');
     if (action === 'CLEAR') {
       setDraft({ scope: draftScope, version: s.version, amount: 0 });
@@ -466,13 +489,6 @@ function LocalGame({
       setDraft({ scope: draftScope, version: s.version, amount: legal.maxAdditional });
       return;
     }
-    if (action === 'UNDO' && !s.undo) return notify('취소할 이전 베팅이 없습니다.');
-    if (
-      action === 'FOLD' &&
-      s.players.filter((p) => !p.folded && !p.eliminated).length === 2 &&
-      !confirm('마지막 폴드입니다. 남은 참가자에게 팟을 지급하고 다음 핸드로 진행할까요?')
-    )
-      return;
     let command: GameCommand = { type: action as GameCommand['type'] };
     if (action === 'SUBMIT') {
       if (
@@ -544,7 +560,19 @@ function LocalGame({
                 void run(async () => {
                   runtime.repo.reconnect();
                   if (c.pending) {
+                    const command = c.pending.command;
                     const r = await c.retry();
+                    if (
+                      pendingMotion.current?.requestId === r.requestId &&
+                      r.status === 'APPLIED' &&
+                      r.resultVersion === r.state?.version
+                    )
+                      motion.play(pendingMotion.current.prepared);
+                    if (r.status !== 'UNKNOWN') pendingMotion.current = null;
+                    if (r.status === 'APPLIED' && command.type === 'UNDO') {
+                      setWinnerDraft({ key: '', winners: {}, index: 0 });
+                      setToast('');
+                    }
                     setApp({
                       game: c.state,
                       status: !c.lease
@@ -738,9 +766,20 @@ function LocalGame({
               }
             />
             <section className="dock">
+              {s.status === 'ended' && (
+                <button
+                  aria-disabled={busy || !s.undo}
+                  data-unavailable={!s.undo}
+                  onClick={() => bettingAction('UNDO')}
+                >
+                  취소
+                </button>
+              )}
               {currentPot && (
                 <SettlementPanel
                   count={winners[currentPot.id].length}
+                  canUndo={!!s.undo}
+                  onUndo={() => bettingAction('UNDO')}
                   busy={busy}
                   onWin={() => {
                     if (busy) return notify('저장 완료 또는 재시도를 기다려주세요.');

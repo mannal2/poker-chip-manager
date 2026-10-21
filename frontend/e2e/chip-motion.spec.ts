@@ -115,16 +115,16 @@ test('저장 실패에는 효과 없음, 같은 요청 재시도 성공에서 �
   await expect(page.locator('.chip-flight')).toHaveCount(0);
 });
 
-test('반환 후 지급 순서, 애니메이션 완료 제거와 홈 이탈 정리', async ({ page }) => {
+test('폴드 반환과 지급은 한 번, 획득 알림 없이 자동 진행·효과 정리', async ({ page }) => {
   await start(page);
   await page.getByRole('button', { name: '폴드', exact: true }).click();
   await idle(page);
-  const returns = page.locator('.chip-flight[data-kind="return"]'),
-    payouts = page.locator('.chip-flight[data-kind="payout"]');
-  await expect(returns).toHaveCount(1);
-  await expect(payouts).toHaveCount(1);
-  expect(await returns.evaluate((e) => e.getAnimations()[0].effect!.getTiming().delay)).toBe(0);
-  expect(await payouts.evaluate((e) => e.getAnimations()[0].effect!.getTiming().delay)).toBe(720);
+  const payouts = page.locator('.chip-flight[data-kind="payout"]');
+  await expect(page.locator('.chip-flight')).toHaveCount(1);
+  await expect(payouts).toHaveAttribute('data-amount', '15');
+  await expect(payouts).toHaveAttribute('data-to', 'p1');
+  expect(await payouts.evaluate((e) => e.getAnimations()[0].effect!.getTiming().delay)).toBe(0);
+  await expect(page.locator('.toast')).toHaveCount(0);
   await page
     .locator('.chip-flight')
     .evaluateAll((es) => es.forEach((e) => e.getAnimations().forEach((a) => a.finish())));
@@ -135,4 +135,62 @@ test('반환 후 지급 순서, 애니메이션 완료 제거와 홈 이탈 정�
   await page.getByRole('button', { name: '관리 메뉴', exact: true }).click();
   await page.getByRole('button', { name: '홈', exact: true }).click();
   await expect(page.locator('.chip-flight')).toHaveCount(0);
+});
+
+test('폴드 자동 정산에는 획득 알림이 없다', async ({ page }) => {
+  await start(page);
+  await page.evaluate(() => {
+    const seen: string[] = [];
+    (window as unknown as { foldToasts: string[] }).foldToasts = seen;
+    new MutationObserver((records) => {
+      for (const record of records)
+        for (const node of record.addedNodes)
+          if (node instanceof Element)
+            for (const toast of [
+              ...(node.matches('.toast') ? [node] : []),
+              ...node.querySelectorAll('.toast'),
+            ])
+              seen.push(toast.textContent ?? '');
+    }).observe(document.body, { childList: true, subtree: true });
+  });
+  await page.getByRole('button', { name: '폴드', exact: true }).click();
+  await idle(page);
+  await expect(page.getByLabel('현재 토너먼트 기록', { exact: true })).toContainText('02');
+  await page.evaluate(
+    () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
+  );
+  expect(
+    await page.evaluate(() => (window as unknown as { foldToasts: string[] }).foldToasts),
+  ).toEqual([]);
+});
+
+test('폴드 저장 재시도도 단일 이동, 반환·지급 기록과 취소 복원 유지', async ({ page }) => {
+  await start(page);
+  await page.evaluate(() => {
+    const old = IDBObjectStore.prototype.put;
+    (window as unknown as { restorePut: () => void }).restorePut = () => {
+      IDBObjectStore.prototype.put = old;
+    };
+    IDBObjectStore.prototype.put = function (...args) {
+      if (this.name === 'events') throw new DOMException('test', 'QuotaExceededError');
+      return old.apply(this, args);
+    };
+  });
+  await page.getByRole('button', { name: '폴드', exact: true }).click();
+  await expect(page.getByRole('alert')).toContainText('재시도');
+  await expect(page.locator('.chip-flight')).toHaveCount(0);
+  await page.evaluate(() => (window as unknown as { restorePut: () => void }).restorePut());
+  await page.getByRole('button', { name: '재시도', exact: true }).click();
+  await idle(page);
+  await expect(page.locator('.chip-flight')).toHaveCount(1);
+  await expect(page.locator('.chip-flight')).toHaveAttribute('data-amount', '15');
+  await page.getByLabel('현재 토너먼트 기록', { exact: true }).click();
+  await expect(page.locator('.history-list')).toContainText('미콜 5칩 반환');
+  await expect(page.locator('.history-list')).toContainText('10칩 획득');
+  await page.mouse.click(3, 3);
+  await page.getByRole('button', { name: '취소', exact: true }).click();
+  await idle(page);
+  await expect(page.getByLabel('현재 토너먼트 기록', { exact: true })).toContainText('01');
+  await expect(page.locator('.chip-flight')).toHaveCount(0);
+  await expect(page.locator('.seat .stack')).toHaveText(['995', '990']);
 });

@@ -9,10 +9,9 @@ it('실제 납부만 이동하고 체크·취소·새 핸드 블라인드는 생
   expect(chipTransfers(apply(s, { type: 'CALL' }), { type: 'CHECK' })).toEqual([]);
   expect(chipTransfers(apply(s, { type: 'CALL' }), { type: 'UNDO' })).toEqual([]);
 });
-it('마지막 폴드는 미콜 반환 후 지급, 새 블라인드 이동 없음', () => {
+it('마지막 폴드는 같은 수령자의 미콜 반환과 지급을 한 번에 표시', () => {
   expect(chipTransfers(fixtureState(2), { type: 'FOLD' })).toEqual([
-    { from: 'pot', to: 'p1', amount: 5, delay: 0, kind: 'return' },
-    { from: 'pot', to: 'p1', amount: 10, delay: 720, kind: 'payout' },
+    { from: 'pot', to: 'p1', amount: 15, delay: 0, kind: 'payout' },
   ]);
 });
 it('공동 우승 지급은 모든 수령자에게 동시에', () => {
@@ -34,4 +33,12 @@ it('메인·사이드팟별 수령액을 플레이어별 합계로 이동', () =
     { from: 'pot', to: 'p0', amount: 300, delay: 0, kind: 'payout' },
     { from: 'pot', to: 'p1', amount: 800, delay: 0, kind: 'payout' },
   ]);
+});
+
+it('반환 없는 마지막 폴드는 단일 지급, 일반 폴드는 이동 없음', () => {
+  const s = apply(fixtureState(2), { type: 'CALL' });
+  expect(chipTransfers(s, { type: 'FOLD' })).toEqual([
+    { from: 'pot', to: 'p0', amount: 20, delay: 0, kind: 'payout' },
+  ]);
+  expect(chipTransfers(fixtureState(3), { type: 'FOLD' })).toEqual([]);
 });

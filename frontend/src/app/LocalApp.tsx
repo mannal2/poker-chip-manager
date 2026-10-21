@@ -510,18 +510,7 @@ function LocalGame({
       }
     }
     void run(async () => {
-      if (await dispatch(command)) {
-        if (action === 'FOLD' && s.players.filter((p) => !p.folded && !p.eliminated).length === 2) {
-          const winner = s.players.find(
-            (p) => !p.folded && !p.eliminated && p.id !== legal.actor!.id,
-          )!;
-          const returned = Math.max(
-            0,
-            winner.B - Math.max(...s.players.filter((p) => p.id !== winner.id).map((p) => p.B)),
-          );
-          notify(`${winner.name} · ${(s.pot - returned).toLocaleString('ko-KR')}칩 획득`);
-        }
-      }
+      await dispatch(command);
     });
   }
   if (app.status === 'loading')

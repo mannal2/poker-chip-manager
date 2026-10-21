@@ -34,5 +34,16 @@ export function chipTransfers(state: GameState, command: GameCommand): ChipTrans
       delay += 720;
     }
   }
+  if (command.type === 'FOLD' && moves.some((move) => move.kind === 'payout')) {
+    const combined: ChipTransfer[] = [];
+    for (const move of moves) {
+      const existing = combined.find((item) => item.to === move.to);
+      if (existing) {
+        existing.amount += move.amount;
+        if (move.kind === 'payout') existing.kind = 'payout';
+      } else combined.push({ ...move, delay: 0 });
+    }
+    return combined;
+  }
   return moves;
 }

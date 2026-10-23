@@ -28,7 +28,13 @@ export function BetControls({
         <button aria-disabled={busy} onClick={() => onAction(call ? 'CALL' : 'CHECK')}>
           {call ? `콜 ${call.toLocaleString('ko-KR')}` : '체크'}
         </button>
-        <button aria-disabled={busy} onClick={() => onAction('FOLD')}>
+        <button
+          aria-disabled={busy || call === 0}
+          data-unavailable={call === 0}
+          onClick={() => {
+            if (call > 0) onAction('FOLD');
+          }}
+        >
           폴드
         </button>
         <button aria-disabled={busy} onClick={() => onAction('DRAFT_ALL')}>

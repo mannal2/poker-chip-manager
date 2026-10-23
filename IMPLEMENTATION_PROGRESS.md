@@ -542,3 +542,8 @@ A00~A11 단일 기기 구현과 자동 검증을 마쳤다. 멀티플레이·실
 - 검증: 반환 합산 단위 RED1, UI 효과중복 RED1, 획득toast는 순간 부재 검사로 놓칠 수 있어 DOM 생성 이력으로 RED 확인. 수정 후 전체 단위157 PASS, 관련 브라우저16+폴드 저장재시도2 PASS(Chromium/WebKit), src/e2e/tests ESLint·타입·production build PASS.
 - 반환 없는 최종 폴드·일반 폴드·공동 지급·실패/재시도·기록 보존·취소 복원 확인. 실기기/전체 브라우저/PWA 재실행은 이번 범위에서 하지 않음.
 - preview4173 HTTP200, main-DjIBZ_q_.js. 기존 브랜치 로컬 커밋, push/PR/merge/배포 없음.
+
+## 2026-10-23 — 콜0 폴드 제한
+- origin/main ff01f14에서 codex/fold-guard-startup-update 분기.
+- UI 콜 금액0에서 폴드 aria-disabled/data-unavailable 표시와 클릭 차단. 앱 동작 경로에서도0콜 폴드 거절. 과거 저장/규칙 함수의 유효 폴드는 유지.
+- 신규 BB옵션/플랍·턴·리버/베팅응답/짧은 올인 RED1 확인 후 관련 브라우저64 PASS. 단위157 PASS, src/e2e/tests ESLint PASS.

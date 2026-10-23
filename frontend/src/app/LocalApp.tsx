@@ -475,6 +475,7 @@ function LocalGame({
       return;
     }
     if (!s || !legal?.actor) return notify('지금은 베팅 차례가 아닙니다.');
+    if (action === 'FOLD' && legal.callAdditional === 0) return;
     if (action === 'CLEAR') {
       setDraft({ scope: draftScope, version: s.version, amount: 0 });
       return;

@@ -163,3 +163,44 @@ test('실행 확인이 응답하지 않아도 시간 제한 후 조용히 사용
   await page.getByRole('button', { name: '앱 업데이트', exact: true }).click();
   await expect(page.getByText('최신 버전을 사용하고 있습니다.', { exact: true })).toBeVisible();
 });
+
+test('자동 업데이트 적용 중 늦은 설치 제안은 진행창을 바꾸지 않는다', async ({ page }, info) => {
+  test.setTimeout(60000);
+  const original = await readFile(file, 'utf8');
+  try {
+    await page.goto('/local/');
+    await ready(page);
+    await writeFile(file, original + `\n/* install race ${info.project.name} */`);
+    await page.reload();
+    await ready(page);
+    await expect(page.getByRole('button', { name: '업데이트', exact: true })).toBeVisible({
+      timeout: 15000,
+    });
+    await page.evaluate(() => {
+      const original = ServiceWorker.prototype.postMessage;
+      ServiceWorker.prototype.postMessage = function (...args) {
+        if (args[0]?.type === 'SKIP_WAITING')
+          (window as unknown as { releaseUpdate: () => void }).releaseUpdate = () =>
+            Reflect.apply(original, this, args);
+        else Reflect.apply(original, this, args);
+      };
+    });
+    await page.getByRole('button', { name: '업데이트', exact: true }).click();
+    await page.waitForFunction(
+      () =>
+        typeof (window as unknown as { releaseUpdate?: () => void }).releaseUpdate === 'function',
+    );
+    await page.evaluate(() =>
+      window.dispatchEvent(new Event('beforeinstallprompt', { cancelable: true })),
+    );
+    await expect(page.getByText('업데이트하고 있습니다…', { exact: true })).toBeVisible();
+    await page.mouse.click(3, 3);
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('dialog', { name: '앱 업데이트', exact: true })).toBeVisible();
+    const origin = await page.evaluate(() => performance.timeOrigin);
+    await page.evaluate(() => (window as unknown as { releaseUpdate: () => void }).releaseUpdate());
+    await page.waitForFunction((old) => performance.timeOrigin !== old, origin);
+  } finally {
+    await writeFile(file, original);
+  }
+});

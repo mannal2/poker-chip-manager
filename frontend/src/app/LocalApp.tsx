@@ -133,7 +133,8 @@ function LocalGame({
   } | null>(null);
   const install = useInstallPrompt(app.home && !busy && !dialog);
   const automaticUpdate =
-    app.home && !busy && !dialog && pwa.hasUpdate && !updateDeferred && !install.visible;
+    dialog === 'startupUpdate' ||
+    (app.home && !busy && !dialog && pwa.hasUpdate && !updateDeferred && !install.visible);
   const closeUpdate = () => {
     if (pwa.hasUpdate) onDeferUpdate();
     pwa.cancelCheck();
@@ -888,6 +889,7 @@ function LocalGame({
             onApply={() => {
               if (!app.home || busy || lock.current || c.pending)
                 return notify('저장 완료 후 홈에서 업데이트하세요.');
+              if (automaticUpdate) setDialog('startupUpdate');
               void pwa.apply(() => runtime.repo.load());
             }}
           />

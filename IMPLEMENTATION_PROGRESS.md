@@ -557,3 +557,7 @@ A00~A11 단일 기기 구현과 자동 검증을 마쳤다. 멀티플레이·실
 - 독립 리뷰 Important1건: 자동 안내를 적용 중에도 dialog 상태가 비어 있어 늦은 beforeinstallprompt가 진행창을 대체할 수 있음. 실제 SW 적용을 보류하고 설치 이벤트를 발생시켜 RED1 확인.
 - 해결: 자동 적용을 시작하면 startupUpdate 대화상자로 유지하여 설치 제안을 보류. 외부 클릭/Escape도 적용 완료까지 차단. 관련 PWA 전체24 PASS, 단위157/전체 ESLint/타입·production build PASS.
 - 리뷰 수정 조건식 편집 중 괄호 누락으로 타입검사1회 실패, 즉시 수정 후 빌드 성공을 확인하고 테스트 재실행. 실패 빌드로 검증 완료를 주장하지 않음.
+
+- 최종 회귀: 일반 브라우저392 PASS/2 SKIP/0 FAIL(마지막 설치 제안 경합 수정 전 실행). 2건은 WebKit에서 Chromium CDP 터치 전용 검사 제외. 경합 수정 후 PWA 전체24 PASS, 단위157 PASS, 전체 ESLint·TypeScript·production build PASS.
+- origin/main ff01f14 기준 codex/fold-guard-startup-update에서 작업별 커밋 완료: 3e578fb, 93a0554, 7933118. GAME_SPEC/UX_SPEC에 승인 정책 반영.
+- 최신 production preview http://127.0.0.1:4173/local/ HTTP200(main-DPVJqOk8.js), production e2e 산출물 없음. 실기기 검증 미수행, push/PR/merge/배포 없음.

@@ -39,6 +39,7 @@ export function LocalApp() {
   return <LocalWorkspace />;
 }
 function LocalWorkspace() {
+  const [updateDeferred, setUpdateDeferred] = useState(false);
   const [recovery, setRecovery] = useState({
     version: 0,
     inGame: false,
@@ -48,6 +49,8 @@ function LocalWorkspace() {
     <LocalGame
       key={recovery.version}
       restartOnMount={recovery.version > 0}
+      updateDeferred={updateDeferred}
+      onDeferUpdate={() => setUpdateDeferred(true)}
       recoveryContext={recovery}
       onRecover={(inGame, lease) =>
         setRecovery((previous) => ({ version: previous.version + 1, inGame, lease }))
@@ -62,10 +65,14 @@ function AppRedirect() {
   return <main className="phone home">앱 홈을 여는 중…</main>;
 }
 function LocalGame({
+  updateDeferred,
+  onDeferUpdate,
   restartOnMount,
   recoveryContext,
   onRecover,
 }: {
+  updateDeferred: boolean;
+  onDeferUpdate: () => void;
   restartOnMount: boolean;
   recoveryContext: { inGame: boolean; lease: ControlLease | null };
   onRecover: (inGame: boolean, lease: ControlLease | null) => void;
@@ -125,6 +132,14 @@ function LocalGame({
     prepared: ReturnType<typeof motion.prepare>;
   } | null>(null);
   const install = useInstallPrompt(app.home && !busy && !dialog);
+  const automaticUpdate =
+    dialog === 'startupUpdate' ||
+    (app.home && !busy && !dialog && pwa.hasUpdate && !updateDeferred && !install.visible);
+  const closeUpdate = () => {
+    if (pwa.hasUpdate) onDeferUpdate();
+    pwa.cancelCheck();
+    setDialog('');
+  };
   const draftScope = s?.tournamentId + ':' + c.lease?.generation;
   const legal = s ? getLegalActions(s) : null,
     draftAmount =
@@ -475,6 +490,7 @@ function LocalGame({
       return;
     }
     if (!s || !legal?.actor) return notify('지금은 베팅 차례가 아닙니다.');
+    if (action === 'FOLD' && legal.callAdditional === 0) return;
     if (action === 'CLEAR') {
       setDraft({ scope: draftScope, version: s.version, amount: 0 });
       return;
@@ -857,23 +873,23 @@ function LocalGame({
           </>
         )
       )}
-      {dialog === 'update' && (
+      {(dialog === 'update' || automaticUpdate) && (
         <Dialog
           dismissOutside
           closeDisabled={pwa.updateStatus === 'applying'}
           title="앱 업데이트"
-          onClose={() => {
-            pwa.cancelCheck();
-            setDialog('');
-          }}
+          onClose={closeUpdate}
         >
           <UpdateNotice
             {...pwa}
+            automatic={automaticUpdate}
+            onLater={closeUpdate}
             canApply={app.home && !busy && !c.pending && !lock.current}
             onCheck={() => void pwa.check()}
             onApply={() => {
               if (!app.home || busy || lock.current || c.pending)
                 return notify('저장 완료 후 홈에서 업데이트하세요.');
+              if (automaticUpdate) setDialog('startupUpdate');
               void pwa.apply(() => runtime.repo.load());
             }}
           />

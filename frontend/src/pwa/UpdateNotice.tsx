@@ -5,17 +5,23 @@ export function UpdateNotice({
   canApply,
   onCheck,
   onApply,
+  automatic = false,
+  onLater,
 }: {
   updateStatus: UpdateStatus;
   updateError: string;
   canApply: boolean;
   onCheck: () => void;
   onApply: () => void;
+  automatic?: boolean;
+  onLater?: () => void;
 }) {
   const message = {
     idle: '업데이트를 확인하고 있습니다…',
     checking: '업데이트를 확인하고 있습니다…',
-    available: '새 버전이 준비되었습니다.',
+    available: automatic
+      ? '새 버전이 준비되었습니다. 업데이트할까요?'
+      : '새 버전이 준비되었습니다.',
     current: '최신 버전을 사용하고 있습니다.',
     error: '업데이트를 확인하지 못했습니다.',
     applyError: '업데이트를 적용하지 못했습니다.',
@@ -32,10 +38,11 @@ export function UpdateNotice({
       {updateStatus === 'available' && (
         <div className="actions">
           <button className="primary" disabled={!canApply} onClick={onApply}>
-            업데이트하기
+            {automatic ? '업데이트' : '업데이트하기'}
           </button>
         </div>
       )}
+      {automatic && updateStatus !== 'applying' && <button onClick={onLater}>나중에</button>}
       {(updateStatus === 'error' || updateStatus === 'applyError') && (
         <button onClick={onCheck}>다시 시도</button>
       )}

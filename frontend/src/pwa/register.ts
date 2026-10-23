@@ -23,6 +23,9 @@ export function useLocalPWA() {
       }));
       return;
     }
+    let startupCheck: AbortController | null = null;
+    let startupTimer: ReturnType<typeof setTimeout> | undefined;
+    let startupChecked = false;
     async function ready() {
       await navigator.serviceWorker.ready;
       if (!navigator.serviceWorker.controller)
@@ -44,20 +47,45 @@ export function useLocalPWA() {
           setState((s) => ({
             ...s,
             hasUpdate: true,
-            updateStatus: s.updateStatus === 'current' ? 'available' : s.updateStatus,
+            updateStatus: ['idle', 'current', 'error'].includes(s.updateStatus)
+              ? 'available'
+              : s.updateStatus,
           }));
         },
         onNeedReload() {
           setState((s) => ({
             ...s,
             hasUpdate: true,
-            updateStatus: s.updateStatus === 'current' ? 'available' : s.updateStatus,
+            updateStatus: ['idle', 'current', 'error'].includes(s.updateStatus)
+              ? 'available'
+              : s.updateStatus,
           }));
         },
         onRegisteredSW(_url, r) {
           registration.current = r ?? null;
           if (!r) return;
           if (r.active) void ready();
+          if (!startupChecked && r.active && navigator.serviceWorker.controller) {
+            startupChecked = true;
+            const controller = new AbortController();
+            startupCheck = controller;
+            startupTimer = setTimeout(() => controller.abort(), 15000);
+            void checkForUpdate(Promise.resolve(r), controller.signal)
+              .then((available) => {
+                if (available && !controller.signal.aborted)
+                  setState((s) => ({
+                    ...s,
+                    hasUpdate: true,
+                    updateStatus: ['applying', 'applyError'].includes(s.updateStatus)
+                      ? s.updateStatus
+                      : 'available',
+                  }));
+              })
+              .catch(() => {
+                // Startup checks are quiet; manual checks provide errors and retry.
+              })
+              .finally(() => clearTimeout(startupTimer));
+          }
           const watch = () => {
             const worker = r.installing;
             if (worker)
@@ -85,6 +113,8 @@ export function useLocalPWA() {
     registerAgain.current = register;
     register();
     return () => {
+      startupCheck?.abort();
+      clearTimeout(startupTimer);
       registerAgain.current = null;
       const controller = checkController.current;
       checkController.current = null;

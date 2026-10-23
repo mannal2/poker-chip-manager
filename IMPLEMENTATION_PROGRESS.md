@@ -542,3 +542,22 @@ A00~A11 단일 기기 구현과 자동 검증을 마쳤다. 멀티플레이·실
 - 검증: 반환 합산 단위 RED1, UI 효과중복 RED1, 획득toast는 순간 부재 검사로 놓칠 수 있어 DOM 생성 이력으로 RED 확인. 수정 후 전체 단위157 PASS, 관련 브라우저16+폴드 저장재시도2 PASS(Chromium/WebKit), src/e2e/tests ESLint·타입·production build PASS.
 - 반환 없는 최종 폴드·일반 폴드·공동 지급·실패/재시도·기록 보존·취소 복원 확인. 실기기/전체 브라우저/PWA 재실행은 이번 범위에서 하지 않음.
 - preview4173 HTTP200, main-DjIBZ_q_.js. 기존 브랜치 로컬 커밋, push/PR/merge/배포 없음.
+
+## 2026-10-23 — 콜0 폴드 제한
+- origin/main ff01f14에서 codex/fold-guard-startup-update 분기.
+- UI 콜 금액0에서 폴드 aria-disabled/data-unavailable 표시와 클릭 차단. 앱 동작 경로에서도0콜 폴드 거절. 과거 저장/규칙 함수의 유효 폴드는 유지.
+- 신규 BB옵션/플랍·턴·리버/베팅응답/짧은 올인 RED1 확인 후 관련 브라우저64 PASS. 단위157 PASS, src/e2e/tests ESLint PASS.
+
+## 2026-10-23 — 실행 시 업데이트 안내
+- 기존 등록된 서비스 워커가 있는 실행에서15초 제한의 조용한 자동 확인. 새 버전이 준비된 경우에만 홈에서 업데이트/나중에 안내. 게임/다른 대화상자/설치 안내 중에는 보류.
+- 나중에/바깥 클릭/Escape 및 준비된 업데이트 수동창 닫기는 이번 document에서 재표시 억제. 복구용 LocalGame 재마운트에도 억제 유지, 새로 실행하면 다시 안내.
+- 수동 확인·안전한 적용(저장 읽기 실패 시 차단) 경로 재사용. 최신/첫설치/확인 실패/오프라인 자동창 없음. 체크 중 앱 사용 가능.
+- 검증: 실제 SW를 바꾼 자동 안내 RED1 확인 → 새 안내6+기존 PWA14 PASS. 무응답15초·독립 수동 복구 추가2 PASS. 단위157·전체 ESLint·TypeScript/production build PASS.
+
+- 독립 리뷰 Important1건: 자동 안내를 적용 중에도 dialog 상태가 비어 있어 늦은 beforeinstallprompt가 진행창을 대체할 수 있음. 실제 SW 적용을 보류하고 설치 이벤트를 발생시켜 RED1 확인.
+- 해결: 자동 적용을 시작하면 startupUpdate 대화상자로 유지하여 설치 제안을 보류. 외부 클릭/Escape도 적용 완료까지 차단. 관련 PWA 전체24 PASS, 단위157/전체 ESLint/타입·production build PASS.
+- 리뷰 수정 조건식 편집 중 괄호 누락으로 타입검사1회 실패, 즉시 수정 후 빌드 성공을 확인하고 테스트 재실행. 실패 빌드로 검증 완료를 주장하지 않음.
+
+- 최종 회귀: 일반 브라우저392 PASS/2 SKIP/0 FAIL(마지막 설치 제안 경합 수정 전 실행). 2건은 WebKit에서 Chromium CDP 터치 전용 검사 제외. 경합 수정 후 PWA 전체24 PASS, 단위157 PASS, 전체 ESLint·TypeScript·production build PASS.
+- origin/main ff01f14 기준 codex/fold-guard-startup-update에서 작업별 커밋 완료: 3e578fb, 93a0554, 7933118. GAME_SPEC/UX_SPEC에 승인 정책 반영.
+- 최신 production preview http://127.0.0.1:4173/local/ HTTP200(main-DPVJqOk8.js), production e2e 산출물 없음. 실기기 검증 미수행, push/PR/merge/배포 없음.

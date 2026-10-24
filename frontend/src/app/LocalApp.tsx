@@ -7,9 +7,8 @@ import { InstallNotice } from '../pwa/InstallNotice';
 import { HistoryPanel } from '../ui/HistoryPanel';
 import { BlindSettings } from '../ui/BlindSettings';
 import { ManagerMenu } from '../ui/ManagerMenu';
-import { buildPots, previewSettlement } from '../game/settlement';
 import { SettlementPanel } from '../ui/SettlementPanel';
-import type { WinnerSelection } from '../game/types';
+import { PayoutPreview } from '../ui/PayoutPreview';
 import { BetControls } from '../ui/BetControls';
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
 import { LocalRepository, type Request, type ControlLease } from '../local/repository';
@@ -23,6 +22,7 @@ import { Dialog } from '../ui/Dialog';
 import { useSeatDrag } from '../ui/useSeatDrag';
 import { appReducer, initialAppState } from './appReducer';
 import { useBettingDraft } from './useBettingDraft';
+import { useSettlementSelection } from './useSettlementSelection';
 import '../ui/tokens.css';
 import '../ui/table.css';
 import '../ui/controls.css';
@@ -85,12 +85,7 @@ function LocalGame({
     }),
     [dialog, setDialog] = useState(''),
     [toast, setToast] = useState(''),
-    [renameId, setRenameId] = useState(''),
-    [winnerDraft, setWinnerDraft] = useState<{
-      key: string;
-      winners: WinnerSelection;
-      index: number;
-    }>({ key: '', winners: {}, index: 0 });
+    [renameId, setRenameId] = useState('');
   const inGame = useRef(recoveryContext.inGame);
   const resumeRequested = useRef(false);
   const lock = useRef(false),
@@ -144,38 +139,8 @@ function LocalGame({
     c.lease?.generation,
     notify,
   );
-  const settlementKey = s?.tournamentId + '/' + s?.hand?.id + '/' + c.lease?.generation;
-  const pots = s?.status === 'playing' && s.hand?.phase === 'settlement' ? buildPots(s) : [];
-  const winners: WinnerSelection = Object.fromEntries(
-    pots.map((p) => [
-      p.id,
-      p.eligible.length === 1
-        ? p.eligible
-        : winnerDraft.key === settlementKey
-          ? (winnerDraft.winners[p.id] ?? [])
-          : [],
-    ]),
-  );
-  const potIndex =
-      winnerDraft.key === settlementKey ? Math.min(winnerDraft.index, pots.length - 1) : 0,
-    currentPot = pots[potIndex];
-  const preview = s && pots.length ? previewSettlement(s, winners) : null;
-  function selectWinner(id: string) {
-    if (busy || !currentPot) return notify('저장 완료를 기다려주세요.');
-    if (!currentPot.eligible.includes(id)) return notify('이 팟의 승자 자격이 없습니다.');
-    if (currentPot.eligible.length === 1) return notify('단독 자격자는 자동 선택됩니다.');
-    const selected = winners[currentPot.id];
-    setWinnerDraft({
-      key: settlementKey,
-      index: potIndex,
-      winners: {
-        ...winners,
-        [currentPot.id]: selected.includes(id)
-          ? selected.filter((p) => p !== id)
-          : [...selected, id],
-      },
-    });
-  }
+  const { pots, winners, potIndex, currentPot, preview, navigation, selectWinner, resetWinners } =
+    useSettlementSelection(s, c.lease?.generation, busy, notify);
   function notify(message: string) {
     setToast(message);
     if (toastTimer.current) clearTimeout(toastTimer.current);
@@ -483,7 +448,7 @@ function LocalGame({
       if (!s?.undo) return notify('취소할 직전 행동이 없습니다.');
       void run(async () => {
         if (await dispatch({ type: 'UNDO' })) {
-          setWinnerDraft({ key: '', winners: {}, index: 0 });
+          resetWinners();
           setToast('');
         }
       });
@@ -552,7 +517,7 @@ function LocalGame({
                       motion.play(pendingMotion.current.prepared);
                     if (r.status !== 'UNKNOWN') pendingMotion.current = null;
                     if (r.status === 'APPLIED' && command.type === 'UNDO') {
-                      setWinnerDraft({ key: '', winners: {}, index: 0 });
+                      resetWinners();
                       setToast('');
                     }
                     setApp({
@@ -671,26 +636,7 @@ function LocalGame({
               onPot={() => {
                 if (currentPot) setDialog('payout');
               }}
-              navigation={
-                pots.length > 1
-                  ? {
-                      previous: () =>
-                        setWinnerDraft({
-                          key: settlementKey,
-                          winners,
-                          index: (potIndex + pots.length - 1) % pots.length,
-                        }),
-                      next: () =>
-                        setWinnerDraft({
-                          key: settlementKey,
-                          winners,
-                          index: (potIndex + 1) % pots.length,
-                        }),
-                      index: potIndex + 1,
-                      count: pots.length,
-                    }
-                  : undefined
-              }
+              navigation={navigation}
               phase={s.status === 'setup' ? 'setup' : (s.hand?.phase ?? '')}
               street={['PREFLOP', 'FLOP', 'TURN', 'RIVER'][s.hand?.street ?? 0]}
               handKey={s.hand?.id}
@@ -856,46 +802,7 @@ function LocalGame({
       )}
       {dialog === 'payout' && s && (
         <Dialog title="지급 미리보기" onClose={() => setDialog('')}>
-          <p>테이블의 누적액은 현재 핸드 납부액입니다. WIN 저장 후 지급됩니다.</p>
-          {pots.map((p, i) => (
-            <p key={p.id}>
-              {i === 0 ? '메인 팟' : '사이드 팟 ' + i}: {p.amount.toLocaleString('ko-KR')} ·{' '}
-              {(winners[p.id] ?? [])
-                .map((id) => s.players.find((p) => p.id === id)!.name)
-                .join(', ') || '선택 필요'}
-            </p>
-          ))}
-          {preview?.allocations?.map((a, i) => (
-            <div key={a.potId}>
-              <p>
-                {i === 0 ? '메인' : '사이드 ' + i} 분배:{' '}
-                {Object.entries(a.payouts)
-                  .map(
-                    ([id, n]) =>
-                      s.players.find((p) => p.id === id)!.name + ' ' + n.toLocaleString('ko-KR'),
-                  )
-                  .join(', ')}
-              </p>
-              {a.remainderRecipients.length > 0 && (
-                <p>
-                  남는 5칩:{' '}
-                  {a.remainderRecipients
-                    .map((id) => s.players.find((p) => p.id === id)!.name)
-                    .join(', ')}
-                </p>
-              )}
-            </div>
-          ))}
-          {preview?.ok ? (
-            s.players.map((p) => (
-              <p key={p.id}>
-                {p.name}: +{preview.payouts[p.id].toLocaleString('ko-KR')} →{' '}
-                {(p.stack + preview.payouts[p.id]).toLocaleString('ko-KR')}
-              </p>
-            ))
-          ) : (
-            <p role="alert">{preview?.error}</p>
-          )}
+          <PayoutPreview state={s} pots={pots} winners={winners} preview={preview} />
         </Dialog>
       )}
       {dialog === 'menu' && s && (

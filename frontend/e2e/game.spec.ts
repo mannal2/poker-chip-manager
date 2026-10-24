@@ -96,6 +96,28 @@ test('A06 칩 초안·C·BET 추가액만 차감, CALL은 초안 무시', async 
   await page.getByRole('button', { name: '취소', exact: true }).click();
   await expect(page.locator('.seat.active .bet')).toHaveText('0');
 });
+test('베팅 초안: 최소 레이즈 미만은 보존, 정확한 최소 금액만 확정', async ({ page }) => {
+  await start(page);
+  const id = await page.locator('.seat.active').getAttribute('data-player');
+  const actor = page.locator(`[data-player="${id}"]`);
+  await page.getByRole('button', { name: '10칩 추가', exact: true }).click();
+  await page.getByRole('button', { name: '5칩 추가', exact: true }).click();
+  const submit = page.getByRole('button', { name: 'BET', exact: true });
+  await expect(submit).toHaveAttribute('aria-disabled', 'true');
+  await submit.click({ force: true });
+  await expect(page.getByRole('status')).toContainText('최소 추가 레이즈는 20칩');
+  await expect(actor.locator('.bet')).toHaveText('15');
+  await expect(actor.locator('.stack')).toHaveText('1,000');
+  await expect(page.locator('.pot strong')).toHaveText('15');
+  await page.getByRole('button', { name: '5칩 추가', exact: true }).click();
+  await expect(submit).toHaveAttribute('aria-disabled', 'false');
+  await submit.click();
+  await expect(actor.locator('.stack')).toHaveText('980');
+  await expect(actor.locator('.bet')).toHaveText('20');
+  await expect(page.locator('.pot strong')).toHaveText('35');
+  await expect(page.locator('.seat.active .bet')).toHaveText('0');
+});
+
 test('A06 저장 실패: 확정잔액 보존·재시도1회', async ({ page }) => {
   await start(page);
   await page.getByRole('button', { name: '50칩 추가', exact: true }).click();

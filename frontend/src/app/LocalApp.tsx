@@ -10,9 +10,7 @@ import { ManagerMenu } from '../ui/ManagerMenu';
 import { buildPots, previewSettlement } from '../game/settlement';
 import { SettlementPanel } from '../ui/SettlementPanel';
 import type { WinnerSelection } from '../game/types';
-import { getLegalActions } from '../game/transition';
 import { BetControls } from '../ui/BetControls';
-import type { GameCommand } from '../game/types';
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
 import { LocalRepository, type Request, type ControlLease } from '../local/repository';
 import { LocalController } from '../local/controller';
@@ -24,6 +22,7 @@ import { LocalHome } from '../ui/LocalHome';
 import { Dialog } from '../ui/Dialog';
 import { useSeatDrag } from '../ui/useSeatDrag';
 import { appReducer, initialAppState } from './appReducer';
+import { useBettingDraft } from './useBettingDraft';
 import '../ui/tokens.css';
 import '../ui/table.css';
 import '../ui/controls.css';
@@ -87,7 +86,6 @@ function LocalGame({
     [dialog, setDialog] = useState(''),
     [toast, setToast] = useState(''),
     [renameId, setRenameId] = useState(''),
-    [draft, setDraft] = useState({ scope: '', version: -1, amount: 0 }),
     [winnerDraft, setWinnerDraft] = useState<{
       key: string;
       winners: WinnerSelection;
@@ -141,9 +139,11 @@ function LocalGame({
     setDialog('');
   };
   const draftScope = s?.tournamentId + ':' + c.lease?.generation;
-  const legal = s ? getLegalActions(s) : null,
-    draftAmount =
-      s && c.lease && draft.scope === draftScope && draft.version === s.version ? draft.amount : 0;
+  const { legal, draftAmount, submitAllowed, prepareAction } = useBettingDraft(
+    s,
+    c.lease?.generation,
+    notify,
+  );
   const settlementKey = s?.tournamentId + '/' + s?.hand?.id + '/' + c.lease?.generation;
   const pots = s?.status === 'playing' && s.hand?.phase === 'settlement' ? buildPots(s) : [];
   const winners: WinnerSelection = Object.fromEntries(
@@ -489,42 +489,8 @@ function LocalGame({
       });
       return;
     }
-    if (!s || !legal?.actor) return notify('지금은 베팅 차례가 아닙니다.');
-    if (action === 'FOLD' && legal.callAdditional === 0) return;
-    if (action === 'CLEAR') {
-      setDraft({ scope: draftScope, version: s.version, amount: 0 });
-      return;
-    }
-    if (action === 'CHIP') {
-      if (draftAmount + amount > legal.maxAdditional)
-        return notify('남은 칩을 초과할 수 없습니다.');
-      setDraft({ scope: draftScope, version: s.version, amount: draftAmount + amount });
-      return;
-    }
-    if (action === 'DRAFT_ALL') {
-      setDraft({ scope: draftScope, version: s.version, amount: legal.maxAdditional });
-      return;
-    }
-    let command: GameCommand = { type: action as GameCommand['type'] };
-    if (action === 'SUBMIT') {
-      if (
-        draftAmount <= 0 ||
-        (draftAmount < legal.callAdditional && draftAmount !== legal.maxAdditional)
-      )
-        return notify('콜 금액 이상으로 칩을 선택하세요.');
-      if (draftAmount === legal.callAdditional) command = { type: 'CALL' };
-      else if (draftAmount === legal.maxAdditional) {
-        if (legal.actor.B + draftAmount > s.hand!.W && !legal.canRaise) return notify(legal.reason);
-        command = { type: 'ALL_IN' };
-      } else {
-        if (!legal.canRaise) return notify(legal.reason);
-        if (draftAmount < legal.minRaiseAdditional)
-          return notify(
-            '최소 추가 레이즈는 ' + legal.minRaiseAdditional.toLocaleString('ko-KR') + '칩입니다.',
-          );
-        command = { type: s.hand!.W === 0 ? 'BET' : 'RAISE', additional: draftAmount };
-      }
-    }
+    const command = prepareAction(action, amount);
+    if (!command) return;
     void run(async () => {
       await dispatch(command);
     });
@@ -823,14 +789,7 @@ function LocalGame({
                   busy={busy}
                   draftAmount={draftAmount}
                   maxAdditional={legal?.maxAdditional}
-                  submitAllowed={
-                    !!legal?.actor &&
-                    draftAmount > 0 &&
-                    (draftAmount === legal.callAdditional ||
-                      (draftAmount === legal.maxAdditional &&
-                        (legal.actor.B + draftAmount <= s.hand!.W || legal.canRaise)) ||
-                      (legal.canRaise && draftAmount >= legal.minRaiseAdditional))
-                  }
+                  submitAllowed={submitAllowed}
                   onAction={bettingAction}
                 />
               )}{' '}

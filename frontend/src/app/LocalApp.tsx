@@ -10,17 +10,16 @@ import { ManagerMenu } from '../ui/ManagerMenu';
 import { SettlementPanel } from '../ui/SettlementPanel';
 import { PayoutPreview } from '../ui/PayoutPreview';
 import { BetControls } from '../ui/BetControls';
-import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
-import { LocalRepository, type Request, type ControlLease } from '../local/repository';
-import { LocalController } from '../local/controller';
-import { defaultSettings, validateSettings, type GameSettings } from '../game/settings';
+import { useEffect, useRef, useState } from 'react';
+import type { ControlLease } from '../local/repository';
+import { validateSettings, type GameSettings } from '../game/settings';
 import { nextSeat } from '../game/positions';
 import { Table } from '../ui/Table';
 import { SetupPanel } from '../ui/SetupPanel';
 import { LocalHome } from '../ui/LocalHome';
 import { Dialog } from '../ui/Dialog';
 import { useSeatDrag } from '../ui/useSeatDrag';
-import { appReducer, initialAppState } from './appReducer';
+import { useLocalSession } from './useLocalSession';
 import { useBettingDraft } from './useBettingDraft';
 import { useSettlementSelection } from './useSettlementSelection';
 import '../ui/tokens.css';
@@ -79,51 +78,49 @@ function LocalGame({
   const screen = useRef<HTMLElement>(null);
   useScreenFit(screen);
   const pwa = useLocalPWA();
-  const [app, setApp] = useReducer(appReducer, {
-      ...initialAppState,
-      home: !recoveryContext.inGame,
-    }),
-    [dialog, setDialog] = useState(''),
+  const [dialog, setDialog] = useState(''),
     [toast, setToast] = useState(''),
     [renameId, setRenameId] = useState('');
-  const inGame = useRef(recoveryContext.inGame);
-  const resumeRequested = useRef(false);
-  const lock = useRef(false),
-    finishName = useRef<{ key: string; finish: () => Promise<boolean> } | null>(null),
+  const finishName = useRef<{ key: string; finish: () => Promise<boolean> } | null>(null),
     toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [runtime] = useState(() => {
-    const repo = new LocalRepository(
-      'poker-chip-manager',
-      () =>
-        setApp({
-          status: 'restoreError',
-          error: '다른 창을 닫으면 저장소 업그레이드를 계속합니다.',
-        }),
-      () =>
-        setApp({ status: 'restoreError', error: '저장소 연결이 변경되었습니다. 다시 열어주세요.' }),
-    );
-    const controller = new LocalController(
-      repo,
-      recoveryContext.lease?.screenId ?? crypto.randomUUID(),
-    );
-    controller.lease = recoveryContext.lease ? { ...recoveryContext.lease } : null;
-    return {
-      repo,
-      controller,
-      channel: typeof BroadcastChannel === 'undefined' ? null : new BroadcastChannel('poker-local'),
-    };
+  useEffect(
+    () => () => {
+      if (toastTimer.current) clearTimeout(toastTimer.current);
+    },
+    [],
+  );
+  const {
+    app,
+    generation,
+    repository,
+    isLocked,
+    hasPending,
+    getSettings,
+    restore,
+    restartAfterFailure,
+    dispatch,
+    run,
+    continueGame,
+    enterLocalGame,
+    newGame,
+    retryStorage,
+    goHome,
+  } = useLocalSession({
+    restartOnMount,
+    recoveryContext,
+    onRecover,
+    notify,
+    prepareCommand: (state, command) => {
+      const prepared = motion.prepare(state, command);
+      return () => motion.play(prepared);
+    },
   });
-  const c = runtime.controller,
-    s = app.game,
+  const s = app.game,
     busy = app.status !== 'ready';
   const motion = useChipMotion(
     screen,
-    `${app.home}/${s?.tournamentId}/${c.lease?.generation}/${app.status === 'controlLost'}`,
+    `${app.home}/${s?.tournamentId}/${generation}/${app.status === 'controlLost'}`,
   );
-  const pendingMotion = useRef<{
-    requestId: string;
-    prepared: ReturnType<typeof motion.prepare>;
-  } | null>(null);
   const install = useInstallPrompt(app.home && !busy && !dialog);
   const automaticUpdate =
     dialog === 'startupUpdate' ||
@@ -133,255 +130,19 @@ function LocalGame({
     pwa.cancelCheck();
     setDialog('');
   };
-  const draftScope = s?.tournamentId + ':' + c.lease?.generation;
-  const { legal, draftAmount, submitAllowed, prepareAction } = useBettingDraft(
-    s,
-    c.lease?.generation,
-    notify,
-  );
+  const draftScope = s?.tournamentId + ':' + generation;
+  const { legal, draftAmount, submitAllowed, prepareAction } = useBettingDraft(s, generation, notify);
   const { pots, winners, potIndex, currentPot, preview, navigation, selectWinner, resetWinners } =
-    useSettlementSelection(s, c.lease?.generation, busy, notify);
+    useSettlementSelection(s, generation, busy, notify);
   function notify(message: string) {
     setToast(message);
     if (toastTimer.current) clearTimeout(toastTimer.current);
     toastTimer.current = setTimeout(() => setToast(''), 2400);
   }
-  const restoreVersion = useRef(0);
-  const restore = useCallback(
-    async (reconnect = false) => {
-      const version = ++restoreVersion.current;
-      if (reconnect) runtime.repo.reconnect();
-      setApp({ status: 'loading', error: '' });
-      try {
-        await c.refresh();
-        if (version !== restoreVersion.current) return;
-        setApp({
-          game: c.state,
-          status: c.pending ? 'storageError' : !inGame.current || c.lease ? 'ready' : 'controlLost',
-          error: c.pending
-            ? '저장 결과를 확인한 뒤 같은 요청으로 재시도해주세요.'
-            : !inGame.current || c.lease
-              ? ''
-              : '다른 화면이 조작 권한을 인수했습니다.',
-        });
-      } catch (error) {
-        if (version === restoreVersion.current)
-          setApp({ status: 'restoreError', error: String(error) });
-      }
-    },
-    [c, runtime],
-  );
-  const cancelRestore = useCallback(() => {
-    restoreVersion.current++;
-    c.cancelRefresh();
-  }, [c]);
-  const finish = useCallback(() => {
-    lock.current = false;
-    if (resumeRequested.current) {
-      resumeRequested.current = false;
-      void restore(true);
-    }
-  }, [restore]);
-  useEffect(() => {
-    if (restartOnMount) {
-      lock.current = true;
-      void c
-        .restart(defaultSettings)
-        .then(
-          () => {
-            inGame.current = true;
-            setApp({ game: c.state, status: 'ready', home: false, error: '' });
-            runtime.channel?.postMessage('changed');
-          },
-          (error) => setApp({ status: 'restoreError', error: String(error) }),
-        )
-        .finally(finish);
-    } else void restore();
-    const resume = () => {
-      if (document.visibilityState === 'hidden') return;
-      if (lock.current) {
-        resumeRequested.current = true;
-        return;
-      }
-      resumeRequested.current = false;
-      void restore(true);
-    };
-    document.addEventListener('visibilitychange', resume);
-    window.addEventListener('pageshow', resume);
-    document.addEventListener('resume', resume);
-    if (runtime.channel)
-      runtime.channel.onmessage = (message) => {
-        if (message.data?.type === 'probe') {
-          if (c.lease && inGame.current)
-            runtime.channel?.postMessage({ type: 'owner', requestId: message.data.requestId });
-          return;
-        }
-        if (message.data?.type === 'owner' || lock.current || c.pending) return;
-        void restore();
-      };
-    return () => {
-      resumeRequested.current = false;
-      cancelRestore();
-      document.removeEventListener('visibilitychange', resume);
-      window.removeEventListener('pageshow', resume);
-      document.removeEventListener('resume', resume);
-      runtime.channel?.close();
-      runtime.repo.dispose();
-      if (toastTimer.current) clearTimeout(toastTimer.current);
-    };
-  }, [c, runtime, restore, cancelRestore, restartOnMount, finish]);
-  function restartAfterFailure() {
-    if (confirm('현재 토너먼트와 전체 기록을 삭제하고 새 토너먼트를 시작할까요?'))
-      onRecover(inGame.current, c.lease);
-  }
-  async function dispatch(command: Request['command']) {
-    const prepared = c.state ? motion.prepare(c.state, command) : null;
-    const result = await c.dispatch(command);
-    pendingMotion.current =
-      result.status === 'UNKNOWN' ? { requestId: result.requestId, prepared } : null;
-    if (!c.lease) {
-      setApp({
-        game: c.state,
-        status: 'controlLost',
-        error: '다른 화면이 조작 권한을 인수했습니다.',
-      });
-      return false;
-    }
-    if (result.status === 'UNKNOWN') {
-      setApp({
-        status: 'storageError',
-        error: `저장 결과를 확인할 수 없습니다: ${result.reason}. 같은 요청으로 재시도하세요.`,
-      });
-      return false;
-    }
-    setApp({
-      game: c.state,
-      status: c.lease ? 'ready' : 'controlLost',
-      error: result.reason === 'CONTROL_LOST' ? '다른 화면에서 조작 중입니다.' : '',
-    });
-    if (result.status === 'REJECTED') {
-      notify(result.reason ?? '처리할 수 없습니다.');
-      return false;
-    }
-    if (result.resultVersion === result.state?.version) motion.play(prepared);
-    runtime.channel?.postMessage('changed');
-    return true;
-  }
-  async function run(action: () => Promise<void>) {
-    if (lock.current) {
-      notify('저장 완료를 기다려주세요.');
-      return;
-    }
-    lock.current = true;
-    setApp({ status: 'saving' });
-    try {
-      await action();
-    } catch (e) {
-      setApp({ status: 'storageError', error: String(e) });
-    } finally {
-      finish();
-    }
-  }
   function saveSettings(settings: GameSettings, order?: string[]) {
     if (busy) return notify('저장 완료를 기다려주세요.');
     void run(async () => {
       await dispatch({ type: 'SETUP_UPDATE', settings, order });
-    });
-  }
-  async function activateLocal() {
-    await c.takeControl();
-    if (!c.state) {
-      await runtime.repo.initialize(defaultSettings, c.lease!);
-      await c.refresh();
-    }
-    if (
-      c.state?.status === 'playing' &&
-      ['revealPending', 'revealed'].includes(c.state.hand?.phase ?? '')
-    ) {
-      if (!(await dispatch({ type: 'RESUME_FLOW' }))) return;
-    }
-    inGame.current = true;
-    setApp({ game: c.state, status: 'ready', home: false, error: '' });
-    runtime.channel?.postMessage('control');
-  }
-  async function continueGame() {
-    if (!lock.current) await run(activateLocal);
-  }
-  async function otherWindowOwnsGame() {
-    const channel = runtime.channel;
-    if (!channel || c.lease) return false;
-    return new Promise<boolean>((resolve) => {
-      const requestId = crypto.randomUUID();
-      const finish = (owner: boolean) => {
-        clearTimeout(timer);
-        channel.removeEventListener('message', listener);
-        resolve(owner);
-      };
-      const listener = (e: MessageEvent) => {
-        if (e.data?.type === 'owner' && e.data.requestId === requestId) finish(true);
-      };
-      const timer = setTimeout(() => finish(false), 180);
-      channel.addEventListener('message', listener);
-      channel.postMessage({ type: 'probe', requestId });
-    });
-  }
-  async function enterLocalGame() {
-    await run(async () => {
-      await c.refresh();
-      if (await otherWindowOwnsGame()) {
-        inGame.current = true;
-        setApp({
-          game: c.state,
-          status: 'controlLost',
-          home: false,
-          error: '다른 창에서 조작 중입니다.',
-        });
-        return;
-      }
-      await activateLocal();
-    });
-  }
-  async function newGame() {
-    if (lock.current || c.pending) {
-      restartAfterFailure();
-      return;
-    }
-    if (s && !confirm('현재 토너먼트와 전체 기록을 삭제하고 새 토너먼트를 준비할까요?')) return;
-    await run(async () => {
-      await c.takeControl();
-      if (
-        c.state &&
-        c.state.tournamentId !== s?.tournamentId &&
-        !confirm(
-          '다른 화면에서 새 토너먼트가 저장되었습니다. 현재 게임과 기록을 삭제하고 교체할까요?',
-        )
-      ) {
-        setApp({
-          game: c.state,
-          status: c.lease ? 'ready' : 'controlLost',
-          error: c.lease ? '' : '다른 화면이 조작 권한을 인수했습니다.',
-        });
-        runtime.channel?.postMessage('control');
-        return;
-      }
-      if (!c.state) {
-        await runtime.repo.initialize(defaultSettings, c.lease!);
-        await c.refresh();
-        setApp({ game: c.state, status: 'ready', home: false, error: '' });
-      } else if (
-        await dispatch({
-          type: 'NEW_TOURNAMENT',
-          settings: {
-            ...c.state.settings,
-            names: [...defaultSettings.names],
-            button: -1,
-            viewSeat: 0,
-          },
-        })
-      )
-        setApp({ home: false });
-      setDialog('');
-      runtime.channel?.postMessage('changed');
     });
   }
   const drag = useSeatDrag(
@@ -408,7 +169,7 @@ function LocalGame({
       const editor = finishName.current;
       return editor?.key.startsWith(draftScope + ':')
         ? editor.finish()
-        : Promise.resolve(!busy && !lock.current);
+        : Promise.resolve(!busy && !isLocked());
     },
   );
   function changeCount(add: boolean) {
@@ -438,7 +199,7 @@ function LocalGame({
     }
   }
   function bettingAction(action: string, amount = 0) {
-    if (busy || lock.current)
+    if (busy || isLocked())
       return notify(
         app.status === 'controlLost'
           ? '다른 화면에서 조작 중입니다.'
@@ -504,44 +265,9 @@ function LocalGame({
           {app.status === 'storageError' && (
             <button
               onClick={() =>
-                void run(async () => {
-                  runtime.repo.reconnect();
-                  if (c.pending) {
-                    const command = c.pending.command;
-                    const r = await c.retry();
-                    if (
-                      pendingMotion.current?.requestId === r.requestId &&
-                      r.status === 'APPLIED' &&
-                      r.resultVersion === r.state?.version
-                    )
-                      motion.play(pendingMotion.current.prepared);
-                    if (r.status !== 'UNKNOWN') pendingMotion.current = null;
-                    if (r.status === 'APPLIED' && command.type === 'UNDO') {
-                      resetWinners();
-                      setToast('');
-                    }
-                    setApp({
-                      game: c.state,
-                      status: !c.lease
-                        ? 'controlLost'
-                        : r.status === 'UNKNOWN'
-                          ? 'storageError'
-                          : 'ready',
-                      error: !c.lease
-                        ? '다른 화면이 조작 권한을 인수했습니다.'
-                        : r.status === 'UNKNOWN'
-                          ? (r.reason ?? '저장 실패')
-                          : '',
-                    });
-                    runtime.channel?.postMessage('changed');
-                  } else {
-                    await c.refresh();
-                    setApp({
-                      game: c.state,
-                      status: c.lease ? 'ready' : 'controlLost',
-                      error: c.lease ? '' : '다른 화면이 조작 권한을 인수했습니다.',
-                    });
-                  }
+                void retryStorage(() => {
+                  resetWinners();
+                  setToast('');
                 })
               }
             >
@@ -657,7 +383,7 @@ function LocalGame({
               onRename={
                 s.status === 'setup'
                   ? (id, name) => {
-                      if (busy || lock.current) return false;
+                      if (busy || isLocked()) return false;
                       const v = validateSettings({
                         ...s.settings,
                         names: s.players.map((p) => (p.id === id ? name : p.name)),
@@ -744,7 +470,7 @@ function LocalGame({
                   key={
                     s.tournamentId +
                     ':' +
-                    c.lease?.generation +
+                    generation +
                     ':' +
                     s.settings.initial +
                     ':' +
@@ -765,7 +491,7 @@ function LocalGame({
                       return notify('첫 딜러로 시작할 플레이어 카드를 선택하세요.');
                     void run(async () => {
                       if (
-                        JSON.stringify(settings) !== JSON.stringify(c.state!.settings) &&
+                        JSON.stringify(settings) !== JSON.stringify(getSettings()) &&
                         !(await dispatch({ type: 'SETUP_UPDATE', settings }))
                       )
                         return;
@@ -789,13 +515,13 @@ function LocalGame({
             {...pwa}
             automatic={automaticUpdate}
             onLater={closeUpdate}
-            canApply={app.home && !busy && !c.pending && !lock.current}
+            canApply={app.home && !busy && !hasPending() && !isLocked()}
             onCheck={() => void pwa.check()}
             onApply={() => {
-              if (!app.home || busy || lock.current || c.pending)
+              if (!app.home || busy || isLocked() || hasPending())
                 return notify('저장 완료 후 홈에서 업데이트하세요.');
               if (automaticUpdate) setDialog('startupUpdate');
-              void pwa.apply(() => runtime.repo.load());
+              void pwa.apply(() => repository.load());
             }}
           />
         </Dialog>
@@ -809,14 +535,12 @@ function LocalGame({
         <Dialog dismissOutside title="관리 메뉴" onClose={() => setDialog('')}>
           <ManagerMenu
             onHome={() => {
-              if (['ready', 'controlLost'].includes(app.status) && !lock.current && !c.pending) {
-                inGame.current = false;
+              goHome(() => {
                 setRenameId('');
                 setDialog('');
-                setApp({ home: true, status: 'ready', error: '' });
-              } else notify('저장 완료를 기다려주세요.');
+              });
             }}
-            onNew={() => void newGame()}
+            onNew={() => void newGame(() => setDialog(''))}
           />
         </Dialog>
       )}
@@ -828,13 +552,13 @@ function LocalGame({
           title="현재 토너먼트 기록"
           onClose={() => setDialog('')}
         >
-          <HistoryPanel repository={runtime.repo} state={s} />
+          <HistoryPanel repository={repository} state={s} />
         </Dialog>
       )}
       {dialog === 'blinds' && s && (
         <Dialog dismissOutside title="다음 핸드 블라인드" onClose={() => setDialog('')}>
           <BlindSettings
-            key={s.tournamentId + ':' + c.lease?.generation}
+            key={s.tournamentId + ':' + generation}
             state={s}
             busy={busy}
             onSave={(sb, bb) => {

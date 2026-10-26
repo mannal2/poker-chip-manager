@@ -14,6 +14,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { ControlLease } from '../local/repository';
 import { buildTableView } from './tableView';
 import { Table } from '../ui/Table';
+import { GameHeader } from '../ui/GameHeader';
 import { SetupPanel } from '../ui/SetupPanel';
 import { LocalHome } from '../ui/LocalHome';
 import { Dialog } from '../ui/Dialog';
@@ -217,39 +218,16 @@ function LocalGame({
       ) : (
         s && (
           <>
-            <header className="meta">
-              <div className="meta-info">
-                <button
-                  className="meta-link"
-                  aria-label="현재 토너먼트 기록"
-                  onClick={() => setDialog('history')}
-                >
-                  HAND <strong>{String(s.hand?.number ?? 1).padStart(2, '0')}</strong>
-                </button>
-                <button
-                  id="blinds"
-                  className="meta-link"
-                  aria-label="다음 핸드 블라인드 설정"
-                  disabled={s.status !== 'playing' || busy}
-                  onClick={() => setDialog('blinds')}
-                >
-                  <strong>
-                    {(s.hand?.sb ?? s.settings.sb).toLocaleString('ko-KR')} /{' '}
-                    {(s.hand?.bb ?? s.settings.bb).toLocaleString('ko-KR')}
-                  </strong>
-                  {s.status === 'playing' && s.pendingBlinds && (
-                    <span className="pending-blinds">
-                      {' '}
-                      → {s.pendingBlinds.sb.toLocaleString('ko-KR')} /{' '}
-                      {s.pendingBlinds.bb.toLocaleString('ko-KR')}
-                    </span>
-                  )}
-                </button>
-              </div>
-              <button id="menu" aria-label="관리 메뉴" onClick={() => setDialog('menu')}>
-                ☰
-              </button>
-            </header>
+            <GameHeader
+              handNumber={s.hand?.number ?? 1}
+              sb={s.hand?.sb ?? s.settings.sb}
+              bb={s.hand?.bb ?? s.settings.bb}
+              pendingBlinds={s.status === 'playing' ? s.pendingBlinds : null}
+              canEditBlinds={s.status === 'playing' && !busy}
+              onHistory={() => setDialog('history')}
+              onBlinds={() => setDialog('blinds')}
+              onMenu={() => setDialog('menu')}
+            />
             <Table
               {...buildTableView(s, { draftAmount, pots, potIndex, winners })}
               onSelect={currentPot ? selectWinner : undefined}

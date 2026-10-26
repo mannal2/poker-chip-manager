@@ -344,7 +344,8 @@ TypeScript 검사 범위는 [tsconfig.json](frontend/tsconfig.json)에 정의되
 - `frontend/e2e/`: 실제 입력·저장·여러 탭·복원·설치·업데이트·화면 회귀 테스트.
   [app-flow.spec.ts](frontend/e2e/app-flow.spec.ts), [game.spec.ts](frontend/e2e/game.spec.ts), [pwa.spec.ts](frontend/e2e/pwa.spec.ts)가 전체 흐름의 시작점이다.
 - [playwright.config.ts](frontend/playwright.config.ts)는 Chromium·WebKit 파일을 병렬로 실행한다(로컬 6개, CI 2개 worker).
-  `pwa`·`startup-update`는 그 뒤 `chromium-sw` → `webkit-sw` 순서로 하나씩 실행한다.
+  공유 상태를 바꾸는 spec은 그 뒤 `chromium-serial` → `webkit-serial` 순서로 하나씩 실행한다.
+  대상 목록은 [sharedStateSpecs.ts](frontend/e2e/sharedStateSpecs.ts)이며 지금은 `pwa`·`startup-update`다.
   테스트용 빌드와 preview 서버를 한 번 시작하며 서버 포트는 4173이다.
 - [design.tsx](frontend/e2e/design.tsx), [storage.ts](frontend/e2e/storage.ts)는 브라우저 테스트 하네스다.
   이들의 HTML 진입점은 테스트 빌드 모드에서만 추가된다.
@@ -355,9 +356,23 @@ npm --prefix frontend run test:e2e
 
 PWA 테스트는 생성된 서비스 워커 파일을 일시 변경하고 원복한다.
 모든 `/local/` 페이지가 이 파일을 등록하므로 위 순서를 유지하고, 다른 빌드·브라우저 검사와 동시에 실행하지 않는다.
-일반 단계에서 실패가 있으면 의존 관계 때문에 SW 단계는 건너뛴다.
+일반 단계에서 실패가 있으면 의존 관계 때문에 순차 단계는 건너뛴다.
 디자인 비교의 스크린샷은 실패할 때만 `test-results/`에 저장한다.
-자동 브라우저 검사와 실기기 확인은 구분하며 실기기 항목은 [DEVICE_CHECKS.md](frontend/DEVICE_CHECKS.md)에서 확인한다.
+
+새 E2E 테스트를 추가할 때는 다음을 지킨다.
+
+- **기능별로 새 spec 파일을 만든다.**
+  worker는 파일 단위로 일을 나눠 받고 파일 하나의 테스트는 한 worker가 순서대로 실행한다.
+  한 파일이 길어지면 다른 worker가 끝나도 그 파일이 전체 시간을 결정하므로, 큰 기존 파일에 덧붙이지 않는다.
+  2026-10-27 기준 가장 긴 파일은 WebKit의 `game.spec.ts`로 약 110초다.
+- **공유 상태를 바꾸는 spec은 순차 목록에 넣는다.**
+  `dist/`의 파일이나 preview 서버처럼 모든 테스트가 같이 쓰는 것을 고치면 [sharedStateSpecs.ts](frontend/e2e/sharedStateSpecs.ts)에 파일 이름을 추가한다.
+  `dist/`에 쓰는 spec이 목록에 없으면 [sharedStateSpecs.test.ts](frontend/tests/e2e/sharedStateSpecs.test.ts)가 Vitest에서 실패한다.
+  IndexedDB·서비스 워커 등록·BroadcastChannel은 테스트마다 새 브라우저 컨텍스트라 따로 격리되므로 목록에 넣지 않는다.
+- **파일 안 테스트의 병렬 실행은 필요할 때 파일별로 켠다.**
+  설정은 `fullyParallel: false`다.
+  병목이 된 파일의 테스트가 서로 독립적이면 그 파일에만 `test.describe.configure({ mode: 'parallel' })`을 쓴다.
+  자동 브라우저 검사와 실기기 확인은 구분하며 실기기 항목은 [DEVICE_CHECKS.md](frontend/DEVICE_CHECKS.md)에서 확인한다.
 
 ### 배포 검사와 CI 범위
 

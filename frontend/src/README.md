@@ -8,11 +8,11 @@
 | `game/`                           | React·저장소·통신에 의존하지 않는 순수 게임 규칙과 타입              |
 | `features/gameplay/`              | `GameScreen` 화면 조립과 모드가 채우는 `GameSession` 계약            |
 | `features/gameplay/components/`   | 테이블·플레이어 카드·보드·입력·기록·정산 UI                          |
-| `features/gameplay/hooks/`        | 공통 입력 상태, 좌석 드래그와 칩 애니메이션                          |
+| `features/gameplay/hooks/`        | 공통 입력 상태, 준비 편집, 좌석 드래그와 칩 애니메이션               |
 | `features/gameplay/model/`        | 화면 표시 데이터, 좌석 배치, 기록 변환과 칩 이동 타입                |
 | `features/gameplay/styles/`       | 기존 게임 화면과 컨트롤 스타일                                       |
 | `features/local-game/`            | 로컬 화면 조합과 복구 상태의 수명                                    |
-| `features/local-game/hooks/`      | 로컬 세션·설정 편집·기록 조회·칩 이동 연결                           |
+| `features/local-game/hooks/`      | 로컬 세션·인원·회전·기록 조회·칩 이동 연결                           |
 | `features/local-game/storage/`    | IndexedDB, 저장 원자성, 조작권, 복원과 제한 시간                     |
 | `features/local-game/model/`      | 로컬 화면 상태와 로컬 명령 기반 칩 이동 계산                         |
 | `features/local-game/components/` | 로컬 홈·관리 메뉴와 기록 조회/UI 연결                                |

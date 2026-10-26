@@ -1,12 +1,13 @@
 import { useRef, useState } from 'react';
 import { validateSettings, type GameSettings } from '../../../game/settings';
 import type { GameCommand, GameState } from '../../../game/types';
-import { useSeatDrag } from '../../gameplay/hooks/useSeatDrag';
-import { messageFor } from '../../gameplay/model/errorMessages';
+import { useSeatDrag } from './useSeatDrag';
+import { messageFor } from '../model/errorMessages';
 
+/** Setup editing shared by modes: seat order, names, first dealer, settings and start. */
 export function useSetupEditing({
   state: s,
-  generation,
+  scope: draftScope,
   busy,
   notify,
   isLocked,
@@ -15,7 +16,8 @@ export function useSetupEditing({
   dispatch,
 }: {
   state: GameState | null;
-  generation: number | undefined;
+  /** Editing session key from the caller (local: tournament and control generation). */
+  scope: string;
   busy: boolean;
   notify: (message: string) => void;
   isLocked: () => boolean;
@@ -25,7 +27,6 @@ export function useSetupEditing({
 }) {
   const [renameId, setRenameId] = useState('');
   const finishName = useRef<{ key: string; finish: () => Promise<boolean> } | null>(null);
-  const draftScope = s?.tournamentId + ':' + generation;
   function saveSettings(settings: GameSettings, order?: string[]) {
     if (busy) return notify('저장 완료를 기다려주세요.');
     void run(async () => {
@@ -59,32 +60,6 @@ export function useSetupEditing({
         : Promise.resolve(!busy && !isLocked());
     },
   );
-  function changeCount(add: boolean) {
-    if (!s || busy || s.status !== 'setup') return;
-    const n = s.players.length;
-    if (add) {
-      if (n >= 10) return;
-      const settings = { ...s.settings, names: [...s.settings.names, `P${n + 1}`] };
-      const v = validateSettings(settings);
-      if (!v.ok)
-        return notify(`P${n + 1} 이름이 이미 사용 중입니다. 해당 이름을 변경한 뒤 추가하세요.`);
-      saveSettings(v.settings);
-    } else {
-      if (n <= 2) return;
-      const latest = (s.setupOrder ?? s.players.map((p) => p.id)).at(-1)!;
-      const players = s.players.filter((p) => p.id !== latest);
-      const dealer = s.players[s.settings.button]?.id;
-      saveSettings(
-        {
-          ...s.settings,
-          names: players.map((p) => p.name),
-          button: players.findIndex((p) => p.id === dealer),
-          viewSeat: Math.min(s.settings.viewSeat, players.length - 1),
-        },
-        players.map((p) => p.id),
-      );
-    }
-  }
   function onNameEditing(id: string, editing: boolean, finish?: () => Promise<boolean>) {
     const key = draftScope + ':' + id;
     if (editing) {
@@ -117,18 +92,6 @@ export function useSetupEditing({
           })();
         }
       : undefined;
-  const rotate =
-    s?.status === 'setup'
-      ? () => {
-          if (busy) return;
-          void run(async () => {
-            await dispatch({
-              type: 'SET_VIEW',
-              viewSeat: (s.settings.viewSeat + s.players.length - 1) % s.players.length,
-            });
-          });
-        }
-      : undefined;
   function start(settings: GameSettings) {
     if (renameId.startsWith(draftScope + ':'))
       return notify('이름 입력을 Enter로 저장하거나 다른 곳을 눌러 완료하세요.');
@@ -152,10 +115,8 @@ export function useSetupEditing({
     scope: draftScope,
     drag,
     saveSettings,
-    changeCount,
     onNameEditing,
     rename,
-    rotate,
     start,
     clearEditing,
   };

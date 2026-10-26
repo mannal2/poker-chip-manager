@@ -47,6 +47,7 @@ export function GameScreen({
   const bettingScope = scope === undefined ? undefined : s.tournamentId + ':' + scope;
   const settlementScope = s.tournamentId + '/' + s.hand?.id + '/' + scope;
   const initialBlinds = s.pendingBlinds ?? s.hand;
+  const { changeCount } = setup;
   const legal = session.legal;
   const { draftAmount, submitAllowed, prepareAction } = useBettingDraft(
     s,
@@ -103,8 +104,8 @@ export function GameScreen({
         editScope={setup.scope}
         onNameEditing={setup.onNameEditing}
         onRename={can.canEditSetup ? setup.rename : undefined}
-        onAdd={can.canEditSetup ? () => setup.changeCount(true) : undefined}
-        onRemove={can.canEditSetup ? () => setup.changeCount(false) : undefined}
+        onAdd={can.canEditSetup && changeCount ? () => changeCount(true) : undefined}
+        onRemove={can.canEditSetup && changeCount ? () => changeCount(false) : undefined}
         onRotate={setup.rotate}
       />
       <section className="dock">

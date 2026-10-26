@@ -15,7 +15,8 @@ import { fullCapabilities } from '../gameplay/model/capabilities';
 import { getLegalActions } from '../../game/transition';
 import { LocalHome } from './components/LocalHome';
 import { Dialog } from '../../shared/ui/Dialog';
-import { useSetupEditing } from './hooks/useSetupEditing';
+import { useSetupEditing } from '../gameplay/hooks/useSetupEditing';
+import { useLocalSetupExtras } from './hooks/useLocalSetupExtras';
 import { useLocalSession } from './hooks/useLocalSession';
 import '../../shared/styles/tokens.css';
 import '../gameplay/styles/table.css';
@@ -106,9 +107,9 @@ function LocalGame({
     readSavedState: () => repository.load(),
     notify,
   });
-  const setup = useSetupEditing({
+  const editing = useSetupEditing({
     state: s,
-    generation,
+    scope: s?.tournamentId + ':' + generation,
     busy,
     notify,
     isLocked,
@@ -116,6 +117,15 @@ function LocalGame({
     run,
     dispatch,
   });
+  const extras = useLocalSetupExtras({
+    state: s,
+    busy,
+    notify,
+    saveSettings: editing.saveSettings,
+    run,
+    dispatch,
+  });
+  const setup = { ...editing, ...extras };
   const session: GameSession | null = s && {
     state: s,
     busy,

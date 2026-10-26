@@ -1,6 +1,5 @@
-import type { GameSettings } from '../../game/settings';
 import type { GameCommand, GameState, LegalActions } from '../../game/types';
-import type { useSeatDrag } from './hooks/useSeatDrag';
+import type { useSetupEditing } from './hooks/useSetupEditing';
 import type { GameCapabilities } from './model/capabilities';
 
 /** Session-level rejections (control, ordering, staleness) returned by local storage or a server. */
@@ -32,17 +31,11 @@ export interface GameSession {
   notify: (message: string) => void;
 }
 
-/** Setup editing callbacks the mode wires to the table and setup form. */
-export interface SetupControls {
-  scope: string;
-  drag: ReturnType<typeof useSeatDrag>;
-  saveSettings: (settings: GameSettings) => void;
-  changeCount: (add: boolean) => void;
-  onNameEditing: (id: string, editing: boolean, finish?: () => Promise<boolean>) => void;
-  rename?: (id: string, name: string) => boolean | Promise<boolean>;
+/** Shared setup editing plus optional mode extras (local: player count and screen rotation). */
+export type SetupControls = ReturnType<typeof useSetupEditing> & {
+  changeCount?: (add: boolean) => void;
   rotate?: () => void;
-  start: (settings: GameSettings) => void;
-}
+};
 
 export type GameDialog = 'payout' | 'menu' | 'history' | 'blinds';
 

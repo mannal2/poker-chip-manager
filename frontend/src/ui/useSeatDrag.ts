@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type PointerEvent } from 'react';
-import { seatCoordinates } from './Table';
+import { seatCoordinates } from './seatLayout';
 import { gapTarget, moveCircularSeat } from './seatOrder';
 export function useSeatDrag(
   ids: string[],

@@ -1,5 +1,6 @@
 import { InlineName } from './InlineName';
 import { useLayoutEffect, useRef } from 'react';
+import { seatCoordinates } from './seatLayout';
 export interface CardPlayer {
   id: string;
   name: string;
@@ -13,80 +14,6 @@ export interface CardPlayer {
   pending?: boolean;
   eligible?: boolean;
 }
-export const seatCoordinates: Record<number, number[][]> = {
-  2: [
-    [50, 84],
-    [50, 16],
-  ],
-  3: [
-    [50, 87],
-    [17, 27],
-    [83, 27],
-  ],
-  4: [
-    [50, 87],
-    [15, 50],
-    [50, 13],
-    [85, 50],
-  ],
-  5: [
-    [50, 87],
-    [15, 65],
-    [23, 19],
-    [77, 19],
-    [85, 65],
-  ],
-  6: [
-    [50, 87],
-    [16, 68],
-    [16, 31],
-    [50, 13],
-    [84, 31],
-    [84, 68],
-  ],
-  7: [
-    [50, 90],
-    [18, 76],
-    [14, 48],
-    [29, 15],
-    [71, 15],
-    [86, 48],
-    [82, 76],
-  ],
-  8: [
-    [50, 90],
-    [19, 79],
-    [14, 51],
-    [28, 17],
-    [72, 17],
-    [86, 39],
-    [86, 60],
-    [81, 81],
-  ],
-  9: [
-    [50, 90],
-    [19, 79],
-    [14, 58],
-    [14, 36],
-    [28, 14],
-    [72, 14],
-    [86, 36],
-    [86, 58],
-    [81, 79],
-  ],
-  10: [
-    [50, 92],
-    [22, 83],
-    [14, 62],
-    [14, 41],
-    [22, 20],
-    [50, 8],
-    [78, 20],
-    [86, 41],
-    [86, 62],
-    [78, 83],
-  ],
-};
 export function Table({
   players,
   pot,

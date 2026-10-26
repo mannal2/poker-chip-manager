@@ -1,6 +1,6 @@
 import 'fake-indexeddb/auto';
 import { describe, it, expect } from 'vitest';
-import { LocalRepository } from '../../src/local/repository';
+import { LocalRepository } from '../../src/features/local-game/storage/repository';
 import { defaultSettings } from '../../src/game/settings';
 import type { GameCommand } from '../../src/game/types';
 let n = 0;
@@ -160,7 +160,7 @@ describe('원자 저장·세대·요청', () => {
   });
 });
 it('최신 규칙과 다른 형식·손상 장부는 쓰기 전에 거절한다', async () => {
-  const { validateStored } = await import('../../src/local/restore');
+  const { validateStored } = await import('../../src/features/local-game/storage/restore');
   const { fixtureState } = await import('../game/helpers');
   const state = fixtureState();
   for (const saved of [

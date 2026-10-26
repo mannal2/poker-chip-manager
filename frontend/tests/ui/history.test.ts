@@ -1,5 +1,5 @@
 import { it, expect } from 'vitest';
-import { historyRows } from '../../src/ui/history';
+import { historyRows } from '../../src/features/gameplay/model/history';
 import type { GameEvent } from '../../src/game/types';
 const event = (type: string, details: unknown = {}, hand = 1): GameEvent => ({
   id: Math.random().toString(),

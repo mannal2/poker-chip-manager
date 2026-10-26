@@ -1,5 +1,5 @@
 import { it, expect } from 'vitest';
-import { validateStored } from '../../src/local/restore';
+import { validateStored } from '../../src/features/local-game/storage/restore';
 import { fixtureState } from '../game/helpers';
 import { createTournament } from '../../src/game/transition';
 it('10명 게임과 최대 칩 총량을 복원한다', () => {

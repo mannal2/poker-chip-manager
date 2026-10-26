@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto';
 import { it, expect } from 'vitest';
-import { LocalRepository } from '../../src/local/repository';
-import { LocalController } from '../../src/local/controller';
+import { LocalRepository } from '../../src/features/local-game/storage/repository';
+import { LocalController } from '../../src/features/local-game/storage/controller';
 import { defaultSettings } from '../../src/game/settings';
 it('저장 완료 응답 유실 재시도는 같은 요청이며 시작 1회', async () => {
   const r = new LocalRepository('controller-loss');

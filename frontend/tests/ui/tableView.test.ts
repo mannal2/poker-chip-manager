@@ -1,5 +1,5 @@
 import { it, expect } from 'vitest';
-import { buildTableView } from '../../src/app/tableView';
+import { buildTableView } from '../../src/features/gameplay/model/tableView';
 import { createTournament } from '../../src/game/transition';
 import { defaultSettings } from '../../src/game/settings';
 import { fixtureState, ctx } from '../game/helpers';

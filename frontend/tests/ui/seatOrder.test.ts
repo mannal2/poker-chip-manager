@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { moveCircularSeat, gapTarget } from '../../src/ui/seatOrder';
+import { moveCircularSeat, gapTarget } from '../../src/features/gameplay/model/seatOrder';
 describe('원형 삽입', () => {
   it('처음/끝은 인접: 나머지 카드는 고정', () => {
     expect(moveCircularSeat(['a', 'b', 'c', 'd', 'e', 'f'], 'a', 5)).toEqual([

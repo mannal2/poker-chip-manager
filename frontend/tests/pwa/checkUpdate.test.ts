@@ -1,5 +1,5 @@
 import { it, expect } from 'vitest';
-import { checkForUpdate } from '../../src/pwa/checkUpdate';
+import { checkForUpdate } from '../../src/features/pwa/checkUpdate';
 function fixture() {
   const worker = Object.assign(new EventTarget(), { state: 'installing' });
   const registration = {

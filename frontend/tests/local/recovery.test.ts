@@ -1,8 +1,8 @@
 import 'fake-indexeddb/auto';
 import { expect, it } from 'vitest';
 import { openDB } from 'idb';
-import { LocalRepository } from '../../src/local/repository';
-import { LocalController } from '../../src/local/controller';
+import { LocalRepository } from '../../src/features/local-game/storage/repository';
+import { LocalController } from '../../src/features/local-game/storage/controller';
 import { defaultSettings } from '../../src/game/settings';
 
 it('명시적 새 토너먼트는 손상 저장을 원자 교체하고 이전 조작권을 무효화한다', async () => {

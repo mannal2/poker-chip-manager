@@ -4,7 +4,7 @@ import { useLocalPWA } from '../pwa/register';
 import { UpdateNotice } from '../pwa/UpdateNotice';
 import { usePwaPresentation } from './usePwaPresentation';
 import { InstallNotice } from '../pwa/InstallNotice';
-import { HistoryPanel } from '../ui/HistoryPanel';
+import { LocalHistoryPanel } from './LocalHistoryPanel';
 import { BlindSettings } from '../ui/BlindSettings';
 import { ManagerMenu } from '../ui/ManagerMenu';
 import { SettlementPanel } from '../ui/SettlementPanel';
@@ -356,7 +356,7 @@ function LocalGame({
           title="현재 토너먼트 기록"
           onClose={() => setDialog('')}
         >
-          <HistoryPanel repository={repository} state={s} />
+          <LocalHistoryPanel repository={repository} state={s} />
         </Dialog>
       )}
       {dialog === 'blinds' && s && (

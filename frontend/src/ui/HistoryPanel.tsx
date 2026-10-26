@@ -1,49 +1,20 @@
-import { useEffect, useState } from 'react';
-import type { LocalRepository } from '../local/repository';
-import type { GameEvent, GameState } from '../game/types';
+import { useState } from 'react';
+import type { GameEvent, Player } from '../game/types';
 import { historyRows } from './history';
 export function HistoryPanel({
-  repository,
-  state,
+  events,
+  players,
+  error,
+  loading,
 }: {
-  repository: LocalRepository;
-  state: GameState;
+  events: GameEvent[];
+  players: Player[];
+  error: string;
+  loading: boolean;
 }) {
-  const [events, setEvents] = useState<GameEvent[]>([]),
-    [error, setError] = useState(''),
-    [loading, setLoading] = useState(true),
-    [reversed, setReversed] = useState(false),
+  const [reversed, setReversed] = useState(false),
     [limit, setLimit] = useState(50);
-  useEffect(() => {
-    let active = true;
-    // Read chronologically in bounded batches so UNDO is resolved across page boundaries.
-    async function load() {
-      const all: GameEvent[] = [];
-      let after = 0;
-      try {
-        while (active) {
-          const batch = await repository.readEvents(state.tournamentId, after, 100);
-          all.push(...batch);
-          if (batch.length < 100) break;
-          after = batch.at(-1)!.sequence!;
-        }
-        if (active) {
-          setEvents(all);
-          setLoading(false);
-        }
-      } catch (e) {
-        if (active) {
-          setError(String(e));
-          setLoading(false);
-        }
-      }
-    }
-    void load();
-    return () => {
-      active = false;
-    };
-  }, [repository, state.tournamentId]);
-  const rows = historyRows(events, state.players);
+  const rows = historyRows(events, players);
   if (reversed) rows.reverse();
   const shown = rows.slice(0, limit);
   return (

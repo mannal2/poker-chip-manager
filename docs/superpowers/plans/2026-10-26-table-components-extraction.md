@@ -25,9 +25,9 @@
 
 ## Task 2: BoardCards
 
-- [ ] Move count, board markup and animation effect together; wire props from Table.
-- [ ] Run unit tests, lint, typecheck/build and related Chromium/WebKit E2E for board counts, UNDO, initial/restore/reduced-motion behavior, layout and chip motion.
-- [ ] Request an independent final read-only review, record verification and commit this task locally.
+- [x] Move count, board markup and animation effect together; wire props from Table.
+- [x] Run unit tests, lint, typecheck/build and related Chromium/WebKit E2E for board counts, UNDO, initial/restore/reduced-motion behavior, layout and chip motion.
+- [x] Request an independent final read-only review and record verification for the task-only local commit.
 
 ## Verification
 
@@ -42,4 +42,14 @@
 
 ### BoardCards
 
-Pending. Full browser suite and physical-device checks are outside this task's verification scope.
+- All unit tests: 18 files / 168 passed again after extraction, no cache. Full lint passed. Production build including TypeScript/PWA generation passed, exit 0.
+- Prettier check for Table, PlayerSeat and BoardCards passed; git diff --check passed.
+- Count calculation, refs and animation effect match the pre-extraction implementation exactly after newline normalization.
+- Browser tests: 32 passed across Chromium/WebKit (`board.spec.ts stage-history.spec.ts chip-motion.spec.ts`, no filter), exit 0. Includes 0/3/4/5 cards, emphasis, UNDO, 10-player non-overlap at 320x568/844x390/800x1280, initial/restore/reduced-motion animation behavior, animation completion, shared payout, storage retry, fold and cleanup.
+- The browser run required stopping only its preview node after all cases completed to finish teardown, then exited 0.
+- Independent read-only review of both extractions found no actionable regressions in markup, handler ordering/currentTarget, keys, font measurement, board lifecycle/cleanup or moved type references.
+- Full browser suite and physical-device checks were not run. No online integration was implemented or tested.
+
+## Outcome
+
+PlayerSeat owns player card presentation and delegates name editing to the unchanged InlineName. BoardCards owns board presentation and animation. Table retains placement, setup controls, pot navigation and table-wide text fitting. Both extracted components use supplied props without local-storage, transport or mode dependencies; no new wrapper elements or styling changes were introduced.

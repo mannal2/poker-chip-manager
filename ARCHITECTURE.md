@@ -238,6 +238,9 @@ PWA 등록은 로컬 게임에서 호출하는 `useLocalPWA`가 담당한다.
 
 ### 의존 방향
 
+아래 경계는 [eslint.config.js](frontend/eslint.config.js)의 `no-restricted-imports`로 lint에서 검사한다.
+`features/online-game/`이 생기면 로컬과 서로 import하지 않는 규칙도 이미 적용된다.
+
 - `frontend/src/game/`의 import는 같은 규칙 디렉터리 안의 모듈로 한정된다.
   React·IndexedDB·로컬 세션·게임 UI를 import하지 않는다.
 - `frontend/src/shared/`는 React와 내부 범용 모듈을 사용한다.

@@ -9,7 +9,9 @@ import { SetupPanel } from './components/SetupPanel';
 import { Table } from './components/Table';
 import { useBettingDraft } from './hooks/useBettingDraft';
 import { useSettlementSelection } from './hooks/useSettlementSelection';
+import { permits } from './model/capabilities';
 import { buildTableView } from './model/tableView';
+import type { GameCommand } from '../../game/types';
 import type { GameDialog, GameScreenHandle, GameSession, SetupControls } from './session';
 
 /** Mode-independent game screen: header, table, dock and game dialogs. */
@@ -32,7 +34,15 @@ export function GameScreen({
   onUndoApplied?: () => void;
   ref?: Ref<GameScreenHandle>;
 }) {
-  const { state: s, busy, scope, notify, run, dispatch } = session;
+  const { state: s, busy, scope, notify, run, capabilities: can } = session;
+  /** Capability check shared by every command the screen issues itself. */
+  async function dispatch(command: GameCommand) {
+    if (!permits(can, command.type)) {
+      notify('조작 권한이 없습니다.');
+      return false;
+    }
+    return session.dispatch(command);
+  }
   const bettingScope = scope === undefined ? undefined : s.tournamentId + ':' + scope;
   const settlementScope = s.tournamentId + '/' + s.hand?.id + '/' + scope;
   const initialBlinds = s.pendingBlinds ?? s.hand;
@@ -49,6 +59,7 @@ export function GameScreen({
     const blocked = session.guard();
     if (blocked) return notify(blocked);
     if (action === 'UNDO') {
+      if (!can.canUndo) return notify('조작 권한이 없습니다.');
       if (!s.undo) return notify('취소할 직전 행동이 없습니다.');
       void run(async () => {
         if (await dispatch({ type: 'UNDO' })) {
@@ -58,6 +69,7 @@ export function GameScreen({
       });
       return;
     }
+    if (!can.canAct) return notify('조작 권한이 없습니다.');
     const command = prepareAction(action, amount);
     if (!command) return;
     void run(async () => {
@@ -71,32 +83,32 @@ export function GameScreen({
         sb={s.hand?.sb ?? s.settings.sb}
         bb={s.hand?.bb ?? s.settings.bb}
         pendingBlinds={s.status === 'playing' ? s.pendingBlinds : null}
-        canEditBlinds={s.status === 'playing' && !busy}
+        canEditBlinds={s.status === 'playing' && !busy && can.canEditBlinds}
         onHistory={() => onDialog('history')}
         onBlinds={() => onDialog('blinds')}
         onMenu={() => onDialog('menu')}
       />
       <Table
         {...buildTableView(s, { draftAmount, pots, potIndex, winners })}
-        onSelect={currentPot ? selectWinner : undefined}
+        onSelect={currentPot && can.canSettle ? selectWinner : undefined}
         onPot={() => {
           if (currentPot) onDialog('payout');
         }}
         navigation={navigation}
-        drag={s.status === 'setup' ? setup.drag : undefined}
+        drag={s.status === 'setup' && can.canEditSetup ? setup.drag : undefined}
         busy={busy}
         editScope={setup.scope}
         onNameEditing={setup.onNameEditing}
-        onRename={setup.rename}
-        onAdd={() => setup.changeCount(true)}
-        onRemove={() => setup.changeCount(false)}
+        onRename={can.canEditSetup ? setup.rename : undefined}
+        onAdd={can.canEditSetup ? () => setup.changeCount(true) : undefined}
+        onRemove={can.canEditSetup ? () => setup.changeCount(false) : undefined}
         onRotate={setup.rotate}
       />
       <section className="dock">
         {s.status === 'ended' && (
           <button
-            aria-disabled={busy || !s.undo}
-            data-unavailable={!s.undo}
+            aria-disabled={busy || !s.undo || !can.canUndo}
+            data-unavailable={!s.undo || !can.canUndo}
             onClick={() => bettingAction('UNDO')}
           >
             취소
@@ -105,11 +117,12 @@ export function GameScreen({
         {currentPot && (
           <SettlementPanel
             count={winners[currentPot.id].length}
-            canUndo={!!s.undo}
+            canUndo={!!s.undo && can.canUndo}
             onUndo={() => bettingAction('UNDO')}
-            busy={busy}
+            busy={busy || !can.canSettle}
             onWin={() => {
               if (busy) return notify('저장 완료 또는 재시도를 기다려주세요.');
+              if (!can.canSettle) return notify('조작 권한이 없습니다.');
               if (!preview?.ok) return notify(preview?.error ?? '승자를 선택하세요.');
               void run(async () => {
                 await dispatch({ type: 'SETTLE_HAND', winners });
@@ -130,8 +143,8 @@ export function GameScreen({
         {s.status === 'playing' && s.hand?.phase === 'betting' && (
           <BetControls
             call={legal?.callAdditional}
-            canUndo={!!s.undo}
-            busy={busy}
+            canUndo={!!s.undo && can.canUndo}
+            busy={busy || !can.canAct}
             draftAmount={draftAmount}
             maxAdditional={legal?.maxAdditional}
             submitAllowed={submitAllowed}
@@ -152,7 +165,7 @@ export function GameScreen({
               s.settings.bb
             }
             settings={s.settings}
-            busy={busy}
+            busy={busy || !can.canEditSetup}
             onSave={setup.saveSettings}
             onStart={setup.start}
           />
@@ -185,7 +198,7 @@ export function GameScreen({
             key={s.tournamentId + ':' + scope}
             initialSB={initialBlinds!.sb}
             initialBB={initialBlinds!.bb}
-            busy={busy}
+            busy={busy || !can.canEditBlinds}
             onSave={(sb, bb) => {
               if (busy) return notify('저장 완료를 기다려주세요.');
               void run(async () => {

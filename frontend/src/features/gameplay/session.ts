@@ -1,11 +1,14 @@
 import type { GameSettings } from '../../game/settings';
 import type { GameCommand, GameState } from '../../game/types';
 import type { useSeatDrag } from './hooks/useSeatDrag';
+import type { GameCapabilities } from './model/capabilities';
 
 /** Mode-provided state and command channel that the shared game screen is assembled from. */
 export interface GameSession {
   state: GameState;
   busy: boolean;
+  /** Viewer permissions; storage/server checks still decide the final result. */
+  capabilities: GameCapabilities;
   /** Control scope from the mode (local: lease generation); undefined disables betting drafts. */
   scope: string | number | undefined;
   /** Returns the reason the screen cannot accept input now, or null when it can. */

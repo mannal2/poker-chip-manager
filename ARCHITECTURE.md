@@ -98,7 +98,8 @@ URL `/online/`에서는 준비 중 안내를 보여주며, 기본 URL `/`는 로
 | `frontend/src/features/gameplay/styles/`     | 게임 화면과 컨트롤 스타일                | [table.css](frontend/src/features/gameplay/styles/table.css), [controls.css](frontend/src/features/gameplay/styles/controls.css)                                                                                         |
 
 `GameScreen`은 헤더·`Table`·하단 독의 상태별 분기·게임 대화상자와 UNDO 처리를 조립한다.
-모드는 `GameSession`(상태·잠금 여부·조작 scope·`run`·`dispatch`·`notify`)과 준비 편집 콜백, 관리 메뉴·기록 슬롯을 넘긴다.
+모드는 `GameSession`(상태·잠금 여부·권한·조작 scope·`run`·`dispatch`·`notify`)과 준비 편집 콜백, 관리 메뉴·기록 슬롯을 넘긴다.
+권한은 [capabilities.ts](frontend/src/features/gameplay/model/capabilities.ts)의 `GameCapabilities`이며 로컬은 `fullCapabilities`를 넘긴다.
 `Table`은 좌석 배치·중앙 조작·팟 탐색·전체 카드 글자 맞춤을 담당한다.
 `PlayerSeat`는 카드 표현과 이름 편집 연결을, `BoardCards`는 보드 표시와 등장 애니메이션을 담당한다.
 [InlineName.tsx](frontend/src/features/gameplay/components/InlineName.tsx)는 이름 문자열·IME·저장 완료 순서를 다룬다.
@@ -266,6 +267,8 @@ PWA 등록은 로컬 게임에서 호출하는 `useLocalPWA`가 담당한다.
   상태 버전만 바뀌는 블라인드 예약에서는 승자 선택을 유지한다.
 - 성공한 무르기와 무르기 재시도는 `resetWinners`로 이전 선택을 폐기한다.
   두 입력 Hook을 같은 버전 초기화 규칙으로 합치지 않는다.
+- `GameCapabilities`는 버튼 노출과 화면 안의 명령 차단만 담당한다.
+  로컬은 모든 권한을 갖고, 조작권 상실은 `busy`·`guard`와 저장소 검사가 계속 막는다.
 - 입력 문자열·IME·blur 저장은 해당 폼과 이름 편집 컴포넌트의 책임이다.
   `BlindSettings`의 초기값 전달을 매 렌더 입력 덮어쓰기로 바꾸지 않는다.
 

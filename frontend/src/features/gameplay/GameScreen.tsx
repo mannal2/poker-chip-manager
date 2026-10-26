@@ -99,14 +99,20 @@ export function GameScreen({
           if (currentPot) onDialog('payout');
         }}
         navigation={navigation}
-        drag={s.status === 'setup' && can.canEditSetup ? setup.drag : undefined}
         busy={busy}
-        editScope={setup.scope}
-        onNameEditing={setup.onNameEditing}
-        onRename={can.canEditSetup ? setup.rename : undefined}
-        onAdd={can.canEditSetup && changeCount ? () => changeCount(true) : undefined}
-        onRemove={can.canEditSetup && changeCount ? () => changeCount(false) : undefined}
-        onRotate={setup.rotate}
+        setup={
+          s.status === 'setup'
+            ? {
+                drag: can.canEditSetup ? setup.drag : undefined,
+                editScope: setup.scope,
+                onNameEditing: setup.onNameEditing,
+                onRename: can.canEditSetup ? setup.rename : undefined,
+                onAdd: can.canEditSetup && changeCount ? () => changeCount(true) : undefined,
+                onRemove: can.canEditSetup && changeCount ? () => changeCount(false) : undefined,
+                onRotate: setup.rotate,
+              }
+            : undefined
+        }
       />
       <section className="dock">
         {s.status === 'ended' && (

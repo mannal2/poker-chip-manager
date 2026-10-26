@@ -7,7 +7,7 @@ import type {
   GameEvent,
 } from './types';
 import { validateSettings, validChips, type GameSettings } from './settings';
-import { nextSeat, nextPositions } from './positions';
+import { nextSeat, nextPositions, initialBlindSeats } from './positions';
 import { assertInvariants } from './invariants';
 import { buildPots, previewSettlement } from './settlement';
 import type { WinnerSelection } from './types';
@@ -174,11 +174,7 @@ function startHand(s: GameState, c: TransitionContext, events: GameEvent[]) {
     alive = s.players.map((p) => !p.eliminated);
   const position = previous
     ? nextPositions(alive, previous)
-    : (() => {
-        const buttonSeat = s.settings.button,
-          sbSeat = alive.filter(Boolean).length === 2 ? buttonSeat : nextSeat(buttonSeat, alive);
-        return { buttonSeat, sbSeat, bbSeat: nextSeat(sbSeat, alive) };
-      })();
+    : { buttonSeat: s.settings.button, ...initialBlindSeats(s.settings.button, alive) };
   const blinds =
     s.pendingBlinds ??
     (previous ? { sb: previous.sb, bb: previous.bb } : { sb: s.settings.sb, bb: s.settings.bb });

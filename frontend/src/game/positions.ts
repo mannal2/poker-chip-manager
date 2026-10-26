@@ -23,3 +23,11 @@ export function nextPositions(
   }
   return { buttonSeat, sbSeat, bbSeat };
 }
+/** Blind seats for the first hand from a chosen button; heads-up the button posts the SB. */
+export function initialBlindSeats(
+  button: number,
+  alive: boolean[],
+): { sbSeat: number; bbSeat: number } {
+  const sbSeat = alive.filter(Boolean).length === 2 ? button : nextSeat(button, alive);
+  return { sbSeat, bbSeat: nextSeat(sbSeat, alive) };
+}

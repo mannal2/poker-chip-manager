@@ -84,6 +84,7 @@ URL `/online/`에서는 준비 중 안내를 보여주며, 기본 URL `/`는 로
 
 게임 설정은 [settings.ts](frontend/src/game/settings.ts)의 `GameSettings`와 `validateSettings`에서 시작한다.
 턴과 딜러 위치는 [positions.ts](frontend/src/game/positions.ts)의 `nextSeat`, `nextPositions`가 계산한다.
+첫 핸드의 SB·BB는 `initialBlindSeats`가 정하며 규칙과 준비 화면 표시가 같이 쓴다.
 상태 전이는 `createTournament`, `getLegalActions`, `transition`에 모여 있다.
 베팅 초안 금액을 명령으로 바꾸는 분류는 [betting.ts](frontend/src/game/betting.ts)의 `classifyDraft`가 맡는다.
 팟·지급은 [settlement.ts](frontend/src/game/settlement.ts), 무결성 검사는 [invariants.ts](frontend/src/game/invariants.ts)가 담당한다.
@@ -103,7 +104,8 @@ URL `/online/`에서는 준비 중 안내를 보여주며, 기본 URL `/`는 로
 `GameScreen`은 헤더·`Table`·하단 독의 상태별 분기·게임 대화상자와 UNDO 처리를 조립한다.
 모드는 `GameSession`(상태·잠금 여부·권한·조작 scope·`run`·`dispatch`·`notify`)과 준비 편집 콜백, 관리 메뉴·기록 슬롯을 넘긴다.
 권한은 [capabilities.ts](frontend/src/features/gameplay/model/capabilities.ts)의 `GameCapabilities`이며 로컬은 `fullCapabilities`를 넘긴다.
-`Table`은 좌석 배치·중앙 조작·팟 탐색·전체 카드 글자 맞춤을 담당한다.
+`Table`은 좌석 배치·중앙 조작·팟 탐색을 담당하고, 카드 글자 맞춤은 범용 `useFitText`를 쓴다.
+준비 편집 조작은 `Table`의 `setup` prop 하나로 받으며, 이 값이 있을 때만 편집 화면이 된다.
 `PlayerSeat`는 카드 표현과 이름 편집 연결을, `BoardCards`는 보드 표시와 등장 애니메이션을 담당한다.
 [InlineName.tsx](frontend/src/features/gameplay/components/InlineName.tsx)는 이름 문자열·IME·저장 완료 순서를 다룬다.
 [BlindSettings.tsx](frontend/src/features/gameplay/components/BlindSettings.tsx)는 초기 SB·BB와 저장 콜백만 받는다.
@@ -139,7 +141,7 @@ URL `/online/`에서는 준비 중 안내를 보여주며, 기본 URL `/`는 로
 | 위치                           | 역할 한 줄                                | 핵심 파일·심볼                                                                                                                                                                      |
 | ------------------------------ | ----------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `frontend/src/features/pwa/`   | 설치·업데이트의 브라우저 처리와 안내 정책 | [register.ts](frontend/src/features/pwa/register.ts): `useLocalPWA`; [usePwaPresentation.ts](frontend/src/features/pwa/usePwaPresentation.ts), `useInstallPrompt`, `checkForUpdate` |
-| `frontend/src/shared/`         | 게임·모드와 독립적인 UI·브라우저 도구     | `Dialog`, `useScreenFit`, `installZoomPolicy`                                                                                                                                       |
+| `frontend/src/shared/`         | 게임·모드와 독립적인 UI·브라우저 도구     | `Dialog`, `useScreenFit`, `useFitText`, `installZoomPolicy`                                                                                                                         |
 | `frontend/src/shared/ui/`      | 공통 대화상자와 닫기 동작                 | [Dialog.tsx](frontend/src/shared/ui/Dialog.tsx): `Dialog`                                                                                                                           |
 | `frontend/src/shared/hooks/`   | 화면·대화상자의 크기 맞춤, 토스트 타이머  | [useScreenFit.ts](frontend/src/shared/hooks/useScreenFit.ts): `useScreenFit`; [useToast.ts](frontend/src/shared/hooks/useToast.ts): `useToast`                                      |
 | `frontend/src/shared/browser/` | 브라우저 확대 입력 정책                   | [zoomPolicy.ts](frontend/src/shared/browser/zoomPolicy.ts): `installZoomPolicy`                                                                                                     |
@@ -232,7 +234,7 @@ PWA 등록은 로컬 게임에서 호출하는 `useLocalPWA`가 담당한다.
 | 팟 분리·동률·나머지 칩 배분 변경        | [settlement.ts](frontend/src/game/settlement.ts)                                                                                                                 | `buildPots`, `previewSettlement`, 승자 선택 미리보기                                               |
 | 무르기 범위나 취소 후 기록 변경         | [transition.ts](frontend/src/game/transition.ts), [history.ts](frontend/src/features/gameplay/model/history.ts)                                                  | 스냅샷·이벤트 식별자와 `resetWinners`                                                              |
 | 이어하기·조작권 인수·저장 재시도 변경   | [useLocalSession.ts](frontend/src/features/local-game/hooks/useLocalSession.ts), [repository.ts](frontend/src/features/local-game/storage/repository.ts)         | `LocalController`, 동일 요청 보존, 트랜잭션 경계                                                   |
-| 테이블·카드·보드 배치나 글자 크기 변경  | [Table.tsx](frontend/src/features/gameplay/components/Table.tsx), [table.css](frontend/src/features/gameplay/styles/table.css)                                   | `seatCoordinates`, `useScreenFit`, DOM 선택자                                                      |
+| 테이블·카드·보드 배치나 글자 크기 변경  | [Table.tsx](frontend/src/features/gameplay/components/Table.tsx), [table.css](frontend/src/features/gameplay/styles/table.css)                                   | `seatCoordinates`, `useScreenFit`, `useFitText`, DOM 선택자                                        |
 | 칩 이동 금액 또는 효과 변경             | [localChipTransfers.ts](frontend/src/features/local-game/model/localChipTransfers.ts), [useChipMotion.ts](frontend/src/features/gameplay/hooks/useChipMotion.ts) | 계산과 재생을 구분하고 저장 성공·재시도·정리 확인                                                  |
 | 설치 제안·업데이트 노출 시점 변경       | [usePwaPresentation.ts](frontend/src/features/pwa/usePwaPresentation.ts), [register.ts](frontend/src/features/pwa/register.ts)                                   | 홈 여부·저장 잠금·미확정 요청·업데이트 적용                                                        |
 | 멀티플레이 연결 시작                    | [App.tsx](frontend/src/app/App.tsx), [session.ts](frontend/src/features/gameplay/session.ts)                                                                     | `GameSession` 계약, 공통 UI의 props 경계와 [SYSTEM_SPEC.md](SYSTEM_SPEC.md); 현재 서버 구현은 없음 |

@@ -1,4 +1,4 @@
-import { nextSeat } from '../../../game/positions';
+import { initialBlindSeats } from '../../../game/positions';
 import type { GameState, Pot, WinnerSelection } from '../../../game/types';
 
 export function buildTableView(
@@ -22,17 +22,10 @@ export function buildTableView(
     sb = state.hand.sbSeat;
     bb = state.hand.bbSeat;
   } else if (button >= 0) {
-    sb =
-      state.players.length === 2
-        ? button
-        : nextSeat(
-            button,
-            state.players.map(() => true),
-          );
-    bb = nextSeat(
-      sb,
+    ({ sbSeat: sb, bbSeat: bb } = initialBlindSeats(
+      button,
       state.players.map(() => true),
-    );
+    ));
   }
   const currentPot = pots[potIndex];
   return {

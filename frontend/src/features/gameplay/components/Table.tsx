@@ -1,7 +1,23 @@
 import { PlayerSeat, type CardPlayer } from './PlayerSeat';
 import { BoardCards } from './BoardCards';
-import { useLayoutEffect, useRef } from 'react';
+import { useRef } from 'react';
+import { useFitText } from '../../../shared/hooks/useFitText';
 import { seatCoordinates } from '../model/seatLayout';
+export interface TableSetup {
+  drag?: {
+    order: string[];
+    position?: { id: string; x: number; y: number } | null;
+    pressed?: string | null;
+    ready?: string | null;
+    handlers: (id: string) => React.HTMLAttributes<HTMLElement>;
+  };
+  editScope?: string;
+  onRename?: (id: string, name: string) => boolean | Promise<boolean>;
+  onNameEditing?: (id: string, editing: boolean, finish?: () => Promise<boolean>) => void;
+  onAdd?: () => void;
+  onRemove?: () => void;
+  onRotate?: () => void;
+}
 export function Table({
   players,
   pot,
@@ -11,16 +27,10 @@ export function Table({
   onSelect,
   onPot,
   potLabel,
-  drag,
   navigation,
   notice,
-  onAdd,
-  onRemove,
-  onRotate,
   busy,
-  onRename,
-  onNameEditing,
-  editScope,
+  setup,
   handKey,
 }: {
   players: CardPlayer[];
@@ -28,45 +38,24 @@ export function Table({
   phase: string;
   street: string;
   notice?: string;
-  onAdd?: () => void;
-  onRemove?: () => void;
-  onRotate?: () => void;
   busy?: boolean;
-  onRename?: (id: string, name: string) => boolean | Promise<boolean>;
-  onNameEditing?: (id: string, editing: boolean, finish?: () => Promise<boolean>) => void;
-  editScope?: string;
+  /** Present only while the setup screen is editable; each control is optional per mode. */
+  setup?: TableSetup;
   handKey?: string;
   viewSeat?: number;
   onSelect?: (id: string) => void;
   onPot?: () => void;
   potLabel?: string;
   navigation?: { previous: () => void; next: () => void; index: number; count: number };
-  drag?: {
-    order: string[];
-    position?: { id: string; x: number; y: number } | null;
-    pressed?: string | null;
-    ready?: string | null;
-    handlers: (id: string) => React.HTMLAttributes<HTMLElement>;
-  };
 }) {
   const ref = useRef<HTMLDivElement>(null);
-  useLayoutEffect(() => {
-    const table = ref.current;
-    if (!table) return;
-    const fit = () =>
-      table.querySelectorAll<HTMLElement>('.card-values>div').forEach((cell) => {
-        let size = Number(getComputedStyle(table).getPropertyValue('--card-text'));
-        cell.style.fontSize = `calc(${size} * var(--u))`;
-        while (cell.scrollWidth > cell.clientWidth && size > 7) {
-          size -= 0.25;
-          cell.style.fontSize = `calc(${size} * var(--u))`;
-        }
-      });
-    fit();
-    const observer = new ResizeObserver(fit);
-    observer.observe(table);
-    return () => observer.disconnect();
+  useFitText(ref, {
+    selector: '.card-values>div',
+    sizeVar: '--card-text',
+    unit: 'var(--u)',
+    min: 7,
   });
+  const { drag, onAdd, onRemove, onRotate, onRename, onNameEditing, editScope } = setup ?? {};
   return (
     <>
       <div ref={ref} className="table" aria-label="포커 테이블">

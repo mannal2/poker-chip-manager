@@ -41,6 +41,8 @@ for (const [width, height] of [
   test(`10인 리버 보드와 카드가 겹치지 않고 화면 안에 배치 ${width}x${height}`, async ({
     page,
   }) => {
+    // Plays 30 saved actions through the UI; WebKit takes ~25s under parallel load.
+    test.slow();
     await page.setViewportSize({ width, height });
     await page.goto('/local/');
     await openLocal(page);

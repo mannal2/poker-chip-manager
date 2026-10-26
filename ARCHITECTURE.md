@@ -343,8 +343,9 @@ TypeScript 검사 범위는 [tsconfig.json](frontend/tsconfig.json)에 정의되
 
 - `frontend/e2e/`: 실제 입력·저장·여러 탭·복원·설치·업데이트·화면 회귀 테스트.
   [app-flow.spec.ts](frontend/e2e/app-flow.spec.ts), [game.spec.ts](frontend/e2e/game.spec.ts), [pwa.spec.ts](frontend/e2e/pwa.spec.ts)가 전체 흐름의 시작점이다.
-- [playwright.config.ts](frontend/playwright.config.ts)는 Chromium·WebKit을 한 worker로 실행한다.
-  테스트용 빌드와 preview 서버를 시작하며 서버 포트는 4173이다.
+- [playwright.config.ts](frontend/playwright.config.ts)는 Chromium·WebKit 파일을 병렬로 실행한다(로컬 6개, CI 2개 worker).
+  `pwa`·`startup-update`는 그 뒤 `chromium-sw` → `webkit-sw` 순서로 하나씩 실행한다.
+  테스트용 빌드와 preview 서버를 한 번 시작하며 서버 포트는 4173이다.
 - [design.tsx](frontend/e2e/design.tsx), [storage.ts](frontend/e2e/storage.ts)는 브라우저 테스트 하네스다.
   이들의 HTML 진입점은 테스트 빌드 모드에서만 추가된다.
 
@@ -353,7 +354,9 @@ npm --prefix frontend run test:e2e
 ```
 
 PWA 테스트는 생성된 서비스 워커 파일을 일시 변경하고 원복한다.
-이 검사와 다른 빌드·브라우저 검사를 동시에 실행하지 않는다.
+모든 `/local/` 페이지가 이 파일을 등록하므로 위 순서를 유지하고, 다른 빌드·브라우저 검사와 동시에 실행하지 않는다.
+일반 단계에서 실패가 있으면 의존 관계 때문에 SW 단계는 건너뛴다.
+디자인 비교의 스크린샷은 실패할 때만 `test-results/`에 저장한다.
 자동 브라우저 검사와 실기기 확인은 구분하며 실기기 항목은 [DEVICE_CHECKS.md](frontend/DEVICE_CHECKS.md)에서 확인한다.
 
 ### 배포 검사와 CI 범위

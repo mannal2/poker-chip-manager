@@ -2,9 +2,10 @@ import { useState } from 'react';
 import { buildPots, previewSettlement } from '../game/settlement';
 import type { GameState, WinnerSelection } from '../game/types';
 
+/** Change scope for a new tournament, hand or input session, excluding version-only updates. */
 export function useSettlementSelection(
   state: GameState | null,
-  generation: number | undefined,
+  scope: string,
   busy: boolean,
   notify: (message: string) => void,
 ) {
@@ -13,20 +14,15 @@ export function useSettlementSelection(
     winners: WinnerSelection;
     index: number;
   }>({ key: '', winners: {}, index: 0 });
-  const key = state?.tournamentId + '/' + state?.hand?.id + '/' + generation;
   const pots =
     state?.status === 'playing' && state.hand?.phase === 'settlement' ? buildPots(state) : [];
   const winners: WinnerSelection = Object.fromEntries(
     pots.map((p) => [
       p.id,
-      p.eligible.length === 1
-        ? p.eligible
-        : draft.key === key
-          ? (draft.winners[p.id] ?? [])
-          : [],
+      p.eligible.length === 1 ? p.eligible : draft.key === scope ? (draft.winners[p.id] ?? []) : [],
     ]),
   );
-  const potIndex = draft.key === key ? Math.min(draft.index, pots.length - 1) : 0;
+  const potIndex = draft.key === scope ? Math.min(draft.index, pots.length - 1) : 0;
   const currentPot = pots[potIndex];
   const preview = state && pots.length ? previewSettlement(state, winners) : null;
 
@@ -36,7 +32,7 @@ export function useSettlementSelection(
     if (currentPot.eligible.length === 1) return notify('단독 자격자는 자동 선택됩니다.');
     const selected = winners[currentPot.id];
     setDraft({
-      key,
+      key: scope,
       index: potIndex,
       winners: {
         ...winners,
@@ -51,8 +47,8 @@ export function useSettlementSelection(
     pots.length > 1
       ? {
           previous: () =>
-            setDraft({ key, winners, index: (potIndex + pots.length - 1) % pots.length }),
-          next: () => setDraft({ key, winners, index: (potIndex + 1) % pots.length }),
+            setDraft({ key: scope, winners, index: (potIndex + pots.length - 1) % pots.length }),
+          next: () => setDraft({ key: scope, winners, index: (potIndex + 1) % pots.length }),
           index: potIndex + 1,
           count: pots.length,
         }

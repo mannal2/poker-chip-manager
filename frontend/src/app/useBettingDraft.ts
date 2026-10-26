@@ -2,16 +2,16 @@ import { useState } from 'react';
 import { getLegalActions } from '../game/transition';
 import type { GameCommand, GameState } from '../game/types';
 
+/** Change scope for a new tournament or input session; undefined disables the draft. */
 export function useBettingDraft(
   state: GameState | null,
-  generation: number | undefined,
+  scope: string | undefined,
   notify: (message: string) => void,
 ) {
-  const [draft, setDraft] = useState({ scope: '', version: -1, amount: 0 });
-  const scope = state?.tournamentId + ':' + generation;
+  const [draft, setDraft] = useState({ scope, version: -1, amount: 0 });
   const legal = state ? getLegalActions(state) : null;
   const draftAmount =
-    state && generation !== undefined && draft.scope === scope && draft.version === state.version
+    state && scope !== undefined && draft.scope === scope && draft.version === state.version
       ? draft.amount
       : 0;
   const submitAllowed =

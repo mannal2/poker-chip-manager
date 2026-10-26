@@ -1,18 +1,18 @@
 import { useState } from 'react';
-import type { GameState } from '../game/types';
 import { validChips } from '../game/settings';
 export function BlindSettings({
-  state,
+  initialSB,
+  initialBB,
   busy,
   onSave,
 }: {
-  state: GameState;
+  initialSB: number;
+  initialBB: number;
   busy: boolean;
   onSave: (sb: number, bb: number) => void;
 }) {
-  const current = state.pendingBlinds ?? state.hand!;
-  const [sb, setSB] = useState(String(current.sb)),
-    [bb, setBB] = useState(String(current.bb)),
+  const [sb, setSB] = useState(String(initialSB)),
+    [bb, setBB] = useState(String(initialBB)),
     [error, setError] = useState('');
   return (
     <form

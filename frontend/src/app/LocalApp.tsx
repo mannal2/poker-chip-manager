@@ -134,9 +134,16 @@ function LocalGame({
   });
   const { scope, drag, saveSettings, changeCount, onNameEditing, rename, rotate, start, clearEditing } =
     useSetupEditing({ state: s, generation, busy, notify, isLocked, getSettings, run, dispatch });
-  const { legal, draftAmount, submitAllowed, prepareAction } = useBettingDraft(s, generation, notify);
+  const bettingScope = generation === undefined ? undefined : s?.tournamentId + ':' + generation;
+  const settlementScope = s?.tournamentId + '/' + s?.hand?.id + '/' + generation;
+  const initialBlinds = s?.pendingBlinds ?? s?.hand;
+  const { legal, draftAmount, submitAllowed, prepareAction } = useBettingDraft(
+    s,
+    bettingScope,
+    notify,
+  );
   const { pots, winners, potIndex, currentPot, preview, navigation, selectWinner, resetWinners } =
-    useSettlementSelection(s, generation, busy, notify);
+    useSettlementSelection(s, settlementScope, busy, notify);
   function notify(message: string) {
     setToast(message);
     if (toastTimer.current) clearTimeout(toastTimer.current);
@@ -363,7 +370,8 @@ function LocalGame({
         <Dialog dismissOutside title="다음 핸드 블라인드" onClose={() => setDialog('')}>
           <BlindSettings
             key={s.tournamentId + ':' + generation}
-            state={s}
+            initialSB={initialBlinds!.sb}
+            initialBB={initialBlinds!.bb}
             busy={busy}
             onSave={(sb, bb) => {
               if (busy) return notify('저장 완료를 기다려주세요.');

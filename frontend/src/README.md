@@ -2,21 +2,22 @@
 
 같은 게임 UI는 모드에 관계없이 `features/gameplay`의 컴포넌트를 사용합니다. 모드별 화면은 상태와 권한을 해석하고, 공통 UI의 콜백을 저장 또는 통신 명령에 연결합니다.
 
-| 위치                              | 책임                                                         |
-| --------------------------------- | ------------------------------------------------------------ |
-| `app/`                            | 주소에 따른 진입 화면 선택과 기본 경로 이동                  |
-| `game/`                           | React·저장소·통신에 의존하지 않는 순수 게임 규칙과 타입      |
-| `features/gameplay/components/`   | 테이블·플레이어 카드·보드·입력·기록·정산 UI                  |
-| `features/gameplay/hooks/`        | 공통 입력 상태, 좌석 드래그와 칩 애니메이션                  |
-| `features/gameplay/model/`        | 화면 표시 데이터, 좌석 배치, 기록 변환과 칩 이동 타입        |
-| `features/gameplay/styles/`       | 기존 게임 화면과 컨트롤 스타일                               |
-| `features/local-game/`            | 로컬 화면 조합과 복구 상태의 수명                            |
-| `features/local-game/hooks/`      | 로컬 세션·설정 편집·기록 조회·칩 이동 연결                   |
-| `features/local-game/storage/`    | IndexedDB, 저장 원자성, 조작권, 복원과 제한 시간             |
-| `features/local-game/model/`      | 로컬 화면 상태와 로컬 명령 기반 칩 이동 계산                 |
-| `features/local-game/components/` | 로컬 홈·관리 메뉴와 기록 조회/UI 연결                        |
-| `features/pwa/`                   | 로컬 전용 서비스 워커 등록, 설치·업데이트와 안내 정책        |
-| `shared/`                         | 범용 다이얼로그, 화면 크기 조절, 브라우저 정책과 전역 스타일 |
+| 위치                              | 책임                                                                 |
+| --------------------------------- | -------------------------------------------------------------------- |
+| `app/`                            | 주소에 따른 진입 화면 선택과 기본 경로 이동                          |
+| `game/`                           | React·저장소·통신에 의존하지 않는 순수 게임 규칙과 타입              |
+| `features/gameplay/`              | `GameScreen` 화면 조립과 모드가 채우는 `GameSession` 계약            |
+| `features/gameplay/components/`   | 테이블·플레이어 카드·보드·입력·기록·정산 UI                          |
+| `features/gameplay/hooks/`        | 공통 입력 상태, 좌석 드래그와 칩 애니메이션                          |
+| `features/gameplay/model/`        | 화면 표시 데이터, 좌석 배치, 기록 변환과 칩 이동 타입                |
+| `features/gameplay/styles/`       | 기존 게임 화면과 컨트롤 스타일                                       |
+| `features/local-game/`            | 로컬 화면 조합과 복구 상태의 수명                                    |
+| `features/local-game/hooks/`      | 로컬 세션·설정 편집·기록 조회·칩 이동 연결                           |
+| `features/local-game/storage/`    | IndexedDB, 저장 원자성, 조작권, 복원과 제한 시간                     |
+| `features/local-game/model/`      | 로컬 화면 상태와 로컬 명령 기반 칩 이동 계산                         |
+| `features/local-game/components/` | 로컬 홈·관리 메뉴와 기록 조회/UI 연결                                |
+| `features/pwa/`                   | 로컬 전용 서비스 워커 등록, 설치·업데이트와 안내 정책                |
+| `shared/`                         | 범용 다이얼로그, 화면 크기 조절, 토스트, 브라우저 정책과 전역 스타일 |
 
 ## 의존성 기준
 

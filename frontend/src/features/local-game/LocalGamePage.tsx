@@ -1,27 +1,20 @@
 import { useLocalChipMotion } from './hooks/useLocalChipMotion';
 import { useScreenFit } from '../../shared/hooks/useScreenFit';
+import { useToast } from '../../shared/hooks/useToast';
 import { useLocalPWA } from '../pwa/register';
 import { UpdateNotice } from '../pwa/UpdateNotice';
 import { usePwaPresentation } from '../pwa/usePwaPresentation';
 import { InstallNotice } from '../pwa/InstallNotice';
 import { LocalHistoryPanel } from './components/LocalHistoryPanel';
-import { BlindSettings } from '../gameplay/components/BlindSettings';
 import { ManagerMenu } from './components/ManagerMenu';
-import { SettlementPanel } from '../gameplay/components/SettlementPanel';
-import { PayoutPreview } from '../gameplay/components/PayoutPreview';
-import { BetControls } from '../gameplay/components/BetControls';
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import type { ControlLease } from './storage/repository';
-import { buildTableView } from '../gameplay/model/tableView';
-import { Table } from '../gameplay/components/Table';
-import { GameHeader } from '../gameplay/components/GameHeader';
-import { SetupPanel } from '../gameplay/components/SetupPanel';
+import { GameScreen } from '../gameplay/GameScreen';
+import type { GameScreenHandle, GameSession } from '../gameplay/session';
 import { LocalHome } from './components/LocalHome';
 import { Dialog } from '../../shared/ui/Dialog';
 import { useSetupEditing } from './hooks/useSetupEditing';
 import { useLocalSession } from './hooks/useLocalSession';
-import { useBettingDraft } from '../gameplay/hooks/useBettingDraft';
-import { useSettlementSelection } from '../gameplay/hooks/useSettlementSelection';
 import '../../shared/styles/tokens.css';
 import '../gameplay/styles/table.css';
 import '../gameplay/styles/controls.css';
@@ -61,15 +54,10 @@ function LocalGame({
   const screen = useRef<HTMLElement>(null);
   useScreenFit(screen);
   const pwa = useLocalPWA();
-  const [dialog, setDialog] = useState(''),
-    [toast, setToast] = useState('');
-  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(
-    () => () => {
-      if (toastTimer.current) clearTimeout(toastTimer.current);
-    },
-    [],
-  );
+  const [dialog, setDialog] = useState('');
+  const toast = useToast();
+  const notify = toast.show;
+  const game = useRef<GameScreenHandle>(null);
   const {
     app,
     generation,
@@ -115,46 +103,30 @@ function LocalGame({
     readSavedState: () => repository.load(),
     notify,
   });
-  const { scope, drag, saveSettings, changeCount, onNameEditing, rename, rotate, start, clearEditing } =
-    useSetupEditing({ state: s, generation, busy, notify, isLocked, getSettings, run, dispatch });
-  const bettingScope = generation === undefined ? undefined : s?.tournamentId + ':' + generation;
-  const settlementScope = s?.tournamentId + '/' + s?.hand?.id + '/' + generation;
-  const initialBlinds = s?.pendingBlinds ?? s?.hand;
-  const { legal, draftAmount, submitAllowed, prepareAction } = useBettingDraft(
-    s,
-    bettingScope,
+  const setup = useSetupEditing({
+    state: s,
+    generation,
+    busy,
     notify,
-  );
-  const { pots, winners, potIndex, currentPot, preview, navigation, selectWinner, resetWinners } =
-    useSettlementSelection(s, settlementScope, busy, notify);
-  function notify(message: string) {
-    setToast(message);
-    if (toastTimer.current) clearTimeout(toastTimer.current);
-    toastTimer.current = setTimeout(() => setToast(''), 2400);
-  }
-  function bettingAction(action: string, amount = 0) {
-    if (busy || isLocked())
-      return notify(
-        app.status === 'controlLost'
+    isLocked,
+    getSettings,
+    run,
+    dispatch,
+  });
+  const session: GameSession | null = s && {
+    state: s,
+    busy,
+    scope: generation,
+    guard: () =>
+      busy || isLocked()
+        ? app.status === 'controlLost'
           ? '다른 화면에서 조작 중입니다.'
-          : '저장 완료 또는 재시도를 기다려주세요.',
-      );
-    if (action === 'UNDO') {
-      if (!s?.undo) return notify('취소할 직전 행동이 없습니다.');
-      void run(async () => {
-        if (await dispatch({ type: 'UNDO' })) {
-          resetWinners();
-          setToast('');
-        }
-      });
-      return;
-    }
-    const command = prepareAction(action, amount);
-    if (!command) return;
-    void run(async () => {
-      await dispatch(command);
-    });
-  }
+          : '저장 완료 또는 재시도를 기다려주세요.'
+        : null,
+    run,
+    dispatch,
+    notify,
+  };
   if (app.status === 'loading')
     return (
       <main ref={screen} className="phone home" role="status">
@@ -179,8 +151,8 @@ function LocalGame({
             <button
               onClick={() =>
                 void retryStorage(() => {
-                  resetWinners();
-                  setToast('');
+                  game.current?.resetSelection();
+                  toast.clear();
                 })
               }
             >
@@ -206,101 +178,27 @@ function LocalGame({
           onInstall={install.available ? install.open : undefined}
         />
       ) : (
-        s && (
-          <>
-            <GameHeader
-              handNumber={s.hand?.number ?? 1}
-              sb={s.hand?.sb ?? s.settings.sb}
-              bb={s.hand?.bb ?? s.settings.bb}
-              pendingBlinds={s.status === 'playing' ? s.pendingBlinds : null}
-              canEditBlinds={s.status === 'playing' && !busy}
-              onHistory={() => setDialog('history')}
-              onBlinds={() => setDialog('blinds')}
-              onMenu={() => setDialog('menu')}
-            />
-            <Table
-              {...buildTableView(s, { draftAmount, pots, potIndex, winners })}
-              onSelect={currentPot ? selectWinner : undefined}
-              onPot={() => {
-                if (currentPot) setDialog('payout');
-              }}
-              navigation={navigation}
-              drag={s.status === 'setup' ? drag : undefined}
-              busy={busy}
-              editScope={scope}
-              onNameEditing={onNameEditing}
-              onRename={rename}
-              onAdd={() => changeCount(true)}
-              onRemove={() => changeCount(false)}
-              onRotate={rotate}
-            />
-            <section className="dock">
-              {s.status === 'ended' && (
-                <button
-                  aria-disabled={busy || !s.undo}
-                  data-unavailable={!s.undo}
-                  onClick={() => bettingAction('UNDO')}
-                >
-                  취소
-                </button>
-              )}
-              {currentPot && (
-                <SettlementPanel
-                  count={winners[currentPot.id].length}
-                  canUndo={!!s.undo}
-                  onUndo={() => bettingAction('UNDO')}
-                  busy={busy}
-                  onWin={() => {
-                    if (busy) return notify('저장 완료 또는 재시도를 기다려주세요.');
-                    if (!preview?.ok) return notify(preview?.error ?? '승자를 선택하세요.');
-                    void run(async () => {
-                      await dispatch({ type: 'SETTLE_HAND', winners });
-                    });
-                  }}
-                />
-              )}
-              {s.status === 'ended' && (
-                <div className="summary">
-                  토너먼트 종료 · {s.players.find((p) => !p.eliminated)?.name} 우승
-                </div>
-              )}
-              {s.status === 'aborted' && (
-                <div className="summary">
-                  토너먼트 중단 · 미정산 팟 {s.pot.toLocaleString('ko-KR')} 보존
-                </div>
-              )}
-              {s.status === 'playing' && s.hand?.phase === 'betting' && (
-                <BetControls
-                  call={legal?.callAdditional}
-                  canUndo={!!s.undo}
-                  busy={busy}
-                  draftAmount={draftAmount}
-                  maxAdditional={legal?.maxAdditional}
-                  submitAllowed={submitAllowed}
-                  onAction={bettingAction}
-                />
-              )}{' '}
-              {s.status === 'setup' && (
-                <SetupPanel
-                  key={
-                    s.tournamentId +
-                    ':' +
-                    generation +
-                    ':' +
-                    s.settings.initial +
-                    ':' +
-                    s.settings.sb +
-                    ':' +
-                    s.settings.bb
-                  }
-                  settings={s.settings}
-                  busy={busy}
-                  onSave={saveSettings}
-                  onStart={start}
-                />
-              )}
-            </section>
-          </>
+        session && (
+          <GameScreen
+            ref={game}
+            session={session}
+            setup={setup}
+            dialog={dialog}
+            onDialog={setDialog}
+            onUndoApplied={toast.clear}
+            menu={
+              <ManagerMenu
+                onHome={() => {
+                  goHome(() => {
+                    setup.clearEditing();
+                    setDialog('');
+                  });
+                }}
+                onNew={() => void newGame(() => setDialog(''))}
+              />
+            }
+            history={<LocalHistoryPanel repository={repository} state={session.state} />}
+          />
         )
       )}
       {update.visible && (
@@ -320,55 +218,10 @@ function LocalGame({
           />
         </Dialog>
       )}
-      {dialog === 'payout' && s && (
-        <Dialog title="지급 미리보기" onClose={() => setDialog('')}>
-          <PayoutPreview state={s} pots={pots} winners={winners} preview={preview} />
-        </Dialog>
-      )}
-      {dialog === 'menu' && s && (
-        <Dialog dismissOutside title="관리 메뉴" onClose={() => setDialog('')}>
-          <ManagerMenu
-            onHome={() => {
-              goHome(() => {
-                clearEditing();
-                setDialog('');
-              });
-            }}
-            onNew={() => void newGame(() => setDialog(''))}
-          />
-        </Dialog>
-      )}
-      {dialog === 'history' && s && (
-        <Dialog
-          dismissOutside
-          showTitle={false}
-          scrollable
-          title="현재 토너먼트 기록"
-          onClose={() => setDialog('')}
-        >
-          <LocalHistoryPanel repository={repository} state={s} />
-        </Dialog>
-      )}
-      {dialog === 'blinds' && s && (
-        <Dialog dismissOutside title="다음 핸드 블라인드" onClose={() => setDialog('')}>
-          <BlindSettings
-            key={s.tournamentId + ':' + generation}
-            initialSB={initialBlinds!.sb}
-            initialBB={initialBlinds!.bb}
-            busy={busy}
-            onSave={(sb, bb) => {
-              if (busy) return notify('저장 완료를 기다려주세요.');
-              void run(async () => {
-                if (await dispatch({ type: 'SCHEDULE_BLINDS', sb, bb })) setDialog('');
-              });
-            }}
-          />
-        </Dialog>
-      )}
       <InstallNotice install={install} />
-      {toast && (
+      {toast.message && (
         <div className="toast" role="status">
-          {toast}
+          {toast.message}
         </div>
       )}
     </main>

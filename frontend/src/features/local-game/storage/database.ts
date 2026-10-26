@@ -1,5 +1,5 @@
 import { openDB, type DBSchema, type IDBPDatabase } from 'idb';
-import type { StoredGame, ControlRecord } from './repository';
+import type { StoredGame, ControlRecord } from './types';
 import type { GameEvent } from '../../../game/types';
 export interface PokerDB extends DBSchema {
   slot: { key: string; value: StoredGame };

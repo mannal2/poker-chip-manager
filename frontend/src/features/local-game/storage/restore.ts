@@ -1,4 +1,4 @@
-import type { StoredGame } from './repository';
+import type { StoredGame } from './types';
 import { assertInvariants } from '../../../game/invariants';
 import { validateSettings, validChips } from '../../../game/settings';
 export function validateStored(value: StoredGame): void {

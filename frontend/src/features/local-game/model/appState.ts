@@ -6,6 +6,7 @@ export interface AppState {
   home: boolean;
 }
 export const initialAppState: AppState = { game: null, status: 'loading', error: '', home: true };
-export function appReducer(state: AppState, update: Partial<AppState>): AppState {
+/** Shallow-merges a partial screen update; the reducer has no actions or side effects. */
+export function mergeAppState(state: AppState, update: Partial<AppState>): AppState {
   return { ...state, ...update };
 }

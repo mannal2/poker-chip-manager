@@ -8,7 +8,7 @@ import { InstallNotice } from '../pwa/InstallNotice';
 import { LocalHistoryPanel } from './components/LocalHistoryPanel';
 import { ManagerMenu } from './components/ManagerMenu';
 import { useRef, useState } from 'react';
-import type { ControlLease } from './storage/repository';
+import type { ControlLease } from './storage/types';
 import { GameScreen } from '../gameplay/GameScreen';
 import type { GameScreenHandle, GameSession } from '../gameplay/session';
 import { fullCapabilities } from '../gameplay/model/capabilities';
@@ -81,6 +81,7 @@ function LocalGame({
     recoveryContext,
     onRecover,
     notify,
+    ask: (message) => Promise.resolve(window.confirm(message)),
     prepareCommand: (state, command) => {
       const prepared = motion.prepare(state, command);
       return () => motion.play(prepared);

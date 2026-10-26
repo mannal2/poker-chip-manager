@@ -1,4 +1,5 @@
-import type { LocalRepository, ControlLease, Request, DispatchResult } from './repository';
+import type { LocalRepository } from './repository';
+import type { ControlLease, Request, DispatchResult } from './types';
 import type { GameState } from '../../../game/types';
 import type { GameSettings } from '../../../game/settings';
 import { storageDeadline } from './storageDeadline';

@@ -1,6 +1,6 @@
 import { useCallback, type RefObject } from 'react';
 import type { GameState } from '../../../game/types';
-import type { Request } from '../storage/repository';
+import type { Request } from '../storage/types';
 import { useChipMotion } from '../../gameplay/hooks/useChipMotion';
 import { chipTransfers } from '../model/localChipTransfers';
 

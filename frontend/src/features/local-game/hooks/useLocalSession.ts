@@ -1,31 +1,38 @@
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
-import { LocalRepository, type ControlLease, type Request } from '../storage/repository';
+import { LocalRepository } from '../storage/repository';
+import type { ControlLease, Request } from '../storage/types';
 import { LocalController } from '../storage/controller';
 import { defaultSettings } from '../../../game/settings';
 import type { GameState } from '../../../game/types';
-import { appReducer, initialAppState } from '../model/appReducer';
+import { mergeAppState, initialAppState } from '../model/appState';
 import { messageFor } from '../../gameplay/model/errorMessages';
+import { createCommandRunner } from '../../../shared/async/commandRunner';
+import { useCrossTabOwnership } from './useCrossTabOwnership';
+import { usePageResume } from './usePageResume';
 
 export function useLocalSession({
   restartOnMount,
   recoveryContext,
   onRecover,
   notify,
+  ask,
   prepareCommand,
 }: {
   restartOnMount: boolean;
   recoveryContext: { inGame: boolean; lease: ControlLease | null };
   onRecover: (inGame: boolean, lease: ControlLease | null) => void;
   notify: (message: string) => void;
+  /** Asks the user to confirm a destructive step; the page decides how to present it. */
+  ask: (message: string) => Promise<boolean>;
   prepareCommand: (state: GameState, command: Request['command']) => (() => void) | null;
 }) {
-  const [app, setApp] = useReducer(appReducer, {
+  const [app, setApp] = useReducer(mergeAppState, {
     ...initialAppState,
     home: !recoveryContext.inGame,
   });
   const inGame = useRef(recoveryContext.inGame);
   const resumeRequested = useRef(false);
-  const lock = useRef(false);
+  const [runner] = useState(createCommandRunner);
   const pendingCommit = useRef<{ requestId: string; confirm: (() => void) | null } | null>(null);
   const [runtime] = useState(() => {
     const repo = new LocalRepository(
@@ -43,11 +50,7 @@ export function useLocalSession({
       recoveryContext.lease?.screenId ?? crypto.randomUUID(),
     );
     controller.lease = recoveryContext.lease ? { ...recoveryContext.lease } : null;
-    return {
-      repo,
-      controller,
-      channel: typeof BroadcastChannel === 'undefined' ? null : new BroadcastChannel('poker-local'),
-    };
+    return { repo, controller };
   });
   const c = runtime.controller,
     s = app.game;
@@ -80,62 +83,51 @@ export function useLocalSession({
     restoreVersion.current++;
     c.cancelRefresh();
   }, [c]);
-  const finish = useCallback(() => {
-    lock.current = false;
+  const afterRun = useCallback(() => {
     if (resumeRequested.current) {
       resumeRequested.current = false;
       void restore(true);
     }
   }, [restore]);
+  const tabs = useCrossTabOwnership({
+    ownsGame: () => !!c.lease && inGame.current,
+    onPeerChange: () => {
+      if (runner.isLocked() || c.pending) return;
+      void restore();
+    },
+  });
+  const { announce } = tabs;
   useEffect(() => {
-    if (restartOnMount) {
-      lock.current = true;
-      void c
-        .restart(defaultSettings)
-        .then(
-          () => {
-            inGame.current = true;
-            setApp({ game: c.state, status: 'ready', home: false, error: '' });
-            runtime.channel?.postMessage('changed');
-          },
-          (error) => setApp({ status: 'restoreError', error: String(error) }),
-        )
-        .finally(finish);
-    } else void restore();
-    const resume = () => {
-      if (document.visibilityState === 'hidden') return;
-      if (lock.current) {
-        resumeRequested.current = true;
-        return;
-      }
-      resumeRequested.current = false;
-      void restore(true);
-    };
-    document.addEventListener('visibilitychange', resume);
-    window.addEventListener('pageshow', resume);
-    document.addEventListener('resume', resume);
-    if (runtime.channel)
-      runtime.channel.onmessage = (message) => {
-        if (message.data?.type === 'probe') {
-          if (c.lease && inGame.current)
-            runtime.channel?.postMessage({ type: 'owner', requestId: message.data.requestId });
-          return;
-        }
-        if (message.data?.type === 'owner' || lock.current || c.pending) return;
-        void restore();
-      };
+    if (restartOnMount)
+      void runner.run(
+        async () => {
+          await c.restart(defaultSettings);
+          inGame.current = true;
+          setApp({ game: c.state, status: 'ready', home: false, error: '' });
+          announce('changed');
+        },
+        {
+          onError: (error) => setApp({ status: 'restoreError', error: String(error) }),
+          onRelease: afterRun,
+        },
+      );
+    else void restore();
     return () => {
       resumeRequested.current = false;
       cancelRestore();
-      document.removeEventListener('visibilitychange', resume);
-      window.removeEventListener('pageshow', resume);
-      document.removeEventListener('resume', resume);
-      runtime.channel?.close();
       runtime.repo.dispose();
     };
-  }, [c, runtime, restore, cancelRestore, restartOnMount, finish]);
-  function restartAfterFailure() {
-    if (confirm('현재 토너먼트와 전체 기록을 삭제하고 새 토너먼트를 시작할까요?'))
+  }, [c, runtime, runner, restore, cancelRestore, restartOnMount, afterRun, announce]);
+  usePageResume(() => {
+    if (runner.isLocked()) {
+      resumeRequested.current = true;
+      return;
+    }
+    resumeRequested.current = false;
+    void restore(true);
+  });
+  async function restartAfterFailure() {
+    if (await ask('현재 토너먼트와 전체 기록을 삭제하고 새 토너먼트를 시작할까요?'))
       onRecover(inGame.current, c.lease);
   }
   async function dispatch(command: Request['command']) {
@@ -168,23 +160,16 @@ export function useLocalSession({
       return false;
     }
     if (result.resultVersion === result.state?.version) confirm?.();
-    runtime.channel?.postMessage('changed');
+    announce('changed');
     return true;
   }
   async function run(action: () => Promise<void>) {
-    if (lock.current) {
-      notify('저장 완료를 기다려주세요.');
-      return;
-    }
-    lock.current = true;
-    setApp({ status: 'saving' });
-    try {
-      await action();
-    } catch (e) {
-      setApp({ status: 'storageError', error: String(e) });
-    } finally {
-      finish();
-    }
+    await runner.run(action, {
+      onBusy: () => notify('저장 완료를 기다려주세요.'),
+      onStart: () => setApp({ status: 'saving' }),
+      onError: (e) => setApp({ status: 'storageError', error: String(e) }),
+      onRelease: afterRun,
+    });
   }
   async function activateLocal() {
     await c.takeControl();
@@ -200,28 +185,14 @@ export function useLocalSession({
     }
     inGame.current = true;
     setApp({ game: c.state, status: 'ready', home: false, error: '' });
-    runtime.channel?.postMessage('control');
+    announce('control');
   }
   async function continueGame() {
-    if (!lock.current) await run(activateLocal);
+    if (!runner.isLocked()) await run(activateLocal);
   }
   async function otherWindowOwnsGame() {
-    const channel = runtime.channel;
-    if (!channel || c.lease) return false;
-    return new Promise<boolean>((resolve) => {
-      const requestId = crypto.randomUUID();
-      const finish = (owner: boolean) => {
-        clearTimeout(timer);
-        channel.removeEventListener('message', listener);
-        resolve(owner);
-      };
-      const listener = (e: MessageEvent) => {
-        if (e.data?.type === 'owner' && e.data.requestId === requestId) finish(true);
-      };
-      const timer = setTimeout(() => finish(false), 180);
-      channel.addEventListener('message', listener);
-      channel.postMessage({ type: 'probe', requestId });
-    });
+    if (c.lease) return false;
+    return tabs.otherWindowOwnsGame();
   }
   async function enterLocalGame() {
     await run(async () => {
@@ -240,26 +211,26 @@ export function useLocalSession({
     });
   }
   async function newGame(onPrepared: () => void) {
-    if (lock.current || c.pending) {
-      restartAfterFailure();
+    if (runner.isLocked() || c.pending) {
+      await restartAfterFailure();
       return;
     }
-    if (s && !confirm('현재 토너먼트와 전체 기록을 삭제하고 새 토너먼트를 준비할까요?')) return;
+    if (s && !(await ask('현재 토너먼트와 전체 기록을 삭제하고 새 토너먼트를 준비할까요?'))) return;
     await run(async () => {
       await c.takeControl();
       if (
         c.state &&
         c.state.tournamentId !== s?.tournamentId &&
-        !confirm(
+        !(await ask(
           '다른 화면에서 새 토너먼트가 저장되었습니다. 현재 게임과 기록을 삭제하고 교체할까요?',
-        )
+        ))
       ) {
         setApp({
           game: c.state,
           status: c.lease ? 'ready' : 'controlLost',
           error: c.lease ? '' : '다른 화면이 조작 권한을 인수했습니다.',
         });
-        runtime.channel?.postMessage('control');
+        announce('control');
         return;
       }
       if (!c.state) {
@@ -279,7 +250,7 @@ export function useLocalSession({
       )
         setApp({ home: false });
       onPrepared();
-      runtime.channel?.postMessage('changed');
+      announce('changed');
     });
   }
   async function retryStorage(onUndoApplied: () => void) {
@@ -309,7 +280,7 @@ export function useLocalSession({
                 : '저장 실패'
               : '',
         });
-        runtime.channel?.postMessage('changed');
+        announce('changed');
       } else {
         await c.refresh();
         setApp({
@@ -321,7 +292,7 @@ export function useLocalSession({
     });
   }
   function goHome(onLeave: () => void) {
-    if (['ready', 'controlLost'].includes(app.status) && !lock.current && !c.pending) {
+    if (['ready', 'controlLost'].includes(app.status) && !runner.isLocked() && !c.pending) {
       inGame.current = false;
       onLeave();
       setApp({ home: true, status: 'ready', error: '' });
@@ -331,7 +302,7 @@ export function useLocalSession({
     app,
     generation: c.lease?.generation,
     repository: runtime.repo,
-    isLocked: () => lock.current,
+    isLocked: runner.isLocked,
     hasPending: () => !!c.pending,
     getSettings: () => c.state!.settings,
     restore,

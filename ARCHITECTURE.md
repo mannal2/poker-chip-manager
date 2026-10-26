@@ -24,7 +24,7 @@ flowchart TD
   PWA --> Shared
   PWA --> SW["서비스 워커·Cache Storage"]
   Local --> UI
-  Local --> State["appReducer / 화면 상태"]
+  Local --> State["mergeAppState / 화면 상태"]
   Local --> Controller["LocalController / 요청·조작권"]
   Local --> Repo["LocalRepository / 원자 저장"]
   Local --> Rules["game / 순수 규칙·타입"]
@@ -116,13 +116,16 @@ URL `/online/`에서는 준비 중 안내를 보여주며, 기본 URL `/`는 로
 | `frontend/src/features/local-game/`            | 로컬 화면과 복구 수명 조합              | [LocalGamePage.tsx](frontend/src/features/local-game/LocalGamePage.tsx): `LocalGamePage`, `LocalGame`                                                                                                     |
 | `frontend/src/features/local-game/components/` | 로컬 홈·관리 메뉴·조회/UI 연결          | [LocalHome.tsx](frontend/src/features/local-game/components/LocalHome.tsx), [LocalHistoryPanel.tsx](frontend/src/features/local-game/components/LocalHistoryPanel.tsx)                                    |
 | `frontend/src/features/local-game/hooks/`      | 로컬 세션·준비 편집·기록 조회·효과 연결 | [useLocalSession.ts](frontend/src/features/local-game/hooks/useLocalSession.ts), [useSetupEditing.ts](frontend/src/features/local-game/hooks/useSetupEditing.ts), `useLocalHistory`, `useLocalChipMotion` |
-| `frontend/src/features/local-game/model/`      | 로컬 화면 상태와 명령 기반 효과 계산    | [appReducer.ts](frontend/src/features/local-game/model/appReducer.ts): `AppState`, `appReducer`; [localChipTransfers.ts](frontend/src/features/local-game/model/localChipTransfers.ts): `chipTransfers`   |
+| `frontend/src/features/local-game/model/`      | 로컬 화면 상태와 명령 기반 효과 계산    | [appState.ts](frontend/src/features/local-game/model/appState.ts): `AppState`, `mergeAppState`; [localChipTransfers.ts](frontend/src/features/local-game/model/localChipTransfers.ts): `chipTransfers`    |
 | `frontend/src/features/local-game/storage/`    | 조작권·요청·검증·IndexedDB 원자 저장    | [controller.ts](frontend/src/features/local-game/storage/controller.ts): `LocalController`; [repository.ts](frontend/src/features/local-game/storage/repository.ts): `LocalRepository`                    |
 
 `LocalGamePage`는 복구를 위해 자식 로컬 게임을 다시 만들 때도 유지할 상태를 가진다.
 내부 `LocalGame`은 세션·준비 편집·PWA·알림을 `GameSession`으로 묶어 `GameScreen`에 넘긴다.
 로딩·복원 오류 화면, 로컬 오류 배너, 홈, 업데이트 대화상자와 토스트 표시는 이 페이지에 남는다.
-`useLocalSession`은 세션 실행 중 저장소·컨트롤러·BroadcastChannel을 관리한다.
+`useLocalSession`은 세션 실행 중 저장소·컨트롤러와 실행 잠금을 관리한다.
+탭 사이 알림은 `useCrossTabOwnership`, 페이지 복귀 감지는 `usePageResume`이 맡는다.
+실행 잠금은 [commandRunner.ts](frontend/src/shared/async/commandRunner.ts)의 `createCommandRunner`이며, 삭제 확인 창은 페이지가 `ask` 콜백으로 넘긴다.
+저장소의 요청·결과·조작권 타입은 [types.ts](frontend/src/features/local-game/storage/types.ts)에 있다.
 `LocalController`는 현재 상태·조작권·미확정 요청·요청 순번을 보관한다.
 `LocalRepository`는 규칙 실행과 상태·이벤트·조작권 기록의 커밋 경계다.
 
@@ -172,7 +175,7 @@ PWA 등록은 로컬 게임에서 호출하는 `useLocalPWA`가 담당한다.
 | --------------------------------------- | ----------------------------------------------------------------- | -------------------- |
 | 확정 게임·현재 핸드·되돌리기 스냅샷     | `GameState`; `LocalController`와 `useLocalSession`의 화면 반영 값 | IndexedDB            |
 | 조작 화면·세대·처리 순번·최근 요청 결과 | `LocalRepository`의 `ControlRecord`                               | IndexedDB            |
-| 저장 중·실패·조작권 상실·홈 여부        | `AppState`, `appReducer`                                          | React 메모리         |
+| 저장 중·실패·조작권 상실·홈 여부        | `AppState`, `mergeAppState`                                       | React 메모리         |
 | 베팅 금액·승자 선택·현재 팟             | `useBettingDraft`, `useSettlementSelection`                       | React 메모리         |
 | 이름·숫자 문자열·IME 편집 상태          | `InlineName`, `SetupPanel`, `BlindSettings`                       | 컴포넌트 메모리      |
 | 복구 재생성 key·업데이트 안내 보류      | `LocalGamePage`                                                   | 부모 컴포넌트 메모리 |
@@ -196,7 +199,7 @@ PWA 등록은 로컬 게임에서 호출하는 `useLocalPWA`가 담당한다.
    성공한 결과만 `APPLIED`로 반환하며 저장 결과를 확신할 수 없는 오류는 `UNKNOWN`으로 반환한다.
    `REJECTED`의 `reason`은 규칙·세션 거절 코드이며 화면은 `messageFor`로 안내한다.
 7. `LocalController`가 확정 결과를 받아 상태와 미확정 요청을 갱신한다.
-   `useLocalSession`이 `appReducer`를 통해 React 화면 상태에 반영한다.
+   `useLocalSession`이 `mergeAppState`를 통해 React 화면 상태에 반영한다.
 8. `buildTableView`가 확정 상태와 현재 입력 초안을 화면 데이터로 변환한다.
    `Table`과 하위 카드가 다시 표시되고, 결과 버전이 맞는 경우 준비한 칩 효과를 재생한다.
 
@@ -250,7 +253,7 @@ PWA 등록은 로컬 게임에서 호출하는 `useLocalPWA`가 담당한다.
 - `frontend/src/features/pwa/`는 내부 모듈·React·가상 PWA 등록 모듈과 범용 다이얼로그를 사용한다.
   로컬 세션·저장소를 import하지 않고 저장 읽기 등을 콜백으로 받는다.
 - 로컬 페이지와 Hook이 이 모듈들을 조합한다.
-  `appReducer`는 화면 상태를 병합할 뿐 저장 부작용을 수행하지 않는다.
+  `mergeAppState`는 화면 상태를 병합할 뿐 저장 부작용을 수행하지 않는다.
 
 ### 규칙과 원자 저장
 

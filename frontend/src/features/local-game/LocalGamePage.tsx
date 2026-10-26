@@ -12,6 +12,7 @@ import type { ControlLease } from './storage/repository';
 import { GameScreen } from '../gameplay/GameScreen';
 import type { GameScreenHandle, GameSession } from '../gameplay/session';
 import { fullCapabilities } from '../gameplay/model/capabilities';
+import { getLegalActions } from '../../game/transition';
 import { LocalHome } from './components/LocalHome';
 import { Dialog } from '../../shared/ui/Dialog';
 import { useSetupEditing } from './hooks/useSetupEditing';
@@ -119,6 +120,7 @@ function LocalGame({
     busy,
     // One local operator holds every role; lease loss is handled by busy, guard and storage.
     capabilities: fullCapabilities,
+    legal: getLegalActions(s),
     scope: generation,
     guard: () =>
       busy || isLocked()

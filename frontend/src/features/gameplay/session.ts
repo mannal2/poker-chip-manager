@@ -1,5 +1,5 @@
 import type { GameSettings } from '../../game/settings';
-import type { GameCommand, GameState } from '../../game/types';
+import type { GameCommand, GameState, LegalActions } from '../../game/types';
 import type { useSeatDrag } from './hooks/useSeatDrag';
 import type { GameCapabilities } from './model/capabilities';
 
@@ -9,6 +9,8 @@ export interface GameSession {
   busy: boolean;
   /** Viewer permissions; storage/server checks still decide the final result. */
   capabilities: GameCapabilities;
+  /** Allowed betting actions and amounts (local: getLegalActions, online: server response). */
+  legal: LegalActions | null;
   /** Control scope from the mode (local: lease generation); undefined disables betting drafts. */
   scope: string | number | undefined;
   /** Returns the reason the screen cannot accept input now, or null when it can. */

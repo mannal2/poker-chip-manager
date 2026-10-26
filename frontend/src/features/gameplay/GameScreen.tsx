@@ -46,8 +46,10 @@ export function GameScreen({
   const bettingScope = scope === undefined ? undefined : s.tournamentId + ':' + scope;
   const settlementScope = s.tournamentId + '/' + s.hand?.id + '/' + scope;
   const initialBlinds = s.pendingBlinds ?? s.hand;
-  const { legal, draftAmount, submitAllowed, prepareAction } = useBettingDraft(
+  const legal = session.legal;
+  const { draftAmount, submitAllowed, prepareAction } = useBettingDraft(
     s,
+    legal,
     bettingScope,
     notify,
   );

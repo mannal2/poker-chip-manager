@@ -85,6 +85,7 @@ URL `/online/`에서는 준비 중 안내를 보여주며, 기본 URL `/`는 로
 게임 설정은 [settings.ts](frontend/src/game/settings.ts)의 `GameSettings`와 `validateSettings`에서 시작한다.
 턴과 딜러 위치는 [positions.ts](frontend/src/game/positions.ts)의 `nextSeat`, `nextPositions`가 계산한다.
 상태 전이는 `createTournament`, `getLegalActions`, `transition`에 모여 있다.
+베팅 초안 금액을 명령으로 바꾸는 분류는 [betting.ts](frontend/src/game/betting.ts)의 `classifyDraft`가 맡는다.
 팟·지급은 [settlement.ts](frontend/src/game/settlement.ts), 무결성 검사는 [invariants.ts](frontend/src/game/invariants.ts)가 담당한다.
 
 ### 모드 공통 게임 기능
@@ -179,7 +180,8 @@ PWA 등록은 로컬 게임에서 호출하는 `useLocalPWA`가 담당한다.
 
 1. 사용자가 `BetControls`, 준비 폼 또는 테이블 카드를 조작한다.
    공통 UI는 로컬 저장소를 호출하지 않고 전달받은 콜백을 실행한다.
-2. `useBettingDraft`는 금액 초안을 관리하고 사용자 의도를 `GameCommand`로 바꾼다.
+2. `useBettingDraft`는 모드가 넘긴 허용 행동(`GameSession.legal`)으로 금액 초안을 관리한다.
+   SUBMIT 금액은 `classifyDraft`가 `GameCommand` 또는 거절 코드로 바꾼다.
    준비 편집은 `useSetupEditing`, 승자 선택은 `useSettlementSelection`이 맡는다.
 3. `GameScreen`이 `GameSession.guard`로 잠금을 확인하고 세션의 `run`, `dispatch`를 호출한다.
    로컬에서는 `useLocalSession`의 `run`, `dispatch`가 연결된다.
@@ -218,7 +220,7 @@ PWA 등록은 로컬 게임에서 호출하는 `useLocalPWA`가 담당한다.
 | --------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
 | 이름·시작 칩·참가자 수 검증 변경        | [settings.ts](frontend/src/game/settings.ts)                                                                                                                     | `validateSettings`; 준비 UI와 복원 검증도 같은 규칙 사용                                           |
 | 이름 편집·좌석 드래그·첫 딜러 조작 변경 | [useSetupEditing.ts](frontend/src/features/local-game/hooks/useSetupEditing.ts), [InlineName.tsx](frontend/src/features/gameplay/components/InlineName.tsx)      | IME, 저장 완료 순서, `useSeatDrag`                                                                 |
-| 칩 버튼·BET 초안 동작 변경              | [useBettingDraft.ts](frontend/src/features/gameplay/hooks/useBettingDraft.ts), [BetControls.tsx](frontend/src/features/gameplay/components/BetControls.tsx)      | 화면 검증과 최종 `transition` 검증을 함께 확인                                                     |
+| 칩 버튼·BET 초안 동작 변경              | [useBettingDraft.ts](frontend/src/features/gameplay/hooks/useBettingDraft.ts), [BetControls.tsx](frontend/src/features/gameplay/components/BetControls.tsx)      | `classifyDraft`와 최종 `transition` 검증의 일치 테스트를 함께 확인                                 |
 | 콜·최소 레이즈·짧은 올인·턴 규칙 변경   | [transition.ts](frontend/src/game/transition.ts)                                                                                                                 | `getLegalActions`, 공통 베팅 사례, 총량 불변 조건                                                  |
 | 팟 분리·동률·나머지 칩 배분 변경        | [settlement.ts](frontend/src/game/settlement.ts)                                                                                                                 | `buildPots`, `previewSettlement`, 승자 선택 미리보기                                               |
 | 무르기 범위나 취소 후 기록 변경         | [transition.ts](frontend/src/game/transition.ts), [history.ts](frontend/src/features/gameplay/model/history.ts)                                                  | 스냅샷·이벤트 식별자와 `resetWinners`                                                              |

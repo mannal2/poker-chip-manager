@@ -1,19 +1,6 @@
-import { InlineName } from './InlineName';
+import { PlayerSeat, type CardPlayer } from './PlayerSeat';
 import { useLayoutEffect, useRef } from 'react';
 import { seatCoordinates } from './seatLayout';
-export interface CardPlayer {
-  id: string;
-  name: string;
-  stack: number;
-  contribution: number;
-  roles?: string;
-  active?: boolean;
-  selected?: boolean;
-  out?: boolean;
-  folded?: boolean;
-  pending?: boolean;
-  eligible?: boolean;
-}
 export function Table({
   players,
   pot,
@@ -209,61 +196,26 @@ export function Table({
           const slot = drag ? drag.order.indexOf(p.id) : i;
           const [x, y] =
             seatCoordinates[players.length][(slot - viewSeat + players.length) % players.length];
-          const Card = onRename ? 'div' : 'button';
-          const Values = onRename ? 'button' : 'div';
           return (
-            <Card
+            <PlayerSeat
               key={p.id}
-              type="button"
-              role={onRename ? 'group' : undefined}
-              data-player={p.id}
-              className={`seat ${p.active ? 'active' : ''} ${p.selected ? 'selected' : ''} ${p.out || p.folded ? 'out' : ''} ${drag?.pressed === p.id ? 'pressing' : ''} ${drag?.ready === p.id ? 'drag-ready' : ''} ${drag?.position?.id === p.id ? 'dragging' : ''}`}
+              player={p}
+              phase={phase}
               style={{
                 left: drag?.position?.id === p.id ? drag.position.x : `${x}%`,
                 top: drag?.position?.id === p.id ? drag.position.y : `${y}%`,
                 touchAction: drag ? 'none' : undefined,
               }}
-              aria-label={`${p.name}${p.active ? ' 현재 차례' : ''}${p.folded ? ' 폴드' : ''}${p.out ? ' 탈락' : ''}`}
-              aria-pressed={phase === 'settlement' ? !!p.selected : undefined}
-              aria-disabled={phase === 'settlement' && !p.eligible}
-              onContextMenu={(e) => {
-                if (!(e.target as HTMLElement).closest('input, textarea, [contenteditable="true"]'))
-                  e.preventDefault();
-              }}
-              onClick={() => onSelect?.(p.id)}
-              {...drag?.handlers(p.id)}
-            >
-              {p.roles && <span className="badge">{p.roles}</span>}
-              <div className="name">
-                {onRename ? (
-                  <InlineName
-                    key={p.id + ':' + editScope}
-                    name={p.name}
-                    busy={!!busy}
-                    onSave={(name) => onRename(p.id, name)}
-                    onEditing={(editing, finish) => onNameEditing?.(p.id, editing, finish)}
-                  />
-                ) : (
-                  p.name
-                )}
-              </div>
-              <Values
-                className="card-values"
-                type={onRename ? 'button' : undefined}
-                aria-label={onRename ? p.name + ' 첫 딜러 선택' : undefined}
-              >
-                <div
-                  className={`bet ${p.pending ? 'pending' : ''}`}
-                  aria-label={`핸드 누적액 ${p.contribution}`}
-                >
-                  {p.contribution.toLocaleString('ko-KR')}
-                </div>
-                <div className="stack" aria-label={`남은 칩 ${p.stack}`}>
-                  {p.stack.toLocaleString('ko-KR')}
-                </div>
-              </Values>
-              {p.active && <span className="turn" />}
-            </Card>
+              pressed={drag?.pressed === p.id}
+              dragReady={drag?.ready === p.id}
+              dragging={drag?.position?.id === p.id}
+              handlers={drag?.handlers(p.id)}
+              busy={busy}
+              onSelect={onSelect}
+              onRename={onRename}
+              onNameEditing={onNameEditing}
+              editScope={editScope}
+            />
           );
         })}
       </div>

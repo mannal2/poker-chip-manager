@@ -2,7 +2,7 @@ import { useChipMotion } from '../ui/useChipMotion';
 import { useScreenFit } from '../ui/useScreenFit';
 import { useLocalPWA } from '../pwa/register';
 import { UpdateNotice } from '../pwa/UpdateNotice';
-import { useInstallPrompt } from '../pwa/useInstallPrompt';
+import { usePwaPresentation } from './usePwaPresentation';
 import { InstallNotice } from '../pwa/InstallNotice';
 import { HistoryPanel } from '../ui/HistoryPanel';
 import { BlindSettings } from '../ui/BlindSettings';
@@ -118,15 +118,19 @@ function LocalGame({
     screen,
     `${app.home}/${s?.tournamentId}/${generation}/${app.status === 'controlLost'}`,
   );
-  const install = useInstallPrompt(app.home && !busy && !dialog);
-  const automaticUpdate =
-    dialog === 'startupUpdate' ||
-    (app.home && !busy && !dialog && pwa.hasUpdate && !updateDeferred && !install.visible);
-  const closeUpdate = () => {
-    if (pwa.hasUpdate) onDeferUpdate();
-    pwa.cancelCheck();
-    setDialog('');
-  };
+  const { install, update } = usePwaPresentation({
+    pwa,
+    home: app.home,
+    busy,
+    dialog,
+    updateDeferred,
+    setDialog,
+    onDeferUpdate,
+    isLocked,
+    hasPending,
+    readSavedState: () => repository.load(),
+    notify,
+  });
   const { scope, drag, saveSettings, changeCount, onNameEditing, rename, rotate, start, clearEditing } =
     useSetupEditing({ state: s, generation, busy, notify, isLocked, getSettings, run, dispatch });
   const { legal, draftAmount, submitAllowed, prepareAction } = useBettingDraft(s, generation, notify);
@@ -204,12 +208,9 @@ function LocalGame({
       )}
       {app.home ? (
         <LocalHome
-          busy={(busy && app.status !== 'controlLost') || pwa.updateStatus === 'applying'}
+          busy={(busy && app.status !== 'controlLost') || update.closeDisabled}
           onLocal={() => void enterLocalGame()}
-          onUpdate={() => {
-            setDialog('update');
-            void pwa.check();
-          }}
+          onUpdate={update.open}
           hasUpdate={pwa.hasUpdate}
           onInstall={install.available ? install.open : undefined}
         />
@@ -334,25 +335,20 @@ function LocalGame({
           </>
         )
       )}
-      {(dialog === 'update' || automaticUpdate) && (
+      {update.visible && (
         <Dialog
           dismissOutside
-          closeDisabled={pwa.updateStatus === 'applying'}
+          closeDisabled={update.closeDisabled}
           title="앱 업데이트"
-          onClose={closeUpdate}
+          onClose={update.close}
         >
           <UpdateNotice
             {...pwa}
-            automatic={automaticUpdate}
-            onLater={closeUpdate}
-            canApply={app.home && !busy && !hasPending() && !isLocked()}
-            onCheck={() => void pwa.check()}
-            onApply={() => {
-              if (!app.home || busy || isLocked() || hasPending())
-                return notify('저장 완료 후 홈에서 업데이트하세요.');
-              if (automaticUpdate) setDialog('startupUpdate');
-              void pwa.apply(() => repository.load());
-            }}
+            automatic={update.automatic}
+            onLater={update.close}
+            canApply={update.canApply}
+            onCheck={update.check}
+            onApply={update.apply}
           />
         </Dialog>
       )}

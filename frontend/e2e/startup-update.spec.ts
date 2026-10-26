@@ -164,6 +164,38 @@ test('실행 확인이 응답하지 않아도 시간 제한 후 조용히 사용
   await expect(page.getByText('최신 버전을 사용하고 있습니다.', { exact: true })).toBeVisible();
 });
 
+test('설치 안내가 보이는 동안 자동 업데이트는 기다리고 닫은 뒤 표시한다', async ({ page }, info) => {
+  test.setTimeout(60000);
+  const original = await readFile(file, 'utf8');
+  try {
+    await page.goto('/local/');
+    await ready(page);
+    await page.evaluate(() =>
+      window.dispatchEvent(new Event('beforeinstallprompt', { cancelable: true })),
+    );
+    const install = page.getByRole('dialog', { name: '앱으로 설치해서 사용하세요', exact: true });
+    await expect(install).toBeVisible();
+    await writeFile(file, original + `\n/* install priority ${info.project.name} */`);
+    await page.evaluate(async () => {
+      await (await navigator.serviceWorker.getRegistration('/local/'))!.update();
+    });
+    await expect.poll(() => page.evaluate(async () =>
+      !!(await navigator.serviceWorker.getRegistration('/local/'))?.waiting,
+    )).toBe(true);
+    await expect(page.getByRole('dialog', { name: '앱 업데이트', exact: true })).toHaveCount(0);
+    await expect(install).toBeVisible();
+    await install.getByRole('button', { name: '나중에', exact: true }).click();
+    await expect(page.getByRole('dialog', { name: '앱 업데이트', exact: true })).toBeVisible();
+    await expect(page.getByText('새 버전이 준비되었습니다. 업데이트할까요?', { exact: true })).toBeVisible();
+    await expect(install).toHaveCount(0);
+    await page.getByRole('button', { name: '나중에', exact: true }).click();
+    await openLocal(page);
+    await expect(page.locator('.seat')).toHaveCount(2);
+  } finally {
+    await writeFile(file, original);
+  }
+});
+
 test('자동 업데이트 적용 중 늦은 설치 제안은 진행창을 바꾸지 않는다', async ({ page }, info) => {
   test.setTimeout(60000);
   const original = await readFile(file, 'utf8');

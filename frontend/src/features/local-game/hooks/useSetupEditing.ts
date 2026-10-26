@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import { validateSettings, type GameSettings } from '../../../game/settings';
 import type { GameCommand, GameState } from '../../../game/types';
 import { useSeatDrag } from '../../gameplay/hooks/useSeatDrag';
+import { messageFor } from '../../gameplay/model/errorMessages';
 
 export function useSetupEditing({
   state: s,
@@ -103,7 +104,7 @@ export function useSetupEditing({
             names: s.players.map((p) => (p.id === id ? name : p.name)),
           });
           if (!v.ok) {
-            notify(v.error);
+            notify(messageFor(v.code));
             return false;
           }
           if (JSON.stringify(v.settings) === JSON.stringify(s.settings)) return true;
@@ -133,7 +134,7 @@ export function useSetupEditing({
       return notify('이름 입력을 Enter로 저장하거나 다른 곳을 눌러 완료하세요.');
     if (busy) return notify('저장 완료를 기다려주세요.');
     const v = validateSettings(settings);
-    if (!v.ok) return notify(v.error);
+    if (!v.ok) return notify(messageFor(v.code));
     if (settings.button < 0) return notify('첫 딜러로 시작할 플레이어 카드를 선택하세요.');
     void run(async () => {
       if (

@@ -1,3 +1,4 @@
+import type { SettlementErrorCode } from './errors';
 import type { GameState, Pot, WinnerSelection } from './types';
 export function buildPots(s: GameState): Pot[] {
   const heights = [...new Set(s.players.map((p) => p.H).filter((n) => n > 0))].sort(
@@ -30,7 +31,7 @@ export function previewSettlement(
 ): {
   ok: boolean;
   payouts: Record<string, number>;
-  error?: string;
+  error?: SettlementErrorCode;
   allocations?: Array<{
     potId: string;
     amount: number;
@@ -39,8 +40,8 @@ export function previewSettlement(
   }>;
 } {
   const payouts = Object.fromEntries(s.players.map((p) => [p.id, 0]));
-  const fail = (error: string) => ({ ok: false, payouts, error });
-  if (!pots.length) return fail('정산할 팟이 없습니다.');
+  const fail = (error: SettlementErrorCode) => ({ ok: false, payouts, error });
+  if (!pots.length) return fail('NO_POT');
   const selected = pots.map((p) => winners[p.id] ?? (p.eligible.length === 1 ? p.eligible : []));
   if (
     pots.some(
@@ -50,7 +51,7 @@ export function previewSettlement(
         selected[i].some((id) => !p.eligible.includes(id)),
     )
   )
-    return fail('모든 팟에서 자격 있는 승자를 선택하세요.');
+    return fail('WINNER_REQUIRED');
   const parent = new Map(s.players.map((p) => [p.id, p.id]));
   function find(id: string): string {
     const p = parent.get(id)!;
@@ -65,7 +66,7 @@ export function previewSettlement(
     const winner = find(selected[i][0]);
     for (const loser of pots[i].eligible.filter((id) => !selected[i].includes(id))) {
       const to = find(loser);
-      if (winner === to) return fail('동률과 승패 선택이 충돌합니다.');
+      if (winner === to) return fail('TIE_CONFLICT');
       if (!edges.has(winner)) edges.set(winner, new Set());
       edges.get(winner)!.add(to);
     }
@@ -81,7 +82,7 @@ export function previewSettlement(
     visited.add(id);
     return false;
   }
-  for (const id of edges.keys()) if (cycle(id)) return fail('팟 사이 승패 선택이 충돌합니다.');
+  for (const id of edges.keys()) if (cycle(id)) return fail('POT_ORDER_CONFLICT');
   const allocations: Array<{
     potId: string;
     amount: number;

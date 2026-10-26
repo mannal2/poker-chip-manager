@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { classifyDraft } from '../../../game/betting';
+import { messageFor } from '../model/errorMessages';
 import type { GameCommand, GameState, LegalActions } from '../../../game/types';
 
 /** Change scope for a new tournament or input session; undefined disables the draft. */
@@ -19,7 +20,7 @@ export function useBettingDraft(
 
   function prepareAction(action: string, amount = 0): GameCommand | undefined {
     if (!state || !legal?.actor) {
-      notify('지금은 베팅 차례가 아닙니다.');
+      notify(messageFor('NOT_ACTOR'));
       return;
     }
     if (action === 'FOLD' && legal.callAdditional === 0) return;
@@ -42,12 +43,13 @@ export function useBettingDraft(
     if (action !== 'SUBMIT') return { type: action as GameCommand['type'] };
     const result = classifyDraft(legal, draftAmount, currentBet);
     if (result.ok) return result.command;
-    if (result.code === 'BELOW_CALL') notify('콜 금액 이상으로 칩을 선택하세요.');
-    else if (result.code === 'MIN_RAISE')
+    if (result.code === 'MIN_RAISE')
       notify(
         '최소 추가 레이즈는 ' + legal.minRaiseAdditional.toLocaleString('ko-KR') + '칩입니다.',
       );
-    else notify(legal.reason);
+    // RAISE_CLOSED is explained by why the actor cannot raise (closed action or no opponent).
+    else if (result.code === 'RAISE_CLOSED') notify(messageFor(legal.reasonCode ?? 'RAISE_CLOSED'));
+    else notify(messageFor(result.code));
   }
 
   return { draftAmount, submitAllowed, prepareAction };

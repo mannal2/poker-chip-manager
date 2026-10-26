@@ -11,13 +11,19 @@ import { nextSeat, nextPositions } from './positions';
 import { assertInvariants } from './invariants';
 import { buildPots, previewSettlement } from './settlement';
 import type { WinnerSelection } from './types';
-class Invalid extends Error {}
-function requireRule(condition: unknown, message = 'INVALID_ACTION'): asserts condition {
+import type { RuleErrorCode } from './errors';
+class Invalid extends Error {
+  declare message: RuleErrorCode;
+}
+function requireRule(
+  condition: unknown,
+  message: RuleErrorCode = 'INVALID_ACTION',
+): asserts condition {
   if (!condition) throw new Invalid(message);
 }
 export function createTournament(settings: GameSettings, c: TransitionContext): GameState {
   const v = validateSettings(settings);
-  if (!v.ok) throw Error(v.error);
+  if (!v.ok) throw Error(v.code);
   return {
     tournamentId: c.id,
     version: 0,
@@ -54,7 +60,7 @@ export function getLegalActions(s: GameState): LegalActions {
       canRaise: false,
       canCheck: false,
       canCall: false,
-      reason: '지금은 베팅 차례가 아닙니다.',
+      reasonCode: 'NOT_ACTOR',
     };
   const opponents = s.players.filter((o) => o.id !== p.id && !o.folded && !o.eliminated),
     hasOpponent = opponents.some((o) => o.stack > 0);
@@ -69,11 +75,7 @@ export function getLegalActions(s: GameState): LegalActions {
     canRaise,
     canCheck: callAdditional === 0,
     canCall: callAdditional > 0,
-    reason: !hasOpponent
-      ? '응답할 칩이 있는 상대가 없습니다.'
-      : !canRaise
-        ? '완전 레이즈만큼 증가하지 않아 재레이즈할 수 없습니다.'
-        : '',
+    reasonCode: !hasOpponent ? 'NO_OPPONENT' : !canRaise ? 'RAISE_CLOSED' : null,
   };
 }
 function pay(s: GameState, index: number, amount: number) {

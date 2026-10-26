@@ -3,6 +3,18 @@ import type { GameCommand, GameState, LegalActions } from '../../game/types';
 import type { useSeatDrag } from './hooks/useSeatDrag';
 import type { GameCapabilities } from './model/capabilities';
 
+/** Session-level rejections (control, ordering, staleness) returned by local storage or a server. */
+export type SessionRejectionCode =
+  | 'CONTROL_LOST'
+  | 'STALE_STATE'
+  | 'TOURNAMENT_CHANGED'
+  | 'NO_GAME'
+  | 'REQUEST_CONFLICT'
+  | 'RESULT_EXPIRED'
+  | 'SEQUENCE_GAP'
+  | 'REQUEST_PENDING'
+  | 'NO_PENDING_REQUEST';
+
 /** Mode-provided state and command channel that the shared game screen is assembled from. */
 export interface GameSession {
   state: GameState;

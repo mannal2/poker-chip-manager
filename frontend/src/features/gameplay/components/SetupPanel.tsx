@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
 import type { GameSettings } from '../../../game/settings';
 import { validateSettings } from '../../../game/settings';
+import { messageFor } from '../model/errorMessages';
 export function SetupPanel({
   settings,
   busy,
@@ -31,7 +32,7 @@ export function SetupPanel({
     if (composing.current) return;
     const s = values(),
       v = validateSettings(s);
-    setError(v.ok ? '' : v.error);
+    setError(v.ok ? '' : messageFor(v.code));
     if (v.ok && JSON.stringify(s) !== JSON.stringify(settings)) onSave(v.settings);
   }
   return (
@@ -44,7 +45,7 @@ export function SetupPanel({
           if (v.ok) {
             setError('');
             onStart(v.settings);
-          } else setError(v.error);
+          } else setError(messageFor(v.code));
         }}
       >
         <fieldset disabled={busy} className="setup-fields">

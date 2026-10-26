@@ -1,5 +1,6 @@
 import type { previewSettlement } from '../../../game/settlement';
 import type { GameState, Pot, WinnerSelection } from '../../../game/types';
+import { messageFor } from '../model/errorMessages';
 
 export function PayoutPreview({
   state,
@@ -52,7 +53,7 @@ export function PayoutPreview({
           </p>
         ))
       ) : (
-        <p role="alert">{preview?.error}</p>
+        <p role="alert">{preview?.error && messageFor(preview.error)}</p>
       )}
     </>
   );

@@ -10,6 +10,7 @@ import { Table } from './components/Table';
 import { useBettingDraft } from './hooks/useBettingDraft';
 import { useSettlementSelection } from './hooks/useSettlementSelection';
 import { permits } from './model/capabilities';
+import { messageFor } from './model/errorMessages';
 import { buildTableView } from './model/tableView';
 import type { GameCommand } from '../../game/types';
 import type { GameDialog, GameScreenHandle, GameSession, SetupControls } from './session';
@@ -125,7 +126,8 @@ export function GameScreen({
             onWin={() => {
               if (busy) return notify('저장 완료 또는 재시도를 기다려주세요.');
               if (!can.canSettle) return notify('조작 권한이 없습니다.');
-              if (!preview?.ok) return notify(preview?.error ?? '승자를 선택하세요.');
+              if (!preview?.ok)
+                return notify(preview?.error ? messageFor(preview.error) : '승자를 선택하세요.');
               void run(async () => {
                 await dispatch({ type: 'SETTLE_HAND', winners });
               });

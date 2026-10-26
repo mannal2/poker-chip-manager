@@ -1,6 +1,6 @@
+import type { DraftRejection } from './errors';
 import type { GameCommand, LegalActions } from './types';
 
-export type DraftRejection = 'NOT_ACTOR' | 'BELOW_CALL' | 'RAISE_CLOSED' | 'MIN_RAISE';
 export type DraftClassification =
   { ok: true; command: GameCommand } | { ok: false; code: DraftRejection };
 

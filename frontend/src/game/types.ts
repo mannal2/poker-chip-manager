@@ -1,4 +1,5 @@
 import type { GameSettings } from './settings';
+import type { LegalReasonCode, RuleErrorCode } from './errors';
 export interface Player {
   id: string;
   name: string;
@@ -82,7 +83,7 @@ export interface GameEvent {
   sequence?: number;
 }
 export type TransitionResult =
-  { ok: true; state: GameState; events: GameEvent[] } | { ok: false; errorCode: string };
+  { ok: true; state: GameState; events: GameEvent[] } | { ok: false; errorCode: RuleErrorCode };
 export interface LegalActions {
   actor: Player | null;
   callAdditional: number;
@@ -91,7 +92,7 @@ export interface LegalActions {
   canRaise: boolean;
   canCheck: boolean;
   canCall: boolean;
-  reason: string;
+  reasonCode: LegalReasonCode | null;
 }
 export interface Pot {
   id: string;

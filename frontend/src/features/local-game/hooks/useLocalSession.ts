@@ -4,6 +4,7 @@ import { LocalController } from '../storage/controller';
 import { defaultSettings } from '../../../game/settings';
 import type { GameState } from '../../../game/types';
 import { appReducer, initialAppState } from '../model/appReducer';
+import { messageFor } from '../../gameplay/model/errorMessages';
 
 export function useLocalSession({
   restartOnMount,
@@ -153,17 +154,17 @@ export function useLocalSession({
     if (result.status === 'UNKNOWN') {
       setApp({
         status: 'storageError',
-        error: `저장 결과를 확인할 수 없습니다: ${result.reason}. 같은 요청으로 재시도하세요.`,
+        error: `저장 결과를 확인할 수 없습니다: ${messageFor(result.reason)}. 같은 요청으로 재시도하세요.`,
       });
       return false;
     }
     setApp({
       game: c.state,
       status: c.lease ? 'ready' : 'controlLost',
-      error: result.reason === 'CONTROL_LOST' ? '다른 화면에서 조작 중입니다.' : '',
+      error: result.reason === 'CONTROL_LOST' ? messageFor('CONTROL_LOST') : '',
     });
     if (result.status === 'REJECTED') {
-      notify(result.reason ?? '처리할 수 없습니다.');
+      notify(messageFor(result.reason));
       return false;
     }
     if (result.resultVersion === result.state?.version) confirm?.();
@@ -303,7 +304,9 @@ export function useLocalSession({
           error: !c.lease
             ? '다른 화면이 조작 권한을 인수했습니다.'
             : r.status === 'UNKNOWN'
-              ? (r.reason ?? '저장 실패')
+              ? r.reason
+                ? messageFor(r.reason)
+                : '저장 실패'
               : '',
         });
         runtime.channel?.postMessage('changed');

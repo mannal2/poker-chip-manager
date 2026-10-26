@@ -87,6 +87,8 @@ URL `/online/`에서는 준비 중 안내를 보여주며, 기본 URL `/`는 로
 상태 전이는 `createTournament`, `getLegalActions`, `transition`에 모여 있다.
 베팅 초안 금액을 명령으로 바꾸는 분류는 [betting.ts](frontend/src/game/betting.ts)의 `classifyDraft`가 맡는다.
 팟·지급은 [settlement.ts](frontend/src/game/settlement.ts), 무결성 검사는 [invariants.ts](frontend/src/game/invariants.ts)가 담당한다.
+규칙은 문장 대신 [errors.ts](frontend/src/game/errors.ts)의 거절 코드를 반환한다.
+화면 문구는 [errorMessages.ts](frontend/src/features/gameplay/model/errorMessages.ts)의 `messageFor`가 만든다.
 
 ### 모드 공통 게임 기능
 
@@ -192,6 +194,7 @@ PWA 등록은 로컬 게임에서 호출하는 `useLocalPWA`가 담당한다.
    일반 게임 명령은 `transition`을 호출하고, 새 토너먼트는 `createTournament`로 만든다.
 6. 규칙 결과와 이벤트, 요청 처리 결과를 저장한 뒤 트랜잭션 완료를 기다린다.
    성공한 결과만 `APPLIED`로 반환하며 저장 결과를 확신할 수 없는 오류는 `UNKNOWN`으로 반환한다.
+   `REJECTED`의 `reason`은 규칙·세션 거절 코드이며 화면은 `messageFor`로 안내한다.
 7. `LocalController`가 확정 결과를 받아 상태와 미확정 요청을 갱신한다.
    `useLocalSession`이 `appReducer`를 통해 React 화면 상태에 반영한다.
 8. `buildTableView`가 확정 상태와 현재 입력 초안을 화면 데이터로 변환한다.

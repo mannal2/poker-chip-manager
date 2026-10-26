@@ -17,6 +17,30 @@ async function start(page: Page) {
   await idle(page);
 }
 const idle = (page: Page) => expect(page.locator('main')).toHaveAttribute('aria-busy', 'false');
+
+test('저장 재시도 전에 화면 크기가 바뀌면 이전 좌표 효과를 재생하지 않음', async ({ page }) => {
+  await start(page);
+  await page.evaluate(() => {
+    const original = IDBObjectStore.prototype.put;
+    (window as unknown as { restorePut: () => void }).restorePut = () => {
+      IDBObjectStore.prototype.put = original;
+    };
+    IDBObjectStore.prototype.put = function (...args) {
+      if (this.name === 'events') throw new DOMException('test', 'QuotaExceededError');
+      return original.apply(this, args);
+    };
+  });
+  await page.getByRole('button', { name: /^콜 / }).click();
+  await expect(page.getByRole('alert')).toContainText('재시도');
+  await expect(page.locator('.chip-flight')).toHaveCount(0);
+  await page.setViewportSize({ width: 844, height: 390 });
+  await page.evaluate(() => (window as unknown as { restorePut: () => void }).restorePut());
+  await page.getByRole('button', { name: '재시도', exact: true }).click();
+  await idle(page);
+  await expect(page.locator('.seat .stack')).toHaveText(['990', '990']);
+  await expect(page.locator('.pot strong')).toHaveText('20');
+  await expect(page.locator('.chip-flight')).toHaveCount(0);
+});
 test('초안은 이동 없음, 납부는 카드에서 팟, 취소·회전·복원은 효과 정리', async ({ page }) => {
   await start(page);
   await expect(page.locator('.chip-flight')).toHaveCount(0);

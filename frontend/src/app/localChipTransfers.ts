@@ -1,12 +1,6 @@
 import type { GameState, GameCommand } from '../game/types';
 import { transition } from '../game/transition';
-export interface ChipTransfer {
-  from: string;
-  to: string;
-  amount: number;
-  delay: number;
-  kind: 'bet' | 'return' | 'payout';
-}
+import type { ChipTransfer } from '../ui/chipTransfer';
 export function chipTransfers(state: GameState, command: GameCommand): ChipTransfer[] {
   if (!['CALL', 'BET', 'RAISE', 'ALL_IN', 'FOLD', 'CHECK', 'SETTLE_HAND'].includes(command.type))
     return [];

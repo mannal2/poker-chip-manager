@@ -1,4 +1,4 @@
-import { useChipMotion } from '../ui/useChipMotion';
+import { useLocalChipMotion } from './useLocalChipMotion';
 import { useScreenFit } from '../ui/useScreenFit';
 import { useLocalPWA } from '../pwa/register';
 import { UpdateNotice } from '../pwa/UpdateNotice';
@@ -115,7 +115,7 @@ function LocalGame({
   });
   const s = app.game,
     busy = app.status !== 'ready';
-  const motion = useChipMotion(
+  const motion = useLocalChipMotion(
     screen,
     `${app.home}/${s?.tournamentId}/${generation}/${app.status === 'controlLost'}`,
   );

@@ -1,11 +1,9 @@
 import { useCallback, useEffect, useRef, type RefObject } from 'react';
-import type { GameState } from '../game/types';
-import type { Request } from '../local/repository';
-import { chipTransfers } from './chipTransfers';
+import type { ChipTransfer } from './chipTransfer';
 type Point = { x: number; y: number };
 type Prepared = {
   epoch: number;
-  moves: ReturnType<typeof chipTransfers>;
+  moves: ChipTransfer[];
   points: Map<string, Point>;
   size: number;
 };
@@ -40,15 +38,9 @@ export function useChipMotion(screen: RefObject<HTMLElement | null>, scope: stri
     };
   }, [clear, scope]);
   const prepare = useCallback(
-    (state: GameState, command: Request['command']): Prepared | null => {
-      if (command.type === 'UNDO' || command.type === 'NEW_TOURNAMENT') clear();
-      if (
-        command.type === 'NEW_TOURNAMENT' ||
-        document.hidden ||
-        window.matchMedia('(prefers-reduced-motion: reduce)').matches
-      )
+    (moves: ChipTransfer[]): Prepared | null => {
+      if (document.hidden || window.matchMedia('(prefers-reduced-motion: reduce)').matches)
         return null;
-      const moves = chipTransfers(state, command);
       if (!moves.length) return null;
       const points = new Map<string, Point>();
       const point = (id: string, element: Element | null | undefined) => {
@@ -62,7 +54,7 @@ export function useChipMotion(screen: RefObject<HTMLElement | null>, scope: stri
       const unit = parseFloat(getComputedStyle(screen.current!).fontSize) / 15;
       return { epoch: epoch.current, moves, points, size: 12 * unit };
     },
-    [clear, screen],
+    [screen],
   );
   const play = useCallback((prepared: Prepared | null) => {
     if (

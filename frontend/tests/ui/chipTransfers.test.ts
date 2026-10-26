@@ -1,6 +1,6 @@
 import { it, expect } from 'vitest';
 import { fixtureState, apply } from '../game/helpers';
-import { chipTransfers } from '../../src/ui/chipTransfers';
+import { chipTransfers } from '../../src/app/localChipTransfers';
 it('실제 납부만 이동하고 체크·취소·새 핸드 블라인드는 생략', () => {
   const s = fixtureState(2);
   expect(chipTransfers(s, { type: 'CALL' })).toEqual([

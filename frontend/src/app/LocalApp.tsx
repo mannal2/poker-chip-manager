@@ -12,7 +12,7 @@ import { PayoutPreview } from '../ui/PayoutPreview';
 import { BetControls } from '../ui/BetControls';
 import { useEffect, useRef, useState } from 'react';
 import type { ControlLease } from '../local/repository';
-import { nextSeat } from '../game/positions';
+import { buildTableView } from './tableView';
 import { Table } from '../ui/Table';
 import { SetupPanel } from '../ui/SetupPanel';
 import { LocalHome } from '../ui/LocalHome';
@@ -175,27 +175,6 @@ function LocalGame({
         <button onClick={() => void restartAfterFailure()}>새 토너먼트 시작</button>
       </main>
     );
-  const button = s?.hand?.buttonSeat ?? s?.settings.button ?? 0;
-  let sb = button,
-    bb = button;
-  if (s) {
-    if (s.hand) {
-      sb = s.hand.sbSeat;
-      bb = s.hand.bbSeat;
-    } else if (button >= 0) {
-      sb =
-        s.players.length === 2
-          ? button
-          : nextSeat(
-              button,
-              s.players.map(() => true),
-            );
-      bb = nextSeat(
-        sb,
-        s.players.map(() => true),
-      );
-    }
-  }
   return (
     <main ref={screen} className="phone" aria-busy={app.status === 'saving'}>
       {app.error && (
@@ -271,41 +250,12 @@ function LocalGame({
               </button>
             </header>
             <Table
-              players={s.players.map((p, i) => ({
-                ...p,
-                contribution: p.H + (s.hand?.actorId === p.id ? draftAmount : 0),
-                pending: s.hand?.actorId === p.id && draftAmount > 0,
-                roles: [
-                  i === button ? 'D' : '',
-                  button >= 0 && i === sb && !p.eliminated ? 'SB' : '',
-                  button >= 0 && i === bb ? 'BB' : '',
-                  p.eliminated ? '탈락' : p.folded ? '폴드' : p.stack === 0 ? '올인' : '',
-                ]
-                  .filter(Boolean)
-                  .join(' · '),
-                active: s.status === 'playing' && s.hand?.actorId === p.id,
-                out: p.eliminated,
-                selected: currentPot ? winners[currentPot.id].includes(p.id) : false,
-                eligible: currentPot?.eligible.includes(p.id),
-              }))}
-              pot={currentPot?.amount ?? s.pot}
-              notice={s.hand && s.players[s.hand.sbSeat].eliminated ? 'SB 없음' : undefined}
-              potLabel={
-                currentPot && pots.length > 1
-                  ? potIndex === 0
-                    ? 'MAIN POT'
-                    : 'SIDE POT ' + potIndex
-                  : undefined
-              }
+              {...buildTableView(s, { draftAmount, pots, potIndex, winners })}
               onSelect={currentPot ? selectWinner : undefined}
               onPot={() => {
                 if (currentPot) setDialog('payout');
               }}
               navigation={navigation}
-              phase={s.status === 'setup' ? 'setup' : (s.hand?.phase ?? '')}
-              street={['PREFLOP', 'FLOP', 'TURN', 'RIVER'][s.hand?.street ?? 0]}
-              handKey={s.hand?.id}
-              viewSeat={s.settings.viewSeat}
               drag={s.status === 'setup' ? drag : undefined}
               busy={busy}
               editScope={scope}

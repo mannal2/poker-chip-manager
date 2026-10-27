@@ -63,6 +63,7 @@ flowchart TD
 | `.github/`  | 검사·이미지 발행·배포·연결 확인 자동화  | [ci-images.yml](.github/workflows/ci-images.yml), [check-server.yml](.github/workflows/check-server.yml)            |
 | `docs/`     | 책임별 리팩터링 계획과 검증 기록        | `docs/superpowers/plans/`                                                                                           |
 
+루트 `shared/`는 프런트엔드와 향후 서버가 함께 쓰는 규칙 사례이고, `frontend/src/shared/`는 프런트엔드 범용 코드다. 이름은 같지만 다른 것이다.
 루트의 [compose.yaml](compose.yaml)은 프런트엔드 컨테이너와 외부 네트워크·자산 볼륨을 연결한다.
 edge 구성은 [deploy/edge/compose.yaml](deploy/edge/compose.yaml)로 별도 관리한다.
 애플리케이션 명세의 입구는 [SPEC_INDEX.md](SPEC_INDEX.md), 작업 지침은 [AGENTS.md](AGENTS.md)다.
@@ -330,12 +331,15 @@ PWA 등록은 로컬 게임에서 호출하는 `useLocalPWA`가 담당한다.
   [fixtures.test.ts](frontend/tests/game/fixtures.test.ts)는 공통 JSON의 스키마와 사례를 확인한다.
 - `shared/game-fixtures/`: 설정·위치·베팅·팟·정산·수명 사례의 입력과 기대값.
   [schema.json](shared/game-fixtures/schema.json)은 사례 형식을 정의한다.
-- `frontend/tests/local/`: 저장 원자성·조작권·중복 요청·복원·무응답 저장 테스트.
-  [repository.test.ts](frontend/tests/local/repository.test.ts), [recovery.test.ts](frontend/tests/local/recovery.test.ts)가 시작점이다.
-- `frontend/tests/ui/`: 기록 변환·좌석 이동·테이블 표시 데이터·칩 이동 계산.
-  소스는 기능 폴더로 옮겨졌지만 이 테스트 디렉터리 이름은 유지한다.
+- `frontend/tests/local-game/`: 저장 원자성·조작권·중복 요청·복원·무응답 저장·화면 회전 기억 테스트.
+  [repository.test.ts](frontend/tests/local-game/repository.test.ts), [recovery.test.ts](frontend/tests/local-game/recovery.test.ts)가 시작점이다.
+- `frontend/tests/gameplay/`: 기록 변환·좌석 이동·테이블 표시 데이터·칩 이동·권한·거절 문구.
+- `frontend/tests/shared/`: 범용 코드(실행 잠금 `createCommandRunner`) 테스트.
 - `frontend/tests/pwa/`: 업데이트 확인의 완료·실패·취소 테스트.
   [checkUpdate.test.ts](frontend/tests/pwa/checkUpdate.test.ts)를 본다.
+- `frontend/tests/e2e/`: E2E 설정의 가드(공유 상태를 바꾸는 spec의 순차 목록) 테스트.
+
+테스트 폴더는 `src/`의 폴더 이름을 따른다. 새 단위 테스트는 검사 대상 소스와 같은 이름의 폴더에 둔다.
 
 저장소 루트에서 실행한다. 명령은 [package.json](frontend/package.json)의 스크립트 기준이다.
 

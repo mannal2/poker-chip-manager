@@ -149,7 +149,7 @@ HTML마다 자기 진입점을 로드한다. `local/index.html`은 [main.local.t
 | `frontend/src/shared/ui/`      | 공통 대화상자와 닫기 동작                 | [Dialog.tsx](frontend/src/shared/ui/Dialog.tsx): `Dialog`                                                                                                                           |
 | `frontend/src/shared/hooks/`   | 화면·대화상자의 크기 맞춤, 토스트 타이머  | [useScreenFit.ts](frontend/src/shared/hooks/useScreenFit.ts): `useScreenFit`; [useToast.ts](frontend/src/shared/hooks/useToast.ts): `useToast`                                      |
 | `frontend/src/shared/browser/` | 브라우저 확대 입력 정책                   | [zoomPolicy.ts](frontend/src/shared/browser/zoomPolicy.ts): `installZoomPolicy`                                                                                                     |
-| `frontend/src/shared/styles/`  | 전역 토큰과 기본 스타일                   | [tokens.css](frontend/src/shared/styles/tokens.css)                                                                                                                                 |
+| `frontend/src/shared/styles/`  | 전역 토큰과 기본 스타일                   | [tokens.css](frontend/src/shared/styles/tokens.css): `:root` 변수; [base.css](frontend/src/shared/styles/base.css): 요소 기본값·전역 레이아웃 (이 순서로 로드)                      |
 
 [vite.config.ts](frontend/vite.config.ts)가 서비스 워커 생성과 HTML 빌드 진입점을 정한다.
 로컬 manifest는 [manifest.webmanifest](frontend/public/local/manifest.webmanifest)에 있다.

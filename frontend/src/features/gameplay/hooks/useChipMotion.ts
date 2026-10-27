@@ -7,6 +7,10 @@ type Prepared = {
   points: Map<string, Point>;
   size: number;
 };
+/** Chip flights are skipped while the page is hidden or the user prefers reduced motion. */
+export function canAnimate() {
+  return !document.hidden && !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
 export function useChipMotion(screen: RefObject<HTMLElement | null>, scope: string) {
   const epoch = useRef(0);
   const active = useRef(new Set<HTMLElement>());
@@ -39,9 +43,7 @@ export function useChipMotion(screen: RefObject<HTMLElement | null>, scope: stri
   }, [clear, scope]);
   const prepare = useCallback(
     (moves: ChipTransfer[]): Prepared | null => {
-      if (document.hidden || window.matchMedia('(prefers-reduced-motion: reduce)').matches)
-        return null;
-      if (!moves.length) return null;
+      if (!canAnimate() || !moves.length) return null;
       const points = new Map<string, Point>();
       const point = (id: string, element: Element | null | undefined) => {
         const r = element?.getBoundingClientRect();
@@ -57,13 +59,7 @@ export function useChipMotion(screen: RefObject<HTMLElement | null>, scope: stri
     [screen],
   );
   const play = useCallback((prepared: Prepared | null) => {
-    if (
-      !prepared ||
-      prepared.epoch !== epoch.current ||
-      document.hidden ||
-      window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    )
-      return;
+    if (!prepared || prepared.epoch !== epoch.current || !canAnimate()) return;
     for (const move of prepared.moves) {
       const from = prepared.points.get(move.from),
         to = prepared.points.get(move.to);

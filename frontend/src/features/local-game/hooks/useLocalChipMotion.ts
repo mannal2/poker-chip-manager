@@ -1,7 +1,7 @@
 import { useCallback, type RefObject } from 'react';
 import type { GameState } from '../../../game/types';
 import type { Request } from '../storage/types';
-import { useChipMotion } from '../../gameplay/hooks/useChipMotion';
+import { canAnimate, useChipMotion } from '../../gameplay/hooks/useChipMotion';
 import { chipTransfers } from '../model/localChipTransfers';
 
 export function useLocalChipMotion(screen: RefObject<HTMLElement | null>, scope: string) {
@@ -9,12 +9,8 @@ export function useLocalChipMotion(screen: RefObject<HTMLElement | null>, scope:
   const prepare = useCallback(
     (state: GameState, command: Request['command']) => {
       if (command.type === 'UNDO' || command.type === 'NEW_TOURNAMENT') clear();
-      if (
-        command.type === 'NEW_TOURNAMENT' ||
-        document.hidden ||
-        window.matchMedia('(prefers-reduced-motion: reduce)').matches
-      )
-        return null;
+      // Skip the rules run for the prediction when nothing could be shown anyway.
+      if (command.type === 'NEW_TOURNAMENT' || !canAnimate()) return null;
       return prepareMoves(chipTransfers(state, command));
     },
     [clear, prepareMoves],

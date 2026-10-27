@@ -14,9 +14,9 @@
 
 ```mermaid
 flowchart TD
-  Main["frontend/src/main.tsx"] --> App["App / 경로 선택"]
+  Main["main.local.tsx / 로컬 진입점"] --> Page["LocalGamePage / 로컬 화면 조합"]
   Main --> Shared["shared / 범용 UI·브라우저 도구"]
-  App --> Page["LocalGamePage / 로컬 화면 조합"]
+  Other["main.home.tsx · main.online.tsx / 이동·준비 중 안내"] --> Shared
   Page --> UI["gameplay / 공통 화면·입력 Hook·표시 모델"]
   Page --> Local["local-game Hook / 세션·설정·기록·효과 연결"]
   Page --> PWA["pwa / 설치·업데이트"]
@@ -70,17 +70,17 @@ edge 구성은 [deploy/edge/compose.yaml](deploy/edge/compose.yaml)로 별도 �
 
 ### 프런트엔드 진입과 규칙
 
-| 위치                     | 역할 한 줄                            | 핵심 파일·심볼                                                                                                                     |
-| ------------------------ | ------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| `frontend/src/`          | React 시작과 기능 모듈의 루트         | [main.tsx](frontend/src/main.tsx), [README.md](frontend/src/README.md)                                                             |
-| `frontend/src/app/`      | URL에 따른 화면 선택과 기본 경로 이동 | [App.tsx](frontend/src/app/App.tsx): `App`, `AppRedirect`                                                                          |
-| `frontend/src/game/`     | UI·저장소와 독립적인 게임 상태·규칙   | [types.ts](frontend/src/game/types.ts): `GameState`, `GameCommand`; [transition.ts](frontend/src/game/transition.ts): `transition` |
-| `frontend/src/features/` | 공통 게임 기능과 모드별 운영의 경계   | `frontend/src/features/gameplay/`, `frontend/src/features/local-game/`, `frontend/src/features/pwa/`                               |
+| 위치                     | 역할 한 줄                                  | 핵심 파일·심볼                                                                                                                     |
+| ------------------------ | ------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `frontend/src/`          | 진입점별 React 시작과 기능 모듈의 루트      | [main.local.tsx](frontend/src/main.local.tsx), `main.online.tsx`, `main.home.tsx`, [README.md](frontend/src/README.md)             |
+| `frontend/src/app/`      | 공통 시작 처리와 루트 이동·온라인 안내 화면 | [mount.tsx](frontend/src/app/mount.tsx): `mount`; `HomeRedirect`, `OnlinePlaceholder`                                              |
+| `frontend/src/game/`     | UI·저장소와 독립적인 게임 상태·규칙         | [types.ts](frontend/src/game/types.ts): `GameState`, `GameCommand`; [transition.ts](frontend/src/game/transition.ts): `transition` |
+| `frontend/src/features/` | 공통 게임 기능과 모드별 운영의 경계         | `frontend/src/features/gameplay/`, `frontend/src/features/local-game/`, `frontend/src/features/pwa/`                               |
 
-[main.tsx](frontend/src/main.tsx)는 `installZoomPolicy`를 설치하고 React 루트를 만든다.
-[App.tsx](frontend/src/app/App.tsx)는 URL `/local/`에서 `LocalGamePage`를 렌더링한다.
-URL `/online/`에서는 준비 중 안내를 보여주며, 기본 URL `/`는 로컬 URL로 문서 이동한다.
-이 분기에는 라우터 라이브러리나 서버 연결이 없다.
+HTML마다 자기 진입점을 로드한다. `local/index.html`은 [main.local.tsx](frontend/src/main.local.tsx), `online/index.html`은 `main.online.tsx`, 루트 `index.html`은 `main.home.tsx`다.
+세 진입점 모두 [mount.tsx](frontend/src/app/mount.tsx)의 `mount`로 `installZoomPolicy`를 설치하고 React 루트를 만든다.
+`/local/`은 `LocalGamePage`, `/online/`은 준비 중 안내, `/`는 `/local/`로 문서 이동한다.
+진입점이 나뉘어 온라인·루트 번들에는 로컬 저장소·게임 화면·PWA 등록 코드가 들어가지 않는다. 라우터 라이브러리나 서버 연결은 없다.
 
 게임 설정은 [settings.ts](frontend/src/game/settings.ts)의 `GameSettings`와 `validateSettings`에서 시작한다.
 턴과 딜러 위치는 [positions.ts](frontend/src/game/positions.ts)의 `nextSeat`, `nextPositions`가 계산한다.
@@ -244,7 +244,7 @@ PWA 등록은 로컬 게임에서 호출하는 `useLocalPWA`가 담당한다.
 | 테이블·카드·보드 배치나 글자 크기 변경  | [Table.tsx](frontend/src/features/gameplay/components/Table.tsx), [table.css](frontend/src/features/gameplay/styles/table.css)                                                                                                                | `seatCoordinates`, `useScreenFit`, `useFitText`, DOM 선택자                                        |
 | 칩 이동 금액 또는 효과 변경             | [eventTransfers.ts](frontend/src/features/gameplay/model/eventTransfers.ts), [localChipTransfers.ts](frontend/src/features/local-game/model/localChipTransfers.ts), [useChipMotion.ts](frontend/src/features/gameplay/hooks/useChipMotion.ts) | 계산과 재생을 구분하고 저장 성공·재시도·정리 확인                                                  |
 | 설치 제안·업데이트 노출 시점 변경       | [usePwaPresentation.ts](frontend/src/features/pwa/usePwaPresentation.ts), [register.ts](frontend/src/features/pwa/register.ts)                                                                                                                | 홈 여부·저장 잠금·미확정 요청·업데이트 적용                                                        |
-| 멀티플레이 연결 시작                    | [App.tsx](frontend/src/app/App.tsx), [session.ts](frontend/src/features/gameplay/session.ts)                                                                                                                                                  | `GameSession` 계약, 공통 UI의 props 경계와 [SYSTEM_SPEC.md](SYSTEM_SPEC.md); 현재 서버 구현은 없음 |
+| 멀티플레이 연결 시작                    | [main.online.tsx](frontend/src/main.online.tsx), [session.ts](frontend/src/features/gameplay/session.ts)                                                                                                                                      | `GameSession` 계약, 공통 UI의 props 경계와 [SYSTEM_SPEC.md](SYSTEM_SPEC.md); 현재 서버 구현은 없음 |
 | CI·정적 자산 보존·배포 복구 변경        | [ci-images.yml](.github/workflows/ci-images.yml), [deploy-frontend.sh](deploy/deploy-frontend.sh)                                                                                                                                             | 이미지 digest·revision, 과거 자산 보존, 복구 마커                                                  |
 
 ## 불변 조건과 경계
@@ -310,7 +310,9 @@ PWA 등록은 로컬 게임에서 호출하는 `useLocalPWA`가 담당한다.
 - URL `/local/`만 manifest 연결과 서비스 워커 등록 대상이다.
   기본·로컬·온라인 HTML 진입점은 [vite.config.ts](frontend/vite.config.ts)에 각각 정의된다.
 - 서비스 워커 scope와 캐시 목록은 별개다.
-  청크·진입점 변경 시 로컬 오프라인 의존성과 온라인 전용 자산의 캐시 제외를 같이 확인한다.
+  빌드 파일 이름은 진입점 이름으로 시작하고(`local-`, `online-`, `home-`), 공통 파일은 `react-`·`start-`다. `features/online-game/` 모듈로만 이뤄진 청크도 `online-`으로 시작한다.
+  캐시 목록은 `home-*`·`online-*`를 제외하며, [entry-routes.spec.ts](frontend/e2e/entry-routes.spec.ts)가 로컬 HTML에서 실제로 닿는 파일과 캐시 목록이 정확히 같은지 검사한다.
+- manifest 범위를 사이트 전체로 넓히는 결정(TECH_DECISIONS T53, 2026-10-27)은 멀티플레이 화면 구현 시 적용한다. 서비스 워커 범위·캐시는 그때도 `/local/`만이다.
 - 설치·업데이트 UI는 로컬 화면이 제어하며 공통 게임 컴포넌트가 등록을 시작하지 않는다.
   업데이트 적용 전에는 저장 중·미확정 요청 여부와 저장 상태 읽기를 확인한다.
 - 배포는 이미지 digest와 revision을 확인하고 새 자산을 기존 자산 볼륨에 덮어쓰지 않고 추가한다.

@@ -13,7 +13,7 @@ it('딜러 미선택 준비 화면에는 역할·행동자·승자 표시가 없
   expect(view.players.map((p) => p.active)).toEqual([false, false]);
   expect(view.players.map((p) => p.selected)).toEqual([false, false]);
   expect(view.players.map((p) => p.eligible)).toEqual([undefined, undefined]);
-  expect(view).toMatchObject({ pot: 0, phase: 'setup', street: 'PREFLOP', viewSeat: 1 });
+  expect(view).toMatchObject({ pot: 0, phase: 'setup', street: 'PREFLOP' });
   expect(view.handKey).toBeUndefined();
   expect(view.notice).toBeUndefined();
   expect(view.potLabel).toBeUndefined();
@@ -43,7 +43,6 @@ it('게임 중에는 설정 딜러·화면 회전보다 핸드의 저장된 역�
   state.settings.viewSeat = 2;
   const view = buildTableView(state, emptyDrafts);
   expect(view.players.map((p) => p.roles)).toEqual(['D', 'SB', 'BB']);
-  expect(view.viewSeat).toBe(2);
   expect(view.handKey).toBe('test:hand:1');
 });
 

@@ -102,7 +102,8 @@ URL `/online/`에서는 준비 중 안내를 보여주며, 기본 URL `/`는 로
 | `frontend/src/features/gameplay/styles/`     | 게임 화면과 컨트롤 스타일                    | [table.css](frontend/src/features/gameplay/styles/table.css), [controls.css](frontend/src/features/gameplay/styles/controls.css)                                                                                         |
 
 `GameScreen`은 헤더·`Table`·하단 독의 상태별 분기·게임 대화상자와 UNDO 처리를 조립한다.
-모드는 `GameSession`(상태·잠금 여부·권한·조작 scope·`run`·`dispatch`·`notify`·`loadEvents`)과 준비 편집 콜백, 관리 메뉴 슬롯을 넘긴다.
+모드는 `GameSession`(상태·잠금 여부·권한·허용 행동·화면 기준 좌석·조작 scope·`run`·`dispatch`·`notify`·`loadEvents`)과 준비 편집 콜백, 관리 메뉴 슬롯을 넘긴다.
+화면 기준 좌석 `viewSeat`은 게임 상태가 아니라 화면 값이다. 로컬은 고른 회전을, 온라인은 보는 사람의 자기 좌석을 넘긴다.
 권한은 [capabilities.ts](frontend/src/features/gameplay/model/capabilities.ts)의 `GameCapabilities`이며 로컬은 `fullCapabilities`를 넘긴다.
 `Table`은 좌석 배치·중앙 조작·팟 탐색을 담당하고, 카드 글자 맞춤은 범용 `useFitText`를 쓴다.
 준비 편집 조작은 `Table`의 `setup` prop 하나로 받으며, 이 값이 있을 때만 편집 화면이 된다.
@@ -173,15 +174,16 @@ PWA 등록은 로컬 게임에서 호출하는 `useLocalPWA`가 담당한다.
 
 ### 상태의 소유자
 
-| 상태                                    | 소유 위치                                                         | 저장 여부            |
-| --------------------------------------- | ----------------------------------------------------------------- | -------------------- |
-| 확정 게임·현재 핸드·되돌리기 스냅샷     | `GameState`; `LocalController`와 `useLocalSession`의 화면 반영 값 | IndexedDB            |
-| 조작 화면·세대·처리 순번·최근 요청 결과 | `LocalRepository`의 `ControlRecord`                               | IndexedDB            |
-| 저장 중·실패·조작권 상실·홈 여부        | `AppState`, `mergeAppState`                                       | React 메모리         |
-| 베팅 금액·승자 선택·현재 팟             | `useBettingDraft`, `useSettlementSelection`                       | React 메모리         |
-| 이름·숫자 문자열·IME 편집 상태          | `InlineName`, `SetupPanel`, `BlindSettings`                       | 컴포넌트 메모리      |
-| 복구 재생성 key·업데이트 안내 보류      | `LocalGamePage`                                                   | 부모 컴포넌트 메모리 |
-| 열린 대화상자·토스트                    | `LocalGame`, `useToast`                                           | React 메모리         |
+| 상태                                    | 소유 위치                                                         | 저장 여부                 |
+| --------------------------------------- | ----------------------------------------------------------------- | ------------------------- |
+| 확정 게임·현재 핸드·되돌리기 스냅샷     | `GameState`; `LocalController`와 `useLocalSession`의 화면 반영 값 | IndexedDB                 |
+| 조작 화면·세대·처리 순번·최근 요청 결과 | `LocalRepository`의 `ControlRecord`                               | IndexedDB                 |
+| 저장 중·실패·조작권 상실·홈 여부        | `AppState`, `mergeAppState`                                       | React 메모리              |
+| 베팅 금액·승자 선택·현재 팟             | `useBettingDraft`, `useSettlementSelection`                       | React 메모리              |
+| 이름·숫자 문자열·IME 편집 상태          | `InlineName`, `SetupPanel`, `BlindSettings`                       | 컴포넌트 메모리           |
+| 로컬 화면 기준 좌석(회전)               | `useLocalViewSeat`, `viewSeatStore`                               | localStorage (토너먼트별) |
+| 복구 재생성 key·업데이트 안내 보류      | `LocalGamePage`                                                   | 부모 컴포넌트 메모리      |
+| 열린 대화상자·토스트                    | `LocalGame`, `useToast`                                           | React 메모리              |
 
 ### 일반 명령 처리
 
@@ -190,7 +192,8 @@ PWA 등록은 로컬 게임에서 호출하는 `useLocalPWA`가 담당한다.
 2. `useBettingDraft`는 모드가 넘긴 허용 행동(`GameSession.legal`)으로 금액 초안을 관리한다.
    SUBMIT 금액은 `classifyDraft`가 `GameCommand` 또는 거절 코드로 바꾼다.
    준비 편집은 `useSetupEditing`, 승자 선택은 `useSettlementSelection`이 맡는다.
-   인원 추가·삭제와 화면 회전은 로컬 전용 `useLocalSetupExtras`에 있다.
+   인원 추가·삭제는 로컬 전용 `useLocalSetupExtras`에 있다.
+   화면 회전은 명령·저장 없이 `useLocalViewSeat`이 localStorage에 기억한다. 예전 저장 데이터의 `settings.viewSeat`는 처음 한 번 초기값으로 이어받는다.
 3. `GameScreen`이 `GameSession.guard`로 잠금을 확인하고 세션의 `run`, `dispatch`를 호출한다.
    로컬에서는 `useLocalSession`의 `run`, `dispatch`가 연결된다.
    이때 칩 이동용 좌표를 미리 준비하지만 확정 효과는 아직 재생하지 않는다.

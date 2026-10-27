@@ -93,6 +93,7 @@ export function GameScreen({
       />
       <Table
         {...buildTableView(s, { draftAmount, pots, potIndex, winners })}
+        viewSeat={session.viewSeat}
         onSelect={currentPot && can.canSettle ? selectWinner : undefined}
         onPot={() => {
           if (currentPot) onDialog('payout');

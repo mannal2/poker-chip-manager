@@ -23,6 +23,8 @@ export interface GameSession {
   capabilities: GameCapabilities;
   /** Allowed betting actions and amounts (local: getLegalActions, online: server response). */
   legal: LegalActions | null;
+  /** Table slot drawn at the bottom (local: chosen rotation, online: the viewer's own seat). */
+  viewSeat: number;
   /** Control scope from the mode (local: lease generation); undefined disables betting drafts. */
   scope: string | number | undefined;
   /** Returns the reason the screen cannot accept input now, or null when it can. */

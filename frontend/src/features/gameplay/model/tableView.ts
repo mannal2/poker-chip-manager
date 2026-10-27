@@ -57,6 +57,5 @@ export function buildTableView(
     phase: state.status === 'setup' ? 'setup' : (state.hand?.phase ?? ''),
     street: ['PREFLOP', 'FLOP', 'TURN', 'RIVER'][state.hand?.street ?? 0],
     handKey: state.hand?.id,
-    viewSeat: state.settings.viewSeat,
   };
 }

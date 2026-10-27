@@ -8,6 +8,7 @@ import { messageFor } from '../model/errorMessages';
 export function useSetupEditing({
   state: s,
   scope: draftScope,
+  viewSeat,
   busy,
   notify,
   isLocked,
@@ -18,6 +19,8 @@ export function useSetupEditing({
   state: GameState | null;
   /** Editing session key from the caller (local: tournament and control generation). */
   scope: string;
+  /** Table slot drawn at the bottom, so drops land where the user sees them. */
+  viewSeat: number;
   busy: boolean;
   notify: (message: string) => void;
   isLocked: () => boolean;
@@ -36,7 +39,7 @@ export function useSetupEditing({
   const drag = useSeatDrag(
     s?.players.map((p) => p.id) ?? [],
     !busy && s?.status === 'setup' && !renameId.startsWith(draftScope + ':'),
-    s?.settings.viewSeat ?? 0,
+    viewSeat,
     (order) => {
       if (!s) return;
       const players = order.map((id) => s.players.find((p) => p.id === id)!);

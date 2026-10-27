@@ -16,6 +16,7 @@ import { LocalHome } from './components/LocalHome';
 import { Dialog } from '../../shared/ui/Dialog';
 import { useSetupEditing } from '../gameplay/hooks/useSetupEditing';
 import { useLocalSetupExtras } from './hooks/useLocalSetupExtras';
+import { useLocalViewSeat } from './hooks/useLocalViewSeat';
 import { useLocalSession } from './hooks/useLocalSession';
 import '../../shared/styles/tokens.css';
 import '../gameplay/styles/table.css';
@@ -106,9 +107,11 @@ function LocalGame({
     readSavedState: () => repository.load(),
     notify,
   });
+  const view = useLocalViewSeat(s);
   const editing = useSetupEditing({
     state: s,
     scope: s?.tournamentId + ':' + generation,
+    viewSeat: view.viewSeat,
     busy,
     notify,
     isLocked,
@@ -121,16 +124,25 @@ function LocalGame({
     busy,
     notify,
     saveSettings: editing.saveSettings,
-    run,
-    dispatch,
   });
-  const setup = { ...editing, ...extras };
+  const setup = {
+    ...editing,
+    ...extras,
+    // Rotation is a screen preference: no command, no save, only shown before the start.
+    rotate:
+      s?.status === 'setup'
+        ? () => {
+            if (!busy) view.rotate();
+          }
+        : undefined,
+  };
   const session: GameSession | null = s && {
     state: s,
     busy,
     // One local operator holds every role; lease loss is handled by busy, guard and storage.
     capabilities: fullCapabilities,
     legal: getLegalActions(s),
+    viewSeat: view.viewSeat,
     scope: generation,
     guard: () =>
       busy || isLocked()

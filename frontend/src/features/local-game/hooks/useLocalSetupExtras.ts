@@ -1,21 +1,17 @@
 import { validateSettings, type GameSettings } from '../../../game/settings';
-import type { GameCommand, GameState } from '../../../game/types';
+import type { GameState } from '../../../game/types';
 
-/** Local-only setup actions: changing the player count and rotating the screen's bottom seat. */
+/** Local-only setup action: changing the player count (online seats come from the room). */
 export function useLocalSetupExtras({
   state: s,
   busy,
   notify,
   saveSettings,
-  run,
-  dispatch,
 }: {
   state: GameState | null;
   busy: boolean;
   notify: (message: string) => void;
   saveSettings: (settings: GameSettings, order?: string[]) => void;
-  run: (action: () => Promise<void>) => Promise<void>;
-  dispatch: (command: GameCommand) => Promise<boolean>;
 }) {
   function changeCount(add: boolean) {
     if (!s || busy || s.status !== 'setup') return;
@@ -43,17 +39,5 @@ export function useLocalSetupExtras({
       );
     }
   }
-  const rotate =
-    s?.status === 'setup'
-      ? () => {
-          if (busy) return;
-          void run(async () => {
-            await dispatch({
-              type: 'SET_VIEW',
-              viewSeat: (s.settings.viewSeat + s.players.length - 1) % s.players.length,
-            });
-          });
-        }
-      : undefined;
-  return { changeCount, rotate };
+  return { changeCount };
 }

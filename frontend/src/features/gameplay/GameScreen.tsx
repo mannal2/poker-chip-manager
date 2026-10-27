@@ -3,6 +3,7 @@ import { Dialog } from '../../shared/ui/Dialog';
 import { BetControls } from './components/BetControls';
 import { BlindSettings } from './components/BlindSettings';
 import { GameHeader } from './components/GameHeader';
+import { GameHistoryPanel } from './components/GameHistoryPanel';
 import { PayoutPreview } from './components/PayoutPreview';
 import { SettlementPanel } from './components/SettlementPanel';
 import { SetupPanel } from './components/SetupPanel';
@@ -22,7 +23,6 @@ export function GameScreen({
   dialog,
   onDialog,
   menu,
-  history,
   onUndoApplied,
   ref,
 }: {
@@ -31,7 +31,6 @@ export function GameScreen({
   dialog: string;
   onDialog: (dialog: GameDialog | '') => void;
   menu: ReactNode;
-  history: ReactNode;
   onUndoApplied?: () => void;
   ref?: Ref<GameScreenHandle>;
 }) {
@@ -200,7 +199,7 @@ export function GameScreen({
           title="현재 토너먼트 기록"
           onClose={close}
         >
-          {history}
+          <GameHistoryPanel loadEvents={session.loadEvents} state={s} />
         </Dialog>
       )}
       {dialog === 'blinds' && (

@@ -5,7 +5,6 @@ import { useLocalPWA } from '../pwa/register';
 import { UpdateNotice } from '../pwa/UpdateNotice';
 import { usePwaPresentation } from '../pwa/usePwaPresentation';
 import { InstallNotice } from '../pwa/InstallNotice';
-import { LocalHistoryPanel } from './components/LocalHistoryPanel';
 import { ManagerMenu } from './components/ManagerMenu';
 import { useRef, useState } from 'react';
 import type { ControlLease } from './storage/types';
@@ -142,6 +141,7 @@ function LocalGame({
     run,
     dispatch,
     notify,
+    loadEvents: (tournamentId, after, limit) => repository.readEvents(tournamentId, after, limit),
   };
   if (app.status === 'loading')
     return (
@@ -213,7 +213,6 @@ function LocalGame({
                 onNew={() => void newGame(() => setDialog(''))}
               />
             }
-            history={<LocalHistoryPanel repository={repository} state={session.state} />}
           />
         )
       )}

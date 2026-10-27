@@ -12,10 +12,10 @@
 | `features/gameplay/model/`        | 화면 표시 데이터, 좌석 배치, 기록 변환과 칩 이동 타입                |
 | `features/gameplay/styles/`       | 기존 게임 화면과 컨트롤 스타일                                       |
 | `features/local-game/`            | 로컬 화면 조합과 복구 상태의 수명                                    |
-| `features/local-game/hooks/`      | 로컬 세션·인원·회전·기록 조회·칩 이동 연결                           |
+| `features/local-game/hooks/`      | 로컬 세션·인원·회전·칩 이동 연결                                     |
 | `features/local-game/storage/`    | IndexedDB, 저장 원자성, 조작권, 복원과 제한 시간                     |
 | `features/local-game/model/`      | 로컬 화면 상태와 로컬 명령 기반 칩 이동 계산                         |
-| `features/local-game/components/` | 로컬 홈·관리 메뉴와 기록 조회/UI 연결                                |
+| `features/local-game/components/` | 로컬 홈·관리 메뉴                                                    |
 | `features/pwa/`                   | 로컬 전용 서비스 워커 등록, 설치·업데이트와 안내 정책                |
 | `shared/`                         | 범용 다이얼로그, 화면 크기 조절, 토스트, 브라우저 정책과 전역 스타일 |
 

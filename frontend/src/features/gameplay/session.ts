@@ -1,6 +1,7 @@
 import type { GameCommand, GameState, LegalActions } from '../../game/types';
 import type { useSetupEditing } from './hooks/useSetupEditing';
 import type { GameCapabilities } from './model/capabilities';
+import type { LoadEvents } from './model/eventPages';
 
 /** Session-level rejections (control, ordering, staleness) returned by local storage or a server. */
 export type SessionRejectionCode =
@@ -29,6 +30,8 @@ export interface GameSession {
   run: (action: () => Promise<void>) => Promise<void>;
   dispatch: (command: GameCommand) => Promise<boolean>;
   notify: (message: string) => void;
+  /** Event history source for the record dialog. */
+  loadEvents: LoadEvents;
 }
 
 /** Shared setup editing plus optional mode extras (local: player count and screen rotation). */

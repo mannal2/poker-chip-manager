@@ -102,7 +102,7 @@ URL `/online/`에서는 준비 중 안내를 보여주며, 기본 URL `/`는 로
 | `frontend/src/features/gameplay/styles/`     | 게임 화면과 컨트롤 스타일                    | [table.css](frontend/src/features/gameplay/styles/table.css), [controls.css](frontend/src/features/gameplay/styles/controls.css)                                                                                         |
 
 `GameScreen`은 헤더·`Table`·하단 독의 상태별 분기·게임 대화상자와 UNDO 처리를 조립한다.
-모드는 `GameSession`(상태·잠금 여부·권한·조작 scope·`run`·`dispatch`·`notify`)과 준비 편집 콜백, 관리 메뉴·기록 슬롯을 넘긴다.
+모드는 `GameSession`(상태·잠금 여부·권한·조작 scope·`run`·`dispatch`·`notify`·`loadEvents`)과 준비 편집 콜백, 관리 메뉴 슬롯을 넘긴다.
 권한은 [capabilities.ts](frontend/src/features/gameplay/model/capabilities.ts)의 `GameCapabilities`이며 로컬은 `fullCapabilities`를 넘긴다.
 `Table`은 좌석 배치·중앙 조작·팟 탐색을 담당하고, 카드 글자 맞춤은 범용 `useFitText`를 쓴다.
 준비 편집 조작은 `Table`의 `setup` prop 하나로 받으며, 이 값이 있을 때만 편집 화면이 된다.
@@ -113,13 +113,13 @@ URL `/online/`에서는 준비 중 안내를 보여주며, 기본 URL `/`는 로
 
 ### 로컬 운영과 저장
 
-| 위치                                           | 역할 한 줄                              | 핵심 파일·심볼                                                                                                                                                                                         |
-| ---------------------------------------------- | --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `frontend/src/features/local-game/`            | 로컬 화면과 복구 수명 조합              | [LocalGamePage.tsx](frontend/src/features/local-game/LocalGamePage.tsx): `LocalGamePage`, `LocalGame`                                                                                                  |
-| `frontend/src/features/local-game/components/` | 로컬 홈·관리 메뉴·조회/UI 연결          | [LocalHome.tsx](frontend/src/features/local-game/components/LocalHome.tsx), [LocalHistoryPanel.tsx](frontend/src/features/local-game/components/LocalHistoryPanel.tsx)                                 |
-| `frontend/src/features/local-game/hooks/`      | 로컬 세션·인원·회전·기록 조회·효과 연결 | [useLocalSession.ts](frontend/src/features/local-game/hooks/useLocalSession.ts), `useLocalSetupExtras`, `useLocalHistory`, `useLocalChipMotion`                                                        |
-| `frontend/src/features/local-game/model/`      | 로컬 화면 상태와 명령 기반 효과 계산    | [appState.ts](frontend/src/features/local-game/model/appState.ts): `AppState`, `mergeAppState`; [localChipTransfers.ts](frontend/src/features/local-game/model/localChipTransfers.ts): `chipTransfers` |
-| `frontend/src/features/local-game/storage/`    | 조작권·요청·검증·IndexedDB 원자 저장    | [controller.ts](frontend/src/features/local-game/storage/controller.ts): `LocalController`; [repository.ts](frontend/src/features/local-game/storage/repository.ts): `LocalRepository`                 |
+| 위치                                           | 역할 한 줄                           | 핵심 파일·심볼                                                                                                                                                                                         |
+| ---------------------------------------------- | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `frontend/src/features/local-game/`            | 로컬 화면과 복구 수명 조합           | [LocalGamePage.tsx](frontend/src/features/local-game/LocalGamePage.tsx): `LocalGamePage`, `LocalGame`                                                                                                  |
+| `frontend/src/features/local-game/components/` | 로컬 홈·관리 메뉴                    | [LocalHome.tsx](frontend/src/features/local-game/components/LocalHome.tsx), [ManagerMenu.tsx](frontend/src/features/local-game/components/ManagerMenu.tsx)                                             |
+| `frontend/src/features/local-game/hooks/`      | 로컬 세션·인원·회전·효과 연결        | [useLocalSession.ts](frontend/src/features/local-game/hooks/useLocalSession.ts), `useLocalSetupExtras`, `useLocalChipMotion`                                                                           |
+| `frontend/src/features/local-game/model/`      | 로컬 화면 상태와 명령 기반 효과 계산 | [appState.ts](frontend/src/features/local-game/model/appState.ts): `AppState`, `mergeAppState`; [localChipTransfers.ts](frontend/src/features/local-game/model/localChipTransfers.ts): `chipTransfers` |
+| `frontend/src/features/local-game/storage/`    | 조작권·요청·검증·IndexedDB 원자 저장 | [controller.ts](frontend/src/features/local-game/storage/controller.ts): `LocalController`; [repository.ts](frontend/src/features/local-game/storage/repository.ts): `LocalRepository`                 |
 
 `LocalGamePage`는 복구를 위해 자식 로컬 게임을 다시 만들 때도 유지할 상태를 가진다.
 내부 `LocalGame`은 세션·준비 편집·PWA·알림을 `GameSession`으로 묶어 `GameScreen`에 넘긴다.
@@ -163,7 +163,7 @@ PWA 등록은 로컬 게임에서 호출하는 `useLocalPWA`가 담당한다.
 | 직전 행동 되돌리기                 | [transition.ts](frontend/src/game/transition.ts), [GameScreen.tsx](frontend/src/features/gameplay/GameScreen.tsx), [history.ts](frontend/src/features/gameplay/model/history.ts)                                                                                                                     | `transition`, `resetWinners`, `historyRows`                               | [GAME_SPEC.md](GAME_SPEC.md), [SYSTEM_SPEC.md](SYSTEM_SPEC.md)           |
 | 다음 핸드 블라인드 예약            | [BlindSettings.tsx](frontend/src/features/gameplay/components/BlindSettings.tsx), [transition.ts](frontend/src/game/transition.ts)                                                                                                                                                                   | `BlindSettings`, `transition`                                             | [GAME_SPEC.md](GAME_SPEC.md), [UX_SPEC.md](UX_SPEC.md)                   |
 | 로컬 저장·이어하기·다른 탭 인수    | [useLocalSession.ts](frontend/src/features/local-game/hooks/useLocalSession.ts), [controller.ts](frontend/src/features/local-game/storage/controller.ts), [repository.ts](frontend/src/features/local-game/storage/repository.ts), [restore.ts](frontend/src/features/local-game/storage/restore.ts) | `useLocalSession`, `LocalController`, `LocalRepository`, `validateStored` | [SYSTEM_SPEC.md](SYSTEM_SPEC.md), [TECH_DECISIONS.md](TECH_DECISIONS.md) |
-| 핸드 기록·역순·더 보기             | [useLocalHistory.ts](frontend/src/features/local-game/hooks/useLocalHistory.ts), [history.ts](frontend/src/features/gameplay/model/history.ts), [HistoryPanel.tsx](frontend/src/features/gameplay/components/HistoryPanel.tsx)                                                                       | `useLocalHistory`, `historyRows`, `HistoryPanel`                          | [UX_SPEC.md](UX_SPEC.md), [SYSTEM_SPEC.md](SYSTEM_SPEC.md)               |
+| 핸드 기록·역순·더 보기             | [useEventHistory.ts](frontend/src/features/gameplay/hooks/useEventHistory.ts), [eventPages.ts](frontend/src/features/gameplay/model/eventPages.ts), [history.ts](frontend/src/features/gameplay/model/history.ts), [HistoryPanel.tsx](frontend/src/features/gameplay/components/HistoryPanel.tsx)    | `useEventHistory`, `readAllEvents`, `historyRows`, `HistoryPanel`         | [UX_SPEC.md](UX_SPEC.md), [SYSTEM_SPEC.md](SYSTEM_SPEC.md)               |
 | 보드·칩 이동 효과                  | [BoardCards.tsx](frontend/src/features/gameplay/components/BoardCards.tsx), [useLocalChipMotion.ts](frontend/src/features/local-game/hooks/useLocalChipMotion.ts), [useChipMotion.ts](frontend/src/features/gameplay/hooks/useChipMotion.ts)                                                         | `BoardCards`, `useLocalChipMotion`, `useChipMotion`                       | [UX_SPEC.md](UX_SPEC.md)                                                 |
 | PWA 설치·오프라인·업데이트         | [register.ts](frontend/src/features/pwa/register.ts), [usePwaPresentation.ts](frontend/src/features/pwa/usePwaPresentation.ts), [vite.config.ts](frontend/vite.config.ts)                                                                                                                            | `useLocalPWA`, `usePwaPresentation`, `useInstallPrompt`                   | [TECH_DECISIONS.md](TECH_DECISIONS.md), [UX_SPEC.md](UX_SPEC.md)         |
 | 화면 맞춤·입력 중 키보드·확대 정책 | [useScreenFit.ts](frontend/src/shared/hooks/useScreenFit.ts), [zoomPolicy.ts](frontend/src/shared/browser/zoomPolicy.ts)                                                                                                                                                                             | `useScreenFit`, `installZoomPolicy`                                       | [UX_SPEC.md](UX_SPEC.md)                                                 |
@@ -218,8 +218,9 @@ PWA 등록은 로컬 게임에서 호출하는 `useLocalPWA`가 담당한다.
   늦게 도착한 복원 결과는 현재 화면 상태를 덮어쓰지 않는다.
 - 다른 탭의 변경 알림은 재조회 계기다.
   실제 쓰기 권한은 BroadcastChannel 메시지가 아니라 IndexedDB의 조작 세대로 검증한다.
-- 기록 창이 열리면 `LocalHistoryPanel`이 `useLocalHistory`를 호출한다.
-  이벤트를 시간순으로 모은 뒤 `historyRows`가 취소를 반영하고, `HistoryPanel`이 정렬·더 보기를 관리한다.
+- 기록 창이 열리면 `GameHistoryPanel`이 `useEventHistory`로 `GameSession.loadEvents`를 호출한다.
+  `readAllEvents`가 시간순으로 100개씩 끝까지 모은 뒤 `historyRows`가 취소를 반영하고, `HistoryPanel`이 정렬·더 보기를 관리한다.
+  로컬은 `LocalRepository.readEvents`를 넘기고, 온라인은 서버 조회를 넘긴다.
 
 ## 이걸 바꾸려면 여기를 본다
 

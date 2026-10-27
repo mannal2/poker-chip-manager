@@ -14,7 +14,7 @@ it('기술 기록 제외·취소 반영·반환과 여러 수령을 시간순으
     event('SETUP_UPDATE'),
     event('HAND_START'),
     event('BET', { playerId: 'a', additional: 20 }),
-    event('SET_VIEW'),
+    event('SET_VIEW'), // Older versions recorded screen rotation as an event.
     event('UNDO'),
     event('CHECK', { playerId: 'a', additional: 0 }),
     event('CALL', { playerId: 'b', additional: 10 }),

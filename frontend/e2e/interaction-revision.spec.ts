@@ -276,7 +276,7 @@ test('기록 기본 오래된 순·전체 역순·핸드 묶음·100건 경계 �
         };
         for (let i = 1; i <= 120; i++)
           emit('BET', i <= 60 ? 1 : 2, { playerId: ids[0], additional: i * 5 });
-        emit('SET_VIEW', 2, {});
+        emit('SET_VIEW', 2, {}); // Older versions recorded screen rotation as an event.
         emit('UNDO', 2, {});
         emit('CHECK', 2, { playerId: ids[1] });
         emit('PAYOUT', 2, { payouts: { [ids[0]]: 300, [ids[1]]: 300 } });

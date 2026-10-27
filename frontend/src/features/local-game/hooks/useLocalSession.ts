@@ -244,7 +244,6 @@ export function useLocalSession({
             ...c.state.settings,
             names: [...defaultSettings.names],
             button: -1,
-            viewSeat: 0,
           },
         })
       )

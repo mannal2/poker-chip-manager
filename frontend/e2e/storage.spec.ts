@@ -178,7 +178,7 @@ test('실제 IndexedDB X01 65건 후 만료 순번·기록 페이지 경계', as
         lease,
         expectedVersion: 0,
         tournamentId: s.tournamentId,
-        command: { type: 'SET_VIEW' as const, viewSeat: 0 },
+        command: { type: 'SETUP_UPDATE' as const, settings: s.settings },
       };
     await repo.dispatch(first);
     for (let n = 2; n <= 65; n++)

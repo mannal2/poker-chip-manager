@@ -5,7 +5,6 @@ export interface GameSettings {
   sb: number;
   bb: number;
   button: number;
-  viewSeat: number;
 }
 export const defaultSettings: GameSettings = {
   names: ['P1', 'P2'],
@@ -13,7 +12,6 @@ export const defaultSettings: GameSettings = {
   sb: 5,
   bb: 10,
   button: -1,
-  viewSeat: 0,
 };
 export type SettingsValidation =
   { ok: true; settings: GameSettings } | { ok: false; code: SettingsErrorCode };
@@ -35,14 +33,9 @@ export function validateSettings(input: GameSettings): SettingsValidation {
     input.bb > input.initial
   )
     return { ok: false, code: 'INVALID_CHIP_SETTINGS' };
-  if (
-    !Number.isInteger(input.button) ||
-    input.button < -1 ||
-    input.button >= names.length ||
-    !Number.isInteger(input.viewSeat) ||
-    input.viewSeat < 0 ||
-    input.viewSeat >= names.length
-  )
+  if (!Number.isInteger(input.button) || input.button < -1 || input.button >= names.length)
     return { ok: false, code: 'INVALID_SEATS' };
-  return { ok: true, settings: { ...input, names } };
+  // Only known fields: settings saved by older versions may still carry a screen rotation.
+  const { initial, sb, bb, button } = input;
+  return { ok: true, settings: { names, initial, sb, bb, button } };
 }

@@ -7,7 +7,7 @@ import { fixtureState, ctx } from '../game/helpers';
 const emptyDrafts = { draftAmount: 0, pots: [], potIndex: 0, winners: {} };
 
 it('딜러 미선택 준비 화면에는 역할·행동자·승자 표시가 없다', () => {
-  const state = createTournament({ ...defaultSettings, viewSeat: 1 }, ctx);
+  const state = createTournament(defaultSettings, ctx);
   const view = buildTableView(state, emptyDrafts);
   expect(view.players.map((p) => p.roles)).toEqual(['', '']);
   expect(view.players.map((p) => p.active)).toEqual([false, false]);
@@ -40,7 +40,6 @@ it('다인 준비에서는 마지막 딜러 뒤로 SB·BB가 순환한다', () =
 it('게임 중에는 설정 딜러·화면 회전보다 핸드의 저장된 역할 위치를 사용한다', () => {
   const state = fixtureState(3);
   state.settings.button = 2;
-  state.settings.viewSeat = 2;
   const view = buildTableView(state, emptyDrafts);
   expect(view.players.map((p) => p.roles)).toEqual(['D', 'SB', 'BB']);
   expect(view.handKey).toBe('test:hand:1');

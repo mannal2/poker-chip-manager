@@ -58,8 +58,7 @@ export type GameCommand = {
     | 'SETTLE_HAND'
     | 'SCHEDULE_BLINDS'
     | 'ABORT'
-    | 'SETUP_UPDATE'
-    | 'SET_VIEW';
+    | 'SETUP_UPDATE';
   playerId?: string;
   additional?: number;
   winners?: WinnerSelection;
@@ -67,7 +66,6 @@ export type GameCommand = {
   bb?: number;
   settings?: GameSettings;
   order?: string[];
-  viewSeat?: number;
 };
 export interface TransitionContext {
   id: string;

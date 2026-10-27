@@ -31,7 +31,7 @@ const required: Partial<Record<GameCommand['type'], keyof GameCapabilities>> = {
   SCHEDULE_BLINDS: 'canEditBlinds',
 };
 
-/** Flow commands the mode issues itself (reveal, resume, abort) and SET_VIEW need no capability. */
+/** Flow commands the mode issues itself (reveal, resume, abort) need no capability. */
 export function permits(capabilities: GameCapabilities, command: GameCommand['type']) {
   const capability = required[command];
   return capability === undefined || capabilities[capability];

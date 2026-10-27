@@ -272,24 +272,17 @@ export function transition(
         ...creation.filter((id) => ids.includes(id)),
         ...ids.filter((id) => !creation.includes(id)),
       ];
-    } else if (cmd.type === 'SET_VIEW') {
-      requireRule(
-        Number.isInteger(cmd.viewSeat) && cmd.viewSeat! >= 0 && cmd.viewSeat! < s.players.length,
-      );
-      s.settings.viewSeat = cmd.viewSeat!;
     } else {
       requireRule(s.status === 'playing' || (cmd.type === 'UNDO' && s.status === 'ended'));
       const h = s.hand!;
       if (cmd.type === 'UNDO') {
         requireRule(s.undo, 'UNDO_LOCKED');
         const pending = s.hand?.id === s.undo.hand?.id ? s.pendingBlinds : s.undo.pendingBlinds,
-          view = s.settings.viewSeat,
           version = s.version;
         const { eventIds, ...snapshot } = s.undo;
         Object.assign(s, snapshot);
         s.version = version;
         s.pendingBlinds = pending;
-        s.settings.viewSeat = view;
         s.undo = null;
         emit(s, c, events, 'UNDO', eventIds ? { eventIds } : {});
       } else if (cmd.type === 'BEGIN_REVEAL') {

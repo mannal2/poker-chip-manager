@@ -19,10 +19,11 @@ export function useLocalViewSeat(state: GameState | null) {
   // Removing players keeps the bottom slot in range, as the old settings validation required.
   const seat = count ? Math.min(view.seat, count - 1) : 0;
   useEffect(() => {
-    if (tournamentId && seat !== view.seat) {
-      setView({ tournamentId, seat });
+    if (!tournamentId) return;
+    if (seat !== view.seat) setView({ tournamentId, seat });
+    // Also persists a seed taken from old settings, which the next settings save drops.
+    if (seat !== view.seat || readViewSeat(tournamentId, -1) === -1)
       writeViewSeat(tournamentId, seat);
-    }
   }, [tournamentId, seat, view.seat]);
   useEffect(() => {
     const sync = (e: StorageEvent) => {

@@ -6,6 +6,7 @@ import {
   writeViewSeat,
 } from '../../src/features/local-game/model/viewSeatStore';
 import { fixtureState } from '../game/helpers';
+import { validateStored } from '../../src/features/local-game/storage/restore';
 
 function memoryStorage() {
   const items = new Map<string, string>();
@@ -58,4 +59,12 @@ it('저장소가 막히거나 값이 깨져도 예외 없이 기본값을 쓴다
   expect(readViewSeat('t1')).toBe(0);
   broken.items.set(viewSeatKey, JSON.stringify({ tournamentId: 't1', seat: -1 }));
   expect(readViewSeat('t1')).toBe(0);
+});
+
+it('회전 값이 남아 있는 예전 저장 데이터도 그대로 복원된다', () => {
+  const state = fixtureState(3);
+  (state.settings as { viewSeat?: number }).viewSeat = 2;
+  expect(() =>
+    validateStored({ schemaVersion: 1, rulesVersion: 1, eventSequence: 0, state }),
+  ).not.toThrow();
 });

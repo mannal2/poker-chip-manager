@@ -66,7 +66,6 @@ createRoot(document.getElementById('root')!).render(
             sb: 5,
             bb: 10,
             button: n - 1,
-            viewSeat: 0,
           }}
           busy={false}
           onSave={() => {}}

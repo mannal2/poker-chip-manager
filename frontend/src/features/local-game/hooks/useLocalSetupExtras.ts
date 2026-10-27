@@ -33,7 +33,6 @@ export function useLocalSetupExtras({
           ...s.settings,
           names: players.map((p) => p.name),
           button: players.findIndex((p) => p.id === dealer),
-          viewSeat: Math.min(s.settings.viewSeat, players.length - 1),
         },
         players.map((p) => p.id),
       );

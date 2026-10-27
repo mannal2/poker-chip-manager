@@ -88,7 +88,7 @@ describe('원자 저장·세대·요청', () => {
       lease,
       expectedVersion: s.version,
       tournamentId: s.tournamentId,
-      command: { type: 'SET_VIEW', viewSeat: 0 } as GameCommand,
+      command: { type: 'SETUP_UPDATE', settings: s.settings } as GameCommand,
     };
     await r.dispatch(first);
     for (let i = 2; i <= 65; i++) {

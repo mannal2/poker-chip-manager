@@ -1,6 +1,6 @@
 import { useImperativeHandle, type ReactNode, type Ref } from 'react';
 import { Dialog } from '../../shared/ui/Dialog';
-import { BetControls } from './components/BetControls';
+import { BetControls, type BetAction } from './components/BetControls';
 import { BlindSettings } from './components/BlindSettings';
 import { GameHeader } from './components/GameHeader';
 import { GameHistoryPanel } from './components/GameHistoryPanel';
@@ -58,20 +58,21 @@ export function GameScreen({
     useSettlementSelection(s, settlementScope, busy, notify);
   useImperativeHandle(ref, () => ({ resetSelection: resetWinners }));
   const close = () => onDialog('');
-  function bettingAction(action: string, amount = 0) {
+  function undo() {
     const blocked = session.guard();
     if (blocked) return notify(blocked);
-    if (action === 'UNDO') {
-      if (!can.canUndo) return notify('조작 권한이 없습니다.');
-      if (!s.undo) return notify('취소할 직전 행동이 없습니다.');
-      void run(async () => {
-        if (await dispatch({ type: 'UNDO' })) {
-          resetWinners();
-          onUndoApplied?.();
-        }
-      });
-      return;
-    }
+    if (!can.canUndo) return notify('조작 권한이 없습니다.');
+    if (!s.undo) return notify('취소할 직전 행동이 없습니다.');
+    void run(async () => {
+      if (await dispatch({ type: 'UNDO' })) {
+        resetWinners();
+        onUndoApplied?.();
+      }
+    });
+  }
+  function bettingAction(action: BetAction, amount = 0) {
+    const blocked = session.guard();
+    if (blocked) return notify(blocked);
     if (!can.canAct) return notify('조작 권한이 없습니다.');
     const command = prepareAction(action, amount);
     if (!command) return;
@@ -119,7 +120,7 @@ export function GameScreen({
           <button
             aria-disabled={busy || !s.undo || !can.canUndo}
             data-unavailable={!s.undo || !can.canUndo}
-            onClick={() => bettingAction('UNDO')}
+            onClick={undo}
           >
             취소
           </button>
@@ -128,7 +129,7 @@ export function GameScreen({
           <SettlementPanel
             count={winners[currentPot.id].length}
             canUndo={!!s.undo && can.canUndo}
-            onUndo={() => bettingAction('UNDO')}
+            onUndo={undo}
             busy={busy || !can.canSettle}
             onWin={() => {
               if (busy) return notify('저장 완료 또는 재시도를 기다려주세요.');
@@ -160,6 +161,7 @@ export function GameScreen({
             maxAdditional={legal?.maxAdditional}
             submitAllowed={submitAllowed}
             onAction={bettingAction}
+            onUndo={undo}
           />
         )}{' '}
         {s.status === 'setup' && (

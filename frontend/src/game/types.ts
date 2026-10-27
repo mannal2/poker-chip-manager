@@ -42,31 +42,15 @@ export interface GameState {
   undo: (Omit<GameState, 'undo'> & { eventIds?: string[] }) | null;
 }
 export type WinnerSelection = Record<string, string[]>;
-export type GameCommand = {
-  type:
-    | 'RESUME_FLOW'
-    | 'START_TOURNAMENT'
-    | 'CHECK'
-    | 'CALL'
-    | 'BET'
-    | 'RAISE'
-    | 'FOLD'
-    | 'ALL_IN'
-    | 'UNDO'
-    | 'BEGIN_REVEAL'
-    | 'ADVANCE_STREET'
-    | 'SETTLE_HAND'
-    | 'SCHEDULE_BLINDS'
-    | 'ABORT'
-    | 'SETUP_UPDATE';
-  playerId?: string;
-  additional?: number;
-  winners?: WinnerSelection;
-  sb?: number;
-  bb?: number;
-  settings?: GameSettings;
-  order?: string[];
-};
+/** One shape per command; the server request DTOs follow the same union. */
+export type GameCommand =
+  | { type: 'START_TOURNAMENT' }
+  | { type: 'SETUP_UPDATE'; settings: GameSettings; order?: string[] }
+  | { type: 'CHECK' | 'CALL' | 'FOLD' | 'ALL_IN'; playerId?: string }
+  | { type: 'BET' | 'RAISE'; additional: number; playerId?: string }
+  | { type: 'SETTLE_HAND'; winners: WinnerSelection }
+  | { type: 'SCHEDULE_BLINDS'; sb: number; bb: number }
+  | { type: 'UNDO' | 'BEGIN_REVEAL' | 'ADVANCE_STREET' | 'RESUME_FLOW' | 'ABORT' };
 export interface TransitionContext {
   id: string;
   at: string;

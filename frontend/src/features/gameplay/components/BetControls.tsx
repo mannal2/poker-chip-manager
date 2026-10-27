@@ -1,7 +1,10 @@
+/** Draft inputs (CHIP, CLEAR, DRAFT_ALL, SUBMIT) and direct betting commands. */
+export type BetAction = 'CHECK' | 'CALL' | 'FOLD' | 'DRAFT_ALL' | 'CHIP' | 'CLEAR' | 'SUBMIT';
 export function BetControls({
   call = 0,
   canUndo = false,
   onAction = () => {},
+  onUndo = () => {},
   busy = false,
   submitAllowed = true,
   maxAdditional = Infinity,
@@ -13,16 +16,13 @@ export function BetControls({
   submitAllowed?: boolean;
   maxAdditional?: number;
   draftAmount?: number;
-  onAction?: (action: string, amount?: number) => void;
+  onAction?: (action: BetAction, amount?: number) => void;
+  onUndo?: () => void;
 }) {
   return (
     <>
       <div className="bet-top">
-        <button
-          aria-disabled={!canUndo || busy}
-          data-unavailable={!canUndo}
-          onClick={() => onAction('UNDO')}
-        >
+        <button aria-disabled={!canUndo || busy} data-unavailable={!canUndo} onClick={onUndo}>
           취소
         </button>
         <button aria-disabled={busy} onClick={() => onAction(call ? 'CALL' : 'CHECK')}>

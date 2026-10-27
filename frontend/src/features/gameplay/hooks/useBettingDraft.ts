@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { classifyDraft } from '../../../game/betting';
 import { messageFor } from '../model/errorMessages';
+import type { BetAction } from '../components/BetControls';
 import type { GameCommand, GameState, LegalActions } from '../../../game/types';
 
 /** Change scope for a new tournament or input session; undefined disables the draft. */
@@ -18,7 +19,7 @@ export function useBettingDraft(
   const currentBet = state?.hand?.W ?? 0;
   const submitAllowed = !!legal && classifyDraft(legal, draftAmount, currentBet).ok;
 
-  function prepareAction(action: string, amount = 0): GameCommand | undefined {
+  function prepareAction(action: BetAction, amount = 0): GameCommand | undefined {
     if (!state || !legal?.actor) {
       notify(messageFor('NOT_ACTOR'));
       return;
@@ -40,7 +41,7 @@ export function useBettingDraft(
       setDraft({ scope, version: state.version, amount: legal.maxAdditional });
       return;
     }
-    if (action !== 'SUBMIT') return { type: action as GameCommand['type'] };
+    if (action !== 'SUBMIT') return { type: action };
     const result = classifyDraft(legal, draftAmount, currentBet);
     if (result.ok) return result.command;
     if (result.code === 'MIN_RAISE')

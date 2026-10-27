@@ -233,6 +233,13 @@ function settle(s: GameState, winners: WinnerSelection, c: TransitionContext, ev
     emit(s, c, events, 'TOURNAMENT_END', { winner: s.players.find((p) => !p.eliminated)!.id });
   } else startHand(s, c, events);
 }
+type BettingCommand = Extract<
+  GameCommand,
+  { type: 'CHECK' | 'CALL' | 'FOLD' | 'ALL_IN' | 'BET' | 'RAISE' }
+>;
+function isBettingCommand(cmd: GameCommand): cmd is BettingCommand {
+  return ['CHECK', 'CALL', 'FOLD', 'ALL_IN', 'BET', 'RAISE'].includes(cmd.type);
+}
 export function transition(
   input: GameState,
   cmd: GameCommand,
@@ -313,6 +320,7 @@ export function transition(
         s.undo = null;
         emit(s, c, events, 'ABORT', {});
       } else {
+        requireRule(isBettingCommand(cmd));
         requireRule(h.phase === 'betting');
         const legal = getLegalActions(s),
           p = legal.actor;
@@ -330,7 +338,8 @@ export function transition(
               (cmd.type === 'BET' && h.W === 0) ||
               (cmd.type === 'RAISE' && h.W > 0),
           );
-          amount = cmd.type === 'ALL_IN' ? p.stack : cmd.additional!;
+          // Requests read back from storage may lack the field; the amount check below rejects it.
+          amount = cmd.type === 'ALL_IN' ? p.stack : 'additional' in cmd ? cmd.additional : NaN;
           requireRule(
             Number.isSafeInteger(amount) && amount > 0 && amount % 5 === 0 && amount <= p.stack,
             'INVALID_AMOUNT',

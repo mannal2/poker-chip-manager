@@ -1,6 +1,6 @@
 import { it, expect } from 'vitest';
 import { fixtureState, apply, ctx } from './helpers';
-import { classifyDraft } from '../../src/game/betting';
+import { classifyDraft } from '../../src/game/draft';
 import { transition, getLegalActions } from '../../src/game/transition';
 import type { GameCommand, GameState } from '../../src/game/types';
 

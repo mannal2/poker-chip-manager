@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { classifyDraft } from '../../../game/betting';
+import { classifyDraft } from '../../../game/draft';
 import { messageFor } from '../model/errorMessages';
 import type { BetAction } from '../components/BetControls';
 import type { GameCommand, GameState, LegalActions } from '../../../game/types';

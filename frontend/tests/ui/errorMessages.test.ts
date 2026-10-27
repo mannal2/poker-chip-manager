@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { it, expect } from 'vitest';
 import { errorMessages, messageFor } from '../../src/features/gameplay/model/errorMessages';
 import { validateSettings, defaultSettings } from '../../src/game/settings';
@@ -11,8 +11,24 @@ const source = (path: string) =>
 
 it('규칙·저장소가 반환하는 모든 거절 코드에 문구가 있다', () => {
   const codes = new Set<string>();
-  for (const m of source('game/transition.ts').matchAll(/requireRule\([^;]*?'([A-Z_]+)'\)/gs))
-    codes.add(m[1]);
+  // Every rules module, so codes keep being found when handlers move between files.
+  const gameFiles = readdirSync(new URL('../../src/game/', import.meta.url), { recursive: true })
+    .map(String)
+    .filter((file) => file.endsWith('.ts'))
+    .map((file) => 'game/' + file.replaceAll('\\', '/'));
+  const ruleCodes = new Set<string>();
+  for (const file of gameFiles)
+    for (const m of source(file).matchAll(/requireRule\([^;]*?'([A-Z_]+)'\)/gs))
+      ruleCodes.add(m[1]);
+  for (const code of [
+    'DEALER_REQUIRED',
+    'INVALID_SETTINGS',
+    'UNDO_LOCKED',
+    'INVALID_BLINDS',
+    'MIN_RAISE',
+  ])
+    expect(ruleCodes, code).toContain(code);
+  for (const code of ruleCodes) codes.add(code);
   for (const m of source('features/local-game/storage/repository.ts').matchAll(
     /rejected\('([A-Z_]+)'\)/g,
   ))
@@ -21,7 +37,7 @@ it('규칙·저장소가 반환하는 모든 거절 코드에 문구가 있다',
     /reason: '([A-Z_]+)'/g,
   ))
     codes.add(m[1]);
-  for (const file of ['game/settings.ts', 'game/settlement.ts', 'game/betting.ts'])
+  for (const file of gameFiles)
     for (const m of source(file).matchAll(/(?:code: |fail\()'([A-Z_]+)'/g)) codes.add(m[1]);
   expect(codes.size).toBeGreaterThan(20);
   for (const code of codes) expect(errorMessages, code).toHaveProperty(code);

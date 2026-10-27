@@ -86,36 +86,6 @@ a {
   overflow: hidden;
   background: var(--bg);
 }
-.meta {
-  display: flex;
-  justify-content: space-between;
-  padding: calc(7 * var(--u)) calc(12 * var(--u));
-  height: calc(60 * var(--u));
-  flex-shrink: 0;
-  font-size: calc(13 * var(--u));
-  color: var(--muted);
-  align-items: center;
-}
-.meta-info {
-  display: flex;
-  flex-direction: column;
-  gap: calc(8 * var(--u));
-}
-.meta strong {
-  color: var(--ink);
-}
-#blinds {
-  font-size: calc(14 * var(--u));
-  color: var(--ink);
-}
-#menu {
-  width: calc(44 * var(--u));
-  min-height: calc(44 * var(--u));
-  padding: calc(6 * var(--u));
-  background: transparent;
-  border: 0;
-  font-size: calc(23 * var(--u));
-}
 dialog {
   color: var(--ink);
   touch-action: pan-x pan-y;
@@ -207,24 +177,6 @@ select {
   color: var(--muted);
 }
 
-.meta-link {
-  display: block;
-  text-align: left;
-  padding: 0;
-  min-height: 0;
-  background: transparent;
-  border: 0;
-  border-radius: calc(3 * var(--u));
-  font-size: inherit;
-  line-height: calc(18 * var(--u));
-}
-.meta-link:disabled {
-  cursor: default;
-}
-.pending-blinds {
-  opacity: 0.6;
-  color: var(--ink);
-}
 .app-home {
   gap: calc(12 * var(--u));
 }

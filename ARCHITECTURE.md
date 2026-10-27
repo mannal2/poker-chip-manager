@@ -103,7 +103,7 @@ HTML마다 자기 진입점을 로드한다. `local/index.html`은 [main.local.t
 | `frontend/src/features/gameplay/components/` | 테이블·입력·기록·정산 표현                   | [Table.tsx](frontend/src/features/gameplay/components/Table.tsx), [PlayerSeat.tsx](frontend/src/features/gameplay/components/PlayerSeat.tsx), [BoardCards.tsx](frontend/src/features/gameplay/components/BoardCards.tsx) |
 | `frontend/src/features/gameplay/hooks/`      | 입력 초안·준비 편집·승자 선택·드래그·칩 효과 | [useBettingDraft.ts](frontend/src/features/gameplay/hooks/useBettingDraft.ts), [useSettlementSelection.ts](frontend/src/features/gameplay/hooks/useSettlementSelection.ts), `useSeatDrag`, `useChipMotion`               |
 | `frontend/src/features/gameplay/model/`      | 화면용 데이터·배치·기록 변환                 | [tableView.ts](frontend/src/features/gameplay/model/tableView.ts): `buildTableView`; [history.ts](frontend/src/features/gameplay/model/history.ts): `historyRows`                                                        |
-| `frontend/src/features/gameplay/styles/`     | 게임 화면과 컨트롤 스타일                    | [table.css](frontend/src/features/gameplay/styles/table.css), [controls.css](frontend/src/features/gameplay/styles/controls.css)                                                                                         |
+| `frontend/src/features/gameplay/styles/`     | 게임 화면과 컨트롤 스타일                    | [header.css](frontend/src/features/gameplay/styles/header.css): 게임 헤더; [table.css](frontend/src/features/gameplay/styles/table.css), [controls.css](frontend/src/features/gameplay/styles/controls.css)              |
 
 `GameScreen`은 헤더·`Table`·하단 독의 상태별 분기·게임 대화상자와 UNDO 처리를 조립한다.
 모드는 `GameSession`(상태·잠금 여부·권한·허용 행동·화면 기준 좌석·조작 scope·`run`·`dispatch`·`notify`·`loadEvents`)과 준비 편집 콜백, 관리 메뉴 슬롯을 넘긴다.

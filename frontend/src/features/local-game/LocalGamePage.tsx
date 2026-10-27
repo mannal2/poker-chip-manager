@@ -20,6 +20,7 @@ import { useLocalViewSeat } from './hooks/useLocalViewSeat';
 import { useLocalSession } from './hooks/useLocalSession';
 import '../../shared/styles/tokens.css';
 import '../../shared/styles/base.css';
+import '../gameplay/styles/header.css';
 import '../gameplay/styles/table.css';
 import '../gameplay/styles/controls.css';
 export function LocalGamePage() {

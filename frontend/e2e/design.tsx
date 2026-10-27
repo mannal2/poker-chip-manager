@@ -5,6 +5,7 @@ import { Table } from '../src/features/gameplay/components/Table';
 import { BetControls } from '../src/features/gameplay/components/BetControls';
 import '../src/shared/styles/tokens.css';
 import '../src/shared/styles/base.css';
+import '../src/features/gameplay/styles/header.css';
 import '../src/features/gameplay/styles/table.css';
 import '../src/features/gameplay/styles/controls.css';
 const q = new URLSearchParams(location.search),

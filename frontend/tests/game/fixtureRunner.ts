@@ -8,6 +8,7 @@ import pots from '../../../shared/game-fixtures/pots.json';
 import settlement from '../../../shared/game-fixtures/settlement.json';
 import lifecycle from '../../../shared/game-fixtures/lifecycle.json';
 import undo from '../../../shared/game-fixtures/undo.json';
+import forfeit from '../../../shared/game-fixtures/forfeit.json';
 import { validateSettings } from '../../src/game/settings';
 import {
   createTournament,
@@ -167,6 +168,20 @@ const runners: Record<SuiteName, (f: Case) => void> = {
   lifecycle: runLifecycle,
   undo: runLifecycle,
 };
+
+// Server-only suites: the TS engine has no such command, so their cases are only checked
+// against the shared schema here; the Java runner executes them.
+const schemaOnlySuites = { forfeit };
+export type SchemaOnlySuiteName = keyof typeof schemaOnlySuites;
+
+export function validateFixtureSchema(name: SchemaOnlySuiteName) {
+  describe(`${name} shared fixtures (server only)`, () => {
+    it(`${name} 공통 schema`, () => {
+      const cases = schemaOnlySuites[name];
+      expect(validate(cases), JSON.stringify(validate.errors)).toBe(true);
+    });
+  });
+}
 
 export function runFixtureSuite(name: SuiteName) {
   const cases = suites[name] as unknown as Case[];

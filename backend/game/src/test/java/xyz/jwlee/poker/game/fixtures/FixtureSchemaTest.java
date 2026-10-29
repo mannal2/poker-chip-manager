@@ -12,7 +12,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 
 class FixtureSchemaTest {
     @ParameterizedTest
-    @ValueSource(strings = {"settings", "positions", "betting", "pots", "settlement", "lifecycle", "undo"})
+    @ValueSource(strings = {"settings", "positions", "betting", "pots", "settlement", "lifecycle", "undo", "forfeit"})
     void everyCaseHasIdSuiteAndCommands(String suite) {
         List<JsonNode> cases = FixtureFiles.load(suite);
 

@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import xyz.jwlee.poker.game.command.BettingCommands;
 import xyz.jwlee.poker.game.command.FlowCommands;
+import xyz.jwlee.poker.game.command.ForfeitCommand;
 import xyz.jwlee.poker.game.command.GameCommand;
 import xyz.jwlee.poker.game.command.SetupCommands;
 import xyz.jwlee.poker.game.event.GameEvent;
@@ -11,7 +12,6 @@ import xyz.jwlee.poker.game.model.ActionType;
 import xyz.jwlee.poker.game.model.GameState;
 import xyz.jwlee.poker.game.model.TransitionContext;
 import xyz.jwlee.poker.game.model.UndoSnapshot;
-import xyz.jwlee.poker.game.rule.RuleErrorCode;
 import xyz.jwlee.poker.game.rule.RuleViolation;
 
 /** Single entry point of the rule engine: applies one command to a copy of the state. */
@@ -39,8 +39,7 @@ public final class GameEngine {
                 case GameCommand.ScheduleBlinds x -> FlowCommands.scheduleBlinds(s, x, c, events);
                 case GameCommand.Undo x -> FlowCommands.undo(s, x, c, events);
                 case GameCommand.Abort x -> FlowCommands.abort(s, x, c, events);
-                // Handler arrives in a later task; until then it is rejected.
-                case GameCommand.Forfeit x -> throw new RuleViolation(RuleErrorCode.INVALID_ACTION);
+                case GameCommand.Forfeit x -> ForfeitCommand.forfeit(s, x, c, events);
             }
             if (isUndoable(cmd)) {
                 GameState snapshot = input.copy();

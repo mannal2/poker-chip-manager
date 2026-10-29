@@ -11,7 +11,13 @@
           "type": "array",
           "minItems": 2,
           "items": {
-            "type": "object"
+            "type": "object",
+            "properties": {
+              "forfeited": {
+                "type": "boolean",
+                "description": "Server-only (forfeit suite). Present only when true; absent means false, so TS states round-trip unchanged."
+              }
+            }
           }
         },
         "pot": {
@@ -104,7 +110,7 @@
     "properties": {
       "id": {
         "type": "string",
-        "pattern": "^(D|B|P|W|S|LIF|UNDO|AUTO|SET)[0-9]{2}$"
+        "pattern": "^(D|B|P|W|S|LIF|UNDO|AUTO|SET|FF)[0-9]{2}$"
       },
       "suite": {
         "enum": [
@@ -114,7 +120,8 @@
           "pots",
           "settlement",
           "lifecycle",
-          "undo"
+          "undo",
+          "forfeit"
         ]
       },
       "description": {
@@ -209,7 +216,7 @@
         "if": {
           "properties": {
             "suite": {
-              "enum": ["lifecycle", "undo"]
+              "enum": ["lifecycle", "undo", "forfeit"]
             }
           }
         },
@@ -315,5 +322,5 @@
       }
     ]
   },
-  "description": "Shared game-rule cases (format v2). Subset matching (expectedStateSubset, per-command expectedStateSubset, expectedLegal, allocations): an object matches when every listed key matches recursively; an array must have the same length and match element-wise; scalars compare by equality; an empty object {} also matches null, so a non-null value is written as an object with one real key, e.g. {\"status\": \"playing\"}. Conventions baked into the cases: state.version is 0 at creation and +1 per successful command (a rejected command changes nothing); players created by createTournament have ids p{i}; players added by SETUP_UPDATE get id {context.id}:p{i}; hand ids are {context.id}:hand:{number}; events are numbered {context.id}:{index} within one command. lifecycle/undo suites: initialState is the settings {names, initial, sb, bb, button}; createTournament is called, then commands run in order."
+  "description": "Shared game-rule cases (format v2). Subset matching (expectedStateSubset, per-command expectedStateSubset, expectedLegal, allocations): an object matches when every listed key matches recursively; an array must have the same length and match element-wise; scalars compare by equality; an empty object {} also matches null, so a non-null value is written as an object with one real key, e.g. {\"status\": \"playing\"}. Conventions baked into the cases: state.version is 0 at creation and +1 per successful command (a rejected command changes nothing); players created by createTournament have ids p{i}; players added by SETUP_UPDATE get id {context.id}:p{i}; hand ids are {context.id}:hand:{number}; events are numbered {context.id}:{index} within one command. lifecycle/undo/forfeit suites: initialState is the settings {names, initial, sb, bb, button}; createTournament is called, then commands run in order. The forfeit suite (FORFEIT command, player field forfeited) is server-only: only the Java runner executes it; the TS runner only validates it against this schema."
 }

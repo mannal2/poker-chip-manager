@@ -115,6 +115,8 @@ public final class StateJson {
         p.stack = n.get("stack").asInt();
         p.eliminated = n.get("eliminated").asBoolean();
         p.folded = n.get("folded").asBoolean();
+        // Server-only field: absent in TS states, so absent means false and false is not written.
+        p.forfeited = present(n, "forfeited") && n.get("forfeited").asBoolean();
         p.roundBet = n.get("B").asInt();
         p.handTotal = n.get("H").asInt();
         p.actedAtBet = present(n, "actedAt") ? n.get("actedAt").asInt() : null;
@@ -129,6 +131,9 @@ public final class StateJson {
         n.put("stack", p.stack);
         n.put("eliminated", p.eliminated);
         n.put("folded", p.folded);
+        if (p.forfeited) {
+            n.put("forfeited", true);
+        }
         n.put("B", p.roundBet);
         n.put("H", p.handTotal);
         if (p.actedAtBet == null) {

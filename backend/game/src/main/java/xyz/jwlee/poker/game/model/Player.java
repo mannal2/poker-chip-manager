@@ -6,6 +6,8 @@ public final class Player {
     public int stack;
     public boolean eliminated;
     public boolean folded;
+    /** Server-only: the player forfeited; the stack is split among survivors when the hand ends. */
+    public boolean forfeited;
     /** TS {@code B}: chips put in during the current betting round. */
     public int roundBet;
     /** TS {@code H}: chips put in during the whole hand. */
@@ -24,6 +26,7 @@ public final class Player {
         p.stack = stack;
         p.eliminated = eliminated;
         p.folded = folded;
+        p.forfeited = forfeited;
         p.roundBet = roundBet;
         p.handTotal = handTotal;
         p.actedAtBet = actedAtBet;

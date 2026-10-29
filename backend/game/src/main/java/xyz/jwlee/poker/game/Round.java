@@ -191,6 +191,9 @@ public final class Round {
             p.stack += preview.payouts().get(p.id);
             p.roundBet = 0;
             p.handTotal = 0;
+        }
+        splitForfeitedStacks(s, c, events);
+        for (Player p : s.players) {
             if (p.stack == 0 && !p.eliminated) {
                 p.eliminated = true;
                 emit(s, c, events, new EventDetails.PlayerEliminated(p.id));
@@ -206,6 +209,47 @@ public final class Round {
             emit(s, c, events, new EventDetails.TournamentEnded(remaining.get(0).id));
         } else {
             startHand(s, c, events);
+        }
+    }
+
+    /**
+     * After the payouts, each forfeited player's stack goes to the survivors in 5-chip units; the
+     * leftover units go one each from the seat after the button. The emptied stack is then
+     * eliminated by the normal rule.
+     */
+    private static void splitForfeitedStacks(GameState s, TransitionContext c, List<GameEvent> events) {
+        int count = s.players.size();
+        int button = s.hand.buttonSeat;
+        for (Player f : s.players) {
+            if (!f.forfeited || f.eliminated || f.stack == 0) {
+                continue;
+            }
+            List<Player> survivors = new ArrayList<>(s.players.stream()
+                    .filter(p -> !p.eliminated && !p.forfeited && p.stack > 0)
+                    .toList());
+            if (survivors.isEmpty()) {
+                throw new IllegalStateException("NO_FORFEIT_SURVIVOR");
+            }
+            survivors.sort((a, b) -> Integer.compare(
+                    (s.players.indexOf(a) - button - 1 + count) % count,
+                    (s.players.indexOf(b) - button - 1 + count) % count));
+            int units = f.stack / 5;
+            int share = units / survivors.size();
+            int remainder = units % survivors.size();
+            Map<String, Integer> byId = new LinkedHashMap<>();
+            for (int k = 0; k < survivors.size(); k++) {
+                byId.put(survivors.get(k).id, (share + (k < remainder ? 1 : 0)) * 5);
+            }
+            LinkedHashMap<String, Integer> shares = new LinkedHashMap<>();
+            for (Player p : s.players) {
+                Integer amount = byId.get(p.id);
+                if (amount != null) {
+                    p.stack += amount;
+                    shares.put(p.id, amount);
+                }
+            }
+            f.stack = 0;
+            emit(s, c, events, new EventDetails.ForfeitStackSplit(f.id, shares));
         }
     }
 }

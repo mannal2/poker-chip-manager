@@ -13,7 +13,7 @@ import java.util.Set;
 /** Locates and loads the shared rule-case files in {@code shared/game-fixtures}. */
 public final class FixtureFiles {
     static final Set<String> SUITES =
-            Set.of("settings", "positions", "betting", "pots", "settlement", "lifecycle", "undo");
+            Set.of("settings", "positions", "betting", "pots", "settlement", "lifecycle", "undo", "forfeit");
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 

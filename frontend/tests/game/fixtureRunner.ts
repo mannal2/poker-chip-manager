@@ -59,17 +59,16 @@ function step(s: GameState, raw: Command, ctx: Case['context']): GameState {
 
 function runBetting(f: Case) {
   let s: GameState = structuredClone(f.initialState);
-  for (const command of f.commands) {
-    if (f.expectedError) {
-      const before = JSON.stringify(s);
-      const r = transition(s, command as GameCommand, f.context);
-      expect(JSON.stringify(s)).toBe(before);
-      if (r.ok) throw Error('The command must be rejected.');
-      expect(r.errorCode).toBe(f.expectedError);
-      return;
-    }
-    s = step(s, command, f.context);
-  }
+  // Case-level expectedError: the last command must be rejected, all earlier ones succeed.
+  f.commands.forEach((command, i) => {
+    const last = i === f.commands.length - 1;
+    s = step(
+      s,
+      last && f.expectedError ? { ...command, expectError: f.expectedError } : command,
+      f.context,
+    );
+  });
+  if (f.expectedError) return;
   if (f.expectedStateSubset) expect(s).toMatchObject(f.expectedStateSubset);
   if (f.expectedLegal) expect(getLegalActions(s)).toMatchObject(f.expectedLegal as object);
 }

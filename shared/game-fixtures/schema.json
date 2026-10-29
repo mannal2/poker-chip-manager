@@ -81,7 +81,10 @@
         "additionalProperties": false
       },
       "expectedStateSubset": { "type": "object" },
-      "expectedError": { "type": ["string", "null"] },
+      "expectedError": {
+        "type": ["string", "null"],
+        "description": "If a string: the case's LAST command must be rejected with this error code; every earlier command must succeed."
+      },
       "expectedEvents": { "type": "array", "items": { "type": "string" } },
       "expectedLegal": { "type": "object" }
     },
@@ -91,7 +94,10 @@
         "then": {
           "properties": {
             "initialState": { "$ref": "#/definitions/gameState" },
-            "commands": { "items": { "$ref": "#/definitions/command" } }
+            "commands": {
+              "type": "array",
+              "items": { "$ref": "#/definitions/command" }
+            }
           }
         }
       },
@@ -101,7 +107,9 @@
           "properties": {
             "initialState": { "$ref": "#/definitions/gameState" },
             "commands": {
+              "type": "array",
               "items": {
+                "type": "object",
                 "$ref": "#/definitions/command",
                 "properties": {
                   "type": { "enum": ["RETURN_UNCALLED", "BUILD_POTS"] }
@@ -109,6 +117,7 @@
               }
             },
             "expectedStateSubset": {
+              "type": "object",
               "required": ["returnAmount", "amounts", "eligible"]
             }
           }
@@ -120,16 +129,17 @@
           "properties": {
             "initialState": { "$ref": "#/definitions/gameState" },
             "commands": {
+              "type": "array",
               "items": {
+                "type": "object",
                 "required": ["type", "winners"],
                 "properties": {
                   "type": { "const": "PREVIEW_SETTLEMENT" },
-                  "winners": { "$ref": "#/definitions/winnersByPot" },
-                  "expectError": { "type": "string" }
+                  "winners": { "$ref": "#/definitions/winnersByPot" }
                 }
               }
             },
-            "expectedStateSubset": { "required": ["ok"] }
+            "expectedStateSubset": { "type": "object", "required": ["ok"] }
           }
         }
       }

@@ -1,5 +1,9 @@
 # 새 구현 대화 인계 — Sol 모델
 
+> **2026-10-29 안내:** 현재 기준 문서는 [SINGLE_DEVICE_MODE.md](SINGLE_DEVICE_MODE.md)(구현된 단일 기기 동작)와 [MULTIPLAYER_MODE.md](MULTIPLAYER_MODE.md)(멀티플레이 기획)다. 아래는 2026-10-18 단일 기기 구현 착수용 인계문이며 그 작업은 끝났다. 멀티플레이를 시작할 때는 MULTIPLAYER_MODE.md부터 읽는다.
+
+현재 코드 구조와 변경 출발점은 [ARCHITECTURE.md](ARCHITECTURE.md)를 먼저 확인한다.
+
 작성일: 2026-10-18. 이 파일은 새 대화에서 이전 긴 대화 없이 구현을 시작하기 위한 안내다.
 
 ## 목표와 시작 순서

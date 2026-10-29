@@ -11,7 +11,6 @@ export function fixtureState(n = 3): GameState {
       sb: 5,
       bb: 10,
       button: 0,
-      viewSeat: 0,
     },
     ctx,
   );

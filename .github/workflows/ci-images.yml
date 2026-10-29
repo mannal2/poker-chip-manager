@@ -54,8 +54,10 @@ jobs:
 
       - name: Browser tests
         working-directory: frontend
+        # --no-deps: the serial projects depend on the full parallel projects, which would
+        # otherwise run every spec. One worker keeps the two browsers' pwa.spec runs apart.
         run: |
-          npx playwright test \
+          npx playwright test --no-deps --workers=1 \
             e2e/app-flow.spec.ts \
             e2e/game.spec.ts \
             e2e/pwa.spec.ts

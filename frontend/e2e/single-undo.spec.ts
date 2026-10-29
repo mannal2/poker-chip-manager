@@ -51,6 +51,34 @@ test('올인 승자 확정 후 종료 화면에서도 무르기', async ({ page 
   );
 });
 
+test('블라인드 예약은 승자 초안 유지, 직전 행동 취소는 초안 폐기', async ({ page }) => {
+  await start(page);
+  await page.getByRole('button', { name: '올인', exact: true }).click();
+  await page.getByRole('button', { name: 'BET', exact: true }).click();
+  await expect(page.locator('main')).toHaveAttribute('aria-busy', 'false');
+  await page.getByRole('button', { name: /^콜 / }).click();
+  await expect(page.locator('.settlement-count')).toHaveText('승자 선택');
+  await page.locator('.seat').first().click();
+  await expect(page.locator('.settlement-count')).toHaveText('1명 선택');
+  await page.getByRole('button', { name: '팟 상세', exact: true }).click();
+  const payout = page.getByRole('dialog', { name: '지급 미리보기', exact: true });
+  await expect(payout).toContainText('메인 팟: 2,000');
+  await expect(payout).toContainText('P1: +2,000 → 2,000');
+  await payout.getByRole('button', { name: '닫기', exact: true }).click();
+  await expect(page.locator('.seat .stack').first()).toHaveText('0');
+  await page.getByLabel('다음 핸드 블라인드 설정', { exact: true }).click();
+  await page.getByLabel('다음 SB', { exact: true }).fill('10');
+  await page.getByLabel('다음 BB', { exact: true }).fill('20');
+  await page.getByRole('button', { name: '예약', exact: true }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(page.locator('.settlement-count')).toHaveText('1명 선택');
+  await page.getByRole('button', { name: '취소', exact: true }).click();
+  await expect(page.getByRole('button', { name: /^콜 / })).toBeVisible();
+  await page.getByRole('button', { name: /^콜 / }).click();
+  await expect(page.locator('.settlement-count')).toHaveText('승자 선택');
+  await expect(page.locator('.seat.selected')).toHaveCount(0);
+});
+
 test('무르기 저장 실패 후 재시도는 이전 승자 초안을 버린다', async ({ page }) => {
   await start(page);
   await page.getByRole('button', { name: '올인', exact: true }).click();

@@ -11,7 +11,7 @@ it('명령 Bet/Raise의 의미를 구분한다', () => {
 });
 it('재정렬·인원 축소 후 추가해도 ID 유일성을 보존한다', () => {
   let s = createTournament(
-    { names: ['A', 'B', 'C'], initial: 1000, sb: 5, bb: 10, button: 0, viewSeat: 0 },
+    { names: ['A', 'B', 'C'], initial: 1000, sb: 5, bb: 10, button: 0 },
     ctx,
   );
   s = apply(s, {

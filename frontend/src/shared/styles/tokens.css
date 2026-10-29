@@ -1,0 +1,13 @@
+:root {
+  --u: min(
+    max(1px, calc(var(--viewport-width, 100vw) / 390)),
+    calc(var(--viewport-height, 100dvh) / 560)
+  );
+  color-scheme: dark;
+  -webkit-tap-highlight-color: transparent;
+  --bg: #101b18;
+  --line: #34473d;
+  --muted: #a1b2a8;
+  --ink: #f4f2e9;
+  --gold: #e2bd75;
+}

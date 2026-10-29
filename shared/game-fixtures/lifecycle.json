@@ -6,8 +6,7 @@
       "initial": 1000,
       "sb": 5,
       "bb": 10,
-      "button": 0,
-      "viewSeat": 0
+      "button": 0
     },
     "commands": [
       {
@@ -93,8 +92,7 @@
       "initial": 1000,
       "sb": 5,
       "bb": 10,
-      "button": 0,
-      "viewSeat": 0
+      "button": 0
     },
     "commands": [
       {
@@ -145,8 +143,7 @@
       "initial": 1000,
       "sb": 5,
       "bb": 10,
-      "button": 0,
-      "viewSeat": 0
+      "button": 0
     },
     "commands": [
       {
@@ -187,8 +184,7 @@
       "initial": 1000,
       "sb": 5,
       "bb": 10,
-      "button": 0,
-      "viewSeat": 0
+      "button": 0
     },
     "commands": [
       {
@@ -263,8 +259,7 @@
       "initial": 1000,
       "sb": 5,
       "bb": 10,
-      "button": 0,
-      "viewSeat": 0
+      "button": 0
     },
     "commands": [
       {

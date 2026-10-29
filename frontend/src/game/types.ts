@@ -1,4 +1,5 @@
 import type { GameSettings } from './settings';
+import type { LegalReasonCode, RuleErrorCode } from './errors';
 export interface Player {
   id: string;
   name: string;
@@ -41,33 +42,15 @@ export interface GameState {
   undo: (Omit<GameState, 'undo'> & { eventIds?: string[] }) | null;
 }
 export type WinnerSelection = Record<string, string[]>;
-export type GameCommand = {
-  type:
-    | 'RESUME_FLOW'
-    | 'START_TOURNAMENT'
-    | 'CHECK'
-    | 'CALL'
-    | 'BET'
-    | 'RAISE'
-    | 'FOLD'
-    | 'ALL_IN'
-    | 'UNDO'
-    | 'BEGIN_REVEAL'
-    | 'ADVANCE_STREET'
-    | 'SETTLE_HAND'
-    | 'SCHEDULE_BLINDS'
-    | 'ABORT'
-    | 'SETUP_UPDATE'
-    | 'SET_VIEW';
-  playerId?: string;
-  additional?: number;
-  winners?: WinnerSelection;
-  sb?: number;
-  bb?: number;
-  settings?: GameSettings;
-  order?: string[];
-  viewSeat?: number;
-};
+/** One shape per command; the server request DTOs follow the same union. */
+export type GameCommand =
+  | { type: 'START_TOURNAMENT' }
+  | { type: 'SETUP_UPDATE'; settings: GameSettings; order?: string[] }
+  | { type: 'CHECK' | 'CALL' | 'FOLD' | 'ALL_IN'; playerId?: string }
+  | { type: 'BET' | 'RAISE'; additional: number; playerId?: string }
+  | { type: 'SETTLE_HAND'; winners: WinnerSelection }
+  | { type: 'SCHEDULE_BLINDS'; sb: number; bb: number }
+  | { type: 'UNDO' | 'BEGIN_REVEAL' | 'ADVANCE_STREET' | 'RESUME_FLOW' | 'ABORT' };
 export interface TransitionContext {
   id: string;
   at: string;
@@ -82,7 +65,7 @@ export interface GameEvent {
   sequence?: number;
 }
 export type TransitionResult =
-  { ok: true; state: GameState; events: GameEvent[] } | { ok: false; errorCode: string };
+  { ok: true; state: GameState; events: GameEvent[] } | { ok: false; errorCode: RuleErrorCode };
 export interface LegalActions {
   actor: Player | null;
   callAdditional: number;
@@ -91,7 +74,7 @@ export interface LegalActions {
   canRaise: boolean;
   canCheck: boolean;
   canCall: boolean;
-  reason: string;
+  reasonCode: LegalReasonCode | null;
 }
 export interface Pot {
   id: string;

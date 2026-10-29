@@ -1,11 +1,13 @@
-import { SetupPanel } from '../src/ui/SetupPanel';
-import { SettlementPanel } from '../src/ui/SettlementPanel';
+import { SetupPanel } from '../src/features/gameplay/components/SetupPanel';
+import { SettlementPanel } from '../src/features/gameplay/components/SettlementPanel';
 import { createRoot } from 'react-dom/client';
-import { Table } from '../src/ui/Table';
-import { BetControls } from '../src/ui/BetControls';
-import '../src/ui/tokens.css';
-import '../src/ui/table.css';
-import '../src/ui/controls.css';
+import { Table } from '../src/features/gameplay/components/Table';
+import { BetControls } from '../src/features/gameplay/components/BetControls';
+import '../src/shared/styles/tokens.css';
+import '../src/shared/styles/base.css';
+import '../src/features/gameplay/styles/header.css';
+import '../src/features/gameplay/styles/table.css';
+import '../src/features/gameplay/styles/controls.css';
 const q = new URLSearchParams(location.search),
   n = Number(q.get('n') || 6),
   phase = q.get('phase') || 'betting';
@@ -66,7 +68,6 @@ createRoot(document.getElementById('root')!).render(
             sb: 5,
             bb: 10,
             button: n - 1,
-            viewSeat: 0,
           }}
           busy={false}
           onSave={() => {}}

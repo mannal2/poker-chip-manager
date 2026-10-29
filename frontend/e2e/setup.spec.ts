@@ -46,6 +46,23 @@ test('준비: 2인·인원 버튼·최근 추가 삭제·P3 재사용·복원', 
   await expect(page.getByRole('button', { name: '참가자·좌석 설정' })).toHaveCount(0);
   await expect(page.getByRole('button', { name: '화면 기준 좌석', exact: true })).toHaveCount(0);
 });
+test('준비: blur 전 숫자 초안도 저장한 뒤 게임을 한 번 시작한다', async ({ page }) => {
+  await ready(page);
+  await page.locator('.seat .card-values').first().click();
+  await expect(page.locator('main')).toHaveAttribute('aria-busy', 'false');
+  await page.getByLabel('시작 칩', { exact: true }).fill('1500');
+  await expect(page.locator('.seat .stack')).toHaveText(['1,000', '1,000']);
+  await page.getByRole('button', { name: '게임 시작', exact: true }).click();
+  await expect(page.locator('.seat .stack')).toHaveText(['1,495', '1,490']);
+  await expect(page.locator('.pot strong')).toHaveText('15');
+  await expect(page.getByLabel('현재 토너먼트 기록', { exact: true })).toContainText('01');
+  await page.reload();
+  await openLocal(page);
+  await expect(page.locator('.seat .stack')).toHaveText(['1,495', '1,490']);
+  await expect(page.locator('.pot strong')).toHaveText('15');
+  await expect(page.getByLabel('현재 토너먼트 기록', { exact: true })).toContainText('01');
+});
+
 test('준비: 단일 탭 D·이름 직접 편집·드래그는 D 변경 없음', async ({ page }) => {
   await ready(page);
   await page.getByRole('button', { name: '게임 시작', exact: true }).click();

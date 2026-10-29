@@ -82,28 +82,33 @@ for (const width of [320, 390])
                 };
               }),
           );
-        for (const selector of [
-          '.phone',
-          '.dock',
-          '.felt',
-          '.seat',
-          '.seat .name',
-          '.seat .bet',
-          '.seat .stack',
-          '.seat .badge',
-          '.chip',
-          '.primary',
-        ]) {
-          const expected = await appearance(approved, selector);
-          expect(await appearance(page, selector), selector).toEqual(expected);
+        try {
+          for (const selector of [
+            '.phone',
+            '.dock',
+            '.felt',
+            '.seat',
+            '.seat .name',
+            '.seat .bet',
+            '.seat .stack',
+            '.seat .badge',
+            '.chip',
+            '.primary',
+          ]) {
+            const expected = await appearance(approved, selector);
+            expect(await appearance(page, selector), selector).toEqual(expected);
+          }
+        } catch (error) {
+          // Screenshots are for diagnosis only; the style comparison above is the assertion.
+          await writeFile(
+            info.outputPath('approved.png'),
+            await approved.locator('.phone').screenshot({ animations: 'disabled' }),
+          );
+          await writeFile(
+            info.outputPath('actual.png'),
+            await page.locator('.phone').screenshot({ animations: 'disabled' }),
+          );
+          throw error;
         }
-        await writeFile(
-          info.outputPath('approved.png'),
-          await approved.locator('.phone').screenshot({ animations: 'disabled' }),
-        );
-        await writeFile(
-          info.outputPath('actual.png'),
-          await page.locator('.phone').screenshot({ animations: 'disabled' }),
-        );
         await approved.close();
       });

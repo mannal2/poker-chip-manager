@@ -1,8 +1,8 @@
 import { it, expect } from 'vitest';
 import { fixtureState, apply, ctx } from './helpers';
 import { transition, getLegalActions } from '../../src/game/transition';
-import { validateStored } from '../../src/local/restore';
-import { historyRows } from '../../src/ui/history';
+import { validateStored } from '../../src/features/local-game/storage/restore';
+import { historyRows } from '../../src/features/gameplay/model/history';
 import type { GameState } from '../../src/game/types';
 function restored(s: GameState) {
   const value = JSON.parse(

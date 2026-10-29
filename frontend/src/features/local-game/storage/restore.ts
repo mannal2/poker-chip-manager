@@ -74,7 +74,7 @@ export function validateStored(value: StoredGame): void {
     const h = s.hand,
       n = s.players.length;
     if (
-      !['betting', 'revealPending', 'revealed', 'settlement'].includes(h.phase) ||
+      !['betting', 'settlement'].includes(h.phase) ||
       ![h.buttonSeat, h.sbSeat, h.bbSeat].every((v) => Number.isInteger(v) && v >= 0 && v < n) ||
       !Number.isInteger(h.street) ||
       h.street < 0 ||

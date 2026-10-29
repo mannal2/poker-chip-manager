@@ -32,15 +32,3 @@ it('올인 응답 완료는 공개/시작 명령 없이 승자 선택', () => {
   expect(s.undo).not.toBeNull();
   expect(s.pot).toBe(2000);
 });
-it('이전 저장의 공개 대기·공개 완료를 한 번 정규화', () => {
-  for (const phase of ['revealPending', 'revealed'] as const) {
-    const s = act(start(), { type: 'CALL' });
-    s.hand!.phase = phase;
-    s.hand!.actorId = null;
-    s.hand!.pending = [];
-    s.hand!.showdown = false;
-    const restored = act(s, { type: 'RESUME_FLOW' });
-    expect(restored.hand).toMatchObject({ street: 1, phase: 'betting' });
-    expect(transition(restored, { type: 'RESUME_FLOW' }, c).ok).toBe(false);
-  }
-});

@@ -133,7 +133,7 @@ test('자동 스트리트 저장 실패는 이전 상태 유지·같은 요청 �
   await page.getByRole('button', { name: '단일 기기 모드', exact: true }).click();
   await expect(page.locator('.board')).toHaveAttribute('data-street', 'FLOP');
 });
-test('구형 공개 대기 저장 복원은 자동 진행 한 번, 재실행은 같은 스트리트', async ({ page }) => {
+test('구형 공개 대기 저장은 지원하지 않는 형식으로 복구 화면을 보여준다', async ({ page }) => {
   await enter(page);
   await page.locator('.seat .card-values').first().click();
   await page.getByRole('button', { name: '게임 시작', exact: true }).click();
@@ -166,11 +166,8 @@ test('구형 공개 대기 저장 복원은 자동 진행 한 번, 재실행은 
     db.close();
   });
   await page.reload();
-  await page.getByRole('button', { name: '단일 기기 모드', exact: true }).click();
-  await expect(page.locator('.board')).toHaveAttribute('data-street', 'FLOP');
-  await page.reload();
-  await page.getByRole('button', { name: '단일 기기 모드', exact: true }).click();
-  await expect(page.locator('.board')).toHaveAttribute('data-street', 'FLOP');
+  await expect(page.getByRole('button', { name: '다시 시도', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: '새 토너먼트 시작', exact: true })).toBeVisible();
 });
 
 test('리뷰: 이름 입력 중 시작은 초안을 버리지 않고 완료 안내', async ({ page }) => {

@@ -1,7 +1,7 @@
 import { validChips } from '../settings';
 import type { GameState } from '../types';
 import { requireRule, type CommandHandler } from '../rule';
-import { advanceStreet, emit, finishRound, settle } from '../round';
+import { emit, settle } from '../round';
 
 /** In-hand commands need a running tournament; UNDO also works right after it ends. */
 export function inPlay(s: GameState, allowEnded = false) {
@@ -20,26 +20,6 @@ const undo: CommandHandler<'UNDO'> = (s, _cmd, c, events) => {
   s.pendingBlinds = pending;
   s.undo = null;
   emit(s, c, events, 'UNDO', eventIds ? { eventIds } : {});
-};
-
-const beginReveal: CommandHandler<'BEGIN_REVEAL'> = (s, _cmd, c, events) => {
-  const h = inPlay(s);
-  requireRule(h.phase === 'revealPending');
-  s.undo = null;
-  h.phase = h.showdown ? 'settlement' : 'revealed';
-  emit(s, c, events, 'REVEAL', { showdown: h.showdown });
-};
-
-const advance: CommandHandler<'ADVANCE_STREET'> = (s, _cmd, c, events) => {
-  const h = inPlay(s);
-  requireRule(h.phase === 'revealed' && !h.showdown && h.street < 3);
-  advanceStreet(s, c, events);
-};
-
-const resumeFlow: CommandHandler<'RESUME_FLOW'> = (s, _cmd, c, events) => {
-  const h = inPlay(s);
-  requireRule(['revealPending', 'revealed'].includes(h.phase));
-  finishRound(s, c, events);
 };
 
 const scheduleBlinds: CommandHandler<'SCHEDULE_BLINDS'> = (s, cmd, c, events) => {
@@ -66,9 +46,6 @@ const abort: CommandHandler<'ABORT'> = (s, _cmd, c, events) => {
 
 export const flowHandlers = {
   UNDO: undo,
-  BEGIN_REVEAL: beginReveal,
-  ADVANCE_STREET: advance,
-  RESUME_FLOW: resumeFlow,
   SCHEDULE_BLINDS: scheduleBlinds,
   SETTLE_HAND: settleHand,
   ABORT: abort,

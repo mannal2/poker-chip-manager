@@ -39,6 +39,5 @@ it('모드가 직접 진행하는 흐름 명령은 권한 없이 허용한다', 
     canEditSetup: false,
     canEditBlinds: false,
   };
-  for (const type of ['RESUME_FLOW', 'BEGIN_REVEAL', 'ADVANCE_STREET', 'ABORT'] as const)
-    expect(permits(none, type)).toBe(true);
+  expect(permits(none, 'ABORT')).toBe(true);
 });

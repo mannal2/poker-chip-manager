@@ -67,9 +67,7 @@ it('결정적 2~10인 토너먼트: 모든 성공 전환 보존·불변과 종�
               : choice < 0.6 && l.canRaise
                 ? { type: 'ALL_IN' }
                 : { type: l.canCall ? 'CALL' : 'CHECK' };
-        } else if (h.phase === 'revealPending') command = { type: 'BEGIN_REVEAL' };
-        else if (h.phase === 'revealed') command = { type: 'ADVANCE_STREET' };
-        else {
+        } else {
           const live = s.players.filter((p) => !p.folded && !p.eliminated).sort(() => 0);
           const rank = [...live].sort((a, b) => a.id.localeCompare(b.id));
           command = {

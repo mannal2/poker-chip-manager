@@ -39,7 +39,7 @@
 1. **복사 누락으로 입력 상태 오염**: `pending`·`setupOrder`·승자 목록·취소 스냅샷 같은 중첩 목록을 얕게 복사하면 거절된 명령이 원본을 바꾼다. → Task 4 실행기가 모든 명령 전후로 입력 상태 JSON이 같은지 검사.
 2. **취소 스냅샷 안의 스냅샷**: 스냅샷에 이전 `undo`가 남으면 두 번 연속 취소가 된다. → Task 3 `UNDO01` 사례(두 번째 취소는 `UNDO_LOCKED`).
 3. **지급 맵 순서**: `Map` 순회 순서가 플레이어 순서와 다르면 이벤트 내용과 잔여 칩 수령자가 달라진다. → Task 7에서 `LinkedHashMap`(좌석 순) 사용, 잔여 칩 수령자 사례(W08~W10)로 검사.
-4. **기권으로 자격자가 없는 팟**: 사이드 팟의 유일한 자격자가 기권하면 팟을 만들 수 없다. → Task 9 `FF05`(바로 아래 팟에 합침).
+4. **기권으로 자격자가 없는 팟**: 승자 선택 단계에서 사이드 팟의 유일한 자격자가 기권하면 그 팟을 받을 사람이 없다. → Task 9 `FF05`(그 금액을 기권자 스택으로 돌려 핸드 후 생존자 균등 분배).
 5. **빈 버튼 자리에서의 잔여 칩 순서**: 버튼이 탈락자 자리여도 "버튼 다음 자리부터"를 좌석 번호로 계산해야 한다. → Task 7 W09 + Task 9 `FF04`(기권 분배 잔여).
 
 ---
@@ -234,7 +234,7 @@ MULTIPLAYER_MODE.md 10절을 규칙으로 옮긴다. 공통 사례 파일 `forfe
 - Create: `shared/game-fixtures/forfeit.json` (suite `forfeit`, id `FF01`~`FF07`), schema에 suite 추가
 - Modify: `model/Player.java` (`boolean forfeited`), `StateJson` (`forfeited` 필드, 없으면 false)
 - Create: `commands/ForfeitCommand.java`
-- Modify: `Round.java` (`settle`에서 기권자 스택 분배), `Settlement.java` (`buildPots`: 자격자 없는 층은 바로 아래 팟에 합침)
+- Modify: `Round.java` (`settle`에서 기권자 스택 분배), `commands/ForfeitCommand.java`에서 주인 없는 층 반환
 - Test: `ForfeitFixtureTest.java`
 
 **Interfaces:**
@@ -244,9 +244,9 @@ MULTIPLAYER_MODE.md 10절을 규칙으로 옮긴다. 공통 사례 파일 `forfe
 - 거절: `status != PLAYING`(`INVALID_ACTION`), 대상 없음·이미 탈락·이미 기권(`INVALID_ACTION`).
 - 처리: `forfeited = true`, `folded = true`, `pending`에서 제거, `undo = null`, 이벤트 `FORFEIT`. 단계가 `BETTING`이면 `Round.resolveRound(s, 현재 행동자 좌석 - 1)`로 차례를 다시 계산(행동자가 아니면 같은 행동자 유지, 행동자였으면 다음 사람). `SETTLEMENT`이면 남은 비폴드 생존자가 1명일 때 그 사람에게 전체 지급(`settle`).
 - 핸드 종료(`settle`) 시: 지급을 반영한 뒤, 기권했고 아직 탈락하지 않은 사람마다 스택을 `생존자 = !eliminated && !forfeited && stack > 0`에게 5칩 단위로 균등 분배, 나머지는 버튼 다음 좌석 순(`FORFEIT_SPLIT`). 기권자 스택은 0이 되어 기존 탈락 처리로 `ELIMINATED`. 그 뒤 종료 판정.
-- `buildPots`: 어떤 층의 자격자가 0명이면 그 금액을 직전(아래) 팟에 더한다. TS 엔진에서는 이 경우가 생기지 않으므로 공통 사례 결과는 변하지 않는다.
+- **주인 없는 층 (사용자 확정 2026-10-29)**: 기권으로 어떤 납부 층의 자격자가 0명이 되면(사실상 승자 선택 단계에서만 발생), 기권 처리 안에서 그 층 금액을 미콜 반환처럼 기권자 스택으로 돌려준다(각 기여자의 `handTotal`을 그 층 아래 높이로 낮추고 차액을 기권자 스택에 더함, 이벤트 `RETURN`). 이 칩은 핸드가 끝날 때 위 분배 규칙으로 생존자에게 균등 분배된다. `buildPots`는 바꾸지 않는다 — 기권 처리 뒤에는 자격자 없는 층이 남지 않으므로 기존 `NO_POT_ELIGIBLE` 예외가 그대로 안전장치가 된다.
 
-- [ ] **Step 1: 사례 작성(손 계산)** — `FF01` 행동자 아닌 사람 기권: 차례 유지, 핸드 끝에 스택 분배. `FF02` 행동자 기권: 다음 사람 차례. `FF03` 2인 중 1명 기권: 즉시 상대 지급 → 기권자 탈락 → 토너먼트 종료, 남은 스택은 우승자에게. `FF04` 3명 생존, 분배 잔여 5칩: 버튼 다음 좌석부터. `FF05` 사이드 팟 유일 자격자 기권: 그 층이 메인 팟에 합쳐짐. `FF06` 정산 단계 기권으로 1명만 남음: 자동 지급. `FF07` 거절: 준비 단계·이미 탈락. 각 사례에 계산 근거를 `description`에 적는다.
+- [ ] **Step 1: 사례 작성(손 계산)** — `FF01` 행동자 아닌 사람 기권: 차례 유지, 핸드 끝에 스택 분배. `FF02` 행동자 기권: 다음 사람 차례. `FF03` 2인 중 1명 기권: 즉시 상대 지급 → 기권자 탈락 → 토너먼트 종료, 남은 스택은 우승자에게. `FF04` 3명 생존, 분배 잔여 5칩: 버튼 다음 좌석부터. `FF05` 승자 선택 단계에서 사이드 팟 유일 자격자 기권(MULTIPLAYER_MODE 10절 예시: A 100 올인, B·C 300, B 폴드, C 기권): 사이드 400이 C 스택으로 반환(`RETURN`), 메인 300은 A 단독 자격으로 자동 지급, 핸드 후 C 스택이 생존자(A·B)에게 균등 분배. `FF06` 정산 단계 기권으로 1명만 남음: 자동 지급. `FF07` 거절: 준비 단계·이미 탈락. 각 사례에 계산 근거를 `description`에 적는다.
 - [ ] **Step 2: 실패 확인** — Run: `backend/gradlew -p backend :game:test --tests '*Forfeit*'` / Expected: FAIL
 - [ ] **Step 3: 구현** — 위 규칙대로.
 - [ ] **Step 4: 통과 확인** — Run: `backend/gradlew -p backend :game:test` / Expected: 전체 PASS. Run: `npm --prefix frontend test -- --run tests/game` / Expected: PASS(forfeit suite 미등록, schema만 통과)

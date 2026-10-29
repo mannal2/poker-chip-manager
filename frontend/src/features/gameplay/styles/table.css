@@ -101,6 +101,12 @@
   min-width: 0;
   white-space: nowrap;
 }
+.card-values > .fit-short > span {
+  display: none;
+}
+.card-values > .fit-short::after {
+  content: attr(data-short);
+}
 .seat .stack {
   border-left: calc(1 * var(--u)) solid #ffffff20;
   font-weight: 750;

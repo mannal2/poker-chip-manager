@@ -15,6 +15,15 @@ export interface CardPlayer {
   eligible?: boolean;
 }
 
+// Shown only when the full amount cannot fit even at the smallest font. Rounds down so a
+// shortened amount never claims more chips than the player has.
+function shortChips(value: number) {
+  const [unit, label] = value >= 1e8 ? [1e8, '억'] : value >= 1e4 ? [1e4, '만'] : [1, ''];
+  if (unit === 1) return undefined;
+  const amount = Math.floor((value / unit) * 10) / 10;
+  return amount.toLocaleString('ko-KR', { maximumFractionDigits: 1 }) + label;
+}
+
 export function PlayerSeat({
   player: p,
   phase,
@@ -83,11 +92,12 @@ export function PlayerSeat({
         <div
           className={`bet ${p.pending ? 'pending' : ''}`}
           aria-label={`핸드 누적액 ${p.contribution}`}
+          data-short={shortChips(p.contribution)}
         >
-          {p.contribution.toLocaleString('ko-KR')}
+          <span>{p.contribution.toLocaleString('ko-KR')}</span>
         </div>
-        <div className="stack" aria-label={`남은 칩 ${p.stack}`}>
-          {p.stack.toLocaleString('ko-KR')}
+        <div className="stack" aria-label={`남은 칩 ${p.stack}`} data-short={shortChips(p.stack)}>
+          <span>{p.stack.toLocaleString('ko-KR')}</span>
         </div>
       </Values>
       {p.active && <span className="turn" />}

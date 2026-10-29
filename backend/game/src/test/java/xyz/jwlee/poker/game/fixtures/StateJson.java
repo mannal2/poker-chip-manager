@@ -89,7 +89,7 @@ public final class StateJson {
         return n;
     }
 
-    private static GameSettings readSettings(JsonNode n) {
+    public static GameSettings readSettings(JsonNode n) {
         return new GameSettings(
                 strings(n.get("names")),
                 n.get("initial").asInt(),
@@ -122,7 +122,7 @@ public final class StateJson {
         return p;
     }
 
-    private static ObjectNode writePlayer(Player p) {
+    public static ObjectNode writePlayer(Player p) {
         ObjectNode n = F.objectNode();
         n.put("id", p.id);
         n.put("name", p.name);

@@ -992,5 +992,341 @@
         "eligible": ["p1", "p2"]
       }
     ]
+  },
+  {
+    "id": "W11",
+    "initialState": {
+      "tournamentId": "test",
+      "version": 1,
+      "status": "playing",
+      "settings": {
+        "names": ["A", "B", "C"],
+        "initial": 1000,
+        "sb": 5,
+        "bb": 10,
+        "button": 0
+      },
+      "initialTotal": 3000,
+      "setupOrder": ["p0", "p1", "p2"],
+      "players": [
+        {
+          "id": "p0",
+          "name": "A",
+          "stack": 990,
+          "eliminated": false,
+          "folded": false,
+          "B": 10,
+          "H": 10,
+          "actedAt": null,
+          "reopenAt": 0
+        },
+        {
+          "id": "p1",
+          "name": "B",
+          "stack": 995,
+          "eliminated": false,
+          "folded": true,
+          "B": 5,
+          "H": 5,
+          "actedAt": null,
+          "reopenAt": 0
+        },
+        {
+          "id": "p2",
+          "name": "C",
+          "stack": 990,
+          "eliminated": false,
+          "folded": false,
+          "B": 10,
+          "H": 10,
+          "actedAt": null,
+          "reopenAt": 0
+        }
+      ],
+      "hand": {
+        "id": "test:hand:1",
+        "number": 1,
+        "street": 0,
+        "phase": "settlement",
+        "buttonSeat": 0,
+        "sbSeat": 1,
+        "bbSeat": 2,
+        "sb": 5,
+        "bb": 10,
+        "actorId": null,
+        "W": 10,
+        "R": 10,
+        "pending": ["p0", "p1", "p2"],
+        "showdown": false
+      },
+      "pot": 25,
+      "pendingBlinds": null,
+      "undo": null
+    },
+    "commands": [
+      {
+        "type": "PREVIEW_SETTLEMENT",
+        "winners": {
+          "pot0": ["p0"]
+        }
+      }
+    ],
+    "expectedStateSubset": {
+      "ok": true,
+      "pots": [
+        {
+          "id": "pot0",
+          "amount": 25,
+          "eligible": ["p0", "p2"]
+        }
+      ],
+      "payouts": {
+        "p0": 25,
+        "p1": 0,
+        "p2": 0
+      }
+    },
+    "suite": "settlement",
+    "description": "올인 없는 SB 폴드의 5/10/10은 같은 자격자의 단일25팟",
+    "context": {
+      "id": "W11",
+      "at": "2026-10-18T00:00:00Z"
+    },
+    "expectedError": null,
+    "expectedEvents": []
+  },
+  {
+    "id": "W12",
+    "initialState": {
+      "tournamentId": "test",
+      "version": 1,
+      "status": "playing",
+      "settings": {
+        "names": ["A", "B", "C", "D", "E"],
+        "initial": 1000,
+        "sb": 5,
+        "bb": 10,
+        "button": 0
+      },
+      "initialTotal": 5000,
+      "setupOrder": ["p0", "p1", "p2", "p3", "p4"],
+      "players": [
+        {
+          "id": "p0",
+          "name": "A",
+          "stack": 995,
+          "eliminated": false,
+          "folded": true,
+          "B": 5,
+          "H": 5,
+          "actedAt": null,
+          "reopenAt": 0
+        },
+        {
+          "id": "p1",
+          "name": "B",
+          "stack": 990,
+          "eliminated": false,
+          "folded": true,
+          "B": 10,
+          "H": 10,
+          "actedAt": null,
+          "reopenAt": 0
+        },
+        {
+          "id": "p2",
+          "name": "C",
+          "stack": 985,
+          "eliminated": false,
+          "folded": true,
+          "B": 15,
+          "H": 15,
+          "actedAt": null,
+          "reopenAt": 0
+        },
+        {
+          "id": "p3",
+          "name": "D",
+          "stack": 980,
+          "eliminated": false,
+          "folded": false,
+          "B": 20,
+          "H": 20,
+          "actedAt": null,
+          "reopenAt": 0
+        },
+        {
+          "id": "p4",
+          "name": "E",
+          "stack": 980,
+          "eliminated": false,
+          "folded": false,
+          "B": 20,
+          "H": 20,
+          "actedAt": null,
+          "reopenAt": 0
+        }
+      ],
+      "hand": {
+        "id": "test:hand:1",
+        "number": 1,
+        "street": 0,
+        "phase": "settlement",
+        "buttonSeat": 0,
+        "sbSeat": 1,
+        "bbSeat": 2,
+        "sb": 5,
+        "bb": 10,
+        "actorId": null,
+        "W": 10,
+        "R": 10,
+        "pending": ["p0", "p1", "p2", "p3", "p4"],
+        "showdown": false
+      },
+      "pot": 70,
+      "pendingBlinds": null,
+      "undo": null
+    },
+    "commands": [
+      {
+        "type": "PREVIEW_SETTLEMENT",
+        "winners": {
+          "pot0": ["p3", "p4"]
+        }
+      }
+    ],
+    "expectedStateSubset": {
+      "ok": true,
+      "pots": [
+        {
+          "id": "pot0",
+          "amount": 70,
+          "eligible": ["p3", "p4"]
+        }
+      ],
+      "payouts": {
+        "p0": 0,
+        "p1": 0,
+        "p2": 0,
+        "p3": 35,
+        "p4": 35
+      }
+    },
+    "suite": "settlement",
+    "description": "폴드 금액 경계를 합쳐 동률 잔여칩을 전체 팟에서 한 번만 분배",
+    "context": {
+      "id": "W12",
+      "at": "2026-10-18T00:00:00Z"
+    },
+    "expectedError": null,
+    "expectedEvents": []
+  },
+  {
+    "id": "W13",
+    "initialState": {
+      "tournamentId": "test",
+      "version": 1,
+      "status": "playing",
+      "settings": {
+        "names": ["A", "B", "C"],
+        "initial": 1000,
+        "sb": 5,
+        "bb": 10,
+        "button": 0
+      },
+      "initialTotal": 3000,
+      "setupOrder": ["p0", "p1", "p2"],
+      "players": [
+        {
+          "id": "p0",
+          "name": "A",
+          "stack": 1000,
+          "eliminated": false,
+          "folded": false,
+          "B": 0,
+          "H": 0,
+          "actedAt": null,
+          "reopenAt": 0
+        },
+        {
+          "id": "p1",
+          "name": "B",
+          "stack": 995,
+          "eliminated": false,
+          "folded": false,
+          "B": 5,
+          "H": 5,
+          "actedAt": null,
+          "reopenAt": 0
+        },
+        {
+          "id": "p2",
+          "name": "C",
+          "stack": 990,
+          "eliminated": false,
+          "folded": false,
+          "B": 10,
+          "H": 10,
+          "actedAt": null,
+          "reopenAt": 0
+        }
+      ],
+      "hand": {
+        "id": "test:hand:1",
+        "number": 1,
+        "street": 0,
+        "phase": "betting",
+        "buttonSeat": 0,
+        "sbSeat": 1,
+        "bbSeat": 2,
+        "sb": 5,
+        "bb": 10,
+        "actorId": "p0",
+        "W": 10,
+        "R": 10,
+        "pending": ["p0", "p1", "p2"],
+        "showdown": false
+      },
+      "pot": 15,
+      "pendingBlinds": null,
+      "undo": null
+    },
+    "commands": [
+      {
+        "type": "PREVIEW_SETTLEMENT",
+        "winners": {
+          "pot0": ["p1", "p2"]
+        }
+      }
+    ],
+    "expectedStateSubset": {
+      "ok": true,
+      "allocations": [
+        {
+          "potId": "pot0",
+          "amount": 15,
+          "payouts": {
+            "p1": 10,
+            "p2": 5
+          },
+          "remainderRecipients": ["p1"]
+        }
+      ]
+    },
+    "suite": "settlement",
+    "description": "미리보기는 팟별 지급과 잔여 5칩 수령자를 제공한다",
+    "context": {
+      "id": "W13",
+      "at": "2026-10-18T00:00:00Z"
+    },
+    "expectedError": null,
+    "expectedEvents": [],
+    "pots": [
+      {
+        "id": "pot0",
+        "amount": 15,
+        "eligible": ["p1", "p2"]
+      }
+    ]
   }
 ]

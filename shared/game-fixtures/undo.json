@@ -1,0 +1,378 @@
+[
+  {
+    "id": "UNDO01",
+    "initialState": {
+      "names": ["A", "B"],
+      "initial": 1000,
+      "sb": 5,
+      "bb": 10,
+      "button": 0
+    },
+    "commands": [
+      {
+        "type": "START_TOURNAMENT"
+      },
+      {
+        "type": "CALL"
+      },
+      {
+        "type": "CHECK",
+        "expectedStateSubset": {
+          "hand": {
+            "street": 1
+          }
+        }
+      },
+      {
+        "type": "UNDO",
+        "expectedStateSubset": {
+          "version": 4,
+          "hand": {
+            "street": 0,
+            "phase": "betting",
+            "actorId": "p1"
+          },
+          "pot": 20,
+          "players": [
+            {
+              "stack": 990,
+              "B": 10,
+              "H": 10
+            },
+            {
+              "stack": 990,
+              "B": 10,
+              "H": 10
+            }
+          ],
+          "undo": null
+        }
+      },
+      {
+        "type": "UNDO",
+        "expectError": "UNDO_LOCKED"
+      },
+      {
+        "type": "CHECK",
+        "expectedStateSubset": {
+          "version": 5,
+          "hand": {
+            "street": 1
+          },
+          "undo": {
+            "status": "playing"
+          }
+        }
+      },
+      {
+        "type": "UNDO",
+        "expectedStateSubset": {
+          "version": 6,
+          "hand": {
+            "street": 0,
+            "phase": "betting",
+            "actorId": "p1"
+          },
+          "pot": 20,
+          "players": [
+            {
+              "stack": 990,
+              "B": 10,
+              "H": 10
+            },
+            {
+              "stack": 990,
+              "B": 10,
+              "H": 10
+            }
+          ],
+          "undo": null
+        }
+      },
+      {
+        "type": "UNDO",
+        "expectError": "UNDO_LOCKED"
+      }
+    ],
+    "expectedStateSubset": {
+      "version": 6,
+      "hand": {
+        "street": 0,
+        "phase": "betting",
+        "actorId": "p1"
+      },
+      "pot": 20,
+      "players": [
+        {
+          "stack": 990,
+          "B": 10,
+          "H": 10
+        },
+        {
+          "stack": 990,
+          "B": 10,
+          "H": 10
+        }
+      ],
+      "undo": null
+    },
+    "suite": "undo",
+    "description": "스트리트 종료 체크를 한 번 복원하고 새 행동 후에만 다시 무른다",
+    "context": {
+      "id": "UNDO01",
+      "at": "2026-10-18T00:00:00Z"
+    },
+    "expectedError": null,
+    "expectedEvents": ["UNDO"]
+  },
+  {
+    "id": "UNDO02",
+    "initialState": {
+      "names": ["A", "B"],
+      "initial": 1000,
+      "sb": 5,
+      "bb": 10,
+      "button": 0
+    },
+    "commands": [
+      {
+        "type": "START_TOURNAMENT"
+      },
+      {
+        "type": "SCHEDULE_BLINDS",
+        "sb": 10,
+        "bb": 20
+      },
+      {
+        "type": "FOLD",
+        "expectedStateSubset": {
+          "hand": {
+            "number": 2,
+            "sb": 10,
+            "bb": 20
+          }
+        }
+      },
+      {
+        "type": "UNDO",
+        "expectedStateSubset": {
+          "version": 4,
+          "hand": {
+            "number": 1,
+            "sb": 5,
+            "bb": 10
+          },
+          "pendingBlinds": {
+            "sb": 10,
+            "bb": 20
+          },
+          "pot": 15,
+          "players": [
+            {
+              "stack": 995,
+              "B": 5,
+              "H": 5
+            },
+            {
+              "stack": 990,
+              "B": 10,
+              "H": 10
+            }
+          ],
+          "undo": null
+        }
+      },
+      {
+        "type": "UNDO",
+        "expectError": "UNDO_LOCKED"
+      }
+    ],
+    "expectedStateSubset": {
+      "version": 4,
+      "hand": {
+        "number": 1,
+        "sb": 5,
+        "bb": 10
+      },
+      "pendingBlinds": {
+        "sb": 10,
+        "bb": 20
+      },
+      "pot": 15,
+      "players": [
+        {
+          "stack": 995,
+          "B": 5,
+          "H": 5
+        },
+        {
+          "stack": 990,
+          "B": 10,
+          "H": 10
+        }
+      ],
+      "undo": null
+    },
+    "suite": "undo",
+    "description": "마지막 폴드의 반환·지급·새 핸드·예약 블라인드를 모두 복원한다",
+    "context": {
+      "id": "UNDO02",
+      "at": "2026-10-18T00:00:00Z"
+    },
+    "expectedError": null,
+    "expectedEvents": ["UNDO"]
+  },
+  {
+    "id": "UNDO03",
+    "initialState": {
+      "names": ["A", "B"],
+      "initial": 1000,
+      "sb": 5,
+      "bb": 10,
+      "button": 0
+    },
+    "commands": [
+      {
+        "type": "START_TOURNAMENT"
+      },
+      {
+        "type": "ALL_IN"
+      },
+      {
+        "type": "CALL"
+      },
+      {
+        "type": "SETTLE_HAND",
+        "winners": {
+          "pot0": ["p0"]
+        },
+        "expectedStateSubset": {
+          "status": "ended"
+        }
+      },
+      {
+        "type": "UNDO",
+        "expectedStateSubset": {
+          "version": 5,
+          "status": "playing",
+          "pot": 2000,
+          "hand": {
+            "number": 1,
+            "phase": "settlement"
+          },
+          "players": [
+            {
+              "stack": 0,
+              "H": 1000
+            },
+            {
+              "stack": 0,
+              "H": 1000
+            }
+          ],
+          "undo": null
+        }
+      },
+      {
+        "type": "UNDO",
+        "expectError": "UNDO_LOCKED"
+      }
+    ],
+    "expectedStateSubset": {
+      "version": 5,
+      "status": "playing",
+      "pot": 2000,
+      "hand": {
+        "number": 1,
+        "phase": "settlement"
+      },
+      "players": [
+        {
+          "stack": 0,
+          "H": 1000
+        },
+        {
+          "stack": 0,
+          "H": 1000
+        }
+      ],
+      "undo": null
+    },
+    "suite": "undo",
+    "description": "쇼다운 지급과 토너먼트 종료도 한 번만 복원한다",
+    "context": {
+      "id": "UNDO03",
+      "at": "2026-10-18T00:00:00Z"
+    },
+    "expectedError": null,
+    "expectedEvents": ["UNDO"]
+  },
+  {
+    "id": "UNDO04",
+    "initialState": {
+      "names": ["A", "B"],
+      "initial": 1000,
+      "sb": 5,
+      "bb": 10,
+      "button": 0
+    },
+    "commands": [
+      {
+        "type": "START_TOURNAMENT"
+      },
+      {
+        "type": "FOLD"
+      },
+      {
+        "type": "CALL"
+      },
+      {
+        "type": "UNDO",
+        "expectedStateSubset": {
+          "version": 4,
+          "hand": {
+            "number": 2
+          },
+          "pot": 15,
+          "players": [
+            {
+              "stack": 985
+            },
+            {
+              "stack": 1000
+            }
+          ],
+          "undo": null
+        }
+      },
+      {
+        "type": "UNDO",
+        "expectError": "UNDO_LOCKED"
+      }
+    ],
+    "expectedStateSubset": {
+      "version": 4,
+      "hand": {
+        "number": 2
+      },
+      "pot": 15,
+      "players": [
+        {
+          "stack": 985
+        },
+        {
+          "stack": 1000
+        }
+      ],
+      "undo": null
+    },
+    "suite": "undo",
+    "description": "다음 핸드 새 행동은 이전 핸드까지 돌아가지 않는다",
+    "context": {
+      "id": "UNDO04",
+      "at": "2026-10-18T00:00:00Z"
+    },
+    "expectedError": null,
+    "expectedEvents": ["UNDO"]
+  }
+]

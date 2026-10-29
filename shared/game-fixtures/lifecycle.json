@@ -289,5 +289,559 @@
     },
     "expectedError": null,
     "expectedEvents": ["HAND_START"]
+  },
+  {
+    "id": "AUTO01",
+    "initialState": {
+      "names": ["P1", "P2"],
+      "initial": 1000,
+      "sb": 5,
+      "bb": 10,
+      "button": 0
+    },
+    "commands": [
+      {
+        "type": "START_TOURNAMENT"
+      },
+      {
+        "type": "CALL",
+        "expectedStateSubset": {
+          "version": 2
+        }
+      },
+      {
+        "type": "CHECK",
+        "expectedStateSubset": {
+          "version": 3,
+          "hand": {
+            "street": 1,
+            "phase": "betting",
+            "actorId": "p1",
+            "W": 0,
+            "R": 10
+          },
+          "players": [
+            {
+              "H": 10,
+              "B": 0
+            },
+            {
+              "H": 10,
+              "B": 0
+            }
+          ],
+          "undo": {
+            "status": "playing"
+          }
+        }
+      },
+      {
+        "type": "CHECK"
+      },
+      {
+        "type": "CHECK"
+      },
+      {
+        "type": "CHECK"
+      },
+      {
+        "type": "CHECK"
+      },
+      {
+        "type": "CHECK"
+      },
+      {
+        "type": "CHECK",
+        "expectedStateSubset": {
+          "hand": {
+            "street": 3,
+            "phase": "settlement",
+            "actorId": null
+          }
+        }
+      }
+    ],
+    "expectedStateSubset": {
+      "hand": {
+        "street": 3,
+        "phase": "settlement",
+        "actorId": null
+      }
+    },
+    "suite": "lifecycle",
+    "description": "베팅 완료는 같은 저장 변경에서 다음 스트리트, B만 초기화·H 유지·직전 행동 복원 가능(undo 있음), 이후 체크로 정산 단계",
+    "context": {
+      "id": "AUTO01",
+      "at": "2026-10-18T00:00:00Z"
+    },
+    "expectedError": null,
+    "expectedEvents": []
+  },
+  {
+    "id": "AUTO02",
+    "initialState": {
+      "names": ["P1", "P2"],
+      "initial": 1000,
+      "sb": 5,
+      "bb": 10,
+      "button": 0
+    },
+    "commands": [
+      {
+        "type": "START_TOURNAMENT"
+      },
+      {
+        "type": "ALL_IN"
+      },
+      {
+        "type": "CALL",
+        "expectedStateSubset": {
+          "hand": {
+            "phase": "settlement",
+            "showdown": true,
+            "actorId": null
+          },
+          "undo": {
+            "status": "playing"
+          },
+          "pot": 2000
+        }
+      }
+    ],
+    "expectedStateSubset": {
+      "hand": {
+        "phase": "settlement",
+        "showdown": true,
+        "actorId": null
+      },
+      "undo": {
+        "status": "playing"
+      },
+      "pot": 2000
+    },
+    "suite": "lifecycle",
+    "description": "올인 응답 완료는 공개/시작 명령 없이 승자 선택 단계(쇼다운), 직전 행동 복원 가능",
+    "context": {
+      "id": "AUTO02",
+      "at": "2026-10-18T00:00:00Z"
+    },
+    "expectedError": null,
+    "expectedEvents": []
+  },
+  {
+    "id": "LIF06",
+    "initialState": {
+      "names": ["A", "B", "C"],
+      "initial": 1000,
+      "sb": 5,
+      "bb": 10,
+      "button": 0
+    },
+    "commands": [
+      {
+        "type": "START_TOURNAMENT"
+      },
+      {
+        "type": "CALL",
+        "expectedStateSubset": {
+          "pot": 25
+        }
+      },
+      {
+        "type": "SCHEDULE_BLINDS",
+        "sb": 10,
+        "bb": 20
+      },
+      {
+        "type": "UNDO",
+        "expectedStateSubset": {
+          "pot": 15,
+          "pendingBlinds": {
+            "sb": 10,
+            "bb": 20
+          }
+        }
+      },
+      {
+        "type": "UNDO",
+        "expectError": "UNDO_LOCKED"
+      },
+      {
+        "type": "CALL",
+        "expectedStateSubset": {
+          "pot": 25
+        }
+      }
+    ],
+    "expectedStateSubset": {
+      "pot": 25
+    },
+    "suite": "lifecycle",
+    "description": "직전 행동만 취소, 예약 보존, 한 번 사용 후 거절",
+    "context": {
+      "id": "LIF06",
+      "at": "2026-10-18T00:00:00Z"
+    },
+    "expectedError": null,
+    "expectedEvents": []
+  },
+  {
+    "id": "LIF07",
+    "initialState": {
+      "names": ["A", "B", "C", "D", "E", "F"],
+      "initial": 1000,
+      "sb": 5,
+      "bb": 10,
+      "button": 0
+    },
+    "commands": [
+      {
+        "type": "START_TOURNAMENT"
+      },
+      {
+        "type": "CALL"
+      },
+      {
+        "type": "CALL"
+      },
+      {
+        "type": "CALL"
+      },
+      {
+        "type": "CALL"
+      },
+      {
+        "type": "CALL"
+      },
+      {
+        "type": "CHECK"
+      },
+      {
+        "type": "CHECK"
+      },
+      {
+        "type": "CHECK"
+      },
+      {
+        "type": "CHECK"
+      },
+      {
+        "type": "CHECK"
+      },
+      {
+        "type": "CHECK"
+      },
+      {
+        "type": "CHECK"
+      },
+      {
+        "type": "CHECK"
+      },
+      {
+        "type": "CHECK"
+      },
+      {
+        "type": "CHECK"
+      },
+      {
+        "type": "CHECK"
+      },
+      {
+        "type": "CHECK"
+      },
+      {
+        "type": "CHECK"
+      },
+      {
+        "type": "CHECK"
+      },
+      {
+        "type": "CHECK"
+      },
+      {
+        "type": "CHECK"
+      },
+      {
+        "type": "CHECK"
+      },
+      {
+        "type": "CHECK"
+      },
+      {
+        "type": "CHECK"
+      },
+      {
+        "type": "SETTLE_HAND",
+        "winners": {
+          "pot0": ["p0"]
+        }
+      }
+    ],
+    "expectedStateSubset": {
+      "hand": {
+        "number": 2
+      },
+      "pot": 15,
+      "players": [
+        {
+          "H": 0,
+          "stack": 1050
+        },
+        {
+          "H": 0,
+          "stack": 990
+        },
+        {
+          "H": 5,
+          "stack": 985
+        },
+        {
+          "H": 10,
+          "stack": 980
+        },
+        {
+          "H": 0,
+          "stack": 990
+        },
+        {
+          "H": 0,
+          "stack": 990
+        }
+      ]
+    },
+    "suite": "lifecycle",
+    "description": "6인 정산과 다음 핸드 블라인드 1회, 총량 6000(스택 합 5985 + 팟 15)",
+    "context": {
+      "id": "LIF07",
+      "at": "2026-10-18T00:00:00Z"
+    },
+    "expectedError": null,
+    "expectedEvents": ["HAND_START"]
+  },
+  {
+    "id": "LIF08",
+    "initialState": {
+      "names": ["A", "B", "C"],
+      "initial": 1000,
+      "sb": 5,
+      "bb": 10,
+      "button": 0
+    },
+    "commands": [
+      {
+        "type": "START_TOURNAMENT"
+      },
+      {
+        "type": "ABORT"
+      },
+      {
+        "type": "CALL",
+        "expectError": "INVALID_ACTION"
+      }
+    ],
+    "expectedStateSubset": {
+      "status": "aborted",
+      "pot": 15
+    },
+    "suite": "lifecycle",
+    "description": "중단은 장부 보존(팟 15 유지), 중단 후 행동 거절 (최종 올인 우승은 LIF02와 같은 단언)",
+    "context": {
+      "id": "LIF08",
+      "at": "2026-10-18T00:00:00Z"
+    },
+    "expectedError": null,
+    "expectedEvents": ["ABORT"]
+  },
+  {
+    "id": "LIF09",
+    "initialState": {
+      "names": ["A", "B"],
+      "initial": 1000,
+      "sb": 5,
+      "bb": 10,
+      "button": 0
+    },
+    "commands": [
+      {
+        "type": "START_TOURNAMENT"
+      },
+      {
+        "type": "FOLD"
+      }
+    ],
+    "expectedStateSubset": {
+      "hand": {
+        "number": 2
+      },
+      "undo": {
+        "status": "playing"
+      },
+      "players": [
+        {
+          "stack": 985
+        },
+        {
+          "stack": 1000
+        }
+      ]
+    },
+    "suite": "lifecycle",
+    "description": "마지막 폴드는 반환과 지급 후 다음 핸드, 직전 폴드 복원 가능(undo 있음)",
+    "context": {
+      "id": "LIF09",
+      "at": "2026-10-18T00:00:00Z"
+    },
+    "expectedError": null,
+    "expectedEvents": ["HAND_START"]
+  },
+  {
+    "id": "SET01",
+    "initialState": {
+      "names": ["P1", "P2"],
+      "initial": 1000,
+      "sb": 5,
+      "bb": 10,
+      "button": -1
+    },
+    "commands": [
+      {
+        "type": "START_TOURNAMENT",
+        "expectError": "DEALER_REQUIRED"
+      },
+      {
+        "type": "SETUP_UPDATE",
+        "settings": {
+          "names": ["P1", "P2"],
+          "initial": 1000,
+          "sb": 5,
+          "bb": 10,
+          "button": 1
+        }
+      },
+      {
+        "type": "START_TOURNAMENT",
+        "expectedStateSubset": {
+          "hand": {
+            "buttonSeat": 1,
+            "sbSeat": 1,
+            "bbSeat": 0
+          }
+        }
+      }
+    ],
+    "expectedStateSubset": {
+      "hand": {
+        "buttonSeat": 1,
+        "sbSeat": 1,
+        "bbSeat": 0
+      }
+    },
+    "suite": "lifecycle",
+    "description": "딜러 미선택(-1)이면 시작 불가, 딜러 선택 후 시작하면 2인은 버튼이 SB",
+    "context": {
+      "id": "SET01",
+      "at": "2026-10-18T00:00:00Z"
+    },
+    "expectedError": null,
+    "expectedEvents": []
+  },
+  {
+    "id": "SET02",
+    "initialState": {
+      "names": ["P1", "P2"],
+      "initial": 1000,
+      "sb": 5,
+      "bb": 10,
+      "button": 0
+    },
+    "commands": [
+      {
+        "type": "SETUP_UPDATE",
+        "settings": {
+          "names": ["P1", "P2", "P3"],
+          "initial": 1000,
+          "sb": 5,
+          "bb": 10,
+          "button": 0
+        },
+        "expectedStateSubset": {
+          "setupOrder": ["p0", "p1", "SET02:p2"]
+        }
+      },
+      {
+        "type": "SETUP_UPDATE",
+        "settings": {
+          "names": ["이름변경", "P1", "P2"],
+          "initial": 1000,
+          "sb": 5,
+          "bb": 10,
+          "button": 1
+        },
+        "order": ["SET02:p2", "p0", "p1"],
+        "expectedStateSubset": {
+          "setupOrder": ["p0", "p1", "SET02:p2"]
+        }
+      },
+      {
+        "type": "SETUP_UPDATE",
+        "settings": {
+          "names": ["P1", "P2"],
+          "initial": 1000,
+          "sb": 5,
+          "bb": 10,
+          "button": 0
+        },
+        "order": ["p0", "p1"],
+        "expectedStateSubset": {
+          "setupOrder": ["p0", "p1"]
+        }
+      },
+      {
+        "type": "SETUP_UPDATE",
+        "settings": {
+          "names": ["P1", "P2", "P3"],
+          "initial": 1000,
+          "sb": 5,
+          "bb": 10,
+          "button": 0
+        },
+        "expectedStateSubset": {
+          "players": [
+            {
+              "name": "P1"
+            },
+            {
+              "name": "P2"
+            },
+            {
+              "name": "P3"
+            }
+          ],
+          "setupOrder": ["p0", "p1", "SET02:p2"]
+        }
+      }
+    ],
+    "expectedStateSubset": {
+      "players": [
+        {
+          "name": "P1"
+        },
+        {
+          "name": "P2"
+        },
+        {
+          "name": "P3"
+        }
+      ],
+      "setupOrder": ["p0", "p1", "SET02:p2"]
+    },
+    "suite": "lifecycle",
+    "description": "추가 순서는 좌석 이동·이름 변경·삭제 후 재추가와 독립적으로 유지",
+    "context": {
+      "id": "SET02",
+      "at": "2026-10-18T00:00:00Z"
+    },
+    "expectedError": null,
+    "expectedEvents": []
   }
 ]

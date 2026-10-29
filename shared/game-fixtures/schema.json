@@ -22,8 +22,27 @@
       "required": ["type"],
       "properties": {
         "type": { "type": "string" },
-        "expectError": { "type": "string" }
+        "expectError": { "type": "string" },
+        "expectedStateSubset": {
+          "type": "object",
+          "description": "Checked (toMatchObject) on the state this command leaves behind."
+        }
       }
+    },
+    "positionCommand": {
+      "type": "object",
+      "required": ["alive", "expected"],
+      "properties": {
+        "type": { "enum": ["INITIAL_BLIND_SEATS"] },
+        "alive": { "type": "array", "items": { "type": "boolean" } },
+        "button": { "type": "integer", "minimum": 0 },
+        "expected": { "type": "object" }
+      },
+      "if": {
+        "type": "object",
+        "required": ["type"]
+      },
+      "then": { "required": ["button"] }
     },
     "winnersByPot": {
       "type": "object",
@@ -44,7 +63,10 @@
       "expectedEvents"
     ],
     "properties": {
-      "id": { "type": "string", "pattern": "^(D|B|P|W|S|LIF)[0-9]{2}$" },
+      "id": {
+        "type": "string",
+        "pattern": "^(D|B|P|W|S|LIF|UNDO|AUTO|SET)[0-9]{2}$"
+      },
       "suite": {
         "enum": [
           "settings",
@@ -52,7 +74,8 @@
           "betting",
           "pots",
           "settlement",
-          "lifecycle"
+          "lifecycle",
+          "undo"
         ]
       },
       "description": { "type": "string", "minLength": 1 },
@@ -89,6 +112,28 @@
       "expectedLegal": { "type": "object" }
     },
     "allOf": [
+      {
+        "if": { "properties": { "suite": { "const": "positions" } } },
+        "then": {
+          "properties": {
+            "commands": {
+              "type": "array",
+              "items": { "$ref": "#/definitions/positionCommand" }
+            }
+          }
+        }
+      },
+      {
+        "if": { "properties": { "suite": { "enum": ["lifecycle", "undo"] } } },
+        "then": {
+          "properties": {
+            "commands": {
+              "type": "array",
+              "items": { "$ref": "#/definitions/command" }
+            }
+          }
+        }
+      },
       {
         "if": { "properties": { "suite": { "const": "betting" } } },
         "then": {

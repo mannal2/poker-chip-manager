@@ -7,6 +7,7 @@ import betting from '../../../shared/game-fixtures/betting.json';
 import pots from '../../../shared/game-fixtures/pots.json';
 import settlement from '../../../shared/game-fixtures/settlement.json';
 import lifecycle from '../../../shared/game-fixtures/lifecycle.json';
+import undo from '../../../shared/game-fixtures/undo.json';
 import { validateSettings } from '../../src/game/settings';
 import {
   createTournament,
@@ -14,16 +15,20 @@ import {
   getLegalActions,
   returnUncalled,
 } from '../../src/game/transition';
-import { nextPositions } from '../../src/game/positions';
+import { nextPositions, initialBlindSeats } from '../../src/game/positions';
 import { buildPots, previewSettlement } from '../../src/game/settlement';
 import { assertInvariants } from '../../src/game/invariants';
 import type { GameCommand, GameState, Pot } from '../../src/game/types';
 
 // Fixture format v2: every case carries a full GameState (or the suite's own input) and a
 // list of commands; the runner holds no interpretation of compact states.
-const suites = { settings, positions, betting, pots, settlement, lifecycle };
+const suites = { settings, positions, betting, pots, settlement, lifecycle, undo };
 export type SuiteName = keyof typeof suites;
-type Command = { type: string; expectError?: string } & Record<string, unknown>;
+type Command = {
+  type: string;
+  expectError?: string;
+  expectedStateSubset?: object;
+} & Record<string, unknown>;
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type Case = {
   id: string;
@@ -42,18 +47,22 @@ const validate = new Ajv({ allErrors: true }).compile(schema);
 
 // Runs one game command, checking the input state is untouched and applying `expectError`.
 // A rejected command (expectError) leaves the state as it was for the next command.
-function step(s: GameState, raw: Command, ctx: Case['context']): GameState {
-  const { expectError, ...command } = raw;
+// A command's own `expectedStateSubset` is checked (toMatchObject) on the state it leaves behind.
+function step(s: GameState, raw: Command, ctx: Case['context'], events?: string[]): GameState {
+  const { expectError, expectedStateSubset, ...command } = raw;
   const before = JSON.stringify(s);
   const r = transition(s, command as GameCommand, ctx);
   expect(JSON.stringify(s)).toBe(before);
   if (expectError !== undefined) {
     if (r.ok) throw Error('The command must be rejected.');
     expect(r.errorCode).toBe(expectError);
+    if (expectedStateSubset !== undefined) expect(s).toMatchObject(expectedStateSubset);
     return s;
   }
   if (!r.ok) throw Error(r.errorCode);
   assertInvariants(r.state);
+  events?.push(...r.events.map((e) => e.type));
+  if (expectedStateSubset !== undefined) expect(r.state).toMatchObject(expectedStateSubset);
   return r.state;
 }
 
@@ -98,21 +107,26 @@ function runSettlement(f: Case) {
     const r = previewSettlement(s, command.winners, f.pots ?? buildPots(s));
     expect(r.ok).toBe(f.expectedStateSubset.ok);
     if (f.expectedStateSubset.payouts) expect(r.payouts).toEqual(f.expectedStateSubset.payouts);
+    if (f.expectedStateSubset.allocations)
+      expect(r.allocations).toMatchObject(f.expectedStateSubset.allocations);
+    if (f.expectedStateSubset.pots) expect(buildPots(s)).toEqual(f.expectedStateSubset.pots);
   }
 }
 
 function runLifecycle(f: Case) {
   let s = createTournament(f.initialState, f.context);
   const events: string[] = [];
-  for (const cmd of f.commands) {
-    const before = JSON.stringify(s);
-    const r = transition(s, cmd as GameCommand, f.context);
-    expect(JSON.stringify(s)).toBe(before);
-    if (!r.ok) throw Error(r.errorCode);
-    s = r.state;
-    assertInvariants(s);
-    events.push(...r.events.map((e) => e.type));
-  }
+  // Case-level expectedError: the last command must be rejected, all earlier ones succeed.
+  f.commands.forEach((command, i) => {
+    const last = i === f.commands.length - 1;
+    s = step(
+      s,
+      last && f.expectedError ? { ...command, expectError: f.expectedError } : command,
+      f.context,
+      events,
+    );
+  });
+  if (f.expectedError) return;
   expect(s).toMatchObject(f.expectedStateSubset);
   for (const type of f.expectedEvents) expect(events).toContain(type);
 }
@@ -120,6 +134,11 @@ function runLifecycle(f: Case) {
 function runPositions(f: Case) {
   let p = f.initialState;
   for (const c of f.commands) {
+    if (c.type === 'INITIAL_BLIND_SEATS') {
+      // Pseudo command: first-hand blind seats from a chosen button; does not change `p`.
+      expect(initialBlindSeats(c.button, c.alive)).toEqual(c.expected);
+      continue;
+    }
     p = nextPositions(c.alive, p);
     expect(p).toEqual(c.expected);
   }
@@ -132,6 +151,7 @@ const runners: Record<SuiteName, (f: Case) => void> = {
   pots: runPots,
   settlement: runSettlement,
   lifecycle: runLifecycle,
+  undo: runLifecycle,
 };
 
 export function runFixtureSuite(name: SuiteName) {

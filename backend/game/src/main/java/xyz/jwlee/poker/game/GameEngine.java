@@ -3,6 +3,7 @@ package xyz.jwlee.poker.game;
 import java.util.ArrayList;
 import java.util.List;
 import xyz.jwlee.poker.game.command.BettingCommands;
+import xyz.jwlee.poker.game.command.FlowCommands;
 import xyz.jwlee.poker.game.command.GameCommand;
 import xyz.jwlee.poker.game.command.SetupCommands;
 import xyz.jwlee.poker.game.event.GameEvent;
@@ -34,8 +35,8 @@ public final class GameEngine {
                     BettingCommands.act(s, ActionType.BET, x.playerId(), x.additional(), c, events);
                 case GameCommand.Raise x ->
                     BettingCommands.act(s, ActionType.RAISE, x.playerId(), x.additional(), c, events);
+                case GameCommand.SettleHand x -> FlowCommands.settleHand(s, x, c, events);
                 // Handlers for these arrive in later tasks; until then they are rejected.
-                case GameCommand.SettleHand x -> throw new RuleViolation(RuleErrorCode.INVALID_ACTION);
                 case GameCommand.ScheduleBlinds x -> throw new RuleViolation(RuleErrorCode.INVALID_ACTION);
                 case GameCommand.Undo x -> throw new RuleViolation(RuleErrorCode.INVALID_ACTION);
                 case GameCommand.Abort x -> throw new RuleViolation(RuleErrorCode.INVALID_ACTION);

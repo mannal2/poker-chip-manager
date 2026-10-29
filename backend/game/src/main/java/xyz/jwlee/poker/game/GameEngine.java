@@ -36,10 +36,10 @@ public final class GameEngine {
                 case GameCommand.Raise x ->
                     BettingCommands.act(s, ActionType.RAISE, x.playerId(), x.additional(), c, events);
                 case GameCommand.SettleHand x -> FlowCommands.settleHand(s, x, c, events);
-                // Handlers for these arrive in later tasks; until then they are rejected.
-                case GameCommand.ScheduleBlinds x -> throw new RuleViolation(RuleErrorCode.INVALID_ACTION);
-                case GameCommand.Undo x -> throw new RuleViolation(RuleErrorCode.INVALID_ACTION);
-                case GameCommand.Abort x -> throw new RuleViolation(RuleErrorCode.INVALID_ACTION);
+                case GameCommand.ScheduleBlinds x -> FlowCommands.scheduleBlinds(s, x, c, events);
+                case GameCommand.Undo x -> FlowCommands.undo(s, x, c, events);
+                case GameCommand.Abort x -> FlowCommands.abort(s, x, c, events);
+                // Handler arrives in a later task; until then it is rejected.
                 case GameCommand.Forfeit x -> throw new RuleViolation(RuleErrorCode.INVALID_ACTION);
             }
             if (isUndoable(cmd)) {

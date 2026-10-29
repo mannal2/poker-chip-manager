@@ -1,5 +1,7 @@
 # Poker Chip Manager — 기획 및 결정 기록
 
+> **2026-10-29 안내:** 현재 기준 문서는 [SINGLE_DEVICE_MODE.md](SINGLE_DEVICE_MODE.md)(구현된 단일 기기 동작)와 [MULTIPLAYER_MODE.md](MULTIPLAYER_MODE.md)(멀티플레이 기획)다. 이 문서는 2026-10-17 기획 결정의 이력이다. 운영·배포·인증 정책 중 두 문서가 다시 정리하지 않은 내용은 여전히 유효하다.
+
 최종 갱신: 2026-10-17 (Asia/Seoul) · 상태: 기획 진행 중, 구현 전
 
 ## 문서 관리 원칙

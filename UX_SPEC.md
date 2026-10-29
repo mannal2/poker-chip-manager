@@ -1,5 +1,7 @@
 # Poker Chip Manager — 화면 흐름 명세
 
+> **2026-10-29 안내:** 현재 기준 문서는 [SINGLE_DEVICE_MODE.md](SINGLE_DEVICE_MODE.md)(구현된 단일 기기 동작)와 [MULTIPLAYER_MODE.md](MULTIPLAYER_MODE.md)(멀티플레이 기획)다. 이 문서의 날짜별 승인 절은 변경 이력이며, 최종 화면 동작은 두 문서를 따른다.
+
 작성일: 2026-10-17 · 최종 갱신: 2026-10-18 · 사용자 프로토타입 수정 완료
 
 후속 작업: [프로토타입 01](prototype/index.html)을 작성했다. 2·6·9인 배치, 준비 좌석 삽입 이동, 입력·공개 잠금·메인 팟 정산을 확인할 수 있다. 검증 범위와 생략 기능은 [프로토타입 안내](prototype/README.md)를 따른다. 이 문단은 최초 시안 이력이다. 이후 시안04와 최종 정산 조정이 현재 기준이며 DESIGN_BASELINE.md에 통합했다.

@@ -1,14 +1,18 @@
 # Poker Chip Manager — 명세 안내와 완료 기준
 
-갱신일: 2026-10-18 · 구현 계획 작성 완료 · 제품 앱 구현 전
+갱신일: 2026-10-29 · 단일 기기 구현 완료 · 멀티플레이 구현 전
 
 새 대화 진입점: [START_HERE.md](START_HERE.md). 실행 계획은 [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md), 최종 디자인은 [DESIGN_BASELINE.md](DESIGN_BASELINE.md), 실제 진척은 [IMPLEMENTATION_PROGRESS.md](IMPLEMENTATION_PROGRESS.md)를 따른다.
 
 ## 문서별 기준
 
+2026-10-29부터 아래 두 문서가 제품 동작의 1순위 기준이다. 나머지 기획 문서는 결정 이력과 상세 계산·계약 자료로 남긴다.
+
 | 문서 | 책임 |
 |---|---|
-| [PLANNING.md](PLANNING.md) | 사용자가 확정한 제품 요구·정책 |
+| [SINGLE_DEVICE_MODE.md](SINGLE_DEVICE_MODE.md) | 구현 완료된 단일 기기 모드의 최종 동작과 기획 대비 변경 사항 |
+| [MULTIPLAYER_MODE.md](MULTIPLAYER_MODE.md) | 멀티플레이 모드 기획(단일 기기 최종 동작 반영), 미결 항목, 구현 순서 |
+| [PLANNING.md](PLANNING.md) | 사용자가 확정한 제품 요구·정책 (2026-10-17 기획 이력) |
 | [GAME_SPEC.md](GAME_SPEC.md) | 게임 상태·턴·베팅·버튼·팟·정산·취소와 기대값 |
 | [SYSTEM_SPEC.md](SYSTEM_SPEC.md) | 저장·API·인증·요청 순번·WS·재접속·경합·초기 제한 |
 | [DEPLOYMENT_SPEC.md](DEPLOYMENT_SPEC.md) | 독립 CI/CD·게임 보호·호환성·복구·인증서·운영 |

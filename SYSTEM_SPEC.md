@@ -1,5 +1,7 @@
 # Poker Chip Manager — 시스템 상세 명세
 
+> **2026-10-29 안내:** 현재 기준 문서는 [SINGLE_DEVICE_MODE.md](SINGLE_DEVICE_MODE.md)(구현된 단일 기기 동작)와 [MULTIPLAYER_MODE.md](MULTIPLAYER_MODE.md)(멀티플레이 기획)다. 멀티플레이 API·WS·인증 상세 계약(6~10·14~16절)은 계속 유효하되, `카드 공개`·공개 대기·베팅만 취소 같은 게임 흐름 표현은 MULTIPLAYER_MODE.md 정책으로 대체한다.
+
 작성일: 2026-10-17 · 상세 설계 초안 · 사용자 검토 및 구현 전
 
 ## 1. 범위와 결정 상태

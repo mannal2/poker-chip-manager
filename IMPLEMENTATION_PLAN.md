@@ -1,6 +1,6 @@
 # Poker Chip Manager — 전체 구현 계획
 
-> **2026-10-29 안내:** 현재 기준 문서는 [SINGLE_DEVICE_MODE.md](SINGLE_DEVICE_MODE.md)(구현된 단일 기기 동작)와 [MULTIPLAYER_MODE.md](MULTIPLAYER_MODE.md)(멀티플레이 기획)다. A 단계는 완료되었다. 멀티플레이 C 단계는 MULTIPLAYER_MODE.md 17절의 조정된 순서를 따른다.
+> **2026-10-29 안내:** 현재 기준 문서는 [SINGLE_DEVICE_MODE.md](SINGLE_DEVICE_MODE.md)(구현된 단일 기기 동작)와 [MULTIPLAYER_MODE.md](MULTIPLAYER_MODE.md)(멀티플레이 기획)다. A 단계는 완료되었다. 멀티플레이 C 단계는 MULTIPLAYER_MODE.md 18절의 조정된 순서를 따른다.
 
 > **For agentic workers:** 사용 가능한 경우 `superpowers:executing-plans`를 읽고 이 계획을 작업 단위로 실행한다. 계획 작성 대화에서는 구현을 시작하지 않았으며, 2026-10-18 사용자 구현 요청에 따라 A00~A11을 실행했다. 멀티플레이·외부 배포는 실행하지 않는다. 실제 검증 상태는 IMPLEMENTATION_PROGRESS.md를 따른다. 체크박스는 실제 검증 후 갱신한다.
 

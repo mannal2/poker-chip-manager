@@ -1,6 +1,6 @@
 # Poker Chip Manager — 전체 구현 계획
 
-> **2026-10-29 안내:** 현재 기준 문서는 [SINGLE_DEVICE_MODE.md](SINGLE_DEVICE_MODE.md)(구현된 단일 기기 동작)와 [MULTIPLAYER_MODE.md](MULTIPLAYER_MODE.md)(멀티플레이 기획)다. A 단계는 완료되었다. 멀티플레이 C 단계는 MULTIPLAYER_MODE.md 18절의 조정된 순서를 따른다.
+> **2026-10-29 안내:** 현재 기준 문서는 [SINGLE_DEVICE_MODE.md](SINGLE_DEVICE_MODE.md)(구현된 단일 기기 동작)와 [MULTIPLAYER_MODE.md](MULTIPLAYER_MODE.md)(멀티플레이 기획)다. A 단계는 완료되었다. 멀티플레이 C 단계는 MULTIPLAYER_MODE.md 19절의 조정된 순서를 따른다.
 
 > **For agentic workers:** 사용 가능한 경우 `superpowers:executing-plans`를 읽고 이 계획을 작업 단위로 실행한다. 계획 작성 대화에서는 구현을 시작하지 않았으며, 2026-10-18 사용자 구현 요청에 따라 A00~A11을 실행했다. 멀티플레이·외부 배포는 실행하지 않는다. 실제 검증 상태는 IMPLEMENTATION_PROGRESS.md를 따른다. 체크박스는 실제 검증 후 갱신한다.
 
@@ -73,7 +73,7 @@ shared/game-fixtures/{schema.json,settings.json,positions.json,
 IMPLEMENTATION_PROGRESS.md
 ```
 
-작은 함수마다 파일을 쪼개지 않는다. 위 파일 안에서 같은 책임을 묶는다. 타입/함수명은 초기 구현 계약이며 일관성 있는 변경이 필요하면 관련 테스트·문서를 함께 수정한다.
+~~작은 함수마다 파일을 쪼개지 않는다. 위 파일 안에서 같은 책임을 묶는다.~~ (2026-10-29 대체: 단일 기기 첫 구현 당시 방침이다. 이후 리팩토링으로 책임별 파일·폴더 분리와 lint 의존 경계를 도입했으며, 현재 기준은 [MULTIPLAYER_MODE.md](MULTIPLAYER_MODE.md) 15절 "코드 구조 원칙"과 [ARCHITECTURE.md](ARCHITECTURE.md)다. 위 파일 목록도 실제 구조와 다르다.) 타입/함수명은 초기 구현 계약이며 일관성 있는 변경이 필요하면 관련 테스트·문서를 함께 수정한다.
 
 | API | 입출력·책임 |
 |---|---|

@@ -1059,7 +1059,7 @@ Node 24.18.0/npm 11.16.0에서 React 19.3.1, TypeScript 6.0.3, Vite 8.3.4, Vites
 
 ## T59. 단일 기기 구현 구조 — 2026-10-18
 
-- 순수 규칙은 settings/types/positions/transition/settlement/invariants에 책임별로 묶었다. 작은 함수마다 파일을 만들지 않았다. UI는 useReducer의 확정 상태와 useState의 금액/승자/입력 초안을 구분한다. 현재 공유 깊이가 작아 Context를 만들지 않고 props를 사용한다. 공유 범위가 커지면 재검토한다.
+- 순수 규칙은 settings/types/positions/transition/settlement/invariants에 책임별로 묶었다. 작은 함수마다 파일을 만들지 않았다(2026-10-29 대체: 이후 리팩토링으로 `game/commands/` 등 책임별 분리와 lint 의존 경계를 도입했다. 현재 원칙은 MULTIPLAYER_MODE.md 15절·ARCHITECTURE.md). UI는 useReducer의 확정 상태와 useState의 금액/승자/입력 초안을 구분한다. 현재 공유 깊이가 작아 Context를 만들지 않고 props를 사용한다. 공유 범위가 커지면 재검토한다.
 - 좌석 삽입은 Pointer Events·350ms로 구현하고 키보드 대체 버튼을 제공한다. 별도 드래그 라이브러리를 추가하지 않는다. 스크롤과 손가락 취소는 실제 모바일 하드웨어 검증이 남아 있다.
 - IndexedDB slot/events/control을 같은 readwrite tx로 처리한다. 권한 세대별 highWatermark와 최근64결과로 재실행을 차단한다. BroadcastChannel은 알림용이며 실제 허용은 DB 세대를 검사한다.
 - PWA는 vite-plugin-pwa generateSW/prompt를 유지한다. manifest는 public/local에 정적으로 두고 local 문서만 연결해 root/online 설치 신호를 분리한다. 생성SW의 자산 URL은 절대 경로로 지정하며 /local/ navigation만 처리한다. 수동 적용한 창만 waiting worker의 활성화 후 새로고침한다.

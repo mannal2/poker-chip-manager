@@ -14,7 +14,10 @@ dependencies {
 tasks.test {
     useJUnitPlatform()
     // Shared rule cases live outside the backend tree.
-    systemProperty("fixtures.dir", rootDir.resolve("../shared/game-fixtures").canonicalPath)
+    val fixturesDir = rootDir.resolve("../shared/game-fixtures").canonicalFile
+    systemProperty("fixtures.dir", fixturesDir.path)
+    // Declare the fixtures as inputs so editing them re-runs the tests.
+    inputs.dir(fixturesDir).withPropertyName("fixtures").withPathSensitivity(PathSensitivity.RELATIVE)
     testLogging {
         events("passed", "failed", "skipped")
         showStandardStreams = false

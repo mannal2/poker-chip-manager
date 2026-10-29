@@ -316,7 +316,7 @@
 
 ## 19. 구현 순서
 
-IMPLEMENTATION_PLAN.md 7절의 C 로드맵을 이 문서 기준으로 조정했다.
+IMPLEMENTATION_PLAN.md 7절의 C 로드맵을 이 문서 기준으로 조정했다. 상세 실행 계획은 4개로 나눈다 — [계획 1: 서버 게임 규칙](docs/superpowers/plans/2026-10-29-multiplayer-1-server-game-rules.md)(C01), 계획 2: 방·API·인증·실시간(C02~C05), 계획 3: 온라인 화면(C06·C07의 화면), 계획 4: 배포·운영(C08). 2~4는 앞 계획이 끝난 뒤 작성한다.
 
 | 단계 | 내용 | 완료 조건 |
 |---|---|---|

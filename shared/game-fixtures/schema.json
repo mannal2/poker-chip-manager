@@ -1,7 +1,35 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "공통 게임 규칙 사례",
+  "title": "공통 게임 규칙 사례 (형식 v2)",
   "type": "array",
+  "definitions": {
+    "gameState": {
+      "type": "object",
+      "required": ["players", "pot", "hand", "initialTotal"],
+      "properties": {
+        "players": {
+          "type": "array",
+          "minItems": 2,
+          "items": { "type": "object" }
+        },
+        "pot": { "type": "integer" },
+        "initialTotal": { "type": "integer" },
+        "hand": { "type": "object" }
+      }
+    },
+    "command": {
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": { "type": "string" },
+        "expectError": { "type": "string" }
+      }
+    },
+    "winnersByPot": {
+      "type": "object",
+      "additionalProperties": { "type": "array", "items": { "type": "string" } }
+    }
+  },
   "items": {
     "type": "object",
     "required": [
@@ -30,6 +58,19 @@
       "description": { "type": "string", "minLength": 1 },
       "initialState": { "type": "object" },
       "commands": { "type": "array", "items": { "type": "object" } },
+      "pots": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": ["id", "amount", "eligible"],
+          "properties": {
+            "id": { "type": "string" },
+            "amount": { "type": "integer", "minimum": 0 },
+            "eligible": { "type": "array", "items": { "type": "string" } }
+          },
+          "additionalProperties": false
+        }
+      },
       "context": {
         "type": "object",
         "required": ["id", "at"],
@@ -43,6 +84,55 @@
       "expectedError": { "type": ["string", "null"] },
       "expectedEvents": { "type": "array", "items": { "type": "string" } },
       "expectedLegal": { "type": "object" }
-    }
+    },
+    "allOf": [
+      {
+        "if": { "properties": { "suite": { "const": "betting" } } },
+        "then": {
+          "properties": {
+            "initialState": { "$ref": "#/definitions/gameState" },
+            "commands": { "items": { "$ref": "#/definitions/command" } }
+          }
+        }
+      },
+      {
+        "if": { "properties": { "suite": { "const": "pots" } } },
+        "then": {
+          "properties": {
+            "initialState": { "$ref": "#/definitions/gameState" },
+            "commands": {
+              "items": {
+                "$ref": "#/definitions/command",
+                "properties": {
+                  "type": { "enum": ["RETURN_UNCALLED", "BUILD_POTS"] }
+                }
+              }
+            },
+            "expectedStateSubset": {
+              "required": ["returnAmount", "amounts", "eligible"]
+            }
+          }
+        }
+      },
+      {
+        "if": { "properties": { "suite": { "const": "settlement" } } },
+        "then": {
+          "properties": {
+            "initialState": { "$ref": "#/definitions/gameState" },
+            "commands": {
+              "items": {
+                "required": ["type", "winners"],
+                "properties": {
+                  "type": { "const": "PREVIEW_SETTLEMENT" },
+                  "winners": { "$ref": "#/definitions/winnersByPot" },
+                  "expectError": { "type": "string" }
+                }
+              }
+            },
+            "expectedStateSubset": { "required": ["ok"] }
+          }
+        }
+      }
+    ]
   }
 }

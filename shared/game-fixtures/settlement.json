@@ -1,8 +1,6 @@
 [
   {
     "id": "W01",
-    "source": "P01",
-    "winners": [["p0"], ["p1"]],
     "ok": false,
     "suite": "settlement",
     "description": "P01 | 메인 A / 사이드 B | 거절: A>B와 B>A 충돌 |",
@@ -11,12 +9,80 @@
       "at": "2026-10-18T00:00:00Z"
     },
     "initialState": {
-      "source": "P01"
+      "tournamentId": "test",
+      "version": 1,
+      "status": "playing",
+      "settings": {
+        "names": ["A", "B", "C"],
+        "initial": 1000,
+        "sb": 5,
+        "bb": 10,
+        "button": 0
+      },
+      "initialTotal": 3000,
+      "setupOrder": ["p0", "p1", "p2"],
+      "players": [
+        {
+          "id": "p0",
+          "name": "A",
+          "stack": 900,
+          "eliminated": false,
+          "folded": false,
+          "B": 100,
+          "H": 100,
+          "actedAt": null,
+          "reopenAt": 0
+        },
+        {
+          "id": "p1",
+          "name": "B",
+          "stack": 900,
+          "eliminated": false,
+          "folded": false,
+          "B": 100,
+          "H": 100,
+          "actedAt": null,
+          "reopenAt": 0
+        },
+        {
+          "id": "p2",
+          "name": "C",
+          "stack": 950,
+          "eliminated": false,
+          "folded": false,
+          "B": 50,
+          "H": 50,
+          "actedAt": null,
+          "reopenAt": 0
+        }
+      ],
+      "hand": {
+        "id": "test:hand:1",
+        "number": 1,
+        "street": 0,
+        "phase": "settlement",
+        "buttonSeat": 0,
+        "sbSeat": 1,
+        "bbSeat": 2,
+        "sb": 5,
+        "bb": 10,
+        "actorId": null,
+        "W": 10,
+        "R": 10,
+        "pending": ["p0", "p1", "p2"],
+        "showdown": false
+      },
+      "pot": 250,
+      "pendingBlinds": null,
+      "undo": null
     },
     "commands": [
       {
         "type": "PREVIEW_SETTLEMENT",
-        "winners": [["p0"], ["p1"]]
+        "winners": {
+          "pot0": ["p0"],
+          "pot1": ["p1"]
+        }
       }
     ],
     "expectedStateSubset": {
@@ -27,8 +93,6 @@
   },
   {
     "id": "W02",
-    "source": "P01",
-    "winners": [["p2"], ["p1"]],
     "ok": true,
     "payouts": {
       "p0": 0,
@@ -42,12 +106,80 @@
       "at": "2026-10-18T00:00:00Z"
     },
     "initialState": {
-      "source": "P01"
+      "tournamentId": "test",
+      "version": 1,
+      "status": "playing",
+      "settings": {
+        "names": ["A", "B", "C"],
+        "initial": 1000,
+        "sb": 5,
+        "bb": 10,
+        "button": 0
+      },
+      "initialTotal": 3000,
+      "setupOrder": ["p0", "p1", "p2"],
+      "players": [
+        {
+          "id": "p0",
+          "name": "A",
+          "stack": 900,
+          "eliminated": false,
+          "folded": false,
+          "B": 100,
+          "H": 100,
+          "actedAt": null,
+          "reopenAt": 0
+        },
+        {
+          "id": "p1",
+          "name": "B",
+          "stack": 900,
+          "eliminated": false,
+          "folded": false,
+          "B": 100,
+          "H": 100,
+          "actedAt": null,
+          "reopenAt": 0
+        },
+        {
+          "id": "p2",
+          "name": "C",
+          "stack": 950,
+          "eliminated": false,
+          "folded": false,
+          "B": 50,
+          "H": 50,
+          "actedAt": null,
+          "reopenAt": 0
+        }
+      ],
+      "hand": {
+        "id": "test:hand:1",
+        "number": 1,
+        "street": 0,
+        "phase": "settlement",
+        "buttonSeat": 0,
+        "sbSeat": 1,
+        "bbSeat": 2,
+        "sb": 5,
+        "bb": 10,
+        "actorId": null,
+        "W": 10,
+        "R": 10,
+        "pending": ["p0", "p1", "p2"],
+        "showdown": false
+      },
+      "pot": 250,
+      "pendingBlinds": null,
+      "undo": null
     },
     "commands": [
       {
         "type": "PREVIEW_SETTLEMENT",
-        "winners": [["p2"], ["p1"]]
+        "winners": {
+          "pot0": ["p2"],
+          "pot1": ["p1"]
+        }
       }
     ],
     "expectedStateSubset": {
@@ -63,8 +195,6 @@
   },
   {
     "id": "W03",
-    "source": "P01",
-    "winners": [["p0", "p1"], ["p0"]],
     "ok": false,
     "suite": "settlement",
     "description": "P01 | 메인 A+B / 사이드 A | 거절: A=B인데 A>B 요구 |",
@@ -73,12 +203,80 @@
       "at": "2026-10-18T00:00:00Z"
     },
     "initialState": {
-      "source": "P01"
+      "tournamentId": "test",
+      "version": 1,
+      "status": "playing",
+      "settings": {
+        "names": ["A", "B", "C"],
+        "initial": 1000,
+        "sb": 5,
+        "bb": 10,
+        "button": 0
+      },
+      "initialTotal": 3000,
+      "setupOrder": ["p0", "p1", "p2"],
+      "players": [
+        {
+          "id": "p0",
+          "name": "A",
+          "stack": 900,
+          "eliminated": false,
+          "folded": false,
+          "B": 100,
+          "H": 100,
+          "actedAt": null,
+          "reopenAt": 0
+        },
+        {
+          "id": "p1",
+          "name": "B",
+          "stack": 900,
+          "eliminated": false,
+          "folded": false,
+          "B": 100,
+          "H": 100,
+          "actedAt": null,
+          "reopenAt": 0
+        },
+        {
+          "id": "p2",
+          "name": "C",
+          "stack": 950,
+          "eliminated": false,
+          "folded": false,
+          "B": 50,
+          "H": 50,
+          "actedAt": null,
+          "reopenAt": 0
+        }
+      ],
+      "hand": {
+        "id": "test:hand:1",
+        "number": 1,
+        "street": 0,
+        "phase": "settlement",
+        "buttonSeat": 0,
+        "sbSeat": 1,
+        "bbSeat": 2,
+        "sb": 5,
+        "bb": 10,
+        "actorId": null,
+        "W": 10,
+        "R": 10,
+        "pending": ["p0", "p1", "p2"],
+        "showdown": false
+      },
+      "pot": 250,
+      "pendingBlinds": null,
+      "undo": null
     },
     "commands": [
       {
         "type": "PREVIEW_SETTLEMENT",
-        "winners": [["p0", "p1"], ["p0"]]
+        "winners": {
+          "pot0": ["p0", "p1"],
+          "pot1": ["p0"]
+        }
       }
     ],
     "expectedStateSubset": {
@@ -89,8 +287,6 @@
   },
   {
     "id": "W04",
-    "source": "P01",
-    "winners": [["p0", "p2"], ["p1"]],
     "ok": false,
     "suite": "settlement",
     "description": "P01 | 메인 A+C / 사이드 B | 거절: A=C>B와 B>A 충돌 |",
@@ -99,12 +295,80 @@
       "at": "2026-10-18T00:00:00Z"
     },
     "initialState": {
-      "source": "P01"
+      "tournamentId": "test",
+      "version": 1,
+      "status": "playing",
+      "settings": {
+        "names": ["A", "B", "C"],
+        "initial": 1000,
+        "sb": 5,
+        "bb": 10,
+        "button": 0
+      },
+      "initialTotal": 3000,
+      "setupOrder": ["p0", "p1", "p2"],
+      "players": [
+        {
+          "id": "p0",
+          "name": "A",
+          "stack": 900,
+          "eliminated": false,
+          "folded": false,
+          "B": 100,
+          "H": 100,
+          "actedAt": null,
+          "reopenAt": 0
+        },
+        {
+          "id": "p1",
+          "name": "B",
+          "stack": 900,
+          "eliminated": false,
+          "folded": false,
+          "B": 100,
+          "H": 100,
+          "actedAt": null,
+          "reopenAt": 0
+        },
+        {
+          "id": "p2",
+          "name": "C",
+          "stack": 950,
+          "eliminated": false,
+          "folded": false,
+          "B": 50,
+          "H": 50,
+          "actedAt": null,
+          "reopenAt": 0
+        }
+      ],
+      "hand": {
+        "id": "test:hand:1",
+        "number": 1,
+        "street": 0,
+        "phase": "settlement",
+        "buttonSeat": 0,
+        "sbSeat": 1,
+        "bbSeat": 2,
+        "sb": 5,
+        "bb": 10,
+        "actorId": null,
+        "W": 10,
+        "R": 10,
+        "pending": ["p0", "p1", "p2"],
+        "showdown": false
+      },
+      "pot": 250,
+      "pendingBlinds": null,
+      "undo": null
     },
     "commands": [
       {
         "type": "PREVIEW_SETTLEMENT",
-        "winners": [["p0", "p2"], ["p1"]]
+        "winners": {
+          "pot0": ["p0", "p2"],
+          "pot1": ["p1"]
+        }
       }
     ],
     "expectedStateSubset": {
@@ -115,11 +379,6 @@
   },
   {
     "id": "W05",
-    "source": "P01",
-    "winners": [
-      ["p0", "p1"],
-      ["p0", "p1"]
-    ],
     "ok": true,
     "payouts": {
       "p0": 125,
@@ -133,15 +392,80 @@
       "at": "2026-10-18T00:00:00Z"
     },
     "initialState": {
-      "source": "P01"
+      "tournamentId": "test",
+      "version": 1,
+      "status": "playing",
+      "settings": {
+        "names": ["A", "B", "C"],
+        "initial": 1000,
+        "sb": 5,
+        "bb": 10,
+        "button": 0
+      },
+      "initialTotal": 3000,
+      "setupOrder": ["p0", "p1", "p2"],
+      "players": [
+        {
+          "id": "p0",
+          "name": "A",
+          "stack": 900,
+          "eliminated": false,
+          "folded": false,
+          "B": 100,
+          "H": 100,
+          "actedAt": null,
+          "reopenAt": 0
+        },
+        {
+          "id": "p1",
+          "name": "B",
+          "stack": 900,
+          "eliminated": false,
+          "folded": false,
+          "B": 100,
+          "H": 100,
+          "actedAt": null,
+          "reopenAt": 0
+        },
+        {
+          "id": "p2",
+          "name": "C",
+          "stack": 950,
+          "eliminated": false,
+          "folded": false,
+          "B": 50,
+          "H": 50,
+          "actedAt": null,
+          "reopenAt": 0
+        }
+      ],
+      "hand": {
+        "id": "test:hand:1",
+        "number": 1,
+        "street": 0,
+        "phase": "settlement",
+        "buttonSeat": 0,
+        "sbSeat": 1,
+        "bbSeat": 2,
+        "sb": 5,
+        "bb": 10,
+        "actorId": null,
+        "W": 10,
+        "R": 10,
+        "pending": ["p0", "p1", "p2"],
+        "showdown": false
+      },
+      "pot": 250,
+      "pendingBlinds": null,
+      "undo": null
     },
     "commands": [
       {
         "type": "PREVIEW_SETTLEMENT",
-        "winners": [
-          ["p0", "p1"],
-          ["p0", "p1"]
-        ]
+        "winners": {
+          "pot0": ["p0", "p1"],
+          "pot1": ["p0", "p1"]
+        }
       }
     ],
     "expectedStateSubset": {
@@ -157,8 +481,6 @@
   },
   {
     "id": "W06",
-    "source": "P03",
-    "winners": [["p0"], ["p2"]],
     "ok": false,
     "suite": "settlement",
     "description": "P03 | 사이드 C 선택 | 거절: C는 그 사이드에 기여하지 않음 |",
@@ -167,12 +489,80 @@
       "at": "2026-10-18T00:00:00Z"
     },
     "initialState": {
-      "source": "P03"
+      "tournamentId": "test",
+      "version": 1,
+      "status": "playing",
+      "settings": {
+        "names": ["A", "B", "C"],
+        "initial": 1000,
+        "sb": 5,
+        "bb": 10,
+        "button": 0
+      },
+      "initialTotal": 3000,
+      "setupOrder": ["p0", "p1", "p2"],
+      "players": [
+        {
+          "id": "p0",
+          "name": "A",
+          "stack": 900,
+          "eliminated": false,
+          "folded": false,
+          "B": 100,
+          "H": 100,
+          "actedAt": null,
+          "reopenAt": 0
+        },
+        {
+          "id": "p1",
+          "name": "B",
+          "stack": 900,
+          "eliminated": false,
+          "folded": true,
+          "B": 100,
+          "H": 100,
+          "actedAt": null,
+          "reopenAt": 0
+        },
+        {
+          "id": "p2",
+          "name": "C",
+          "stack": 950,
+          "eliminated": false,
+          "folded": false,
+          "B": 50,
+          "H": 50,
+          "actedAt": null,
+          "reopenAt": 0
+        }
+      ],
+      "hand": {
+        "id": "test:hand:1",
+        "number": 1,
+        "street": 0,
+        "phase": "settlement",
+        "buttonSeat": 0,
+        "sbSeat": 1,
+        "bbSeat": 2,
+        "sb": 5,
+        "bb": 10,
+        "actorId": null,
+        "W": 10,
+        "R": 10,
+        "pending": ["p0", "p1", "p2"],
+        "showdown": false
+      },
+      "pot": 250,
+      "pendingBlinds": null,
+      "undo": null
     },
     "commands": [
       {
         "type": "PREVIEW_SETTLEMENT",
-        "winners": [["p0"], ["p2"]]
+        "winners": {
+          "pot0": ["p0"],
+          "pot1": ["p2"]
+        }
       }
     ],
     "expectedStateSubset": {
@@ -183,8 +573,6 @@
   },
   {
     "id": "W07",
-    "source": "P03",
-    "winners": [[], ["p0"]],
     "ok": false,
     "suite": "settlement",
     "description": "임의 팟 | 승자 없음 또는 폴드자 포함 | 거절, 지급 없음 |",
@@ -193,12 +581,80 @@
       "at": "2026-10-18T00:00:00Z"
     },
     "initialState": {
-      "source": "P03"
+      "tournamentId": "test",
+      "version": 1,
+      "status": "playing",
+      "settings": {
+        "names": ["A", "B", "C"],
+        "initial": 1000,
+        "sb": 5,
+        "bb": 10,
+        "button": 0
+      },
+      "initialTotal": 3000,
+      "setupOrder": ["p0", "p1", "p2"],
+      "players": [
+        {
+          "id": "p0",
+          "name": "A",
+          "stack": 900,
+          "eliminated": false,
+          "folded": false,
+          "B": 100,
+          "H": 100,
+          "actedAt": null,
+          "reopenAt": 0
+        },
+        {
+          "id": "p1",
+          "name": "B",
+          "stack": 900,
+          "eliminated": false,
+          "folded": true,
+          "B": 100,
+          "H": 100,
+          "actedAt": null,
+          "reopenAt": 0
+        },
+        {
+          "id": "p2",
+          "name": "C",
+          "stack": 950,
+          "eliminated": false,
+          "folded": false,
+          "B": 50,
+          "H": 50,
+          "actedAt": null,
+          "reopenAt": 0
+        }
+      ],
+      "hand": {
+        "id": "test:hand:1",
+        "number": 1,
+        "street": 0,
+        "phase": "settlement",
+        "buttonSeat": 0,
+        "sbSeat": 1,
+        "bbSeat": 2,
+        "sb": 5,
+        "bb": 10,
+        "actorId": null,
+        "W": 10,
+        "R": 10,
+        "pending": ["p0", "p1", "p2"],
+        "showdown": false
+      },
+      "pot": 250,
+      "pendingBlinds": null,
+      "undo": null
     },
     "commands": [
       {
         "type": "PREVIEW_SETTLEMENT",
-        "winners": [[], ["p0"]]
+        "winners": {
+          "pot0": [],
+          "pot1": ["p0"]
+        }
       }
     ],
     "expectedStateSubset": {
@@ -209,10 +665,6 @@
   },
   {
     "id": "W08",
-    "source": "custom",
-    "amounts": [15],
-    "eligible": [["p1", "p2"]],
-    "winners": [["p1", "p2"]],
     "ok": true,
     "payouts": {
       "p0": 0,
@@ -226,14 +678,79 @@
       "at": "2026-10-18T00:00:00Z"
     },
     "initialState": {
-      "source": "custom",
-      "amounts": [15],
-      "eligible": [["p1", "p2"]]
+      "tournamentId": "test",
+      "version": 1,
+      "status": "playing",
+      "settings": {
+        "names": ["A", "B", "C"],
+        "initial": 1000,
+        "sb": 5,
+        "bb": 10,
+        "button": 0
+      },
+      "initialTotal": 3000,
+      "setupOrder": ["p0", "p1", "p2"],
+      "players": [
+        {
+          "id": "p0",
+          "name": "A",
+          "stack": 1000,
+          "eliminated": false,
+          "folded": false,
+          "B": 0,
+          "H": 0,
+          "actedAt": null,
+          "reopenAt": 0
+        },
+        {
+          "id": "p1",
+          "name": "B",
+          "stack": 995,
+          "eliminated": false,
+          "folded": false,
+          "B": 5,
+          "H": 5,
+          "actedAt": null,
+          "reopenAt": 0
+        },
+        {
+          "id": "p2",
+          "name": "C",
+          "stack": 990,
+          "eliminated": false,
+          "folded": false,
+          "B": 10,
+          "H": 10,
+          "actedAt": null,
+          "reopenAt": 0
+        }
+      ],
+      "hand": {
+        "id": "test:hand:1",
+        "number": 1,
+        "street": 0,
+        "phase": "betting",
+        "buttonSeat": 0,
+        "sbSeat": 1,
+        "bbSeat": 2,
+        "sb": 5,
+        "bb": 10,
+        "actorId": "p0",
+        "W": 10,
+        "R": 10,
+        "pending": ["p0", "p1", "p2"],
+        "showdown": false
+      },
+      "pot": 15,
+      "pendingBlinds": null,
+      "undo": null
     },
     "commands": [
       {
         "type": "PREVIEW_SETTLEMENT",
-        "winners": [["p1", "p2"]]
+        "winners": {
+          "pot0": ["p1", "p2"]
+        }
       }
     ],
     "expectedStateSubset": {
@@ -245,14 +762,17 @@
       }
     },
     "expectedError": null,
-    "expectedEvents": []
+    "expectedEvents": [],
+    "pots": [
+      {
+        "id": "pot0",
+        "amount": 15,
+        "eligible": ["p1", "p2"]
+      }
+    ]
   },
   {
     "id": "W09",
-    "source": "custom",
-    "amounts": [25],
-    "eligible": [["p0", "p1", "p2"]],
-    "winners": [["p0", "p1", "p2"]],
     "ok": true,
     "payouts": {
       "p0": 5,
@@ -266,14 +786,79 @@
       "at": "2026-10-18T00:00:00Z"
     },
     "initialState": {
-      "source": "custom",
-      "amounts": [25],
-      "eligible": [["p0", "p1", "p2"]]
+      "tournamentId": "test",
+      "version": 1,
+      "status": "playing",
+      "settings": {
+        "names": ["A", "B", "C"],
+        "initial": 1000,
+        "sb": 5,
+        "bb": 10,
+        "button": 0
+      },
+      "initialTotal": 3000,
+      "setupOrder": ["p0", "p1", "p2"],
+      "players": [
+        {
+          "id": "p0",
+          "name": "A",
+          "stack": 1000,
+          "eliminated": false,
+          "folded": false,
+          "B": 0,
+          "H": 0,
+          "actedAt": null,
+          "reopenAt": 0
+        },
+        {
+          "id": "p1",
+          "name": "B",
+          "stack": 995,
+          "eliminated": false,
+          "folded": false,
+          "B": 5,
+          "H": 5,
+          "actedAt": null,
+          "reopenAt": 0
+        },
+        {
+          "id": "p2",
+          "name": "C",
+          "stack": 990,
+          "eliminated": false,
+          "folded": false,
+          "B": 10,
+          "H": 10,
+          "actedAt": null,
+          "reopenAt": 0
+        }
+      ],
+      "hand": {
+        "id": "test:hand:1",
+        "number": 1,
+        "street": 0,
+        "phase": "betting",
+        "buttonSeat": 0,
+        "sbSeat": 1,
+        "bbSeat": 2,
+        "sb": 5,
+        "bb": 10,
+        "actorId": "p0",
+        "W": 10,
+        "R": 10,
+        "pending": ["p0", "p1", "p2"],
+        "showdown": false
+      },
+      "pot": 15,
+      "pendingBlinds": null,
+      "undo": null
     },
     "commands": [
       {
         "type": "PREVIEW_SETTLEMENT",
-        "winners": [["p0", "p1", "p2"]]
+        "winners": {
+          "pot0": ["p0", "p1", "p2"]
+        }
       }
     ],
     "expectedStateSubset": {
@@ -285,20 +870,17 @@
       }
     },
     "expectedError": null,
-    "expectedEvents": []
+    "expectedEvents": [],
+    "pots": [
+      {
+        "id": "pot0",
+        "amount": 25,
+        "eligible": ["p0", "p1", "p2"]
+      }
+    ]
   },
   {
     "id": "W10",
-    "source": "custom",
-    "amounts": [15, 15],
-    "eligible": [
-      ["p1", "p2"],
-      ["p1", "p2"]
-    ],
-    "winners": [
-      ["p1", "p2"],
-      ["p1", "p2"]
-    ],
     "ok": true,
     "payouts": {
       "p0": 0,
@@ -312,20 +894,80 @@
       "at": "2026-10-18T00:00:00Z"
     },
     "initialState": {
-      "source": "custom",
-      "amounts": [15, 15],
-      "eligible": [
-        ["p1", "p2"],
-        ["p1", "p2"]
-      ]
+      "tournamentId": "test",
+      "version": 1,
+      "status": "playing",
+      "settings": {
+        "names": ["A", "B", "C"],
+        "initial": 1000,
+        "sb": 5,
+        "bb": 10,
+        "button": 0
+      },
+      "initialTotal": 3000,
+      "setupOrder": ["p0", "p1", "p2"],
+      "players": [
+        {
+          "id": "p0",
+          "name": "A",
+          "stack": 1000,
+          "eliminated": false,
+          "folded": false,
+          "B": 0,
+          "H": 0,
+          "actedAt": null,
+          "reopenAt": 0
+        },
+        {
+          "id": "p1",
+          "name": "B",
+          "stack": 995,
+          "eliminated": false,
+          "folded": false,
+          "B": 5,
+          "H": 5,
+          "actedAt": null,
+          "reopenAt": 0
+        },
+        {
+          "id": "p2",
+          "name": "C",
+          "stack": 990,
+          "eliminated": false,
+          "folded": false,
+          "B": 10,
+          "H": 10,
+          "actedAt": null,
+          "reopenAt": 0
+        }
+      ],
+      "hand": {
+        "id": "test:hand:1",
+        "number": 1,
+        "street": 0,
+        "phase": "betting",
+        "buttonSeat": 0,
+        "sbSeat": 1,
+        "bbSeat": 2,
+        "sb": 5,
+        "bb": 10,
+        "actorId": "p0",
+        "W": 10,
+        "R": 10,
+        "pending": ["p0", "p1", "p2"],
+        "showdown": false
+      },
+      "pot": 15,
+      "pendingBlinds": null,
+      "undo": null
     },
     "commands": [
       {
         "type": "PREVIEW_SETTLEMENT",
-        "winners": [
-          ["p1", "p2"],
-          ["p1", "p2"]
-        ]
+        "winners": {
+          "pot0": ["p1", "p2"],
+          "pot1": ["p1", "p2"]
+        }
       }
     ],
     "expectedStateSubset": {
@@ -337,6 +979,18 @@
       }
     },
     "expectedError": null,
-    "expectedEvents": []
+    "expectedEvents": [],
+    "pots": [
+      {
+        "id": "pot0",
+        "amount": 15,
+        "eligible": ["p1", "p2"]
+      },
+      {
+        "id": "pot1",
+        "amount": 15,
+        "eligible": ["p1", "p2"]
+      }
+    ]
   }
 ]

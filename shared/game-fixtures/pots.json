@@ -1,8 +1,6 @@
 [
   {
     "id": "P01",
-    "H": [100, 100, 50],
-    "folded": [],
     "returnAmount": 0,
     "amounts": [150, 100],
     "eligible": [
@@ -16,9 +14,72 @@
       "at": "2026-10-18T00:00:00Z"
     },
     "initialState": {
-      "H": [100, 100, 50],
-      "B": [100, 100, 50],
-      "folded": []
+      "tournamentId": "test",
+      "version": 1,
+      "status": "playing",
+      "settings": {
+        "names": ["A", "B", "C"],
+        "initial": 1000,
+        "sb": 5,
+        "bb": 10,
+        "button": 0
+      },
+      "initialTotal": 3000,
+      "setupOrder": ["p0", "p1", "p2"],
+      "players": [
+        {
+          "id": "p0",
+          "name": "A",
+          "stack": 900,
+          "eliminated": false,
+          "folded": false,
+          "B": 100,
+          "H": 100,
+          "actedAt": null,
+          "reopenAt": 0
+        },
+        {
+          "id": "p1",
+          "name": "B",
+          "stack": 900,
+          "eliminated": false,
+          "folded": false,
+          "B": 100,
+          "H": 100,
+          "actedAt": null,
+          "reopenAt": 0
+        },
+        {
+          "id": "p2",
+          "name": "C",
+          "stack": 950,
+          "eliminated": false,
+          "folded": false,
+          "B": 50,
+          "H": 50,
+          "actedAt": null,
+          "reopenAt": 0
+        }
+      ],
+      "hand": {
+        "id": "test:hand:1",
+        "number": 1,
+        "street": 0,
+        "phase": "settlement",
+        "buttonSeat": 0,
+        "sbSeat": 1,
+        "bbSeat": 2,
+        "sb": 5,
+        "bb": 10,
+        "actorId": null,
+        "W": 10,
+        "R": 10,
+        "pending": ["p0", "p1", "p2"],
+        "showdown": false
+      },
+      "pot": 250,
+      "pendingBlinds": null,
+      "undo": null
     },
     "commands": [
       {
@@ -41,8 +102,6 @@
   },
   {
     "id": "P02",
-    "H": [150, 100, 50],
-    "folded": [],
     "returnAmount": 50,
     "amounts": [150, 100],
     "eligible": [
@@ -56,9 +115,72 @@
       "at": "2026-10-18T00:00:00Z"
     },
     "initialState": {
-      "H": [150, 100, 50],
-      "B": [150, 100, 50],
-      "folded": []
+      "tournamentId": "test",
+      "version": 1,
+      "status": "playing",
+      "settings": {
+        "names": ["A", "B", "C"],
+        "initial": 1000,
+        "sb": 5,
+        "bb": 10,
+        "button": 0
+      },
+      "initialTotal": 3000,
+      "setupOrder": ["p0", "p1", "p2"],
+      "players": [
+        {
+          "id": "p0",
+          "name": "A",
+          "stack": 850,
+          "eliminated": false,
+          "folded": false,
+          "B": 150,
+          "H": 150,
+          "actedAt": null,
+          "reopenAt": 0
+        },
+        {
+          "id": "p1",
+          "name": "B",
+          "stack": 900,
+          "eliminated": false,
+          "folded": false,
+          "B": 100,
+          "H": 100,
+          "actedAt": null,
+          "reopenAt": 0
+        },
+        {
+          "id": "p2",
+          "name": "C",
+          "stack": 950,
+          "eliminated": false,
+          "folded": false,
+          "B": 50,
+          "H": 50,
+          "actedAt": null,
+          "reopenAt": 0
+        }
+      ],
+      "hand": {
+        "id": "test:hand:1",
+        "number": 1,
+        "street": 0,
+        "phase": "settlement",
+        "buttonSeat": 0,
+        "sbSeat": 1,
+        "bbSeat": 2,
+        "sb": 5,
+        "bb": 10,
+        "actorId": null,
+        "W": 10,
+        "R": 10,
+        "pending": ["p0", "p1", "p2"],
+        "showdown": false
+      },
+      "pot": 300,
+      "pendingBlinds": null,
+      "undo": null
     },
     "commands": [
       {
@@ -81,8 +203,6 @@
   },
   {
     "id": "P03",
-    "H": [100, 100, 50],
-    "folded": [1],
     "returnAmount": 0,
     "amounts": [150, 100],
     "eligible": [["p0", "p2"], ["p0"]],
@@ -93,9 +213,72 @@
       "at": "2026-10-18T00:00:00Z"
     },
     "initialState": {
-      "H": [100, 100, 50],
-      "B": [100, 100, 50],
-      "folded": [1]
+      "tournamentId": "test",
+      "version": 1,
+      "status": "playing",
+      "settings": {
+        "names": ["A", "B", "C"],
+        "initial": 1000,
+        "sb": 5,
+        "bb": 10,
+        "button": 0
+      },
+      "initialTotal": 3000,
+      "setupOrder": ["p0", "p1", "p2"],
+      "players": [
+        {
+          "id": "p0",
+          "name": "A",
+          "stack": 900,
+          "eliminated": false,
+          "folded": false,
+          "B": 100,
+          "H": 100,
+          "actedAt": null,
+          "reopenAt": 0
+        },
+        {
+          "id": "p1",
+          "name": "B",
+          "stack": 900,
+          "eliminated": false,
+          "folded": true,
+          "B": 100,
+          "H": 100,
+          "actedAt": null,
+          "reopenAt": 0
+        },
+        {
+          "id": "p2",
+          "name": "C",
+          "stack": 950,
+          "eliminated": false,
+          "folded": false,
+          "B": 50,
+          "H": 50,
+          "actedAt": null,
+          "reopenAt": 0
+        }
+      ],
+      "hand": {
+        "id": "test:hand:1",
+        "number": 1,
+        "street": 0,
+        "phase": "settlement",
+        "buttonSeat": 0,
+        "sbSeat": 1,
+        "bbSeat": 2,
+        "sb": 5,
+        "bb": 10,
+        "actorId": null,
+        "W": 10,
+        "R": 10,
+        "pending": ["p0", "p1", "p2"],
+        "showdown": false
+      },
+      "pot": 250,
+      "pendingBlinds": null,
+      "undo": null
     },
     "commands": [
       {
@@ -115,8 +298,6 @@
   },
   {
     "id": "P04",
-    "H": [200, 200, 100, 50],
-    "folded": [],
     "returnAmount": 0,
     "amounts": [200, 150, 200],
     "eligible": [
@@ -131,9 +312,83 @@
       "at": "2026-10-18T00:00:00Z"
     },
     "initialState": {
-      "H": [200, 200, 100, 50],
-      "B": [200, 200, 100, 50],
-      "folded": []
+      "tournamentId": "test",
+      "version": 1,
+      "status": "playing",
+      "settings": {
+        "names": ["A", "B", "C", "D"],
+        "initial": 1000,
+        "sb": 5,
+        "bb": 10,
+        "button": 0
+      },
+      "initialTotal": 4000,
+      "setupOrder": ["p0", "p1", "p2", "p3"],
+      "players": [
+        {
+          "id": "p0",
+          "name": "A",
+          "stack": 800,
+          "eliminated": false,
+          "folded": false,
+          "B": 200,
+          "H": 200,
+          "actedAt": null,
+          "reopenAt": 0
+        },
+        {
+          "id": "p1",
+          "name": "B",
+          "stack": 800,
+          "eliminated": false,
+          "folded": false,
+          "B": 200,
+          "H": 200,
+          "actedAt": null,
+          "reopenAt": 0
+        },
+        {
+          "id": "p2",
+          "name": "C",
+          "stack": 900,
+          "eliminated": false,
+          "folded": false,
+          "B": 100,
+          "H": 100,
+          "actedAt": null,
+          "reopenAt": 0
+        },
+        {
+          "id": "p3",
+          "name": "D",
+          "stack": 950,
+          "eliminated": false,
+          "folded": false,
+          "B": 50,
+          "H": 50,
+          "actedAt": null,
+          "reopenAt": 0
+        }
+      ],
+      "hand": {
+        "id": "test:hand:1",
+        "number": 1,
+        "street": 0,
+        "phase": "settlement",
+        "buttonSeat": 0,
+        "sbSeat": 1,
+        "bbSeat": 2,
+        "sb": 5,
+        "bb": 10,
+        "actorId": null,
+        "W": 10,
+        "R": 10,
+        "pending": ["p0", "p1", "p2", "p3"],
+        "showdown": false
+      },
+      "pot": 550,
+      "pendingBlinds": null,
+      "undo": null
     },
     "commands": [
       {
@@ -157,8 +412,6 @@
   },
   {
     "id": "P05",
-    "H": [100, 100, 50, 50],
-    "folded": [3],
     "returnAmount": 0,
     "amounts": [200, 100],
     "eligible": [
@@ -172,9 +425,83 @@
       "at": "2026-10-18T00:00:00Z"
     },
     "initialState": {
-      "H": [100, 100, 50, 50],
-      "B": [100, 100, 50, 50],
-      "folded": [3]
+      "tournamentId": "test",
+      "version": 1,
+      "status": "playing",
+      "settings": {
+        "names": ["A", "B", "C", "D"],
+        "initial": 1000,
+        "sb": 5,
+        "bb": 10,
+        "button": 0
+      },
+      "initialTotal": 4000,
+      "setupOrder": ["p0", "p1", "p2", "p3"],
+      "players": [
+        {
+          "id": "p0",
+          "name": "A",
+          "stack": 900,
+          "eliminated": false,
+          "folded": false,
+          "B": 100,
+          "H": 100,
+          "actedAt": null,
+          "reopenAt": 0
+        },
+        {
+          "id": "p1",
+          "name": "B",
+          "stack": 900,
+          "eliminated": false,
+          "folded": false,
+          "B": 100,
+          "H": 100,
+          "actedAt": null,
+          "reopenAt": 0
+        },
+        {
+          "id": "p2",
+          "name": "C",
+          "stack": 950,
+          "eliminated": false,
+          "folded": false,
+          "B": 50,
+          "H": 50,
+          "actedAt": null,
+          "reopenAt": 0
+        },
+        {
+          "id": "p3",
+          "name": "D",
+          "stack": 950,
+          "eliminated": false,
+          "folded": true,
+          "B": 50,
+          "H": 50,
+          "actedAt": null,
+          "reopenAt": 0
+        }
+      ],
+      "hand": {
+        "id": "test:hand:1",
+        "number": 1,
+        "street": 0,
+        "phase": "settlement",
+        "buttonSeat": 0,
+        "sbSeat": 1,
+        "bbSeat": 2,
+        "sb": 5,
+        "bb": 10,
+        "actorId": null,
+        "W": 10,
+        "R": 10,
+        "pending": ["p0", "p1", "p2", "p3"],
+        "showdown": false
+      },
+      "pot": 300,
+      "pendingBlinds": null,
+      "undo": null
     },
     "commands": [
       {
@@ -197,8 +524,6 @@
   },
   {
     "id": "P06",
-    "H": [100, 60, 20],
-    "folded": [1, 2],
     "returnAmount": 40,
     "amounts": [140],
     "eligible": [["p0"]],
@@ -209,9 +534,72 @@
       "at": "2026-10-18T00:00:00Z"
     },
     "initialState": {
-      "H": [100, 60, 20],
-      "B": [100, 60, 20],
-      "folded": [1, 2]
+      "tournamentId": "test",
+      "version": 1,
+      "status": "playing",
+      "settings": {
+        "names": ["A", "B", "C"],
+        "initial": 1000,
+        "sb": 5,
+        "bb": 10,
+        "button": 0
+      },
+      "initialTotal": 3000,
+      "setupOrder": ["p0", "p1", "p2"],
+      "players": [
+        {
+          "id": "p0",
+          "name": "A",
+          "stack": 900,
+          "eliminated": false,
+          "folded": false,
+          "B": 100,
+          "H": 100,
+          "actedAt": null,
+          "reopenAt": 0
+        },
+        {
+          "id": "p1",
+          "name": "B",
+          "stack": 940,
+          "eliminated": false,
+          "folded": true,
+          "B": 60,
+          "H": 60,
+          "actedAt": null,
+          "reopenAt": 0
+        },
+        {
+          "id": "p2",
+          "name": "C",
+          "stack": 980,
+          "eliminated": false,
+          "folded": true,
+          "B": 20,
+          "H": 20,
+          "actedAt": null,
+          "reopenAt": 0
+        }
+      ],
+      "hand": {
+        "id": "test:hand:1",
+        "number": 1,
+        "street": 0,
+        "phase": "settlement",
+        "buttonSeat": 0,
+        "sbSeat": 1,
+        "bbSeat": 2,
+        "sb": 5,
+        "bb": 10,
+        "actorId": null,
+        "W": 10,
+        "R": 10,
+        "pending": ["p0", "p1", "p2"],
+        "showdown": false
+      },
+      "pot": 180,
+      "pendingBlinds": null,
+      "undo": null
     },
     "commands": [
       {
@@ -231,9 +619,6 @@
   },
   {
     "id": "P07",
-    "H": [120, 120, 50],
-    "B": [100, 100, 30],
-    "folded": [],
     "returnAmount": 0,
     "amounts": [150, 140],
     "eligible": [
@@ -247,9 +632,72 @@
       "at": "2026-10-18T00:00:00Z"
     },
     "initialState": {
-      "H": [120, 120, 50],
-      "B": [100, 100, 30],
-      "folded": []
+      "tournamentId": "test",
+      "version": 1,
+      "status": "playing",
+      "settings": {
+        "names": ["A", "B", "C"],
+        "initial": 1000,
+        "sb": 5,
+        "bb": 10,
+        "button": 0
+      },
+      "initialTotal": 3000,
+      "setupOrder": ["p0", "p1", "p2"],
+      "players": [
+        {
+          "id": "p0",
+          "name": "A",
+          "stack": 880,
+          "eliminated": false,
+          "folded": false,
+          "B": 100,
+          "H": 120,
+          "actedAt": null,
+          "reopenAt": 0
+        },
+        {
+          "id": "p1",
+          "name": "B",
+          "stack": 880,
+          "eliminated": false,
+          "folded": false,
+          "B": 100,
+          "H": 120,
+          "actedAt": null,
+          "reopenAt": 0
+        },
+        {
+          "id": "p2",
+          "name": "C",
+          "stack": 950,
+          "eliminated": false,
+          "folded": false,
+          "B": 30,
+          "H": 50,
+          "actedAt": null,
+          "reopenAt": 0
+        }
+      ],
+      "hand": {
+        "id": "test:hand:1",
+        "number": 1,
+        "street": 0,
+        "phase": "settlement",
+        "buttonSeat": 0,
+        "sbSeat": 1,
+        "bbSeat": 2,
+        "sb": 5,
+        "bb": 10,
+        "actorId": null,
+        "W": 10,
+        "R": 10,
+        "pending": ["p0", "p1", "p2"],
+        "showdown": false
+      },
+      "pot": 290,
+      "pendingBlinds": null,
+      "undo": null
     },
     "commands": [
       {

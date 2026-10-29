@@ -46,7 +46,8 @@
             }
           ],
           "undo": null
-        }
+        },
+        "expectRestores": 2
       },
       {
         "type": "UNDO",
@@ -87,7 +88,8 @@
             }
           ],
           "undo": null
-        }
+        },
+        "expectRestores": 5
       },
       {
         "type": "UNDO",
@@ -180,7 +182,8 @@
             }
           ],
           "undo": null
-        }
+        },
+        "expectRestores": 2
       },
       {
         "type": "UNDO",
@@ -271,7 +274,8 @@
             }
           ],
           "undo": null
-        }
+        },
+        "expectRestores": 3
       },
       {
         "type": "UNDO",
@@ -343,7 +347,8 @@
             }
           ],
           "undo": null
-        }
+        },
+        "expectRestores": 2
       },
       {
         "type": "UNDO",

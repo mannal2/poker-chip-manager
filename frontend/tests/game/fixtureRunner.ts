@@ -28,6 +28,7 @@ type Command = {
   type: string;
   expectError?: string;
   expectedStateSubset?: object;
+  expectRestores?: number;
 } & Record<string, unknown>;
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type Case = {
@@ -48,8 +49,16 @@ const validate = new Ajv({ allErrors: true }).compile(schema);
 // Runs one game command, checking the input state is untouched and applying `expectError`.
 // A rejected command (expectError) leaves the state as it was for the next command.
 // A command's own `expectedStateSubset` is checked (toMatchObject) on the state it leaves behind.
-function step(s: GameState, raw: Command, ctx: Case['context'], events?: string[]): GameState {
-  const { expectError, expectedStateSubset, ...command } = raw;
+// `expectRestores: i` requires the resulting state to equal `history[i]` (the state before
+// command i) except version = previous version + 1 and undo = null.
+function step(
+  s: GameState,
+  raw: Command,
+  ctx: Case['context'],
+  events?: string[],
+  history: GameState[] = [],
+): GameState {
+  const { expectError, expectedStateSubset, expectRestores, ...command } = raw;
   const before = JSON.stringify(s);
   const r = transition(s, command as GameCommand, ctx);
   expect(JSON.stringify(s)).toBe(before);
@@ -63,6 +72,8 @@ function step(s: GameState, raw: Command, ctx: Case['context'], events?: string[
   assertInvariants(r.state);
   events?.push(...r.events.map((e) => e.type));
   if (expectedStateSubset !== undefined) expect(r.state).toMatchObject(expectedStateSubset);
+  if (expectRestores !== undefined)
+    expect(r.state).toEqual({ ...history[expectRestores], version: s.version + 1, undo: null });
   return r.state;
 }
 
@@ -117,13 +128,16 @@ function runLifecycle(f: Case) {
   let s = createTournament(f.initialState, f.context);
   const events: string[] = [];
   // Case-level expectedError: the last command must be rejected, all earlier ones succeed.
+  const history: GameState[] = [];
   f.commands.forEach((command, i) => {
     const last = i === f.commands.length - 1;
+    history.push(s);
     s = step(
       s,
       last && f.expectedError ? { ...command, expectError: f.expectedError } : command,
       f.context,
       events,
+      history,
     );
   });
   if (f.expectedError) return;

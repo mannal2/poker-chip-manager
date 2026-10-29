@@ -10,43 +10,82 @@
         "players": {
           "type": "array",
           "minItems": 2,
-          "items": { "type": "object" }
+          "items": {
+            "type": "object"
+          }
         },
-        "pot": { "type": "integer" },
-        "initialTotal": { "type": "integer" },
-        "hand": { "type": "object" }
+        "pot": {
+          "type": "integer"
+        },
+        "initialTotal": {
+          "type": "integer"
+        },
+        "hand": {
+          "type": "object"
+        }
       }
     },
     "command": {
       "type": "object",
       "required": ["type"],
       "properties": {
-        "type": { "type": "string" },
-        "expectError": { "type": "string" },
+        "type": {
+          "type": "string"
+        },
+        "expectError": {
+          "type": "string",
+          "description": "The command must be rejected with this error code; the state is unchanged and carries over to the next command."
+        },
         "expectedStateSubset": {
           "type": "object",
-          "description": "Checked (toMatchObject) on the state this command leaves behind."
+          "description": "Subset-matched against the state this command leaves behind (for a rejected command, the unchanged state)."
+        },
+        "expectRestores": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "0-based index into this case's commands (an UNDO). After this command the state must deep-equal the state that existed immediately BEFORE command <index>, except version = (version just before this command) + 1 and undo = null."
         }
-      }
+      },
+      "description": "A game command (fields as the engine command) plus optional runner keys expectError, expectedStateSubset and expectRestores, which are not passed to the engine."
     },
     "positionCommand": {
       "type": "object",
       "required": ["alive", "expected"],
       "properties": {
-        "type": { "enum": ["INITIAL_BLIND_SEATS"] },
-        "alive": { "type": "array", "items": { "type": "boolean" } },
-        "button": { "type": "integer", "minimum": 0 },
-        "expected": { "type": "object" }
+        "type": {
+          "enum": ["INITIAL_BLIND_SEATS"]
+        },
+        "alive": {
+          "type": "array",
+          "items": {
+            "type": "boolean"
+          }
+        },
+        "button": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "expected": {
+          "type": "object"
+        }
       },
       "if": {
         "type": "object",
         "required": ["type"]
       },
-      "then": { "required": ["button"] }
+      "then": {
+        "required": ["button"]
+      },
+      "description": "positions suite. Without type: current = nextPositions(alive, current) and the result must equal expected (the case initialState is the first current). type INITIAL_BLIND_SEATS: initialBlindSeats(button, alive) must equal expected {sbSeat, bbSeat}; current is not changed."
     },
     "winnersByPot": {
       "type": "object",
-      "additionalProperties": { "type": "array", "items": { "type": "string" } }
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
     }
   },
   "items": {
@@ -78,86 +117,157 @@
           "undo"
         ]
       },
-      "description": { "type": "string", "minLength": 1 },
-      "initialState": { "type": "object" },
-      "commands": { "type": "array", "items": { "type": "object" } },
+      "description": {
+        "type": "string",
+        "minLength": 1
+      },
+      "initialState": {
+        "type": "object"
+      },
+      "commands": {
+        "type": "array",
+        "items": {
+          "type": "object"
+        }
+      },
       "pots": {
         "type": "array",
         "items": {
           "type": "object",
           "required": ["id", "amount", "eligible"],
           "properties": {
-            "id": { "type": "string" },
-            "amount": { "type": "integer", "minimum": 0 },
-            "eligible": { "type": "array", "items": { "type": "string" } }
+            "id": {
+              "type": "string"
+            },
+            "amount": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "eligible": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
           },
           "additionalProperties": false
-        }
+        },
+        "description": "Input to the settlement suite: the pots passed to previewSettlement instead of buildPots(state). Not an expectation."
       },
       "context": {
         "type": "object",
         "required": ["id", "at"],
         "properties": {
-          "id": { "type": "string" },
-          "at": { "type": "string" }
+          "id": {
+            "type": "string"
+          },
+          "at": {
+            "type": "string"
+          }
         },
         "additionalProperties": false
       },
-      "expectedStateSubset": { "type": "object" },
+      "expectedStateSubset": {
+        "type": "object",
+        "description": "Suite-specific expectation. settlement: ok (bool), payouts (exact object compare), pots (expected output: must equal buildPots(initialState), exact compare, unlike the input key `pots`), allocations (subset match against previewSettlement's allocations)."
+      },
       "expectedError": {
         "type": ["string", "null"],
         "description": "If a string: the case's LAST command must be rejected with this error code; every earlier command must succeed."
       },
-      "expectedEvents": { "type": "array", "items": { "type": "string" } },
-      "expectedLegal": { "type": "object" }
+      "expectedEvents": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "expectedLegal": {
+        "type": "object"
+      }
     },
     "allOf": [
       {
-        "if": { "properties": { "suite": { "const": "positions" } } },
+        "if": {
+          "properties": {
+            "suite": {
+              "const": "positions"
+            }
+          }
+        },
         "then": {
           "properties": {
             "commands": {
               "type": "array",
-              "items": { "$ref": "#/definitions/positionCommand" }
+              "items": {
+                "$ref": "#/definitions/positionCommand"
+              }
             }
           }
         }
       },
       {
-        "if": { "properties": { "suite": { "enum": ["lifecycle", "undo"] } } },
+        "if": {
+          "properties": {
+            "suite": {
+              "enum": ["lifecycle", "undo"]
+            }
+          }
+        },
         "then": {
           "properties": {
             "commands": {
               "type": "array",
-              "items": { "$ref": "#/definitions/command" }
+              "items": {
+                "$ref": "#/definitions/command"
+              }
             }
           }
         }
       },
       {
-        "if": { "properties": { "suite": { "const": "betting" } } },
+        "if": {
+          "properties": {
+            "suite": {
+              "const": "betting"
+            }
+          }
+        },
         "then": {
           "properties": {
-            "initialState": { "$ref": "#/definitions/gameState" },
+            "initialState": {
+              "$ref": "#/definitions/gameState"
+            },
             "commands": {
               "type": "array",
-              "items": { "$ref": "#/definitions/command" }
+              "items": {
+                "$ref": "#/definitions/command"
+              }
             }
           }
         }
       },
       {
-        "if": { "properties": { "suite": { "const": "pots" } } },
+        "if": {
+          "properties": {
+            "suite": {
+              "const": "pots"
+            }
+          }
+        },
         "then": {
           "properties": {
-            "initialState": { "$ref": "#/definitions/gameState" },
+            "initialState": {
+              "$ref": "#/definitions/gameState"
+            },
             "commands": {
               "type": "array",
               "items": {
                 "type": "object",
                 "$ref": "#/definitions/command",
                 "properties": {
-                  "type": { "enum": ["RETURN_UNCALLED", "BUILD_POTS"] }
+                  "type": {
+                    "enum": ["RETURN_UNCALLED", "BUILD_POTS"]
+                  }
                 }
               }
             },
@@ -169,25 +279,41 @@
         }
       },
       {
-        "if": { "properties": { "suite": { "const": "settlement" } } },
+        "if": {
+          "properties": {
+            "suite": {
+              "const": "settlement"
+            }
+          }
+        },
         "then": {
           "properties": {
-            "initialState": { "$ref": "#/definitions/gameState" },
+            "initialState": {
+              "$ref": "#/definitions/gameState"
+            },
             "commands": {
               "type": "array",
               "items": {
                 "type": "object",
                 "required": ["type", "winners"],
                 "properties": {
-                  "type": { "const": "PREVIEW_SETTLEMENT" },
-                  "winners": { "$ref": "#/definitions/winnersByPot" }
+                  "type": {
+                    "const": "PREVIEW_SETTLEMENT"
+                  },
+                  "winners": {
+                    "$ref": "#/definitions/winnersByPot"
+                  }
                 }
               }
             },
-            "expectedStateSubset": { "type": "object", "required": ["ok"] }
+            "expectedStateSubset": {
+              "type": "object",
+              "required": ["ok"]
+            }
           }
         }
       }
     ]
-  }
+  },
+  "description": "Shared game-rule cases (format v2). Subset matching (expectedStateSubset, per-command expectedStateSubset, expectedLegal, allocations): an object matches when every listed key matches recursively; an array must have the same length and match element-wise; scalars compare by equality; an empty object {} also matches null, so a non-null value is written as an object with one real key, e.g. {\"status\": \"playing\"}. Conventions baked into the cases: state.version is 0 at creation and +1 per successful command (a rejected command changes nothing); players created by createTournament have ids p{i}; players added by SETUP_UPDATE get id {context.id}:p{i}; hand ids are {context.id}:hand:{number}; events are numbered {context.id}:{index} within one command. lifecycle/undo suites: initialState is the settings {names, initial, sb, bb, button}; createTournament is called, then commands run in order."
 }

@@ -22,6 +22,11 @@ class ApiExceptionHandler {
             Map.entry("NO_SESSION", 401),
             Map.entry("FORBIDDEN", 403),
             Map.entry("ROOM_NOT_FOUND", 404),
+            Map.entry("REQUEST_NOT_FOUND", 404),
+            Map.entry("UNKNOWN_TYPE", 422),
+            Map.entry("STALE_STATE", 409),
+            Map.entry("CONTROL_LOST", 409),
+            Map.entry("TOURNAMENT_CHANGED", 409),
             Map.entry("PROTOCOL_INCOMPATIBLE", 409),
             Map.entry("REQUEST_CONFLICT", 409),
             Map.entry("RESULT_EXPIRED", 409),
@@ -35,7 +40,18 @@ class ApiExceptionHandler {
 
     @ExceptionHandler(RoomException.class)
     ResponseEntity<ApiError> room(RoomException e) {
-        return respond(STATUS.getOrDefault(e.code(), 500), e.code());
+        // An unknown command type is a payload problem on the wire, so it reads INVALID_INPUT.
+        String wire = e.code().equals("UNKNOWN_TYPE") ? "INVALID_INPUT" : e.code();
+        return respond(STATUS.getOrDefault(e.code(), 500), wire);
+    }
+
+    /** Status of a rejection that was recorded in a ledger: 403 permission, 409 stale or lost, else 422. */
+    static int rejectionStatus(String code) {
+        return switch (code) {
+            case "FORBIDDEN" -> 403;
+            case "STALE_STATE", "CONTROL_LOST", "TOURNAMENT_CHANGED" -> 409;
+            default -> 422;
+        };
     }
 
     @ExceptionHandler(HttpMessageNotReadableException.class)

@@ -37,6 +37,8 @@ public final class Room {
     private final List<GameEvent> events = new ArrayList<>();
     private SettlementDraft settlementDraft;
     private final Map<String, RequestLedger> ledgers = new HashMap<>();
+    private int nextJoinOrder;
+    private boolean closed;
 
     public Room(String roomId, String code, Instant createdAt) {
         this.roomId = roomId;
@@ -64,8 +66,16 @@ public final class Room {
     public Map<String, String> playerIds() { return playerIds; }
     public List<GameEvent> events() { return events; }
     public SettlementDraft settlementDraft() { return settlementDraft; }
-    /** Ledgers by stream and control generation, created on first use. */
-    public RequestLedger ledger(String key) { return ledgers.computeIfAbsent(key, k -> new RequestLedger()); }
+    /**
+     * The command ledger of one participant's control generation, created on first use. A new generation
+     * starts a fresh ledger (sequence from 1), so a stale holder never shares a stream with the new one.
+     */
+    public RequestLedger ledger(String participantId, long controlGeneration) {
+        return ledgers.computeIfAbsent(participantId + "#" + controlGeneration, k -> new RequestLedger());
+    }
+
+    /** True once the room has been emptied; a closed room is treated as not found. Set under the room lock. */
+    public boolean isClosed() { return closed; }
 
     public Optional<Participant> participant(String participantId) {
         return participants.stream().filter(p -> p.participantId().equals(participantId)).findFirst();
@@ -94,12 +104,76 @@ public final class Room {
         if (participants.stream().anyMatch(p -> p.name().toLowerCase(Locale.ROOT).equals(lowered))) {
             throw new RoomException("DUPLICATE_NAME");
         }
-        Participant p = new Participant(participantId, name, participants.size(), INITIAL_CONTROL_GENERATION);
+        Participant p = new Participant(participantId, name, nextJoinOrder++, INITIAL_CONTROL_GENERATION);
         participants.add(p);
         if (hostId == null) {
             hostId = participantId;
         }
         bumpVersion();
         return p;
+    }
+
+    // Waiting-room mutations. They do not bump the version: the command pipeline bumps once per command.
+
+    void replaceSettings(RoomSettings next) { this.settings = next; }
+
+    void setHost(String participantId) { this.hostId = participantId; }
+
+    /** The participant the dealer button points at, or null while none is chosen. */
+    private String dealerId() {
+        int b = settings.button();
+        return b >= 0 && b < participants.size() ? participants.get(b).participantId() : null;
+    }
+
+    /** Points the button at {@code dealerId}'s current seat, or -1 when that person is gone or none was chosen. */
+    private void pointDealerAt(String dealerId) {
+        int seat = -1;
+        for (int i = 0; dealerId != null && i < participants.size(); i++) {
+            if (participants.get(i).participantId().equals(dealerId)) {
+                seat = i;
+            }
+        }
+        settings = new RoomSettings(settings.initial(), settings.sb(), settings.bb(), seat);
+    }
+
+    /** Seats the participants in {@code order} (already checked to be exactly the current ones); the dealer keeps their person. */
+    void reorder(List<String> order) {
+        String dealer = dealerId();
+        List<Participant> next = new ArrayList<>();
+        for (String id : order) {
+            next.add(participant(id).orElseThrow());
+        }
+        participants.clear();
+        participants.addAll(next);
+        pointDealerAt(dealer);
+    }
+
+    void setDealer(String participantId) { pointDealerAt(participantId); }
+
+    void rename(String participantId, String name) {
+        for (int i = 0; i < participants.size(); i++) {
+            Participant p = participants.get(i);
+            if (p.participantId().equals(participantId)) {
+                participants.set(i, new Participant(p.participantId(), name, p.joinOrder(), p.controlGeneration()));
+            }
+        }
+    }
+
+    /**
+     * Removes a participant. The dealer stays on the same person (-1 if that was the leaver); a leaving host
+     * hands the room to the earliest joiner left; the last one out closes the room.
+     */
+    void removeParticipant(String participantId) {
+        String dealer = dealerId();
+        participants.removeIf(p -> p.participantId().equals(participantId));
+        ledgers.keySet().removeIf(k -> k.startsWith(participantId + "#"));
+        pointDealerAt(dealer);
+        if (participants.isEmpty()) {
+            hostId = null;
+            closed = true;
+        } else if (participantId.equals(hostId)) {
+            hostId = participants.stream().min(java.util.Comparator.comparingInt(Participant::joinOrder))
+                    .orElseThrow().participantId();
+        }
     }
 }

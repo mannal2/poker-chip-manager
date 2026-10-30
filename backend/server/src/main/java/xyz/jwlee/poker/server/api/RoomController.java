@@ -2,10 +2,6 @@ package xyz.jwlee.poker.server.api;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.util.HexFormat;
 import java.util.Optional;
 import java.util.function.Function;
 import org.springframework.http.HttpHeaders;
@@ -22,6 +18,7 @@ import xyz.jwlee.poker.game.settings.SettingsValidator;
 import xyz.jwlee.poker.server.auth.SessionIdentity;
 import xyz.jwlee.poker.server.registry.RoomCodes;
 import xyz.jwlee.poker.server.registry.RoomRegistry;
+import xyz.jwlee.poker.server.room.Fingerprint;
 import xyz.jwlee.poker.server.room.Participant;
 import xyz.jwlee.poker.server.room.RequestLedger;
 import xyz.jwlee.poker.server.room.RequestOutcome;
@@ -84,7 +81,7 @@ class RoomController {
             HttpServletRequest request, Fields f, String payload, int okStatus,
             Function<SessionIdentity, RoomRegistry.Entry> work) {
         // A digest, not the payload: the ledger keeps 64 fingerprints per stream.
-        String fingerprint = sha256(payload);
+        String fingerprint = Fingerprint.sha256(payload);
         HttpSession session = request.getSession(false);
         if (session == null) {
             throw new RoomException("NO_SESSION");
@@ -136,15 +133,6 @@ class RoomController {
             return o;
         });
         return ResponseEntity.status(status).header(HttpHeaders.CACHE_CONTROL, "no-store").body(body);
-    }
-
-    private static String sha256(String text) {
-        try {
-            return HexFormat.of().formatHex(
-                    MessageDigest.getInstance("SHA-256").digest(text.getBytes(StandardCharsets.UTF_8)));
-        } catch (NoSuchAlgorithmException e) {
-            throw new IllegalStateException(e);
-        }
     }
 
     private static Participant member(Optional<Participant> p) {

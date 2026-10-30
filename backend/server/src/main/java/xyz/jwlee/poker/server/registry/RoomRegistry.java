@@ -22,6 +22,13 @@ import xyz.jwlee.poker.server.support.IdGenerator;
  * <p>Locking: one global lock guards the room table and the code index; each room has its own lock.
  * The order is always global then room, never the reverse. {@link #withRoom} holds only the room lock
  * while its action runs, so that action must not call anything that takes the global lock.
+ *
+ * <p>Deleting a room: the decision is made under the room lock (the last person leaving calls
+ * {@code Room.close()}), the room lock is released, and only then {@link #remove} takes the global lock.
+ * No thread ever holds a room lock while waiting for the global one, so the order stays global then room.
+ * Between the close and the removal the room is still in the table but {@link #withRoom} and {@link #join}
+ * see the closed flag under the room lock and answer ROOM_NOT_FOUND, so nobody can be seated in a room that
+ * is about to disappear.
  */
 @Component
 public class RoomRegistry {
@@ -103,6 +110,9 @@ public class RoomRegistry {
                 .orElseThrow(() -> new RoomException("ROOM_NOT_FOUND"));
         room.lock().lock();
         try {
+            if (room.isClosed()) {
+                throw new RoomException("ROOM_NOT_FOUND");
+            }
             Optional<String> bound = existing.apply(room.roomId()).filter(room::hasParticipant);
             if (bound.isPresent()) {
                 return new Entry(room.roomId(), room.code(), bound.get(), room.version());
@@ -128,6 +138,9 @@ public class RoomRegistry {
         }
         room.lock().lock();
         try {
+            if (room.isClosed()) {
+                throw new RoomException("ROOM_NOT_FOUND");
+            }
             return action.apply(room);
         } finally {
             room.lock().unlock();

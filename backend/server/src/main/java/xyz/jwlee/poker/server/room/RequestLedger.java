@@ -43,6 +43,16 @@ public final class RequestLedger {
         return new Check.New();
     }
 
+    /** The retained result of {@code requestId}, if it is still among the last {@value #RETAINED}. */
+    public synchronized java.util.Optional<RequestOutcome> find(String requestId) {
+        for (Entry entry : results) {
+            if (entry.outcome().requestId().equals(requestId)) {
+                return java.util.Optional.of(entry.outcome());
+            }
+        }
+        return java.util.Optional.empty();
+    }
+
     public synchronized void record(RequestOutcome outcome, String fingerprint) {
         results.addLast(new Entry(outcome, fingerprint));
         if (results.size() > RETAINED) {

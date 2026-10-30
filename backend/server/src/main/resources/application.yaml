@@ -1,3 +1,8 @@
+poker:
+  allowed-origins:
+    - http://localhost:5173
+    - http://127.0.0.1:5173
+
 spring:
   threads:
     virtual:
@@ -17,6 +22,10 @@ spring:
   config:
     activate:
       on-profile: prod
+
+poker:
+  allowed-origins:
+    - https://pcm.jwlee.xyz
 
 server:
   servlet:

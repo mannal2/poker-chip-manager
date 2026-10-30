@@ -33,7 +33,8 @@ import xyz.jwlee.poker.server.support.Protocol;
 /**
  * Create, join and read a room. Create and join are deduplicated by the request ledger of the screen
  * stream they came from: {@code synchronized (ledger) { check; do the work; record }}.
- * Lock order: ledger, then the registry global lock, then a room lock.
+ * Lock order: ledger, then the registry global lock, then a room lock, then (innermost, a leaf) the
+ * HttpSession monitor taken by {@code SessionIdentity}.
  */
 @RestController
 class RoomController {
@@ -60,9 +61,8 @@ class RoomController {
         String code = f.string("code");
         String name = f.string("name");
         return bind(request, f, "join\n" + code + "\n" + name, 200, identity -> {
-            String normalizedName = normalized(name);
             String canonical = RoomCodes.normalize(code).orElseThrow(() -> new RoomException("ROOM_NOT_FOUND"));
-            return registry.join(canonical, normalizedName, identity::participantIn, identity::bind);
+            return registry.join(canonical, name, identity::participantIn, identity::bind, RoomController::normalized);
         });
     }
 

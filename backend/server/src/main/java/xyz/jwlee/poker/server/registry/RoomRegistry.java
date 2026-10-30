@@ -9,6 +9,7 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
+import java.util.function.UnaryOperator;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import xyz.jwlee.poker.server.room.Room;
@@ -87,17 +88,17 @@ public class RoomRegistry {
     }
 
     public Entry join(String code, String name) {
-        return join(code, name, roomId -> Optional.empty(), (roomId, participantId) -> { });
+        return join(code, name, roomId -> Optional.empty(), (roomId, participantId) -> { }, n -> n);
     }
 
     /**
      * Looks the room up by code under the global lock, then, under the room lock, either returns the
-     * participant the caller is already bound to in this room (any phase, {@code name} ignored) or seats a
-     * new one. {@code existing} and {@code bind} run inside the room lock, so the check and the binding are
+     * participant the caller is already bound to in this room (any phase, {@code name} ignored, never
+     * validated) or seats a new one under {@code nameRule}, which throws for an invalid name. {@code existing} and {@code bind} run inside the room lock, so the check and the binding are
      * atomic for one session.
      */
     public Entry join(String code, String name, Function<String, Optional<String>> existing,
-            BiConsumer<String, String> bind) {
+            BiConsumer<String, String> bind, UnaryOperator<String> nameRule) {
         Room room = RoomCodes.normalize(code).flatMap(this::findByCode)
                 .orElseThrow(() -> new RoomException("ROOM_NOT_FOUND"));
         room.lock().lock();
@@ -107,7 +108,7 @@ public class RoomRegistry {
                 return new Entry(room.roomId(), room.code(), bound.get(), room.version());
             }
             String participantId = ids.next();
-            room.addParticipant(participantId, name);
+            room.addParticipant(participantId, nameRule.apply(name));
             bind.accept(room.roomId(), participantId);
             return new Entry(room.roomId(), room.code(), participantId, room.version());
         } finally {

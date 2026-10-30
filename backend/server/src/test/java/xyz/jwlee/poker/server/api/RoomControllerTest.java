@@ -176,6 +176,17 @@ class RoomControllerTest {
     }
 
     @Test
+    void aBoundParticipantJoiningWithAnInvalidNameStillGetsItsParticipant() throws Exception {
+        Client host = new Client();
+        JsonNode created = host.create("Alice");
+
+        MvcResult r = host.join(created.get("code").asString(), "bad_name!").andExpect(status().isOk()).andReturn();
+
+        assertThat(MAPPER.readTree(r.getResponse().getContentAsString()).get("participantId"))
+                .isEqualTo(created.get("participantId"));
+    }
+
+    @Test
     void theHostJoiningItsOwnRoomKeepsItsSeatAndHostRole() throws Exception {
         Client host = new Client();
         JsonNode created = host.create("Alice");

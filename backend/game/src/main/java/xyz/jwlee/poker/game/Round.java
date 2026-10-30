@@ -51,6 +51,32 @@ public final class Round {
         return new EventDetails.UncalledReturned(p.id, amount);
     }
 
+    /**
+     * Server only (forfeits): contribution layers above the highest live contribution have nobody
+     * left who could win them, because every player who reached them folded. Each contributor gets
+     * back exactly what they put into those layers (a forfeiter's share is split with the stack
+     * after the hand), one RETURN per player in seat order. Called wherever a round closes, so no
+     * state that reaches {@link Settlement#buildPots} or {@link #settle} has an ownerless layer.
+     * Without forfeits (TS) every layer keeps a live contributor and this does nothing.
+     */
+    public static void returnOwnerless(GameState s, TransitionContext c, List<GameEvent> events) {
+        int cap = s.players.stream()
+                .filter(p -> !p.folded && !p.eliminated)
+                .mapToInt(p -> p.handTotal)
+                .max()
+                .orElseThrow();
+        for (Player p : s.players) {
+            if (p.handTotal > cap) {
+                int amount = p.handTotal - cap;
+                p.handTotal = cap;
+                p.roundBet = Math.min(p.roundBet, cap);
+                p.stack += amount;
+                s.pot -= amount;
+                emit(s, c, events, new EventDetails.UncalledReturned(p.id, amount));
+            }
+        }
+    }
+
     public static void resolveRound(GameState s, int after, TransitionContext c, List<GameEvent> events) {
         Hand h = s.hand;
         List<Player> live = s.players.stream().filter(p -> !p.folded && !p.eliminated).toList();
@@ -67,6 +93,7 @@ public final class Round {
             if (returned != null) {
                 emit(s, c, events, returned);
             }
+            returnOwnerless(s, c, events);
             Map<String, List<String>> winners = new LinkedHashMap<>();
             for (var pot : Settlement.buildPots(s)) {
                 winners.put(pot.id(), List.of(live.get(0).id));
@@ -110,6 +137,7 @@ public final class Round {
         if (returned != null) {
             emit(s, c, events, returned);
         }
+        returnOwnerless(s, c, events);
         h.actorId = null;
         h.showdown = h.street == 3
                 || s.players.stream().filter(p -> !p.folded && !p.eliminated && p.stack > 0).count() <= 1;

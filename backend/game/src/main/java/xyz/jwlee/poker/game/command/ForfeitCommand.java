@@ -45,7 +45,8 @@ public final class ForfeitCommand {
                 return;
             }
         }
-        returnUnclaimable(s, p, c, events);
+        // In winner selection the forfeiter may have been the last live player of the top layers.
+        Round.returnOwnerless(s, c, events);
         List<Player> live = s.players.stream().filter(x -> !x.folded && !x.eliminated).toList();
         if (live.size() == 1) {
             Map<String, List<String>> winners = new LinkedHashMap<>();
@@ -54,32 +55,6 @@ public final class ForfeitCommand {
             }
             Round.settle(s, winners, c, events);
         }
-    }
-
-    /**
-     * Contribution layers above the highest live contribution have no eligible player any more;
-     * they go back to the forfeiter like an uncalled bet and are split with the stack later.
-     */
-    private static void returnUnclaimable(GameState s, Player forfeiter, TransitionContext c, List<GameEvent> events) {
-        int cap = s.players.stream()
-                .filter(x -> !x.folded && !x.eliminated)
-                .mapToInt(x -> x.handTotal)
-                .max()
-                .orElseThrow();
-        int amount = 0;
-        for (Player x : s.players) {
-            if (x.handTotal > cap) {
-                amount += x.handTotal - cap;
-                x.handTotal = cap;
-                x.roundBet = Math.min(x.roundBet, cap);
-            }
-        }
-        if (amount == 0) {
-            return;
-        }
-        s.pot -= amount;
-        forfeiter.stack += amount;
-        Round.emit(s, c, events, new EventDetails.UncalledReturned(forfeiter.id, amount));
     }
 
     private static int indexOf(GameState s, String id) {

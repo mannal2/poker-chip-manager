@@ -16,7 +16,7 @@ class ForfeitFixtureTest {
         for (JsonNode c : FixtureFiles.load("forfeit")) {
             tests.add(dynamicTest(c.get("id").asText() + " " + c.get("description").asText(), () -> FixtureRunner.run(c)));
         }
-        assertThat(tests).hasSize(7);
+        assertThat(tests).hasSize(11);
         return tests;
     }
 }

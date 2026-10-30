@@ -51,5 +51,7 @@ class RoomCodesTest {
         assertThat(RoomCodes.normalize("ABCDE0")).isEmpty(); // 0 is not in the alphabet
         assertThat(RoomCodes.normalize("ABCDEI")).isEmpty(); // neither is I
         assertThat(RoomCodes.normalize(null)).isEmpty();
+        // Unicode case folding must not turn the sharp s into letters of the alphabet.
+        assertThat(RoomCodes.normalize("ABCD\u00DF")).isEmpty();
     }
 }

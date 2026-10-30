@@ -161,6 +161,65 @@ class RoomControllerTest {
     }
 
     @Test
+    void aSecondJoinFromTheSameSessionReturnsTheExistingParticipant() throws Exception {
+        JsonNode created = new Client().create("Alice");
+        Client guest = new Client();
+
+        MvcResult first = guest.join(created.get("code").asString(), "Bob").andExpect(status().isOk()).andReturn();
+        MvcResult second = guest.join(created.get("code").asString(), "Carol").andExpect(status().isOk()).andReturn();
+
+        JsonNode a = MAPPER.readTree(first.getResponse().getContentAsString());
+        JsonNode b = MAPPER.readTree(second.getResponse().getContentAsString());
+        assertThat(b.get("participantId")).isEqualTo(a.get("participantId"));
+        assertThat(b.get("state").get("participants").size()).isEqualTo(2);
+        assertThat(b.get("state").get("hostId").asString()).isEqualTo(created.get("participantId").asString());
+    }
+
+    @Test
+    void theHostJoiningItsOwnRoomKeepsItsSeatAndHostRole() throws Exception {
+        Client host = new Client();
+        JsonNode created = host.create("Alice");
+
+        MvcResult r = host.join(created.get("code").asString(), "Other").andExpect(status().isOk()).andReturn();
+
+        JsonNode b = MAPPER.readTree(r.getResponse().getContentAsString());
+        assertThat(b.get("participantId")).isEqualTo(created.get("participantId"));
+        assertThat(b.get("state").get("participants").size()).isEqualTo(1);
+        assertThat(b.get("state").get("hostId")).isEqualTo(created.get("participantId"));
+    }
+
+    @Test
+    void twoStreamsOfOneSessionJoiningConcurrentlyYieldOneParticipant() throws Exception {
+        JsonNode created = new Client().create("Alice");
+        Client one = new Client();
+        // A second stream of the same session has its own ledger.
+        MvcResult stream = mvc.perform(post("/api/session/streams").session(one.session)
+                .header("X-CSRF-TOKEN", one.csrf).header("Origin", ORIGIN)).andReturn();
+        String otherStream = MAPPER.readTree(stream.getResponse().getContentAsString()).get("streamId").asString();
+        String code = created.get("code").asString();
+        String joinOne = one.body(",\"code\":\"" + code + "\",\"name\":\"Bob\"");
+        String joinTwo = "{\"protocolVersion\":1,\"streamId\":\"" + otherStream
+                + "\",\"requestId\":\"z\",\"sequence\":1,\"code\":\"" + code + "\",\"name\":\"Bobby\"}";
+        java.util.concurrent.CountDownLatch go = new java.util.concurrent.CountDownLatch(1);
+        var pool = java.util.concurrent.Executors.newFixedThreadPool(2);
+        var f1 = pool.submit(() -> {
+            go.await();
+            return one.postJson("/api/room-joins", joinOne).andReturn();
+        });
+        var f2 = pool.submit(() -> {
+            go.await();
+            return one.postJson("/api/room-joins", joinTwo).andReturn();
+        });
+        go.countDown();
+        String id1 = MAPPER.readTree(f1.get().getResponse().getContentAsString()).get("participantId").asString();
+        String id2 = MAPPER.readTree(f2.get().getResponse().getContentAsString()).get("participantId").asString();
+        pool.shutdown();
+
+        assertThat(id1).isEqualTo(id2);
+        one.state(created.get("roomId").asString()).andExpect(jsonPath("$.participants.length()").value(2));
+    }
+
+    @Test
     void aNameDifferingOnlyInCaseIsADuplicate() throws Exception {
         JsonNode created = new Client().create("Alice");
 

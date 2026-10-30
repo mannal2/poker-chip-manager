@@ -2,8 +2,12 @@ package xyz.jwlee.poker.server.api;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.HexFormat;
 import java.util.Optional;
-import java.util.function.Supplier;
+import java.util.function.Function;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -46,7 +50,8 @@ class RoomController {
     ResponseEntity<ObjectNode> create(@RequestBody(required = false) JsonNode body, HttpServletRequest request) {
         Fields f = Fields.parse(body);
         String name = f.string("name");
-        return bind(request, f, "create\n" + name, 201, () -> registry.create(normalized(name)));
+        return bind(request, f, "create\n" + name, 201,
+                identity -> registry.create(normalized(name), identity::bind));
     }
 
     @PostMapping("/api/room-joins")
@@ -54,10 +59,10 @@ class RoomController {
         Fields f = Fields.parse(body);
         String code = f.string("code");
         String name = f.string("name");
-        return bind(request, f, "join\n" + code + "\n" + name, 200, () -> {
+        return bind(request, f, "join\n" + code + "\n" + name, 200, identity -> {
             String normalizedName = normalized(name);
             String canonical = RoomCodes.normalize(code).orElseThrow(() -> new RoomException("ROOM_NOT_FOUND"));
-            return registry.join(canonical, normalizedName);
+            return registry.join(canonical, normalizedName, identity::participantIn, identity::bind);
         });
     }
 
@@ -76,14 +81,16 @@ class RoomController {
     }
 
     private ResponseEntity<ObjectNode> bind(
-            HttpServletRequest request, Fields f, String fingerprint, int okStatus, Supplier<RoomRegistry.Entry> work) {
+            HttpServletRequest request, Fields f, String payload, int okStatus,
+            Function<SessionIdentity, RoomRegistry.Entry> work) {
+        // A digest, not the payload: the ledger keeps 64 fingerprints per stream.
+        String fingerprint = sha256(payload);
         HttpSession session = request.getSession(false);
         if (session == null) {
             throw new RoomException("NO_SESSION");
         }
         SessionIdentity identity = SessionIdentity.from(session);
         RequestLedger ledger = identity.ledgerFor(f.streamId);
-        ResponseEntity<ObjectNode> response;
         synchronized (ledger) {
             switch (ledger.check(f.requestId, f.sequence, fingerprint)) {
                 case RequestLedger.Check.Replay replay -> {
@@ -103,20 +110,17 @@ class RoomController {
             }
             RoomRegistry.Entry entry;
             try {
-                entry = work.get();
+                entry = work.apply(identity);
             } catch (RoomException e) {
                 ledger.record(new RequestOutcome(
                         f.requestId, f.sequence, RequestOutcome.Outcome.REJECTED, e.code(), 0, null), fingerprint);
                 throw e;
             }
-            identity.bind(entry.roomId(), entry.participantId());
-            response = respond(okStatus, entry.roomId(), entry.participantId());
+            // Record first: the work is done, so a failure while building the body must not lose the outcome.
             ledger.record(new RequestOutcome(f.requestId, f.sequence, RequestOutcome.Outcome.APPLIED, "OK",
-                    response.getBody().get("state").get("stateVersion").asLong(), entry.roomId()), fingerprint);
+                    entry.stateVersion(), entry.roomId()), fingerprint);
+            return respond(okStatus, entry.roomId(), entry.participantId());
         }
-        // A new privilege is attached to this session: rotate its id (attributes, CSRF token included, stay).
-        request.changeSessionId();
-        return response;
     }
 
     private ResponseEntity<ObjectNode> respond(int status, String roomId, String participantId) {
@@ -132,6 +136,15 @@ class RoomController {
             return o;
         });
         return ResponseEntity.status(status).header(HttpHeaders.CACHE_CONTROL, "no-store").body(body);
+    }
+
+    private static String sha256(String text) {
+        try {
+            return HexFormat.of().formatHex(
+                    MessageDigest.getInstance("SHA-256").digest(text.getBytes(StandardCharsets.UTF_8)));
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException(e);
+        }
     }
 
     private static Participant member(Optional<Participant> p) {

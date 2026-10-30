@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,7 +28,7 @@ public class RoomRegistry {
     public static final int MAX_ROOMS = 10;
 
     /** Where a participant ended up after create or join. */
-    public record Entry(String roomId, String code, String participantId) { }
+    public record Entry(String roomId, String code, String participantId, long stateVersion) { }
 
     private final ReentrantLock global = new ReentrantLock();
     private final Map<String, Room> rooms = new HashMap<>();
@@ -58,6 +59,14 @@ public class RoomRegistry {
 
     /** Creates a room with {@code hostName} (already normalized) as host, or refuses with ROOM_LIMIT. */
     public Entry create(String hostName) {
+        return create(hostName, (roomId, participantId) -> { });
+    }
+
+    /**
+     * Like {@link #create(String)}; {@code bind} runs under the locks, right after the host is seated, so a
+     * caller can attach the new participant to its session atomically (the session monitor is a leaf lock).
+     */
+    public Entry create(String hostName, BiConsumer<String, String> bind) {
         return withGlobal(() -> {
             if (rooms.size() >= MAX_ROOMS) {
                 throw new RoomException("ROOM_LIMIT");
@@ -67,27 +76,43 @@ public class RoomRegistry {
             room.lock().lock();
             try {
                 room.addParticipant(participantId, hostName);
+                rooms.put(room.roomId(), room);
+                byCode.put(room.code(), room);
+                bind.accept(room.roomId(), participantId);
+                return new Entry(room.roomId(), room.code(), participantId, room.version());
             } finally {
                 room.lock().unlock();
             }
-            rooms.put(room.roomId(), room);
-            byCode.put(room.code(), room);
-            return new Entry(room.roomId(), room.code(), participantId);
         });
     }
 
-    /** Looks the room up by code under the global lock, then seats the guest under the room lock. */
     public Entry join(String code, String name) {
+        return join(code, name, roomId -> Optional.empty(), (roomId, participantId) -> { });
+    }
+
+    /**
+     * Looks the room up by code under the global lock, then, under the room lock, either returns the
+     * participant the caller is already bound to in this room (any phase, {@code name} ignored) or seats a
+     * new one. {@code existing} and {@code bind} run inside the room lock, so the check and the binding are
+     * atomic for one session.
+     */
+    public Entry join(String code, String name, Function<String, Optional<String>> existing,
+            BiConsumer<String, String> bind) {
         Room room = RoomCodes.normalize(code).flatMap(this::findByCode)
                 .orElseThrow(() -> new RoomException("ROOM_NOT_FOUND"));
-        String participantId = ids.next();
         room.lock().lock();
         try {
+            Optional<String> bound = existing.apply(room.roomId()).filter(room::hasParticipant);
+            if (bound.isPresent()) {
+                return new Entry(room.roomId(), room.code(), bound.get(), room.version());
+            }
+            String participantId = ids.next();
             room.addParticipant(participantId, name);
+            bind.accept(room.roomId(), participantId);
+            return new Entry(room.roomId(), room.code(), participantId, room.version());
         } finally {
             room.lock().unlock();
         }
-        return new Entry(room.roomId(), room.code(), participantId);
     }
 
     public Optional<Room> findByCode(String code) {

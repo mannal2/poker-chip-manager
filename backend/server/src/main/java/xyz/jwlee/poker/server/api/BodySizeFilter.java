@@ -33,28 +33,36 @@ final class BodySizeFilter extends OncePerRequestFilter {
             throws ServletException, IOException {
         long declared = request.getContentLengthLong();
         if (declared > MAX_BYTES) {
-            tooLarge(response);
+            error(response, 413, "BODY_TOO_LARGE");
             return;
         }
         if (declared >= 0) {
             chain.doFilter(request, response);
             return;
         }
-        byte[] body = request.getInputStream().readNBytes(MAX_BYTES + 1);
+        byte[] body;
+        try {
+            body = request.getInputStream().readNBytes(MAX_BYTES + 1);
+        } catch (IOException e) {
+            // A truncated or malformed chunked body is the client's error.
+            error(response, 400, "INVALID_INPUT");
+            return;
+        }
         if (body.length > MAX_BYTES) {
-            tooLarge(response);
+            error(response, 413, "BODY_TOO_LARGE");
             return;
         }
         chain.doFilter(new ReplayedBody(request, body), response);
     }
 
-    private static void tooLarge(HttpServletResponse response) throws IOException {
-        response.setStatus(413);
+    private static void error(HttpServletResponse response, int status, String code) throws IOException {
+        ApiError error = ApiError.of(code);
+        response.setStatus(status);
         response.setContentType("application/json");
         response.setCharacterEncoding(StandardCharsets.UTF_8.name());
         response.setHeader("Cache-Control", "no-store");
         response.setHeader("Connection", "close");
-        response.getWriter().write("{\"code\":\"BODY_TOO_LARGE\"}");
+        response.getWriter().write("{\"code\":\"" + error.code() + "\",\"message\":\"" + error.message() + "\"}");
     }
 
     /** The already-read body, handed to the rest of the chain as if it were still the live stream. */

@@ -1,7 +1,6 @@
 package xyz.jwlee.poker.server.registry;
 
 import java.security.SecureRandom;
-import java.util.Locale;
 import java.util.Optional;
 import java.util.Random;
 import java.util.Set;
@@ -41,7 +40,14 @@ public final class RoomCodes {
         if (input == null) {
             return Optional.empty();
         }
-        String code = input.trim().toUpperCase(Locale.ROOT);
+        // ASCII-only case fold: Unicode aliases such as the sharp s must not turn into letters.
+        String trimmed = input.trim();
+        StringBuilder folded = new StringBuilder(trimmed.length());
+        for (int i = 0; i < trimmed.length(); i++) {
+            char c = trimmed.charAt(i);
+            folded.append(c >= 'a' && c <= 'z' ? (char) (c - 32) : c);
+        }
+        String code = folded.toString();
         if (code.length() != LENGTH) {
             return Optional.empty();
         }

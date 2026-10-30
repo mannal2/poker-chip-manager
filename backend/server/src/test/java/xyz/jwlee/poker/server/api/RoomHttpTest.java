@@ -16,7 +16,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import tools.jackson.databind.ObjectMapper;
 
-/** Real HTTP: session fixation protection and the body-size limit, with cookies handled by hand. */
+/** Real HTTP: replay after a lost response and the body-size limit, with cookies handled by hand. */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class RoomHttpTest {
 
@@ -57,29 +57,69 @@ class RoomHttpTest {
     }
 
     @Test
-    void bindingAParticipantRotatesTheSessionCookie() throws Exception {
+    void theSessionCookieIsNotRotatedAndALostResponseIsReplayedOnTheSameCookie() throws Exception {
         Session s = open();
+        String body = createBody(s, "Alice");
 
-        HttpResponse<String> r = send("POST", "/api/rooms", s.cookie(), s.csrf(),
-                BodyPublishers.ofString(createBody(s, "Alice")));
+        HttpResponse<String> first = send("POST", "/api/rooms", s.cookie(), s.csrf(), BodyPublishers.ofString(body));
+        HttpResponse<String> again = send("POST", "/api/rooms", s.cookie(), s.csrf(), BodyPublishers.ofString(body));
+
+        assertThat(first.statusCode()).isEqualTo(201);
+        assertThat(first.headers().firstValue("Set-Cookie")).isEmpty();
+        assertThat(again.statusCode()).isEqualTo(201);
+        assertThat(MAPPER.readTree(again.body()).get("roomId")).isEqualTo(MAPPER.readTree(first.body()).get("roomId"));
+        assertThat(MAPPER.readTree(again.body()).get("participantId"))
+                .isEqualTo(MAPPER.readTree(first.body()).get("participantId"));
+    }
+
+    @Test
+    void aLostJoinResponseIsReplayedToo() throws Exception {
+        Session host = open();
+        String code = MAPPER.readTree(send("POST", "/api/rooms", host.cookie(), host.csrf(),
+                BodyPublishers.ofString(createBody(host, "Alice"))).body()).get("code").asString();
+        Session guest = open();
+        String body = "{\"protocolVersion\":1,\"streamId\":\"" + guest.streamId()
+                + "\",\"requestId\":\"j1\",\"sequence\":1,\"code\":\"" + code + "\",\"name\":\"Bob\"}";
+
+        HttpResponse<String> first = send("POST", "/api/room-joins", guest.cookie(), guest.csrf(),
+                BodyPublishers.ofString(body));
+        HttpResponse<String> again = send("POST", "/api/room-joins", guest.cookie(), guest.csrf(),
+                BodyPublishers.ofString(body));
+
+        assertThat(again.statusCode()).isEqualTo(200);
+        assertThat(MAPPER.readTree(again.body()).get("participantId"))
+                .isEqualTo(MAPPER.readTree(first.body()).get("participantId"));
+        assertThat(MAPPER.readTree(again.body()).get("state").get("participants").size()).isEqualTo(2);
+    }
+
+    @Test
+    void aBodyOfExactlyTheLimitIsAccepted() throws Exception {
+        Session s = open();
+        String base = createBody(s, "Exact");
+        String prefix = base.substring(0, base.length() - 1) + ",\"pad\":\"";
+        String suffix = "\"}";
+        String body = prefix + "x".repeat(32768 - prefix.length() - suffix.length()) + suffix;
+        assertThat(body.getBytes(StandardCharsets.UTF_8)).hasSize(32768);
+
+        HttpResponse<String> r = send("POST", "/api/rooms", s.cookie(), s.csrf(), BodyPublishers.ofString(body));
 
         assertThat(r.statusCode()).isEqualTo(201);
-        String setCookie = r.headers().firstValue("Set-Cookie").orElseThrow();
-        String newCookie = setCookie.split(";", 2)[0];
-        assertThat(newCookie).startsWith("PCM_SESSION=").isNotEqualTo(s.cookie());
-        assertThat(setCookie).contains("Max-Age=604800").containsIgnoringCase("HttpOnly");
-        String roomId = MAPPER.readTree(r.body()).get("roomId").asString();
-        String statePath = "/api/rooms/" + roomId + "/state";
+    }
 
-        assertThat(send("GET", statePath, s.cookie(), null, BodyPublishers.noBody()).statusCode()).isEqualTo(401);
-        HttpResponse<String> ok = send("GET", statePath, newCookie, null, BodyPublishers.noBody());
-        assertThat(ok.statusCode()).isEqualTo(200);
-        assertThat(MAPPER.readTree(ok.body()).get("you").get("participantId").asString())
-                .isEqualTo(MAPPER.readTree(r.body()).get("participantId").asString());
-        // The CSRF token survives the rotation.
-        HttpResponse<String> next = send("POST", "/api/session/streams", newCookie, s.csrf(),
-                BodyPublishers.ofString(""));
-        assertThat(next.statusCode()).isEqualTo(200);
+    @Test
+    void aTruncatedChunkedBodyIsAClientErrorNotA500() throws Exception {
+        Session s = open();
+        try (java.net.Socket socket = new java.net.Socket("localhost", port)) {
+            String head = "POST /api/rooms HTTP/1.1\r\nHost: localhost\r\nOrigin: " + ORIGIN
+                    + "\r\nCookie: " + s.cookie() + "\r\nX-CSRF-TOKEN: " + s.csrf()
+                    + "\r\nContent-Type: application/json\r\nTransfer-Encoding: chunked\r\n\r\n";
+            socket.getOutputStream().write((head + "100\r\nabc").getBytes(StandardCharsets.UTF_8));
+            socket.shutdownOutput();
+            socket.setSoTimeout(5000);
+            String status = new java.io.BufferedReader(new java.io.InputStreamReader(socket.getInputStream(),
+                    StandardCharsets.UTF_8)).readLine();
+            assertThat(status).isNotNull().matches("HTTP/1\\.1 4\\d\\d.*");
+        }
     }
 
     @Test
@@ -91,6 +131,7 @@ class RoomHttpTest {
 
         assertThat(r.statusCode()).isEqualTo(413);
         assertThat(MAPPER.readTree(r.body()).get("code").asString()).isEqualTo("BODY_TOO_LARGE");
+        assertThat(MAPPER.readTree(r.body()).get("message").asString()).isNotBlank();
     }
 
     @Test

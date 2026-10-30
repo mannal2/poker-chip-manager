@@ -10,20 +10,16 @@ import com.tngtech.archunit.lang.ArchRule;
 @AnalyzeClasses(packages = "xyz.jwlee.poker.server", importOptions = ImportOption.DoNotIncludeTests.class)
 class ArchitectureTest {
 
-    // room and registry are still empty in the skeleton, so the rules must tolerate no matching classes.
-
     @ArchTest
     static final ArchRule roomAndRegistryDoNotDependOnApiOrAuth =
             noClasses().that().resideInAnyPackage("..server.room..", "..server.registry..")
-                    .should().dependOnClassesThat().resideInAnyPackage("..server.api..", "..server.auth..")
-                    .allowEmptyShould(true);
+                    .should().dependOnClassesThat().resideInAnyPackage("..server.api..", "..server.auth..");
 
     @ArchTest
     static final ArchRule roomAndRegistryDoNotDependOnWebOrServlet =
             noClasses().that().resideInAnyPackage("..server.room..", "..server.registry..")
                     .should().dependOnClassesThat().resideInAnyPackage(
-                            "org.springframework.web..", "org.springframework.http..", "jakarta.servlet..")
-                    .allowEmptyShould(true);
+                            "org.springframework.web..", "org.springframework.http..", "jakarta.servlet..");
 
     @ArchTest
     static final ArchRule supportDoesNotDependOnOtherServerPackages =

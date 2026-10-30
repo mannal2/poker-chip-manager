@@ -37,6 +37,9 @@ public final class FlowCommands {
         String currentHandId = s.hand == null ? null : s.hand.id;
         String snapshotHandId = snap.hand == null ? null : snap.hand.id;
         Blinds pending = Objects.equals(currentHandId, snapshotHandId) ? s.pendingBlinds : snap.pendingBlinds;
+        // Every GameState field must be restored here: a field added to GameState and missed below
+        // would survive the undo. Only version (kept, then bumped by the engine), pendingBlinds
+        // (schedule made in the same hand survives) and undo (consumed) are deliberate exceptions.
         s.tournamentId = snap.tournamentId;
         s.status = snap.status;
         s.settings = snap.settings;

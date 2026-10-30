@@ -10,7 +10,11 @@ import xyz.jwlee.poker.game.model.TournamentStatus;
 public final class Legal {
     private Legal() {}
 
-    /** Legal actions of the current actor; {@code actor} is the live player object of {@code s}. */
+    /**
+     * Legal actions of the current actor. The returned {@code actor} is {@code s}'s own mutable
+     * {@link Player} object, not a copy: command handlers working on their private state copy may
+     * update it, every other caller must treat it as read-only.
+     */
     public static LegalActions of(GameState s) {
         Hand h = s.hand;
         Player found = null;

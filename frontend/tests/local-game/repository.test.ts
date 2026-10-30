@@ -202,3 +202,25 @@ it('자동 다음 핸드 저장·연결 재개 후 1회 무르기와 기록을 �
   expect((await r.load())!.state.undo).toBeNull();
   r.close();
 });
+
+it('쓰기가 막힌 저장소에서도 저장된 게임과 조작권을 읽는다', async () => {
+  const r = repo();
+  const lease = await r.takeControl('a');
+  await r.initialize({ ...defaultSettings, button: 0 }, lease);
+  const before = await r.load();
+  r.close();
+  const original = IDBDatabase.prototype.transaction;
+  // A device that refuses writes (e.g. low storage) fails every readwrite transaction.
+  IDBDatabase.prototype.transaction = function (this: IDBDatabase, ...args) {
+    if (args[1] === 'readwrite') throw new DOMException('disk full', 'QuotaExceededError');
+    return original.apply(this, args);
+  } as typeof original;
+  try {
+    const reader = new LocalRepository(r['name']);
+    expect(await reader.load()).toEqual(before);
+    expect((await reader.control())?.screenId).toBe('a');
+    reader.close();
+  } finally {
+    IDBDatabase.prototype.transaction = original;
+  }
+});

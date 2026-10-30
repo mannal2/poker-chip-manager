@@ -52,7 +52,7 @@ export class LocalRepository {
     this.close();
     this.invalid = false;
   }
-  private async checked(tx: Tx): Promise<StoredGame | null> {
+  private async checked(tx: Tx<StoreMode>): Promise<StoredGame | null> {
     const v = await tx.objectStore('slot').get('current');
     if (!v) return null;
     validateStored(v);
@@ -110,7 +110,8 @@ export class LocalRepository {
     }
   }
   async load(): Promise<StoredGame | null> {
-    return this.transaction('게임 읽기', 'readwrite', async (tx) => {
+    // Read-only so a device that refuses writes (low storage) can still show the saved game.
+    return this.transaction('게임 읽기', 'readonly', async (tx) => {
       const saved = await this.checked(tx);
       await tx.done;
       return saved;

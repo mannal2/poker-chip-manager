@@ -69,7 +69,7 @@ public final class CommandPipeline {
             case "SETTLEMENT_DRAFT" -> new Handler(true, true, false, GameCommands::settlementDraft);
             case "FORFEIT" -> plain(false, GameCommands::forfeit);
             case "ABORT" -> plain(true, GameCommands::abort);
-            // Add RE_READY here (Task 8).
+            case "RE_READY" -> plain(true, ResultCommands::reReady);
             default -> null;
         };
     }

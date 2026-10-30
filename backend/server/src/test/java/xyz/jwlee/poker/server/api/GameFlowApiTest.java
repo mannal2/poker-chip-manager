@@ -154,4 +154,30 @@ class GameFlowApiTest {
         assertThat(c[0].refresh().get("participants").size()).isEqualTo(3);
         assertThat(c[0].state.get("game").get("players").get(1).get("forfeited").asBoolean()).isTrue();
     }
+
+    @Test
+    void afterReReadyTheOldTournamentIdIs409ForCommandsAndGoneForHistory() throws Exception {
+        GameClient[] c = startedTable();
+        String old = c[0].tournamentId();
+        String oldHand = c[0].handId();
+        c[0].send("ABORT", "{}").andExpect(status().isOk());
+
+        c[1].send("RE_READY", "{}").andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("FORBIDDEN"));
+        c[0].send("RE_READY", "{}").andExpect(status().isOk())
+                .andExpect(jsonPath("$.latestState.roomPhase").value("WAITING"))
+                .andExpect(jsonPath("$.latestState.tournamentId").value((Object) null));
+
+        c[0].refresh();
+        c[0].sendAt("CALL", null, c[0].state.get("stateVersion").asLong(), old, oldHand)
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("TOURNAMENT_CHANGED"));
+        c[0].history("?tournamentId=" + old).andExpect(status().isGone())
+                .andExpect(jsonPath("$.code").value("TOURNAMENT_CHANGED"));
+    }
+
+    @Test
+    void reReadyDuringAGameIs422AbortFirst() throws Exception {
+        GameClient[] c = startedTable();
+
+        c[0].send("RE_READY", "{}").andExpect(status().is(422)).andExpect(jsonPath("$.code").value("ABORT_FIRST"));
+    }
 }

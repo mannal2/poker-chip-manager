@@ -17,6 +17,7 @@ record ApiError(String code, String message) {
             Map.entry("TOURNAMENT_CHANGED", "진행 중인 게임이 바뀌었습니다."),
             Map.entry("NOT_YOUR_TURN", "지금은 내 차례가 아닙니다."),
             Map.entry("INVALID_ACTION", "지금은 할 수 없는 행동입니다."),
+            Map.entry("ABORT_FIRST", "진행 중인 게임을 먼저 중단해 주세요."),
             Map.entry("TRANSFER_HOST_FIRST", "방장은 방장을 넘긴 뒤에 기권할 수 있습니다."),
             Map.entry("REQUEST_NOT_FOUND", "해당 요청 결과를 찾을 수 없습니다."),
             Map.entry("NOT_WAITING", "이미 게임이 시작된 방입니다."),

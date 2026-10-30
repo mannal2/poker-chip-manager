@@ -136,6 +136,23 @@ public final class Room {
         this.lastStartSettings = startedWith;
     }
 
+    /**
+     * Leaves the result screen: the game, its events, player ids and settlement draft go, the settings return to
+     * what the tournament started with and the dealer is unchosen. The draft counter keeps growing, and the
+     * version is left to the command pipeline.
+     */
+    void returnToWaiting() {
+        if (lastStartSettings != null) {
+            this.settings = new RoomSettings(lastStartSettings.initial(), lastStartSettings.sb(),
+                    lastStartSettings.bb(), -1);
+        }
+        this.game = null;
+        this.playerIds.clear();
+        this.events.clear();
+        this.settlementDraft = null;
+        this.phase = RoomPhase.WAITING;
+    }
+
     /** Replaces the game state and appends the engine's events in order; the phase follows the game status. */
     void updateGame(GameState state, List<GameEvent> appended) {
         this.game = state;

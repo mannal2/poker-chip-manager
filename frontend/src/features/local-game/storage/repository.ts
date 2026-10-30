@@ -5,6 +5,7 @@ import { createTournament, transition } from '../../../game/transition';
 import { openDatabase, type PokerDB } from './database';
 import { validateStored } from './restore';
 import { storageDeadline } from './storageDeadline';
+import { recordStorageError } from './errorLog';
 import type { IDBPDatabase, IDBPTransaction } from 'idb';
 type StoreMode = 'readonly' | 'readwrite';
 type Tx<M extends StoreMode = 'readwrite'> = IDBPTransaction<
@@ -103,6 +104,7 @@ export class LocalRepository {
       return await storageDeadline(Promise.race([work, cancellation]), phase, () => this.close());
     } catch (error) {
       abort();
+      recordStorageError(phase, error);
       // Cleanup must never wait for the same missing completion/abort notification.
       throw error;
     } finally {

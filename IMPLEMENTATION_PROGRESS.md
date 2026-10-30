@@ -569,3 +569,10 @@ A00~A11 단일 기기 구현과 자동 검증을 마쳤다. 멀티플레이·실
 - 작업 10: `RandomTournamentTest` 추가와 ARCHITECTURE·TECH_DECISIONS(T60 버전)·MULTIPLAYER_MODE(C01) 문서 갱신. 고정 시드 20261029로 2~10인 각 8판(72판), 총 967단계, 기권 20회. 모든 성공 전환의 불변식·입력 불변을 통과하고 2,000단계 안에 종료했다.
 - 검증(2026-10-30): `backend/gradlew -p backend :game:test` 156개 PASS(실패·건너뜀 0). `npm --prefix frontend run typecheck`·`lint` PASS, `npm --prefix frontend test -- --run` 25파일 201개 PASS.
 - 한계: `.github/workflows/backend-ci.yml`은 GitHub에서 한 번도 실행되지 않았다(로컬 Gradle 결과만 있음). 프런트 E2E는 작업 1에서 app-flow·storage 관련 spec만 실행했고 이후 전체를 다시 돌리지 않았다. 브라우저·PWA·실기기 검증은 하지 않았다.
+
+## 2026-10-30 — 간헐적 저장·불러오기 오류 대응
+- 사용자 보고: 리팩토링 배포본을 갤럭시 설치 앱에서 쓰는 중 저장·불러오기 오류가 간헐적으로 나고, 새 토너먼트 시작과 앱 재실행으로도 한동안 회복되지 않음. 오류 문구 기록 없음.
+- 조사: 리팩토링의 저장 경로 변경 없음, 엔진 상태가 복원 검사에 거부되는 경우 없음(무작위 약 15만 7천 단계). 불러오기가 readwrite 트랜잭션을 써서 쓰기 거부 시 읽기까지 실패하는 약점 확인. 최초 원인은 미확정. 상세: docs/investigations/2026-10-30-storage-errors.md.
+- 수정: 불러오기 readonly(826f463), 저장 실패 진단 기록·"오류 정보" 표시/복사.
+- 검증: 단위 207 PASS, typecheck/lint PASS, 관련 E2E(tablet-recovery·stalled-save·storage·app-flow) Chromium/WebKit 46 PASS. 실기기 미검증.
+

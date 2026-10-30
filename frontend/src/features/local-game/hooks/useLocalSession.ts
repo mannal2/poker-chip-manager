@@ -177,12 +177,6 @@ export function useLocalSession({
       await runtime.repo.initialize(defaultSettings, c.lease!);
       await c.refresh();
     }
-    if (
-      c.state?.status === 'playing' &&
-      ['revealPending', 'revealed'].includes(c.state.hand?.phase ?? '')
-    ) {
-      if (!(await dispatch({ type: 'RESUME_FLOW' }))) return;
-    }
     inGame.current = true;
     setApp({ game: c.state, status: 'ready', home: false, error: '' });
     announce('control');

@@ -1,0 +1,763 @@
+[
+  {
+    "id": "FF01",
+    "suite": "forfeit",
+    "description": "[서버 전용: Java 실행기만 실행] 행동자 아닌 사람 기권. A·B·C 1000, 버튼 A(0) → B SB 5(995), C BB 10(990), 행동자 A. B 기권 → B 폴드·기권, 대기열 [A,C], 차례 A 유지. B 재기권은 거절. A 콜(990), C 체크 → 플롭 C 벳 10, A 폴드 → C 미콜 10 반환, 팟 25(A10+B5+C10) C 획득: C 990+25=1015, A 990. B 스택 995=199단위 → 생존자 A·C 99단위씩, 나머지 1단위는 버튼(0) 다음 좌석부터(1=B 제외 → 2=C): A +495=1485, C +500=1515, B 0 탈락. 2핸드(2인): BB A(0), 버튼·SB C(2): C 1510, A 1475, 팟 15, 행동자 C.",
+    "initialState": {
+      "names": ["A", "B", "C"],
+      "initial": 1000,
+      "sb": 5,
+      "bb": 10,
+      "button": 0
+    },
+    "commands": [
+      { "type": "START_TOURNAMENT" },
+      {
+        "type": "FORFEIT",
+        "playerId": "p1",
+        "expectedStateSubset": {
+          "undo": null,
+          "pot": 15,
+          "hand": {
+            "number": 1,
+            "phase": "betting",
+            "actorId": "p0",
+            "pending": ["p0", "p2"]
+          },
+          "players": [
+            { "stack": 1000, "folded": false },
+            {
+              "stack": 995,
+              "folded": true,
+              "forfeited": true,
+              "eliminated": false,
+              "H": 5
+            },
+            { "stack": 990, "folded": false }
+          ]
+        }
+      },
+      { "type": "FORFEIT", "playerId": "p1", "expectError": "INVALID_ACTION" },
+      { "type": "CALL", "playerId": "p0" },
+      { "type": "CHECK", "playerId": "p2" },
+      { "type": "BET", "playerId": "p2", "additional": 10 },
+      { "type": "FOLD", "playerId": "p0" }
+    ],
+    "context": { "id": "FF01", "at": "2026-10-29T00:00:00Z" },
+    "expectedStateSubset": {
+      "status": "playing",
+      "pot": 15,
+      "hand": {
+        "number": 2,
+        "buttonSeat": 2,
+        "sbSeat": 2,
+        "bbSeat": 0,
+        "actorId": "p2"
+      },
+      "players": [
+        { "stack": 1475, "eliminated": false },
+        { "stack": 0, "eliminated": true, "forfeited": true },
+        { "stack": 1510, "eliminated": false }
+      ]
+    },
+    "expectedError": null,
+    "expectedEvents": [
+      "FORFEIT",
+      "RETURN",
+      "PAYOUT",
+      "FORFEIT_SPLIT",
+      "ELIMINATED",
+      "HAND_START"
+    ]
+  },
+  {
+    "id": "FF02",
+    "suite": "forfeit",
+    "description": "[서버 전용: Java 실행기만 실행] 행동자 기권. A·B·C 1000, 버튼 A(0) → B SB 5(995), C BB 10(990), 행동자 A. A 기권 → 대기열 [B,C], 다음 차례 B. B 콜(990), C 체크 → 플롭 B 벳 10, C 폴드 → B 미콜 10 반환, 팟 20(B10+C10) B 획득: B 990+20=1010, C 990. A 스택 1000=200단위 → B·C 100단위씩 500: B 1510, C 1490, A 0 탈락. 2핸드(2인): BB B(1), 버튼·SB C(2): C 1485, B 1500, 팟 15, 행동자 C.",
+    "initialState": {
+      "names": ["A", "B", "C"],
+      "initial": 1000,
+      "sb": 5,
+      "bb": 10,
+      "button": 0
+    },
+    "commands": [
+      { "type": "START_TOURNAMENT" },
+      {
+        "type": "FORFEIT",
+        "playerId": "p0",
+        "expectedStateSubset": {
+          "undo": null,
+          "pot": 15,
+          "hand": {
+            "number": 1,
+            "phase": "betting",
+            "actorId": "p1",
+            "pending": ["p1", "p2"]
+          },
+          "players": [
+            {
+              "stack": 1000,
+              "folded": true,
+              "forfeited": true,
+              "eliminated": false
+            },
+            { "stack": 995 },
+            { "stack": 990 }
+          ]
+        }
+      },
+      { "type": "CALL", "playerId": "p1" },
+      { "type": "CHECK", "playerId": "p2" },
+      { "type": "BET", "playerId": "p1", "additional": 10 },
+      { "type": "FOLD", "playerId": "p2" }
+    ],
+    "context": { "id": "FF02", "at": "2026-10-29T00:00:00Z" },
+    "expectedStateSubset": {
+      "status": "playing",
+      "pot": 15,
+      "hand": {
+        "number": 2,
+        "buttonSeat": 2,
+        "sbSeat": 2,
+        "bbSeat": 1,
+        "actorId": "p2"
+      },
+      "players": [
+        { "stack": 0, "eliminated": true, "forfeited": true },
+        { "stack": 1500, "eliminated": false },
+        { "stack": 1485, "eliminated": false }
+      ]
+    },
+    "expectedError": null,
+    "expectedEvents": [
+      "FORFEIT",
+      "PAYOUT",
+      "FORFEIT_SPLIT",
+      "ELIMINATED",
+      "HAND_START"
+    ]
+  },
+  {
+    "id": "FF03",
+    "suite": "forfeit",
+    "description": "[서버 전용: Java 실행기만 실행] 2인 중 1명 기권 → 토너먼트 종료. A·B 1000, 버튼·SB A(0) 5(995), BB B(1) 10(990), 행동자 A. A 기권 → 남은 사람 B 하나: 미콜 5(B10-A5) B에게 반환(995), 팟 10(A5+B5) B 자동 지급 → 1005. A 스택 995 → 유일 생존자 B: 1005+995=2000. A 0 탈락 → 생존 1명, 종료(우승 B).",
+    "initialState": {
+      "names": ["A", "B"],
+      "initial": 1000,
+      "sb": 5,
+      "bb": 10,
+      "button": 0
+    },
+    "commands": [
+      { "type": "START_TOURNAMENT" },
+      { "type": "FORFEIT", "playerId": "p0" }
+    ],
+    "context": { "id": "FF03", "at": "2026-10-29T00:00:00Z" },
+    "expectedStateSubset": {
+      "status": "ended",
+      "pot": 0,
+      "undo": null,
+      "hand": { "number": 1, "phase": "settlement", "actorId": null },
+      "players": [
+        { "stack": 0, "eliminated": true, "forfeited": true, "B": 0, "H": 0 },
+        { "stack": 2000, "eliminated": false, "B": 0, "H": 0 }
+      ]
+    },
+    "expectedError": null,
+    "expectedEvents": [
+      "FORFEIT",
+      "RETURN",
+      "PAYOUT",
+      "FORFEIT_SPLIT",
+      "ELIMINATED",
+      "TOURNAMENT_END"
+    ]
+  },
+  {
+    "id": "FF04",
+    "suite": "forfeit",
+    "description": "[서버 전용: Java 실행기만 실행] 생존 3명에게 분배, 나머지 5칩. A·B·C·D 1000, 버튼 C(2) → SB D(3) 5(995), BB A(0) 10(990), 행동자 B. D 기권(행동자 아님) → 차례 B 유지. B 폴드, C 폴드 → A 하나: 미콜 5(A10-D5) 반환(995), 팟 10(A5+D5) A → 1005. D 스택 995=199단위 → A·B·C 66단위(330)씩, 나머지 1단위는 버튼(2) 다음 좌석부터: 3=D 제외 → 0=A. A 1005+335=1340, B 1330, C 1330, D 0 탈락. 2핸드: BB=다음 생존(1=B), SB=이전 BB(0=A), 버튼=이전 SB(3, 죽은 버튼): A 1335, B 1320, C 1330, 팟 15, 행동자 C.",
+    "initialState": {
+      "names": ["A", "B", "C", "D"],
+      "initial": 1000,
+      "sb": 5,
+      "bb": 10,
+      "button": 2
+    },
+    "commands": [
+      { "type": "START_TOURNAMENT" },
+      {
+        "type": "FORFEIT",
+        "playerId": "p3",
+        "expectedStateSubset": {
+          "hand": { "actorId": "p1", "pending": ["p0", "p1", "p2"] }
+        }
+      },
+      { "type": "FOLD", "playerId": "p1" },
+      { "type": "FOLD", "playerId": "p2" }
+    ],
+    "context": { "id": "FF04", "at": "2026-10-29T00:00:00Z" },
+    "expectedStateSubset": {
+      "status": "playing",
+      "pot": 15,
+      "hand": {
+        "number": 2,
+        "buttonSeat": 3,
+        "sbSeat": 0,
+        "bbSeat": 1,
+        "actorId": "p2"
+      },
+      "players": [
+        { "stack": 1335, "eliminated": false },
+        { "stack": 1320, "eliminated": false },
+        { "stack": 1330, "eliminated": false },
+        { "stack": 0, "eliminated": true, "forfeited": true }
+      ]
+    },
+    "expectedError": null,
+    "expectedEvents": [
+      "FORFEIT",
+      "RETURN",
+      "PAYOUT",
+      "FORFEIT_SPLIT",
+      "ELIMINATED",
+      "HAND_START"
+    ]
+  },
+  {
+    "id": "FF05",
+    "suite": "forfeit",
+    "description": "[서버 전용: Java 실행기만 실행] 승자 선택 중 사이드 팟 유일 자격자 기권(10절 예시, 2026-10-30 규칙: 주인 없는 층은 그 층에 낸 사람에게 낸 만큼 반환). A·B·C 500, 버튼 A(0). 1핸드: B SB 5, C BB 10, A 레이즈 400, B 폴드, C 콜 390, 리버까지 체크, 팟 805(A400+B5+C400) C 획득 → A 100, B 495, C 905. 2핸드: 버튼 B(1), SB C(2) 5, BB A(0) 10. B 레이즈 300(195), C 콜 295(605), A 올인 90(0, 납부 100). 플롭 C 벳 10, B 폴드 → C 미콜 10 반환 → 승자 선택: H A100·B300·C300, 팟 700(메인 300 자격 A·C / 사이드 400 자격 C). C 기권 → 상한 = 비폴드 최고 H = A 100, 사이드 층(100~300) 자격자 0명 → 낸 만큼 반환: B 300-100=200(RETURN, 195+200=395), C 300-100=200(RETURN, 605+200=805), 팟 700-400=300. 남은 비폴드 A 하나 → 메인 300 A 자동 지급(0+300=300). C 스택 805=161단위 → 생존자 A·B 80단위(400)씩, 나머지 1단위는 버튼(1) 다음 좌석부터(2=C 제외 → 0=A): A 300+405=705, B 395+400=795, C 0 탈락(합 705+795=1500). 3핸드(2인): BB B(1), 버튼·SB A(0): A 705-5=700, B 795-10=785, 팟 15, 행동자 A.",
+    "initialState": {
+      "names": ["A", "B", "C"],
+      "initial": 500,
+      "sb": 5,
+      "bb": 10,
+      "button": 0
+    },
+    "commands": [
+      { "type": "START_TOURNAMENT" },
+      { "type": "RAISE", "playerId": "p0", "additional": 400 },
+      { "type": "FOLD", "playerId": "p1" },
+      { "type": "CALL", "playerId": "p2" },
+      { "type": "CHECK", "playerId": "p2" },
+      { "type": "CHECK", "playerId": "p0" },
+      { "type": "CHECK", "playerId": "p2" },
+      { "type": "CHECK", "playerId": "p0" },
+      { "type": "CHECK", "playerId": "p2" },
+      { "type": "CHECK", "playerId": "p0" },
+      {
+        "type": "SETTLE_HAND",
+        "winners": { "pot0": ["p2"] },
+        "expectedStateSubset": {
+          "hand": {
+            "number": 2,
+            "buttonSeat": 1,
+            "sbSeat": 2,
+            "bbSeat": 0,
+            "actorId": "p1"
+          },
+          "players": [{ "stack": 90 }, { "stack": 495 }, { "stack": 900 }]
+        }
+      },
+      { "type": "RAISE", "playerId": "p1", "additional": 300 },
+      { "type": "CALL", "playerId": "p2" },
+      { "type": "ALL_IN", "playerId": "p0" },
+      { "type": "BET", "playerId": "p2", "additional": 10 },
+      {
+        "type": "FOLD",
+        "playerId": "p1",
+        "expectedStateSubset": {
+          "pot": 700,
+          "hand": { "number": 2, "phase": "settlement", "actorId": null },
+          "players": [
+            { "stack": 0, "H": 100, "folded": false },
+            { "stack": 195, "H": 300, "folded": true },
+            { "stack": 605, "H": 300, "folded": false }
+          ]
+        }
+      },
+      { "type": "FORFEIT", "playerId": "p2" }
+    ],
+    "context": { "id": "FF05", "at": "2026-10-29T00:00:00Z" },
+    "expectedStateSubset": {
+      "status": "playing",
+      "pot": 15,
+      "hand": {
+        "number": 3,
+        "buttonSeat": 0,
+        "sbSeat": 0,
+        "bbSeat": 1,
+        "actorId": "p0"
+      },
+      "players": [
+        { "stack": 700, "eliminated": false },
+        { "stack": 785, "eliminated": false },
+        { "stack": 0, "eliminated": true, "forfeited": true }
+      ]
+    },
+    "expectedError": null,
+    "expectedEvents": [
+      "FORFEIT",
+      "RETURN",
+      "RETURN",
+      "PAYOUT",
+      "FORFEIT_SPLIT",
+      "ELIMINATED",
+      "HAND_START"
+    ]
+  },
+  {
+    "id": "FF06",
+    "suite": "forfeit",
+    "description": "[서버 전용: Java 실행기만 실행] 승자 선택 중 기권으로 1명만 남음 → 자동 지급. A·B·C 1000, 버튼 A(0) → B SB 5(995), C BB 10(990). A 콜(990), B 폴드, C 체크, 리버까지 체크 → 승자 선택: 팟 25(A10+B5+C10), 자격 A·C. C 기권 → 주인 없는 층 없음(최고 층 10에 A 자격), 남은 비폴드 A 하나 → 팟 25 자동 지급: A 1015. C 스택 990=198단위 → A·B 99단위(495)씩: A 1510, B 1490, C 0 탈락. 2핸드(2인): BB A(0), 버튼·SB B(1): B 1485, A 1500, 팟 15, 행동자 B.",
+    "initialState": {
+      "names": ["A", "B", "C"],
+      "initial": 1000,
+      "sb": 5,
+      "bb": 10,
+      "button": 0
+    },
+    "commands": [
+      { "type": "START_TOURNAMENT" },
+      { "type": "CALL", "playerId": "p0" },
+      { "type": "FOLD", "playerId": "p1" },
+      { "type": "CHECK", "playerId": "p2" },
+      { "type": "CHECK", "playerId": "p2" },
+      { "type": "CHECK", "playerId": "p0" },
+      { "type": "CHECK", "playerId": "p2" },
+      { "type": "CHECK", "playerId": "p0" },
+      { "type": "CHECK", "playerId": "p2" },
+      {
+        "type": "CHECK",
+        "playerId": "p0",
+        "expectedStateSubset": {
+          "pot": 25,
+          "hand": { "number": 1, "phase": "settlement" }
+        }
+      },
+      { "type": "FORFEIT", "playerId": "p2" }
+    ],
+    "context": { "id": "FF06", "at": "2026-10-29T00:00:00Z" },
+    "expectedStateSubset": {
+      "status": "playing",
+      "pot": 15,
+      "undo": null,
+      "hand": {
+        "number": 2,
+        "buttonSeat": 1,
+        "sbSeat": 1,
+        "bbSeat": 0,
+        "actorId": "p1"
+      },
+      "players": [
+        { "stack": 1500, "eliminated": false },
+        { "stack": 1485, "eliminated": false },
+        { "stack": 0, "eliminated": true, "forfeited": true }
+      ]
+    },
+    "expectedError": null,
+    "expectedEvents": [
+      "FORFEIT",
+      "PAYOUT",
+      "FORFEIT_SPLIT",
+      "ELIMINATED",
+      "HAND_START"
+    ]
+  },
+  {
+    "id": "FF07",
+    "suite": "forfeit",
+    "description": "[서버 전용: Java 실행기만 실행] 거절: 준비 단계, 없는 참가자, 이미 탈락, 종료 후. A·B·C 1000, 버튼 A(0): A 올인 1000, B 콜 995(올인), C 폴드(10) → 팟 2010 A 획득, B 0 탈락. B 기권 거절. 2핸드(2인): BB A(0) 10, 버튼·SB C(2) 5, 행동자 C. C 기권 → 미콜 5 A 반환, 팟 10 A, C 985 → A: A 3000, 종료. 종료 후 기권 거절.",
+    "initialState": {
+      "names": ["A", "B", "C"],
+      "initial": 1000,
+      "sb": 5,
+      "bb": 10,
+      "button": 0
+    },
+    "commands": [
+      {
+        "type": "FORFEIT",
+        "playerId": "p0",
+        "expectError": "INVALID_ACTION",
+        "expectedStateSubset": { "status": "setup", "version": 0 }
+      },
+      { "type": "START_TOURNAMENT" },
+      {
+        "type": "FORFEIT",
+        "playerId": "nobody",
+        "expectError": "INVALID_ACTION"
+      },
+      { "type": "ALL_IN", "playerId": "p0" },
+      { "type": "CALL", "playerId": "p1" },
+      { "type": "FOLD", "playerId": "p2" },
+      {
+        "type": "SETTLE_HAND",
+        "winners": { "pot0": ["p0"] },
+        "expectedStateSubset": {
+          "players": [
+            { "stack": 2000 },
+            { "stack": 0, "eliminated": true },
+            { "stack": 985 }
+          ]
+        }
+      },
+      { "type": "FORFEIT", "playerId": "p1", "expectError": "INVALID_ACTION" },
+      {
+        "type": "FORFEIT",
+        "playerId": "p2",
+        "expectedStateSubset": {
+          "status": "ended",
+          "players": [
+            { "stack": 3000 },
+            { "stack": 0, "eliminated": true },
+            { "stack": 0, "eliminated": true, "forfeited": true }
+          ]
+        }
+      },
+      { "type": "FORFEIT", "playerId": "p0" }
+    ],
+    "context": { "id": "FF07", "at": "2026-10-29T00:00:00Z" },
+    "expectedStateSubset": {},
+    "expectedError": "INVALID_ACTION",
+    "expectedEvents": []
+  },
+  {
+    "id": "FF08",
+    "suite": "forfeit",
+    "description": "[서버 전용: Java 실행기만 실행] 한 핸드 2명 기권(fuzz seed 742 모양 + 이미 폴드한 구경꾼 D: 반환이 기권자별로 나뉘는지 분배 나머지로 드러남). A·B·C·D 1000, 버튼 A(0) → B SB 5(995), C BB 10(990), 행동자 D. D 폴드, A(버튼) 콜 10(990), 차례 B. C(BB) 기권 → 차례 B 유지, 팟 25. A 기권 → 비폴드 B 하나: 미콜 반환 없음(최고 B 10이 A·C 둘). 상한 = B의 H 5 → 주인 없는 층(5~10) 낸 만큼 반환: A 10-5=5(RETURN, 995), C 10-5=5(RETURN, 995), 팟 25-10=15. 팟 15(A5+B5+C5) B 자동 지급: 995+15=1010. 기권 분배(좌석 순 A 먼저, 생존자는 버튼(0) 다음부터 B(1)·D(3)): A 995=199단위 → B 100단위 500, D 99단위 495 → B 1510, D 1495. C 995=199단위 → B 500, D 495 → B 2010, D 1990(합 4000). A·C 0 탈락. 2핸드(2인): BB=이전 BB(2) 다음 생존 D(3), 버튼·SB=D 다음 생존 B(1): B 2010-5=2005, D 1990-10=1980, 팟 15, 행동자 B. (옛 규칙처럼 10을 모두 마지막 기권자 A에게 주면 A 1000=200단위 500·500, C 990=198단위 495·495 → B 2005·D 1995로 달라짐.)",
+    "initialState": {
+      "names": ["A", "B", "C", "D"],
+      "initial": 1000,
+      "sb": 5,
+      "bb": 10,
+      "button": 0
+    },
+    "commands": [
+      { "type": "START_TOURNAMENT" },
+      { "type": "FOLD", "playerId": "p3" },
+      { "type": "CALL", "playerId": "p0" },
+      {
+        "type": "FORFEIT",
+        "playerId": "p2",
+        "expectedStateSubset": {
+          "pot": 25,
+          "hand": {
+            "number": 1,
+            "phase": "betting",
+            "actorId": "p1",
+            "pending": ["p1"]
+          },
+          "players": [
+            { "stack": 990, "folded": false },
+            { "stack": 995, "folded": false },
+            { "stack": 990, "folded": true, "forfeited": true, "H": 10 },
+            { "stack": 1000, "folded": true }
+          ]
+        }
+      },
+      { "type": "FORFEIT", "playerId": "p0" }
+    ],
+    "context": { "id": "FF08", "at": "2026-10-30T00:00:00Z" },
+    "expectedStateSubset": {
+      "status": "playing",
+      "pot": 15,
+      "hand": {
+        "number": 2,
+        "buttonSeat": 1,
+        "sbSeat": 1,
+        "bbSeat": 3,
+        "actorId": "p1"
+      },
+      "players": [
+        { "stack": 0, "eliminated": true, "forfeited": true },
+        { "stack": 2005, "eliminated": false },
+        { "stack": 0, "eliminated": true, "forfeited": true },
+        { "stack": 1980, "eliminated": false }
+      ]
+    },
+    "expectedError": null,
+    "expectedEvents": [
+      "FORFEIT",
+      "RETURN",
+      "PAYOUT",
+      "FORFEIT_SPLIT",
+      "ELIMINATED",
+      "HAND_START"
+    ]
+  },
+  {
+    "id": "FF09",
+    "suite": "forfeit",
+    "description": "[서버 전용: Java 실행기만 실행] 기권 뒤 다른 명령(폴드)이 라운드를 닫을 때 주인 없는 층 반환. A·B·C·D 1000, 버튼 A(0) → B SB 5(995), C BB 10(990), 행동자 D. D 레이즈 100(900), A 콜 100(900), 차례 B. D 기권, A 기권 → 비폴드 B·C 둘이라 베팅 계속(차례 B, 팟 215). B 폴드 → 비폴드 C 하나: 미콜 반환 없음(최고 100이 A·D 둘). 상한 = C의 H 10 → 주인 없는 층(10~100) 낸 만큼 반환: A 100-10=90(RETURN, 990), D 100-10=90(RETURN, 990), 팟 215-180=35. 팟 35(A10+B5+C10+D10) C 자동 지급: 990+35=1025. 기권 분배(좌석 순 A 먼저, 생존자는 버튼(0) 다음부터 B(1)·C(2)): A 990=198단위 → 99단위 495씩 → B 995+495=1490, C 1025+495=1520. D 990=198단위 → 495씩 → B 1985, C 2015(합 4000). A·D 0 탈락. 2핸드(2인): BB=이전 BB(2) 다음 생존 B(1), 버튼·SB=B 다음 생존 C(2): C 2015-5=2010, B 1985-10=1975, 팟 15, 행동자 C.",
+    "initialState": {
+      "names": ["A", "B", "C", "D"],
+      "initial": 1000,
+      "sb": 5,
+      "bb": 10,
+      "button": 0
+    },
+    "commands": [
+      { "type": "START_TOURNAMENT" },
+      { "type": "RAISE", "playerId": "p3", "additional": 100 },
+      { "type": "CALL", "playerId": "p0" },
+      { "type": "FORFEIT", "playerId": "p3" },
+      {
+        "type": "FORFEIT",
+        "playerId": "p0",
+        "expectedStateSubset": {
+          "pot": 215,
+          "hand": {
+            "number": 1,
+            "phase": "betting",
+            "actorId": "p1",
+            "pending": ["p1", "p2"]
+          },
+          "players": [
+            { "stack": 900, "folded": true, "forfeited": true, "H": 100 },
+            { "stack": 995, "folded": false },
+            { "stack": 990, "folded": false },
+            { "stack": 900, "folded": true, "forfeited": true, "H": 100 }
+          ]
+        }
+      },
+      { "type": "FOLD", "playerId": "p1" }
+    ],
+    "context": { "id": "FF09", "at": "2026-10-30T00:00:00Z" },
+    "expectedStateSubset": {
+      "status": "playing",
+      "pot": 15,
+      "hand": {
+        "number": 2,
+        "buttonSeat": 2,
+        "sbSeat": 2,
+        "bbSeat": 1,
+        "actorId": "p2"
+      },
+      "players": [
+        { "stack": 0, "eliminated": true, "forfeited": true },
+        { "stack": 1975, "eliminated": false },
+        { "stack": 2010, "eliminated": false },
+        { "stack": 0, "eliminated": true, "forfeited": true }
+      ]
+    },
+    "expectedError": null,
+    "expectedEvents": [
+      "FORFEIT",
+      "RETURN",
+      "PAYOUT",
+      "FORFEIT_SPLIT",
+      "ELIMINATED",
+      "HAND_START"
+    ]
+  },
+  {
+    "id": "FF10",
+    "suite": "forfeit",
+    "description": "[서버 전용: Java 실행기만 실행] 올인한 사람의 베팅 중 기권 + 나중 콜이 라운드를 승자 선택으로 닫을 때 주인 없는 층 반환(fuzz seed 1972 모양). A·B·C·D 1000, 버튼 A(0). 1핸드: B SB 5, C BB 10, D 레이즈 400(600), A·B 폴드, C 콜 390(600), 플롭 C 벳 10, D 폴드 → C 미콜 10 반환, 팟 805(B5+C400+D400) C → A 1000, B 995, C 1405, D 600. 2핸드: 버튼 B(1), SB C(2) 5(1400), BB D(3) 10(590), 행동자 A. A 콜 10(990), B 콜 10(985), C 콜 5(1395), D 체크 → 플롭(팟 40, 모두 H 10), 행동자 C: C 벳 990(405), D 올인 590(0), A 콜 990(올인 0), 차례 B. C 기권(스택 405) → 차례 B 유지. A(올인) 기권(팟 40+990+590+990=2610) → 비폴드 B·D, B만 행동 가능 → B는 D의 590까지만 맞춤. B 콜 590(395) → 라운드 종료: 미콜 반환 없음(최고 990이 A·C 둘). 상한 = 비폴드 최고 H 600(B·D) → 낸 만큼 반환: A 1000-600=400(RETURN, 400), C 1000-600=400(RETURN, 405+400=805), 팟 3200-800=2400. 행동 가능 1명 → 쇼다운, 승자 선택. 팟 2400(4×600, 자격 B·D) D 승: D 2400, B 395. 기권 분배(좌석 순 A 먼저, 생존자는 버튼(1) 다음부터 D(3)·B(1)): A 400=80단위 → 40단위 200씩 → D 2600, B 595. C 805=161단위 → D 81단위 405, B 80단위 400 → D 3005, B 995(합 4000). A·C 0 탈락. 3핸드(2인): BB=이전 BB(3) 다음 생존 B(1), 버튼·SB=B 다음 생존 D(3): D 3005-5=3000, B 995-10=985, 팟 15, 행동자 D.",
+    "initialState": {
+      "names": ["A", "B", "C", "D"],
+      "initial": 1000,
+      "sb": 5,
+      "bb": 10,
+      "button": 0
+    },
+    "commands": [
+      { "type": "START_TOURNAMENT" },
+      { "type": "RAISE", "playerId": "p3", "additional": 400 },
+      { "type": "FOLD", "playerId": "p0" },
+      { "type": "FOLD", "playerId": "p1" },
+      { "type": "CALL", "playerId": "p2" },
+      { "type": "BET", "playerId": "p2", "additional": 10 },
+      {
+        "type": "FOLD",
+        "playerId": "p3",
+        "expectedStateSubset": {
+          "pot": 15,
+          "hand": {
+            "number": 2,
+            "buttonSeat": 1,
+            "sbSeat": 2,
+            "bbSeat": 3,
+            "actorId": "p0"
+          },
+          "players": [
+            { "stack": 1000 },
+            { "stack": 995 },
+            { "stack": 1400 },
+            { "stack": 590 }
+          ]
+        }
+      },
+      { "type": "CALL", "playerId": "p0" },
+      { "type": "CALL", "playerId": "p1" },
+      { "type": "CALL", "playerId": "p2" },
+      { "type": "CHECK", "playerId": "p3" },
+      { "type": "BET", "playerId": "p2", "additional": 990 },
+      { "type": "ALL_IN", "playerId": "p3" },
+      { "type": "CALL", "playerId": "p0" },
+      {
+        "type": "FORFEIT",
+        "playerId": "p2",
+        "expectedStateSubset": {
+          "hand": {
+            "phase": "betting",
+            "street": 1,
+            "actorId": "p1",
+            "pending": ["p1"]
+          },
+          "players": [
+            { "stack": 0 },
+            { "stack": 985 },
+            { "stack": 405, "folded": true, "forfeited": true },
+            { "stack": 0 }
+          ]
+        }
+      },
+      {
+        "type": "FORFEIT",
+        "playerId": "p0",
+        "expectedStateSubset": {
+          "pot": 2610,
+          "hand": { "phase": "betting", "actorId": "p1", "pending": ["p1"] },
+          "players": [
+            { "stack": 0, "folded": true, "forfeited": true, "H": 1000 },
+            {},
+            { "H": 1000 },
+            { "H": 600 }
+          ]
+        }
+      },
+      {
+        "type": "CALL",
+        "playerId": "p1",
+        "expectedStateSubset": {
+          "pot": 2400,
+          "hand": {
+            "number": 2,
+            "phase": "settlement",
+            "actorId": null,
+            "showdown": true
+          },
+          "players": [
+            { "stack": 400, "H": 600, "folded": true },
+            { "stack": 395, "H": 600, "folded": false },
+            { "stack": 805, "H": 600, "folded": true },
+            { "stack": 0, "H": 600, "folded": false }
+          ]
+        }
+      },
+      { "type": "SETTLE_HAND", "winners": { "pot0": ["p3"] } }
+    ],
+    "context": { "id": "FF10", "at": "2026-10-30T00:00:00Z" },
+    "expectedStateSubset": {
+      "status": "playing",
+      "pot": 15,
+      "hand": {
+        "number": 3,
+        "buttonSeat": 3,
+        "sbSeat": 3,
+        "bbSeat": 1,
+        "actorId": "p3"
+      },
+      "players": [
+        { "stack": 0, "eliminated": true, "forfeited": true },
+        { "stack": 985, "eliminated": false },
+        { "stack": 0, "eliminated": true, "forfeited": true },
+        { "stack": 3000, "eliminated": false }
+      ]
+    },
+    "expectedError": null,
+    "expectedEvents": [
+      "FORFEIT",
+      "RETURN",
+      "REVEAL",
+      "PAYOUT",
+      "FORFEIT_SPLIT",
+      "ELIMINATED",
+      "HAND_START"
+    ]
+  },
+  {
+    "id": "FF11",
+    "suite": "forfeit",
+    "description": "[서버 전용: Java 실행기만 실행] 베팅 중 기권이 라운드를 닫아 비폴드 2명의 승자 선택으로 넘어감. A·B·C 1000, 버튼 A(0) → B SB 5(995), C BB 10(990), 행동자 A. A 콜 10(990), B 콜 5(990), C 체크 → 플롭·턴 B·C·A 체크. 리버: B 벳 100(890), C 콜 100(890), 차례 A. A 기권 → 대기열 빔, 라운드 종료(미콜·주인 없는 층 없음: 상한 110, A의 H 10), 리버라 쇼다운 → 승자 선택, 자동 지급 없음: 팟 230(A10+B110+C110) 자격 B·C, A 스택 990 그대로·미탈락. B·C 공동 승: 230=46단위 → 23단위 115씩: B 890+115=1005, C 1005. A 990=198단위 → 99단위 495씩: B 1500, C 1500(합 3000). A 0 탈락. 2핸드(2인): BB=이전 BB(2) 다음 생존 B(1), 버튼·SB=B 다음 생존 C(2): C 1500-5=1495, B 1500-10=1490, 팟 15, 행동자 C.",
+    "initialState": {
+      "names": ["A", "B", "C"],
+      "initial": 1000,
+      "sb": 5,
+      "bb": 10,
+      "button": 0
+    },
+    "commands": [
+      { "type": "START_TOURNAMENT" },
+      { "type": "CALL", "playerId": "p0" },
+      { "type": "CALL", "playerId": "p1" },
+      { "type": "CHECK", "playerId": "p2" },
+      { "type": "CHECK", "playerId": "p1" },
+      { "type": "CHECK", "playerId": "p2" },
+      { "type": "CHECK", "playerId": "p0" },
+      { "type": "CHECK", "playerId": "p1" },
+      { "type": "CHECK", "playerId": "p2" },
+      { "type": "CHECK", "playerId": "p0" },
+      { "type": "BET", "playerId": "p1", "additional": 100 },
+      { "type": "CALL", "playerId": "p2" },
+      {
+        "type": "FORFEIT",
+        "playerId": "p0",
+        "expectedStateSubset": {
+          "status": "playing",
+          "pot": 230,
+          "undo": null,
+          "hand": {
+            "number": 1,
+            "street": 3,
+            "phase": "settlement",
+            "actorId": null,
+            "showdown": true
+          },
+          "players": [
+            {
+              "stack": 990,
+              "H": 10,
+              "folded": true,
+              "forfeited": true,
+              "eliminated": false
+            },
+            { "stack": 890, "H": 110, "folded": false },
+            { "stack": 890, "H": 110, "folded": false }
+          ]
+        }
+      },
+      { "type": "SETTLE_HAND", "winners": { "pot0": ["p1", "p2"] } }
+    ],
+    "context": { "id": "FF11", "at": "2026-10-30T00:00:00Z" },
+    "expectedStateSubset": {
+      "status": "playing",
+      "pot": 15,
+      "hand": {
+        "number": 2,
+        "buttonSeat": 2,
+        "sbSeat": 2,
+        "bbSeat": 1,
+        "actorId": "p2"
+      },
+      "players": [
+        { "stack": 0, "eliminated": true, "forfeited": true },
+        { "stack": 1490, "eliminated": false },
+        { "stack": 1495, "eliminated": false }
+      ]
+    },
+    "expectedError": null,
+    "expectedEvents": [
+      "FORFEIT",
+      "REVEAL",
+      "PAYOUT",
+      "FORFEIT_SPLIT",
+      "ELIMINATED",
+      "HAND_START"
+    ]
+  }
+]

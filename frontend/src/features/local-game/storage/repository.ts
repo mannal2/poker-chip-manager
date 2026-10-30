@@ -5,6 +5,7 @@ import { createTournament, transition } from '../../../game/transition';
 import { openDatabase, type PokerDB } from './database';
 import { validateStored } from './restore';
 import { storageDeadline } from './storageDeadline';
+import { recordStorageError } from './errorLog';
 import type { IDBPDatabase, IDBPTransaction } from 'idb';
 type StoreMode = 'readonly' | 'readwrite';
 type Tx<M extends StoreMode = 'readwrite'> = IDBPTransaction<
@@ -52,7 +53,7 @@ export class LocalRepository {
     this.close();
     this.invalid = false;
   }
-  private async checked(tx: Tx): Promise<StoredGame | null> {
+  private async checked(tx: Tx<StoreMode>): Promise<StoredGame | null> {
     const v = await tx.objectStore('slot').get('current');
     if (!v) return null;
     validateStored(v);
@@ -103,6 +104,7 @@ export class LocalRepository {
       return await storageDeadline(Promise.race([work, cancellation]), phase, () => this.close());
     } catch (error) {
       abort();
+      recordStorageError(phase, error);
       // Cleanup must never wait for the same missing completion/abort notification.
       throw error;
     } finally {
@@ -110,7 +112,8 @@ export class LocalRepository {
     }
   }
   async load(): Promise<StoredGame | null> {
-    return this.transaction('게임 읽기', 'readwrite', async (tx) => {
+    // Read-only so a device that refuses writes (low storage) can still show the saved game.
+    return this.transaction('게임 읽기', 'readonly', async (tx) => {
       const saved = await this.checked(tx);
       await tx.done;
       return saved;

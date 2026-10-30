@@ -58,9 +58,10 @@ flowchart TD
 | 위치        | 역할 한 줄                              | 핵심 파일·심볼                                                                                                      |
 | ----------- | --------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
 | `frontend/` | 브라우저 앱·테스트·정적 이미지 빌드     | [package.json](frontend/package.json), [vite.config.ts](frontend/vite.config.ts), [Dockerfile](frontend/Dockerfile) |
+| `backend/`  | 서버 Gradle 프로젝트(현재 `game` 규칙 모듈만) | [settings.gradle.kts](backend/settings.gradle.kts), `backend/game/` |
 | `shared/`   | 언어에 독립적인 규칙 테스트 입력·기대값 | `shared/game-fixtures/`, [schema.json](shared/game-fixtures/schema.json)                                            |
 | `deploy/`   | 프런트엔드 교체·복구와 edge 구성        | [deploy-frontend.sh](deploy/deploy-frontend.sh), [README.md](deploy/README.md)                                      |
-| `.github/`  | 검사·이미지 발행·배포·연결 확인 자동화  | [ci-images.yml](.github/workflows/ci-images.yml), [check-server.yml](.github/workflows/check-server.yml)            |
+| `.github/`  | 검사·이미지 발행·배포·연결 확인 자동화  | [ci-images.yml](.github/workflows/ci-images.yml), [backend-ci.yml](.github/workflows/backend-ci.yml), [check-server.yml](.github/workflows/check-server.yml) |
 | `docs/`     | 책임별 리팩터링 계획과 검증 기록        | `docs/superpowers/plans/`                                                                                           |
 
 루트 `shared/`는 프런트엔드와 향후 서버가 함께 쓰는 규칙 사례이고, `frontend/src/shared/`는 프런트엔드 범용 코드다. 이름은 같지만 다른 것이다.
@@ -157,6 +158,63 @@ HTML마다 자기 진입점을 로드한다. `local/index.html`은 [main.local.t
 PWA 등록은 로컬 게임에서 호출하는 `useLocalPWA`가 담당한다.
 업데이트·설치 안내를 언제 보여줄지는 `usePwaPresentation`이 결정한다.
 
+## 백엔드 규칙 모듈 (`backend/game`)
+
+서버의 순수 게임 규칙이다. 프런트 `frontend/src/game/`을 Java 25로 옮긴 것이며 같은 공통 사례를 통과해야 한다.
+방·API·인증·실시간 코드는 아직 없고 이 모듈만 있다(후속 계획 2~4).
+패키지 `xyz.jwlee.poker.game` 아래 구조는 다음과 같다.
+
+| 위치 | 역할 한 줄 |
+| ---- | ---------- |
+| `GameEngine` | 유일한 진입점 `transition(상태, 명령, 문맥)`. 상태를 복사해 명령을 적용하고 `TransitionResult`를 반환 |
+| `TransitionResult` | `Applied(상태, 이벤트)` 또는 `Rejected(오류 코드)` |
+| `Round` | 베팅 라운드 진행·핸드 시작·정산·탈락 처리 |
+| `Legal`, `LegalActions`, `LegalReasonCode` | 현재 차례의 합법 행동(콜 금액·최소 레이즈·체크/콜/레이즈 가능) |
+| `Settlement`, `SettlementPreview`, `PotAllocation` | 메인·사이드 팟 구성, 승자별 지급 미리보기와 나머지 칩 배분 |
+| `Positions` | 딜러·SB·BB와 헤즈업 위치, 다음 좌석 계산 |
+| `Invariants` | 모든 성공 전환 뒤 칩 총량·팟 장부·차례 검사 |
+| `Tournament` | 설정 검증 후 준비 단계 상태 생성(`create`) |
+| `model/` | `GameState`·`Player`·`Hand`·`Pot`·`GameSettings`·`UndoSnapshot` 등 상태 모델과 `copy()` |
+| `command/` | `GameCommand` record와 명령별 처리기: `SetupCommands`·`BettingCommands`·`FlowCommands`·`ForfeitCommand`, 공통 검사 `HandGuard` |
+| `event/` | `GameEvent`와 종류별 record `EventDetails`(sealed) |
+| `rule/` | `Rules.require`, `RuleViolation`, `RuleErrorCode`, `SettlementErrorCode` |
+| `settings/` | `SettingsValidator`와 결과 `SettingsValidation`, `SettingsErrorCode` |
+
+### TS 파일 ↔ Java 클래스
+
+| `frontend/src/game/` | `backend/game/.../game/` |
+| -------------------- | ------------------------ |
+| `types.ts` | `model/*`, `command/GameCommand`, `event/*` |
+| `transition.ts` (`transition`·`undoable`) | `GameEngine` |
+| `tournament.ts` | `Tournament` |
+| `commands/setup.ts` | `command/SetupCommands` |
+| `commands/betting.ts` | `command/BettingCommands` |
+| `commands/flow.ts` | `command/FlowCommands` |
+| (없음, 서버 전용) | `command/ForfeitCommand` |
+| `round.ts` | `Round` |
+| `legal.ts` | `Legal`, `LegalActions`, `LegalReasonCode` |
+| `settlement.ts` | `Settlement`, `SettlementPreview`, `PotAllocation` |
+| `positions.ts` | `Positions` |
+| `settings.ts` | `settings/*` |
+| `invariants.ts` | `Invariants` |
+| `rule.ts`, `errors.ts` | `rule/*`, `settings/SettingsErrorCode`, `LegalReasonCode` |
+| `draft.ts` | (없음, 입력 초안은 화면 전용) |
+
+### 의존 방향과 실행
+
+- `backend/game`의 main 의존성은 JDK뿐이다. 별도 Gradle 모듈이므로 Spring·서버 코드를 import하면 컴파일이 실패한다.
+  테스트 라이브러리(JUnit·AssertJ·Jackson)는 test 범위에만 있다. 버전은 [TECH_DECISIONS.md](TECH_DECISIONS.md) T60에 있다.
+- 상태 변경은 TS와 같이 명령마다 깊은 복사 후 복사본만 수정한다. 거절은 `RuleViolation`으로만 하고 다른 예외는 버그로 전파한다.
+- 필드명은 풀어 쓴다(`roundBet`=B, `handTotal`=H, `currentBet`=W, `minRaise`=R). JSON 이름 변환은 `StateJson`(테스트) 한 곳에서만 한다.
+- `FORFEIT`는 서버 전용 규칙이다. 누가 누구를 기권시킬 수 있는지는 후속 방 계층이 검사하고 이 규칙은 대상이 나갈 수 있는지만 확인한다.
+- 공통 사례 형식 v2: 시작 상태는 완전한 GameState JSON이고 명령 목록과 `expectError`·`expectedStateSubset`·`expectRestores`가 이어진다.
+  의미의 기준은 [schema.json](shared/game-fixtures/schema.json)의 description이다. `forfeit.json`은 Java 전용이다.
+- 테스트는 `backend/game/src/test/java/xyz/jwlee/poker/game/`에 있다. `fixtures/`의 `FixtureFiles`·`JsonSubset`·`StateJson`·`FixtureRunner`와 `*FixtureTest`가 공통 사례를 읽고, `RandomTournamentTest`는 고정 시드(20261029)의 2~10인 토너먼트를 기권 포함 무작위 명령으로 끝까지 진행하며 매 전환의 불변식·입력 불변을 검사한다.
+
+```powershell
+backend/gradlew -p backend :game:test
+```
+
 ## 기능 → 코드 위치 표
 
 | 기능                               | 주요 파일                                                                                                                                                                                                                                                                                            | 핵심 함수·컴포넌트                                                        | 관련 명세                                                                |
@@ -246,6 +304,9 @@ PWA 등록은 로컬 게임에서 호출하는 `useLocalPWA`가 담당한다.
 | 칩 이동 금액 또는 효과 변경             | [eventTransfers.ts](frontend/src/features/gameplay/model/eventTransfers.ts), [localChipTransfers.ts](frontend/src/features/local-game/model/localChipTransfers.ts), [useChipMotion.ts](frontend/src/features/gameplay/hooks/useChipMotion.ts) | 계산과 재생을 구분하고 저장 성공·재시도·정리 확인                                                  |
 | 설치 제안·업데이트 노출 시점 변경       | [usePwaPresentation.ts](frontend/src/features/pwa/usePwaPresentation.ts), [register.ts](frontend/src/features/pwa/register.ts)                                                                                                                | 홈 여부·저장 잠금·미확정 요청·업데이트 적용                                                        |
 | 멀티플레이 연결 시작                    | [main.online.tsx](frontend/src/main.online.tsx), [session.ts](frontend/src/features/gameplay/session.ts)                                                                                                                                      | `GameSession` 계약, 공통 UI의 props 경계와 [SYSTEM_SPEC.md](SYSTEM_SPEC.md); 현재 서버 구현은 없음 |
+| 서버 규칙(베팅·팟·정산·무르기) 변경 | `backend/game/.../game/`의 `command/BettingCommands`, `Legal`, `Settlement`, `Round`, `command/FlowCommands` | 같은 TS 파일(위 대응표)과 `shared/game-fixtures/` 기대값. 두 엔진이 모두 통과해야 한다 |
+| 서버 전용 기권 규칙 변경 | [ForfeitCommand.java](backend/game/src/main/java/xyz/jwlee/poker/game/command/ForfeitCommand.java), 주인 없는 층 반환은 `Round.returnOwnerless` | `shared/game-fixtures/forfeit.json`(Java 전용), MULTIPLAYER_MODE.md 10절 |
+| 서버 불변식·무작위 검사 변경 | [Invariants.java](backend/game/src/main/java/xyz/jwlee/poker/game/Invariants.java), `RandomTournamentTest` | 프런트 `invariants.ts`와 같은 코드 이름 |
 | CI·정적 자산 보존·배포 복구 변경        | [ci-images.yml](.github/workflows/ci-images.yml), [deploy-frontend.sh](deploy/deploy-frontend.sh)                                                                                                                                             | 이미지 digest·revision, 과거 자산 보존, 복구 마커                                                  |
 
 ## 불변 조건과 경계
@@ -394,6 +455,8 @@ PWA 테스트는 생성된 서비스 워커 파일을 일시 변경하고 원복
 전체 E2E 명령과 CI에서 선택한 일부 파일은 같은 범위가 아니다.
 이미지 안의 실제 자산 복사와 컨테이너 응답도 검사한다.
 main 경로에서는 검사 후 이미지 발행과 배포 작업이 이어진다.
+[backend-ci.yml](.github/workflows/backend-ci.yml)은 `backend/**`·`shared/game-fixtures/**` 변경 때 Temurin 25로 `./gradlew :game:test`를 실행한다.
+이 워크플로는 아직 GitHub에서 한 번도 실행되지 않았다. 로컬 결과로만 확인했다.
 [check-server.yml](.github/workflows/check-server.yml)은 별도 수동 SSH 연결 확인 작업이다.
 
 배포 스크립트 검사는 Bash 환경에서 저장소 루트 기준으로 실행한다.

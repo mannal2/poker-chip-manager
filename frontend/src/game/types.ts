@@ -11,7 +11,7 @@ export interface Player {
   actedAt: number | null;
   reopenAt: number;
 }
-export type Phase = 'betting' | 'revealPending' | 'revealed' | 'settlement';
+export type Phase = 'betting' | 'settlement';
 export interface Hand {
   id: string;
   number: number;
@@ -50,7 +50,7 @@ export type GameCommand =
   | { type: 'BET' | 'RAISE'; additional: number; playerId?: string }
   | { type: 'SETTLE_HAND'; winners: WinnerSelection }
   | { type: 'SCHEDULE_BLINDS'; sb: number; bb: number }
-  | { type: 'UNDO' | 'BEGIN_REVEAL' | 'ADVANCE_STREET' | 'RESUME_FLOW' | 'ABORT' };
+  | { type: 'UNDO' | 'ABORT' };
 export interface TransitionContext {
   id: string;
   at: string;

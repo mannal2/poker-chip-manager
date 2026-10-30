@@ -356,7 +356,7 @@ C1~C3은 승인되어 본문에 반영했다. 위 상세화 항목은 아래 14~
 - 응답: requestId, sequence, outcome(APPLIED/REJECTED), code, resultStateVersion, latestState. latestState는 현재 조회 시점이며 과거 요청 결과 버전과 같다고 가정하지 않는다. 캐시에는 전체 스냅샷 대신 최소 처리 결과와 본문 비교 자료를 저장한다.
 - 현재 상태: roomId, tournamentId, stateVersion, roomPhase, 설정, 좌석·참가 상태, 방장, 게임 상태, 접속 상태, 요청자 자신의 조작 권한, 허용 행동 및 최소·최대 추가 금액, 권한에 맞는 미처리 알림. 세션·쿠키·타인의 복구 신청자 인증 정보는 포함하지 않는다. 전체 게임 기록은 포함하지 않는다.
 - 기록은 eventSequence 오름차순, tournamentId와 마지막 순번 커서, 기본50·최대100개씩 조회한다. 취소는 기존 기록 삭제가 아니라 취소 대상 기록 ID를 참조하는 새 기록이다.
-- 게임 명령은 CHECK/CALL/BET/RAISE/FOLD/ALL_IN/UNDO/BEGIN_REVEAL/ADVANCE_STREET/SETTLE_HAND. 관리 명령은 설정·좌석·시작·블라인드 예약·중단·재준비·방장 이전·인수·복구 승인/거절·화면 인수다. SETTLE_HAND는 모든 팟의 승자 목록을 한 번에 검증한다. CALL 금액은 서버 계산, BET/RAISE/ALL_IN은 추가 금액 의도를 검증한다.
+- 게임 명령은 CHECK/CALL/BET/RAISE/FOLD/ALL_IN/UNDO/SETTLE_HAND(서버 전용 FORFEIT은 MULTIPLAYER_MODE.md 10절). BEGIN_REVEAL/ADVANCE_STREET는 2026-10-30 제거(TECH_DECISIONS T64) — 스트리트는 자동 진행한다. 관리 명령은 설정·좌석·시작·블라인드 예약·중단·재준비·방장 이전·인수·복구 승인/거절·화면 인수다. SETTLE_HAND는 모든 팟의 승자 목록을 한 번에 검증한다. CALL 금액은 서버 계산, BET/RAISE/ALL_IN은 추가 금액 의도를 검증한다.
 
 | HTTP | 분류 | 재시도 원칙 |
 |---|---|---|
@@ -451,7 +451,7 @@ C1~C3은 승인되어 본문에 반영했다. 위 상세화 항목은 아래 14~
 
 - 앱 전체 홈은 기존 /local/ scope와 캐시 안에 둔다. root는 local 홈으로 이동하고 온라인/API/WS 캐시 범위는 넓히지 않는다. 업데이트는 홈의 저장 완료 상태에서 수동 적용하며 IndexedDB를 삭제하지 않는다.
 - 일반 단일 기기 진입은 기존 상태 확인 후 BroadcastChannel로 조작 중 창의 응답을 확인한다. 응답 시 읽기 상태와 명시적 인수 안내, 응답이 없으면 저장 세대 인수 후 복원/초기화. 이 확인은 UI 중복 조작 방지이며 저장의 최종 권한 판정은 DB 세대 검증이다. 채널 미지원 시에도 DB 세대가 이전 쓰기를 차단한다.
-- RESUME_FLOW는 playing의 구형 공개 중간 상태에서만 유효하고 현재 betting/settlement에서 재적용을 거절한다. 전환 이벤트와 최신 상태를 같은 트랜잭션에 저장한다. IndexedDB store/schemaVersion/rulesVersion은1 유지, 기존 준비·진행·종료·중단 데이터를 보존한다.
+- (2026-10-30 제거, TECH_DECISIONS T64) RESUME_FLOW와 구형 공개 중간 상태는 더 이상 없다. 그런 예전 저장은 "지원하지 않는 형식" 경로로 원본을 보존하고 새 토너먼트를 안내한다. IndexedDB store/schemaVersion/rulesVersion은1 유지, 기존 준비·진행·종료·중단 데이터를 보존한다.
 
 
 ### 로컬 복원 실패 복구 — 2026-10-19

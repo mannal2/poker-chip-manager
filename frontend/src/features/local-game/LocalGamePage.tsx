@@ -6,6 +6,7 @@ import { UpdateNotice } from '../pwa/UpdateNotice';
 import { usePwaPresentation } from '../pwa/usePwaPresentation';
 import { InstallNotice } from '../pwa/InstallNotice';
 import { ManagerMenu } from './components/ManagerMenu';
+import { StorageErrorDetails } from './components/StorageErrorDetails';
 import { useRef, useState } from 'react';
 import type { ControlLease } from './storage/types';
 import { GameScreen } from '../gameplay/GameScreen';
@@ -170,6 +171,7 @@ function LocalGame({
         <p>{app.error}</p>
         <button onClick={() => void restore(true)}>다시 시도</button>
         <button onClick={() => void restartAfterFailure()}>새 토너먼트 시작</button>
+        <StorageErrorDetails />
       </main>
     );
   return (
@@ -192,6 +194,7 @@ function LocalGame({
           {app.status === 'controlLost' && (
             <button onClick={() => void continueGame()}>이 창에서 조작하기</button>
           )}
+          {app.status === 'storageError' && <StorageErrorDetails />}
         </div>
       )}
       {app.home && pwa.offlineError && (

@@ -194,3 +194,14 @@ dialog.scrollable {
   overflow-y: auto;
   overscroll-behavior: contain;
 }
+.error-log {
+  margin-top: calc(8 * var(--u));
+  font-size: calc(11 * var(--u));
+}
+.error-log pre {
+  white-space: pre-wrap;
+  word-break: break-all;
+  max-height: calc(160 * var(--u));
+  overflow: auto;
+  user-select: text;
+}

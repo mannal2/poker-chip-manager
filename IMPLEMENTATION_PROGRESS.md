@@ -561,3 +561,18 @@ A00~A11 단일 기기 구현과 자동 검증을 마쳤다. 멀티플레이·실
 - 최종 회귀: 일반 브라우저392 PASS/2 SKIP/0 FAIL(마지막 설치 제안 경합 수정 전 실행). 2건은 WebKit에서 Chromium CDP 터치 전용 검사 제외. 경합 수정 후 PWA 전체24 PASS, 단위157 PASS, 전체 ESLint·TypeScript·production build PASS.
 - origin/main ff01f14 기준 codex/fold-guard-startup-update에서 작업별 커밋 완료: 3e578fb, 93a0554, 7933118. GAME_SPEC/UX_SPEC에 승인 정책 반영.
 - 최신 production preview http://127.0.0.1:4173/local/ HTTP200(main-DPVJqOk8.js), production e2e 산출물 없음. 실기기 검증 미수행, push/PR/merge/배포 없음.
+
+## 2026-10-30 — 계획 1: 서버 게임 규칙 (C01)
+- 계획: [2026-10-29-multiplayer-1-server-game-rules.md](docs/superpowers/plans/2026-10-29-multiplayer-1-server-game-rules.md). `multiplayer` 브랜치, 기준 205643c. 작업 1~10 완료, 로컬 커밋만(push/PR/merge/배포 없음).
+- 작업 1(공통 사례 정리, TS): 64192cc 예전 카드 공개 명령·단계 제거, a6bad8c 사례에 완전한 GameState JSON 저장, 4996900 스키마 강화·베팅 거절 처리 통일, e980238 TS 전용 규칙 사례를 공통 사례로 이동, a385a26 무르기 전체 상태 복원 검사·실행기 의미 문서화.
+- 작업 2~(Java 규칙, `backend/game`): d0bf0d9 Gradle 백엔드와 공통 사례 로더, 2e220d0 사례를 `:game:test` 입력으로 추적, 3d91a36 상태 모델·설정·좌석 위치, f117c12 합법 행동·베팅·라운드 진행, ab19276 팟·정산·다음 핸드, 16f8fc4 무르기·블라인드 예약·중단, 3262b76 서버 전용 기권 규칙(`forfeit.json`은 Java 전용).
+- 작업 10: `RandomTournamentTest` 추가와 ARCHITECTURE·TECH_DECISIONS(T60 버전)·MULTIPLAYER_MODE(C01) 문서 갱신. 고정 시드 20261029로 2~10인 각 8판(72판), 총 967단계, 기권 20회. 모든 성공 전환의 불변식·입력 불변을 통과하고 2,000단계 안에 종료했다.
+- 검증(2026-10-30): `backend/gradlew -p backend :game:test` 156개 PASS(실패·건너뜀 0). `npm --prefix frontend run typecheck`·`lint` PASS, `npm --prefix frontend test -- --run` 25파일 201개 PASS.
+- 한계: `.github/workflows/backend-ci.yml`은 GitHub에서 한 번도 실행되지 않았다(로컬 Gradle 결과만 있음). 프런트 E2E는 작업 1에서 app-flow·storage 관련 spec만 실행했고 이후 전체를 다시 돌리지 않았다. 브라우저·PWA·실기기 검증은 하지 않았다.
+
+## 2026-10-30 — 간헐적 저장·불러오기 오류 대응
+- 사용자 보고: 리팩토링 배포본을 갤럭시 설치 앱에서 쓰는 중 저장·불러오기 오류가 간헐적으로 나고, 새 토너먼트 시작과 앱 재실행으로도 한동안 회복되지 않음. 오류 문구 기록 없음.
+- 조사: 리팩토링의 저장 경로 변경 없음, 엔진 상태가 복원 검사에 거부되는 경우 없음(무작위 약 15만 7천 단계). 불러오기가 readwrite 트랜잭션을 써서 쓰기 거부 시 읽기까지 실패하는 약점 확인. 최초 원인은 미확정. 상세: docs/investigations/2026-10-30-storage-errors.md.
+- 수정: 불러오기 readonly(826f463), 저장 실패 진단 기록·"오류 정보" 표시/복사.
+- 검증: 단위 207 PASS, typecheck/lint PASS, 관련 E2E(tablet-recovery·stalled-save·storage·app-flow) Chromium/WebKit 46 PASS. 실기기 미검증.
+

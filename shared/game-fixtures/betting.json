@@ -2,12 +2,72 @@
   {
     "id": "B01",
     "initialState": {
-      "stacks": [1000, 995, 990],
-      "B": [0, 5, 10],
-      "W": 10,
-      "R": 10,
-      "bb": 10,
-      "street": 0
+      "tournamentId": "test",
+      "version": 1,
+      "status": "playing",
+      "settings": {
+        "names": ["A", "B", "C"],
+        "initial": 1000,
+        "sb": 5,
+        "bb": 10,
+        "button": 0
+      },
+      "initialTotal": 3000,
+      "setupOrder": ["p0", "p1", "p2"],
+      "players": [
+        {
+          "id": "p0",
+          "name": "A",
+          "stack": 1000,
+          "eliminated": false,
+          "folded": false,
+          "B": 0,
+          "H": 0,
+          "actedAt": null,
+          "reopenAt": 0
+        },
+        {
+          "id": "p1",
+          "name": "B",
+          "stack": 995,
+          "eliminated": false,
+          "folded": false,
+          "B": 5,
+          "H": 5,
+          "actedAt": null,
+          "reopenAt": 0
+        },
+        {
+          "id": "p2",
+          "name": "C",
+          "stack": 990,
+          "eliminated": false,
+          "folded": false,
+          "B": 10,
+          "H": 10,
+          "actedAt": null,
+          "reopenAt": 0
+        }
+      ],
+      "hand": {
+        "id": "test:hand:1",
+        "number": 1,
+        "street": 0,
+        "phase": "betting",
+        "buttonSeat": 0,
+        "sbSeat": 1,
+        "bbSeat": 2,
+        "sb": 5,
+        "bb": 10,
+        "actorId": "p0",
+        "W": 10,
+        "R": 10,
+        "pending": ["p0", "p1", "p2"],
+        "showdown": false
+      },
+      "pot": 15,
+      "pendingBlinds": null,
+      "undo": null
     },
     "commands": [
       {
@@ -36,13 +96,72 @@
   {
     "id": "B02",
     "initialState": {
-      "stacks": [1000, 995, 990],
-      "B": [0, 5, 10],
-      "actor": 1,
-      "W": 10,
-      "R": 10,
-      "bb": 10,
-      "street": 0
+      "tournamentId": "test",
+      "version": 1,
+      "status": "playing",
+      "settings": {
+        "names": ["A", "B", "C"],
+        "initial": 1000,
+        "sb": 5,
+        "bb": 10,
+        "button": 0
+      },
+      "initialTotal": 3000,
+      "setupOrder": ["p0", "p1", "p2"],
+      "players": [
+        {
+          "id": "p0",
+          "name": "A",
+          "stack": 1000,
+          "eliminated": false,
+          "folded": false,
+          "B": 0,
+          "H": 0,
+          "actedAt": null,
+          "reopenAt": 0
+        },
+        {
+          "id": "p1",
+          "name": "B",
+          "stack": 995,
+          "eliminated": false,
+          "folded": false,
+          "B": 5,
+          "H": 5,
+          "actedAt": null,
+          "reopenAt": 0
+        },
+        {
+          "id": "p2",
+          "name": "C",
+          "stack": 990,
+          "eliminated": false,
+          "folded": false,
+          "B": 10,
+          "H": 10,
+          "actedAt": null,
+          "reopenAt": 0
+        }
+      ],
+      "hand": {
+        "id": "test:hand:1",
+        "number": 1,
+        "street": 0,
+        "phase": "betting",
+        "buttonSeat": 0,
+        "sbSeat": 1,
+        "bbSeat": 2,
+        "sb": 5,
+        "bb": 10,
+        "actorId": "p1",
+        "W": 10,
+        "R": 10,
+        "pending": ["p0", "p1", "p2"],
+        "showdown": false
+      },
+      "pot": 15,
+      "pendingBlinds": null,
+      "undo": null
     },
     "commands": [
       {
@@ -66,7 +185,7 @@
       ]
     },
     "suite": "betting",
-    "description": "B01에서 C 체크 | 팟30, 카드 공개 시작 대기. 아직 다음 라운드는 아님 |",
+    "description": "B01에서 C 체크 | 팟30, 다음 스트리트로 자동 진행하기 전. 아직 다음 라운드는 아님 |",
     "context": {
       "id": "B02",
       "at": "2026-10-18T00:00:00Z"
@@ -77,11 +196,72 @@
   {
     "id": "B03",
     "initialState": {
-      "stacks": [1000, 1000, 1000],
-      "B": [5, 30, 30],
-      "W": 30,
-      "R": 20,
-      "bb": 10
+      "tournamentId": "test",
+      "version": 1,
+      "status": "playing",
+      "settings": {
+        "names": ["A", "B", "C"],
+        "initial": 1000,
+        "sb": 5,
+        "bb": 10,
+        "button": 0
+      },
+      "initialTotal": 3065,
+      "setupOrder": ["p0", "p1", "p2"],
+      "players": [
+        {
+          "id": "p0",
+          "name": "A",
+          "stack": 1000,
+          "eliminated": false,
+          "folded": false,
+          "B": 5,
+          "H": 5,
+          "actedAt": null,
+          "reopenAt": 0
+        },
+        {
+          "id": "p1",
+          "name": "B",
+          "stack": 1000,
+          "eliminated": false,
+          "folded": false,
+          "B": 30,
+          "H": 30,
+          "actedAt": null,
+          "reopenAt": 0
+        },
+        {
+          "id": "p2",
+          "name": "C",
+          "stack": 1000,
+          "eliminated": false,
+          "folded": false,
+          "B": 30,
+          "H": 30,
+          "actedAt": null,
+          "reopenAt": 0
+        }
+      ],
+      "hand": {
+        "id": "test:hand:1",
+        "number": 1,
+        "street": 1,
+        "phase": "betting",
+        "buttonSeat": 0,
+        "sbSeat": 1,
+        "bbSeat": 2,
+        "sb": 5,
+        "bb": 10,
+        "actorId": "p0",
+        "W": 30,
+        "R": 20,
+        "pending": ["p0", "p1", "p2"],
+        "showdown": false
+      },
+      "pot": 65,
+      "pendingBlinds": null,
+      "undo": null
     },
     "commands": [
       {
@@ -102,10 +282,72 @@
   {
     "id": "B04",
     "initialState": {
-      "stacks": [30, 1000, 1000],
-      "B": [20, 100, 100],
-      "W": 100,
-      "R": 100
+      "tournamentId": "test",
+      "version": 1,
+      "status": "playing",
+      "settings": {
+        "names": ["A", "B", "C"],
+        "initial": 1000,
+        "sb": 5,
+        "bb": 10,
+        "button": 0
+      },
+      "initialTotal": 2250,
+      "setupOrder": ["p0", "p1", "p2"],
+      "players": [
+        {
+          "id": "p0",
+          "name": "A",
+          "stack": 30,
+          "eliminated": false,
+          "folded": false,
+          "B": 20,
+          "H": 20,
+          "actedAt": null,
+          "reopenAt": 0
+        },
+        {
+          "id": "p1",
+          "name": "B",
+          "stack": 1000,
+          "eliminated": false,
+          "folded": false,
+          "B": 100,
+          "H": 100,
+          "actedAt": null,
+          "reopenAt": 0
+        },
+        {
+          "id": "p2",
+          "name": "C",
+          "stack": 1000,
+          "eliminated": false,
+          "folded": false,
+          "B": 100,
+          "H": 100,
+          "actedAt": null,
+          "reopenAt": 0
+        }
+      ],
+      "hand": {
+        "id": "test:hand:1",
+        "number": 1,
+        "street": 1,
+        "phase": "betting",
+        "buttonSeat": 0,
+        "sbSeat": 1,
+        "bbSeat": 2,
+        "sb": 5,
+        "bb": 100,
+        "actorId": "p0",
+        "W": 100,
+        "R": 100,
+        "pending": ["p0", "p1", "p2"],
+        "showdown": false
+      },
+      "pot": 220,
+      "pendingBlinds": null,
+      "undo": null
     },
     "commands": [
       {
@@ -134,8 +376,72 @@
   {
     "id": "B05",
     "initialState": {
-      "stacks": [1000, 150, 1000],
-      "R": 100
+      "tournamentId": "test",
+      "version": 1,
+      "status": "playing",
+      "settings": {
+        "names": ["A", "B", "C"],
+        "initial": 1000,
+        "sb": 5,
+        "bb": 10,
+        "button": 0
+      },
+      "initialTotal": 2150,
+      "setupOrder": ["p0", "p1", "p2"],
+      "players": [
+        {
+          "id": "p0",
+          "name": "A",
+          "stack": 1000,
+          "eliminated": false,
+          "folded": false,
+          "B": 0,
+          "H": 0,
+          "actedAt": null,
+          "reopenAt": 0
+        },
+        {
+          "id": "p1",
+          "name": "B",
+          "stack": 150,
+          "eliminated": false,
+          "folded": false,
+          "B": 0,
+          "H": 0,
+          "actedAt": null,
+          "reopenAt": 0
+        },
+        {
+          "id": "p2",
+          "name": "C",
+          "stack": 1000,
+          "eliminated": false,
+          "folded": false,
+          "B": 0,
+          "H": 0,
+          "actedAt": null,
+          "reopenAt": 0
+        }
+      ],
+      "hand": {
+        "id": "test:hand:1",
+        "number": 1,
+        "street": 1,
+        "phase": "betting",
+        "buttonSeat": 0,
+        "sbSeat": 1,
+        "bbSeat": 2,
+        "sb": 5,
+        "bb": 100,
+        "actorId": "p0",
+        "W": 0,
+        "R": 100,
+        "pending": ["p0", "p1", "p2"],
+        "showdown": false
+      },
+      "pot": 0,
+      "pendingBlinds": null,
+      "undo": null
     },
     "commands": [
       {
@@ -166,8 +472,83 @@
   {
     "id": "B06",
     "initialState": {
-      "stacks": [1000, 150, 200, 1000],
-      "R": 100
+      "tournamentId": "test",
+      "version": 1,
+      "status": "playing",
+      "settings": {
+        "names": ["A", "B", "C", "D"],
+        "initial": 1000,
+        "sb": 5,
+        "bb": 10,
+        "button": 0
+      },
+      "initialTotal": 2350,
+      "setupOrder": ["p0", "p1", "p2", "p3"],
+      "players": [
+        {
+          "id": "p0",
+          "name": "A",
+          "stack": 1000,
+          "eliminated": false,
+          "folded": false,
+          "B": 0,
+          "H": 0,
+          "actedAt": null,
+          "reopenAt": 0
+        },
+        {
+          "id": "p1",
+          "name": "B",
+          "stack": 150,
+          "eliminated": false,
+          "folded": false,
+          "B": 0,
+          "H": 0,
+          "actedAt": null,
+          "reopenAt": 0
+        },
+        {
+          "id": "p2",
+          "name": "C",
+          "stack": 200,
+          "eliminated": false,
+          "folded": false,
+          "B": 0,
+          "H": 0,
+          "actedAt": null,
+          "reopenAt": 0
+        },
+        {
+          "id": "p3",
+          "name": "D",
+          "stack": 1000,
+          "eliminated": false,
+          "folded": false,
+          "B": 0,
+          "H": 0,
+          "actedAt": null,
+          "reopenAt": 0
+        }
+      ],
+      "hand": {
+        "id": "test:hand:1",
+        "number": 1,
+        "street": 1,
+        "phase": "betting",
+        "buttonSeat": 0,
+        "sbSeat": 1,
+        "bbSeat": 2,
+        "sb": 5,
+        "bb": 100,
+        "actorId": "p0",
+        "W": 0,
+        "R": 100,
+        "pending": ["p0", "p1", "p2", "p3"],
+        "showdown": false
+      },
+      "pot": 0,
+      "pendingBlinds": null,
+      "undo": null
     },
     "commands": [
       {
@@ -202,8 +583,83 @@
   {
     "id": "B07",
     "initialState": {
-      "stacks": [1000, 150, 1000, 200],
-      "R": 100
+      "tournamentId": "test",
+      "version": 1,
+      "status": "playing",
+      "settings": {
+        "names": ["A", "B", "C", "D"],
+        "initial": 1000,
+        "sb": 5,
+        "bb": 10,
+        "button": 0
+      },
+      "initialTotal": 2350,
+      "setupOrder": ["p0", "p1", "p2", "p3"],
+      "players": [
+        {
+          "id": "p0",
+          "name": "A",
+          "stack": 1000,
+          "eliminated": false,
+          "folded": false,
+          "B": 0,
+          "H": 0,
+          "actedAt": null,
+          "reopenAt": 0
+        },
+        {
+          "id": "p1",
+          "name": "B",
+          "stack": 150,
+          "eliminated": false,
+          "folded": false,
+          "B": 0,
+          "H": 0,
+          "actedAt": null,
+          "reopenAt": 0
+        },
+        {
+          "id": "p2",
+          "name": "C",
+          "stack": 1000,
+          "eliminated": false,
+          "folded": false,
+          "B": 0,
+          "H": 0,
+          "actedAt": null,
+          "reopenAt": 0
+        },
+        {
+          "id": "p3",
+          "name": "D",
+          "stack": 200,
+          "eliminated": false,
+          "folded": false,
+          "B": 0,
+          "H": 0,
+          "actedAt": null,
+          "reopenAt": 0
+        }
+      ],
+      "hand": {
+        "id": "test:hand:1",
+        "number": 1,
+        "street": 1,
+        "phase": "betting",
+        "buttonSeat": 0,
+        "sbSeat": 1,
+        "bbSeat": 2,
+        "sb": 5,
+        "bb": 100,
+        "actorId": "p0",
+        "W": 0,
+        "R": 100,
+        "pending": ["p0", "p1", "p2", "p3"],
+        "showdown": false
+      },
+      "pot": 0,
+      "pendingBlinds": null,
+      "undo": null
     },
     "commands": [
       {
@@ -240,8 +696,72 @@
   {
     "id": "B08",
     "initialState": {
-      "stacks": [1000, 1000, 300],
-      "R": 100
+      "tournamentId": "test",
+      "version": 1,
+      "status": "playing",
+      "settings": {
+        "names": ["A", "B", "C"],
+        "initial": 1000,
+        "sb": 5,
+        "bb": 10,
+        "button": 0
+      },
+      "initialTotal": 2300,
+      "setupOrder": ["p0", "p1", "p2"],
+      "players": [
+        {
+          "id": "p0",
+          "name": "A",
+          "stack": 1000,
+          "eliminated": false,
+          "folded": false,
+          "B": 0,
+          "H": 0,
+          "actedAt": null,
+          "reopenAt": 0
+        },
+        {
+          "id": "p1",
+          "name": "B",
+          "stack": 1000,
+          "eliminated": false,
+          "folded": false,
+          "B": 0,
+          "H": 0,
+          "actedAt": null,
+          "reopenAt": 0
+        },
+        {
+          "id": "p2",
+          "name": "C",
+          "stack": 300,
+          "eliminated": false,
+          "folded": false,
+          "B": 0,
+          "H": 0,
+          "actedAt": null,
+          "reopenAt": 0
+        }
+      ],
+      "hand": {
+        "id": "test:hand:1",
+        "number": 1,
+        "street": 1,
+        "phase": "betting",
+        "buttonSeat": 0,
+        "sbSeat": 1,
+        "bbSeat": 2,
+        "sb": 5,
+        "bb": 100,
+        "actorId": "p0",
+        "W": 0,
+        "R": 100,
+        "pending": ["p0", "p1", "p2"],
+        "showdown": false
+      },
+      "pot": 0,
+      "pendingBlinds": null,
+      "undo": null
     },
     "commands": [
       {
@@ -278,8 +798,72 @@
   {
     "id": "B09",
     "initialState": {
-      "stacks": [1000, 1000, 300],
-      "R": 100
+      "tournamentId": "test",
+      "version": 1,
+      "status": "playing",
+      "settings": {
+        "names": ["A", "B", "C"],
+        "initial": 1000,
+        "sb": 5,
+        "bb": 10,
+        "button": 0
+      },
+      "initialTotal": 2300,
+      "setupOrder": ["p0", "p1", "p2"],
+      "players": [
+        {
+          "id": "p0",
+          "name": "A",
+          "stack": 1000,
+          "eliminated": false,
+          "folded": false,
+          "B": 0,
+          "H": 0,
+          "actedAt": null,
+          "reopenAt": 0
+        },
+        {
+          "id": "p1",
+          "name": "B",
+          "stack": 1000,
+          "eliminated": false,
+          "folded": false,
+          "B": 0,
+          "H": 0,
+          "actedAt": null,
+          "reopenAt": 0
+        },
+        {
+          "id": "p2",
+          "name": "C",
+          "stack": 300,
+          "eliminated": false,
+          "folded": false,
+          "B": 0,
+          "H": 0,
+          "actedAt": null,
+          "reopenAt": 0
+        }
+      ],
+      "hand": {
+        "id": "test:hand:1",
+        "number": 1,
+        "street": 1,
+        "phase": "betting",
+        "buttonSeat": 0,
+        "sbSeat": 1,
+        "bbSeat": 2,
+        "sb": 5,
+        "bb": 100,
+        "actorId": "p0",
+        "W": 0,
+        "R": 100,
+        "pending": ["p0", "p1", "p2"],
+        "showdown": false
+      },
+      "pot": 0,
+      "pendingBlinds": null,
+      "undo": null
     },
     "commands": [
       {
@@ -314,12 +898,72 @@
   {
     "id": "B10",
     "initialState": {
-      "stacks": [1000, 995, 0],
-      "B": [0, 5, 5],
-      "W": 10,
-      "R": 10,
-      "bb": 10,
-      "street": 0
+      "tournamentId": "test",
+      "version": 1,
+      "status": "playing",
+      "settings": {
+        "names": ["A", "B", "C"],
+        "initial": 1000,
+        "sb": 5,
+        "bb": 10,
+        "button": 0
+      },
+      "initialTotal": 2005,
+      "setupOrder": ["p0", "p1", "p2"],
+      "players": [
+        {
+          "id": "p0",
+          "name": "A",
+          "stack": 1000,
+          "eliminated": false,
+          "folded": false,
+          "B": 0,
+          "H": 0,
+          "actedAt": null,
+          "reopenAt": 0
+        },
+        {
+          "id": "p1",
+          "name": "B",
+          "stack": 995,
+          "eliminated": false,
+          "folded": false,
+          "B": 5,
+          "H": 5,
+          "actedAt": null,
+          "reopenAt": 0
+        },
+        {
+          "id": "p2",
+          "name": "C",
+          "stack": 0,
+          "eliminated": false,
+          "folded": false,
+          "B": 5,
+          "H": 5,
+          "actedAt": null,
+          "reopenAt": 0
+        }
+      ],
+      "hand": {
+        "id": "test:hand:1",
+        "number": 1,
+        "street": 0,
+        "phase": "betting",
+        "buttonSeat": 0,
+        "sbSeat": 1,
+        "bbSeat": 2,
+        "sb": 5,
+        "bb": 10,
+        "actorId": "p0",
+        "W": 10,
+        "R": 10,
+        "pending": ["p0", "p1", "p2"],
+        "showdown": false
+      },
+      "pot": 10,
+      "pendingBlinds": null,
+      "undo": null
     },
     "commands": [],
     "expectedLegal": {
@@ -339,12 +983,61 @@
   {
     "id": "B11",
     "initialState": {
-      "stacks": [995, 0],
-      "B": [5, 5],
-      "W": 10,
-      "R": 10,
-      "bb": 10,
-      "street": 0
+      "tournamentId": "test",
+      "version": 1,
+      "status": "playing",
+      "settings": {
+        "names": ["A", "B"],
+        "initial": 1000,
+        "sb": 5,
+        "bb": 10,
+        "button": 0
+      },
+      "initialTotal": 1005,
+      "setupOrder": ["p0", "p1"],
+      "players": [
+        {
+          "id": "p0",
+          "name": "A",
+          "stack": 995,
+          "eliminated": false,
+          "folded": false,
+          "B": 5,
+          "H": 5,
+          "actedAt": null,
+          "reopenAt": 0
+        },
+        {
+          "id": "p1",
+          "name": "B",
+          "stack": 0,
+          "eliminated": false,
+          "folded": false,
+          "B": 5,
+          "H": 5,
+          "actedAt": null,
+          "reopenAt": 0
+        }
+      ],
+      "hand": {
+        "id": "test:hand:1",
+        "number": 1,
+        "street": 0,
+        "phase": "betting",
+        "buttonSeat": 0,
+        "sbSeat": 0,
+        "bbSeat": 1,
+        "sb": 5,
+        "bb": 10,
+        "actorId": "p0",
+        "W": 10,
+        "R": 10,
+        "pending": ["p0", "p1"],
+        "showdown": false
+      },
+      "pot": 10,
+      "pendingBlinds": null,
+      "undo": null
     },
     "commands": [],
     "expectedLegal": {
@@ -352,7 +1045,7 @@
       "canRaise": false
     },
     "suite": "betting",
-    "description": "HU SB5/BB10, BB가 잔액5만 납부, SB는 이미5 납부 | 추가 콜/체크 강요 없이 공개 대기, 팟10 |",
+    "description": "HU SB5/BB10, BB가 잔액5만 납부, SB는 이미5 납부 | 추가 콜/체크 강요 없이 베팅 종료 후 자동 진행, 팟10 |",
     "context": {
       "id": "B11",
       "at": "2026-10-18T00:00:00Z"
@@ -364,12 +1057,72 @@
   {
     "id": "B12",
     "initialState": {
-      "stacks": [0, 200, 0],
-      "B": [100, 40, 0],
-      "W": 100,
-      "R": 100,
-      "folded": [2],
-      "actor": 1
+      "tournamentId": "test",
+      "version": 1,
+      "status": "playing",
+      "settings": {
+        "names": ["A", "B", "C"],
+        "initial": 1000,
+        "sb": 5,
+        "bb": 10,
+        "button": 0
+      },
+      "initialTotal": 340,
+      "setupOrder": ["p0", "p1", "p2"],
+      "players": [
+        {
+          "id": "p0",
+          "name": "A",
+          "stack": 0,
+          "eliminated": false,
+          "folded": false,
+          "B": 100,
+          "H": 100,
+          "actedAt": null,
+          "reopenAt": 0
+        },
+        {
+          "id": "p1",
+          "name": "B",
+          "stack": 200,
+          "eliminated": false,
+          "folded": false,
+          "B": 40,
+          "H": 40,
+          "actedAt": null,
+          "reopenAt": 0
+        },
+        {
+          "id": "p2",
+          "name": "C",
+          "stack": 0,
+          "eliminated": false,
+          "folded": true,
+          "B": 0,
+          "H": 0,
+          "actedAt": null,
+          "reopenAt": 0
+        }
+      ],
+      "hand": {
+        "id": "test:hand:1",
+        "number": 1,
+        "street": 1,
+        "phase": "betting",
+        "buttonSeat": 0,
+        "sbSeat": 1,
+        "bbSeat": 2,
+        "sb": 5,
+        "bb": 100,
+        "actorId": "p1",
+        "W": 100,
+        "R": 100,
+        "pending": ["p0", "p1", "p2"],
+        "showdown": false
+      },
+      "pot": 140,
+      "pendingBlinds": null,
+      "undo": null
     },
     "commands": [],
     "expectedLegal": {
@@ -389,12 +1142,72 @@
   {
     "id": "B13",
     "initialState": {
-      "stacks": [0, 200, 0],
-      "B": [100, 40, 0],
-      "W": 100,
-      "R": 100,
-      "folded": [2],
-      "actor": 1
+      "tournamentId": "test",
+      "version": 1,
+      "status": "playing",
+      "settings": {
+        "names": ["A", "B", "C"],
+        "initial": 1000,
+        "sb": 5,
+        "bb": 10,
+        "button": 0
+      },
+      "initialTotal": 340,
+      "setupOrder": ["p0", "p1", "p2"],
+      "players": [
+        {
+          "id": "p0",
+          "name": "A",
+          "stack": 0,
+          "eliminated": false,
+          "folded": false,
+          "B": 100,
+          "H": 100,
+          "actedAt": null,
+          "reopenAt": 0
+        },
+        {
+          "id": "p1",
+          "name": "B",
+          "stack": 200,
+          "eliminated": false,
+          "folded": false,
+          "B": 40,
+          "H": 40,
+          "actedAt": null,
+          "reopenAt": 0
+        },
+        {
+          "id": "p2",
+          "name": "C",
+          "stack": 0,
+          "eliminated": false,
+          "folded": true,
+          "B": 0,
+          "H": 0,
+          "actedAt": null,
+          "reopenAt": 0
+        }
+      ],
+      "hand": {
+        "id": "test:hand:1",
+        "number": 1,
+        "street": 1,
+        "phase": "betting",
+        "buttonSeat": 0,
+        "sbSeat": 1,
+        "bbSeat": 2,
+        "sb": 5,
+        "bb": 100,
+        "actorId": "p1",
+        "W": 100,
+        "R": 100,
+        "pending": ["p0", "p1", "p2"],
+        "showdown": false
+      },
+      "pot": 140,
+      "pendingBlinds": null,
+      "undo": null
     },
     "commands": [
       {
@@ -410,7 +1223,7 @@
       }
     },
     "suite": "betting",
-    "description": "B12에서 B 콜 | 다른 이전 기여가 없으면 A/B 기여 합200, 남은 카드 공개 대기 |",
+    "description": "B12에서 B 콜 | 다른 이전 기여가 없으면 A/B 기여 합200, 남은 스트리트 없이 정산 단계로 자동 진행 |",
     "context": {
       "id": "B13",
       "at": "2026-10-18T00:00:00Z"
@@ -421,7 +1234,72 @@
   {
     "id": "B14",
     "initialState": {
-      "stacks": [1000, 1000, 1000]
+      "tournamentId": "test",
+      "version": 1,
+      "status": "playing",
+      "settings": {
+        "names": ["A", "B", "C"],
+        "initial": 1000,
+        "sb": 5,
+        "bb": 10,
+        "button": 0
+      },
+      "initialTotal": 3000,
+      "setupOrder": ["p0", "p1", "p2"],
+      "players": [
+        {
+          "id": "p0",
+          "name": "A",
+          "stack": 1000,
+          "eliminated": false,
+          "folded": false,
+          "B": 0,
+          "H": 0,
+          "actedAt": null,
+          "reopenAt": 0
+        },
+        {
+          "id": "p1",
+          "name": "B",
+          "stack": 1000,
+          "eliminated": false,
+          "folded": false,
+          "B": 0,
+          "H": 0,
+          "actedAt": null,
+          "reopenAt": 0
+        },
+        {
+          "id": "p2",
+          "name": "C",
+          "stack": 1000,
+          "eliminated": false,
+          "folded": false,
+          "B": 0,
+          "H": 0,
+          "actedAt": null,
+          "reopenAt": 0
+        }
+      ],
+      "hand": {
+        "id": "test:hand:1",
+        "number": 1,
+        "street": 1,
+        "phase": "betting",
+        "buttonSeat": 0,
+        "sbSeat": 1,
+        "bbSeat": 2,
+        "sb": 5,
+        "bb": 100,
+        "actorId": "p0",
+        "W": 0,
+        "R": 100,
+        "pending": ["p0", "p1", "p2"],
+        "showdown": false
+      },
+      "pot": 0,
+      "pendingBlinds": null,
+      "undo": null
     },
     "commands": [
       {
@@ -443,7 +1321,72 @@
   {
     "id": "B15",
     "initialState": {
-      "stacks": [1000, 1000, 1000]
+      "tournamentId": "test",
+      "version": 1,
+      "status": "playing",
+      "settings": {
+        "names": ["A", "B", "C"],
+        "initial": 1000,
+        "sb": 5,
+        "bb": 10,
+        "button": 0
+      },
+      "initialTotal": 3000,
+      "setupOrder": ["p0", "p1", "p2"],
+      "players": [
+        {
+          "id": "p0",
+          "name": "A",
+          "stack": 1000,
+          "eliminated": false,
+          "folded": false,
+          "B": 0,
+          "H": 0,
+          "actedAt": null,
+          "reopenAt": 0
+        },
+        {
+          "id": "p1",
+          "name": "B",
+          "stack": 1000,
+          "eliminated": false,
+          "folded": false,
+          "B": 0,
+          "H": 0,
+          "actedAt": null,
+          "reopenAt": 0
+        },
+        {
+          "id": "p2",
+          "name": "C",
+          "stack": 1000,
+          "eliminated": false,
+          "folded": false,
+          "B": 0,
+          "H": 0,
+          "actedAt": null,
+          "reopenAt": 0
+        }
+      ],
+      "hand": {
+        "id": "test:hand:1",
+        "number": 1,
+        "street": 1,
+        "phase": "betting",
+        "buttonSeat": 0,
+        "sbSeat": 1,
+        "bbSeat": 2,
+        "sb": 5,
+        "bb": 100,
+        "actorId": "p0",
+        "W": 0,
+        "R": 100,
+        "pending": ["p0", "p1", "p2"],
+        "showdown": false
+      },
+      "pot": 0,
+      "pendingBlinds": null,
+      "undo": null
     },
     "commands": [
       {
@@ -464,7 +1407,72 @@
   {
     "id": "B16",
     "initialState": {
-      "stacks": [50, 1000, 1000]
+      "tournamentId": "test",
+      "version": 1,
+      "status": "playing",
+      "settings": {
+        "names": ["A", "B", "C"],
+        "initial": 1000,
+        "sb": 5,
+        "bb": 10,
+        "button": 0
+      },
+      "initialTotal": 2050,
+      "setupOrder": ["p0", "p1", "p2"],
+      "players": [
+        {
+          "id": "p0",
+          "name": "A",
+          "stack": 50,
+          "eliminated": false,
+          "folded": false,
+          "B": 0,
+          "H": 0,
+          "actedAt": null,
+          "reopenAt": 0
+        },
+        {
+          "id": "p1",
+          "name": "B",
+          "stack": 1000,
+          "eliminated": false,
+          "folded": false,
+          "B": 0,
+          "H": 0,
+          "actedAt": null,
+          "reopenAt": 0
+        },
+        {
+          "id": "p2",
+          "name": "C",
+          "stack": 1000,
+          "eliminated": false,
+          "folded": false,
+          "B": 0,
+          "H": 0,
+          "actedAt": null,
+          "reopenAt": 0
+        }
+      ],
+      "hand": {
+        "id": "test:hand:1",
+        "number": 1,
+        "street": 1,
+        "phase": "betting",
+        "buttonSeat": 0,
+        "sbSeat": 1,
+        "bbSeat": 2,
+        "sb": 5,
+        "bb": 100,
+        "actorId": "p0",
+        "W": 0,
+        "R": 100,
+        "pending": ["p0", "p1", "p2"],
+        "showdown": false
+      },
+      "pot": 0,
+      "pendingBlinds": null,
+      "undo": null
     },
     "commands": [
       {
@@ -488,7 +1496,72 @@
   {
     "id": "B17",
     "initialState": {
-      "stacks": [50, 1000, 1000]
+      "tournamentId": "test",
+      "version": 1,
+      "status": "playing",
+      "settings": {
+        "names": ["A", "B", "C"],
+        "initial": 1000,
+        "sb": 5,
+        "bb": 10,
+        "button": 0
+      },
+      "initialTotal": 2050,
+      "setupOrder": ["p0", "p1", "p2"],
+      "players": [
+        {
+          "id": "p0",
+          "name": "A",
+          "stack": 50,
+          "eliminated": false,
+          "folded": false,
+          "B": 0,
+          "H": 0,
+          "actedAt": null,
+          "reopenAt": 0
+        },
+        {
+          "id": "p1",
+          "name": "B",
+          "stack": 1000,
+          "eliminated": false,
+          "folded": false,
+          "B": 0,
+          "H": 0,
+          "actedAt": null,
+          "reopenAt": 0
+        },
+        {
+          "id": "p2",
+          "name": "C",
+          "stack": 1000,
+          "eliminated": false,
+          "folded": false,
+          "B": 0,
+          "H": 0,
+          "actedAt": null,
+          "reopenAt": 0
+        }
+      ],
+      "hand": {
+        "id": "test:hand:1",
+        "number": 1,
+        "street": 1,
+        "phase": "betting",
+        "buttonSeat": 0,
+        "sbSeat": 1,
+        "bbSeat": 2,
+        "sb": 5,
+        "bb": 100,
+        "actorId": "p0",
+        "W": 0,
+        "R": 100,
+        "pending": ["p0", "p1", "p2"],
+        "showdown": false
+      },
+      "pot": 0,
+      "pendingBlinds": null,
+      "undo": null
     },
     "commands": [
       {
@@ -520,7 +1593,72 @@
   {
     "id": "B18",
     "initialState": {
-      "stacks": [1000, 50, 1000]
+      "tournamentId": "test",
+      "version": 1,
+      "status": "playing",
+      "settings": {
+        "names": ["A", "B", "C"],
+        "initial": 1000,
+        "sb": 5,
+        "bb": 10,
+        "button": 0
+      },
+      "initialTotal": 2050,
+      "setupOrder": ["p0", "p1", "p2"],
+      "players": [
+        {
+          "id": "p0",
+          "name": "A",
+          "stack": 1000,
+          "eliminated": false,
+          "folded": false,
+          "B": 0,
+          "H": 0,
+          "actedAt": null,
+          "reopenAt": 0
+        },
+        {
+          "id": "p1",
+          "name": "B",
+          "stack": 50,
+          "eliminated": false,
+          "folded": false,
+          "B": 0,
+          "H": 0,
+          "actedAt": null,
+          "reopenAt": 0
+        },
+        {
+          "id": "p2",
+          "name": "C",
+          "stack": 1000,
+          "eliminated": false,
+          "folded": false,
+          "B": 0,
+          "H": 0,
+          "actedAt": null,
+          "reopenAt": 0
+        }
+      ],
+      "hand": {
+        "id": "test:hand:1",
+        "number": 1,
+        "street": 1,
+        "phase": "betting",
+        "buttonSeat": 0,
+        "sbSeat": 1,
+        "bbSeat": 2,
+        "sb": 5,
+        "bb": 100,
+        "actorId": "p0",
+        "W": 0,
+        "R": 100,
+        "pending": ["p0", "p1", "p2"],
+        "showdown": false
+      },
+      "pot": 0,
+      "pendingBlinds": null,
+      "undo": null
     },
     "commands": [
       {
@@ -550,7 +1688,72 @@
   {
     "id": "B19",
     "initialState": {
-      "stacks": [1000, 50, 1000]
+      "tournamentId": "test",
+      "version": 1,
+      "status": "playing",
+      "settings": {
+        "names": ["A", "B", "C"],
+        "initial": 1000,
+        "sb": 5,
+        "bb": 10,
+        "button": 0
+      },
+      "initialTotal": 2050,
+      "setupOrder": ["p0", "p1", "p2"],
+      "players": [
+        {
+          "id": "p0",
+          "name": "A",
+          "stack": 1000,
+          "eliminated": false,
+          "folded": false,
+          "B": 0,
+          "H": 0,
+          "actedAt": null,
+          "reopenAt": 0
+        },
+        {
+          "id": "p1",
+          "name": "B",
+          "stack": 50,
+          "eliminated": false,
+          "folded": false,
+          "B": 0,
+          "H": 0,
+          "actedAt": null,
+          "reopenAt": 0
+        },
+        {
+          "id": "p2",
+          "name": "C",
+          "stack": 1000,
+          "eliminated": false,
+          "folded": false,
+          "B": 0,
+          "H": 0,
+          "actedAt": null,
+          "reopenAt": 0
+        }
+      ],
+      "hand": {
+        "id": "test:hand:1",
+        "number": 1,
+        "street": 1,
+        "phase": "betting",
+        "buttonSeat": 0,
+        "sbSeat": 1,
+        "bbSeat": 2,
+        "sb": 5,
+        "bb": 100,
+        "actorId": "p0",
+        "W": 0,
+        "R": 100,
+        "pending": ["p0", "p1", "p2"],
+        "showdown": false
+      },
+      "pot": 0,
+      "pendingBlinds": null,
+      "undo": null
     },
     "commands": [
       {
@@ -581,7 +1784,83 @@
   {
     "id": "B20",
     "initialState": {
-      "stacks": [1000, 50, 100, 1000]
+      "tournamentId": "test",
+      "version": 1,
+      "status": "playing",
+      "settings": {
+        "names": ["A", "B", "C", "D"],
+        "initial": 1000,
+        "sb": 5,
+        "bb": 10,
+        "button": 0
+      },
+      "initialTotal": 2150,
+      "setupOrder": ["p0", "p1", "p2", "p3"],
+      "players": [
+        {
+          "id": "p0",
+          "name": "A",
+          "stack": 1000,
+          "eliminated": false,
+          "folded": false,
+          "B": 0,
+          "H": 0,
+          "actedAt": null,
+          "reopenAt": 0
+        },
+        {
+          "id": "p1",
+          "name": "B",
+          "stack": 50,
+          "eliminated": false,
+          "folded": false,
+          "B": 0,
+          "H": 0,
+          "actedAt": null,
+          "reopenAt": 0
+        },
+        {
+          "id": "p2",
+          "name": "C",
+          "stack": 100,
+          "eliminated": false,
+          "folded": false,
+          "B": 0,
+          "H": 0,
+          "actedAt": null,
+          "reopenAt": 0
+        },
+        {
+          "id": "p3",
+          "name": "D",
+          "stack": 1000,
+          "eliminated": false,
+          "folded": false,
+          "B": 0,
+          "H": 0,
+          "actedAt": null,
+          "reopenAt": 0
+        }
+      ],
+      "hand": {
+        "id": "test:hand:1",
+        "number": 1,
+        "street": 1,
+        "phase": "betting",
+        "buttonSeat": 0,
+        "sbSeat": 1,
+        "bbSeat": 2,
+        "sb": 5,
+        "bb": 100,
+        "actorId": "p0",
+        "W": 0,
+        "R": 100,
+        "pending": ["p0", "p1", "p2", "p3"],
+        "showdown": false
+      },
+      "pot": 0,
+      "pendingBlinds": null,
+      "undo": null
     },
     "commands": [
       {
@@ -618,7 +1897,105 @@
   {
     "id": "B21",
     "initialState": {
-      "stacks": [1000, 50, 75, 1000, 100, 1000]
+      "tournamentId": "test",
+      "version": 1,
+      "status": "playing",
+      "settings": {
+        "names": ["A", "B", "C", "D", "E", "F"],
+        "initial": 1000,
+        "sb": 5,
+        "bb": 10,
+        "button": 0
+      },
+      "initialTotal": 3225,
+      "setupOrder": ["p0", "p1", "p2", "p3", "p4", "p5"],
+      "players": [
+        {
+          "id": "p0",
+          "name": "A",
+          "stack": 1000,
+          "eliminated": false,
+          "folded": false,
+          "B": 0,
+          "H": 0,
+          "actedAt": null,
+          "reopenAt": 0
+        },
+        {
+          "id": "p1",
+          "name": "B",
+          "stack": 50,
+          "eliminated": false,
+          "folded": false,
+          "B": 0,
+          "H": 0,
+          "actedAt": null,
+          "reopenAt": 0
+        },
+        {
+          "id": "p2",
+          "name": "C",
+          "stack": 75,
+          "eliminated": false,
+          "folded": false,
+          "B": 0,
+          "H": 0,
+          "actedAt": null,
+          "reopenAt": 0
+        },
+        {
+          "id": "p3",
+          "name": "D",
+          "stack": 1000,
+          "eliminated": false,
+          "folded": false,
+          "B": 0,
+          "H": 0,
+          "actedAt": null,
+          "reopenAt": 0
+        },
+        {
+          "id": "p4",
+          "name": "E",
+          "stack": 100,
+          "eliminated": false,
+          "folded": false,
+          "B": 0,
+          "H": 0,
+          "actedAt": null,
+          "reopenAt": 0
+        },
+        {
+          "id": "p5",
+          "name": "F",
+          "stack": 1000,
+          "eliminated": false,
+          "folded": false,
+          "B": 0,
+          "H": 0,
+          "actedAt": null,
+          "reopenAt": 0
+        }
+      ],
+      "hand": {
+        "id": "test:hand:1",
+        "number": 1,
+        "street": 1,
+        "phase": "betting",
+        "buttonSeat": 0,
+        "sbSeat": 1,
+        "bbSeat": 2,
+        "sb": 5,
+        "bb": 100,
+        "actorId": "p0",
+        "W": 0,
+        "R": 100,
+        "pending": ["p0", "p1", "p2", "p3", "p4", "p5"],
+        "showdown": false
+      },
+      "pot": 0,
+      "pendingBlinds": null,
+      "undo": null
     },
     "commands": [
       {
@@ -660,7 +2037,72 @@
   {
     "id": "B22",
     "initialState": {
-      "stacks": [50, 125, 1000]
+      "tournamentId": "test",
+      "version": 1,
+      "status": "playing",
+      "settings": {
+        "names": ["A", "B", "C"],
+        "initial": 1000,
+        "sb": 5,
+        "bb": 10,
+        "button": 0
+      },
+      "initialTotal": 1175,
+      "setupOrder": ["p0", "p1", "p2"],
+      "players": [
+        {
+          "id": "p0",
+          "name": "A",
+          "stack": 50,
+          "eliminated": false,
+          "folded": false,
+          "B": 0,
+          "H": 0,
+          "actedAt": null,
+          "reopenAt": 0
+        },
+        {
+          "id": "p1",
+          "name": "B",
+          "stack": 125,
+          "eliminated": false,
+          "folded": false,
+          "B": 0,
+          "H": 0,
+          "actedAt": null,
+          "reopenAt": 0
+        },
+        {
+          "id": "p2",
+          "name": "C",
+          "stack": 1000,
+          "eliminated": false,
+          "folded": false,
+          "B": 0,
+          "H": 0,
+          "actedAt": null,
+          "reopenAt": 0
+        }
+      ],
+      "hand": {
+        "id": "test:hand:1",
+        "number": 1,
+        "street": 1,
+        "phase": "betting",
+        "buttonSeat": 0,
+        "sbSeat": 1,
+        "bbSeat": 2,
+        "sb": 5,
+        "bb": 100,
+        "actorId": "p0",
+        "W": 0,
+        "R": 100,
+        "pending": ["p0", "p1", "p2"],
+        "showdown": false
+      },
+      "pot": 0,
+      "pendingBlinds": null,
+      "undo": null
     },
     "commands": [
       {
@@ -691,7 +2133,72 @@
   {
     "id": "B23",
     "initialState": {
-      "stacks": [40, 50, 1000]
+      "tournamentId": "test",
+      "version": 1,
+      "status": "playing",
+      "settings": {
+        "names": ["A", "B", "C"],
+        "initial": 1000,
+        "sb": 5,
+        "bb": 10,
+        "button": 0
+      },
+      "initialTotal": 1090,
+      "setupOrder": ["p0", "p1", "p2"],
+      "players": [
+        {
+          "id": "p0",
+          "name": "A",
+          "stack": 40,
+          "eliminated": false,
+          "folded": false,
+          "B": 0,
+          "H": 0,
+          "actedAt": null,
+          "reopenAt": 0
+        },
+        {
+          "id": "p1",
+          "name": "B",
+          "stack": 50,
+          "eliminated": false,
+          "folded": false,
+          "B": 0,
+          "H": 0,
+          "actedAt": null,
+          "reopenAt": 0
+        },
+        {
+          "id": "p2",
+          "name": "C",
+          "stack": 1000,
+          "eliminated": false,
+          "folded": false,
+          "B": 0,
+          "H": 0,
+          "actedAt": null,
+          "reopenAt": 0
+        }
+      ],
+      "hand": {
+        "id": "test:hand:1",
+        "number": 1,
+        "street": 1,
+        "phase": "betting",
+        "buttonSeat": 0,
+        "sbSeat": 1,
+        "bbSeat": 2,
+        "sb": 5,
+        "bb": 100,
+        "actorId": "p0",
+        "W": 0,
+        "R": 100,
+        "pending": ["p0", "p1", "p2"],
+        "showdown": false
+      },
+      "pot": 0,
+      "pendingBlinds": null,
+      "undo": null
     },
     "commands": [
       {

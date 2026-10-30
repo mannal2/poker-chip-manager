@@ -39,3 +39,12 @@ it('설정 총량·이름·핸드 단계·응답자·예약·취소 snapshot 손
     expect(() => validateStored(saved)).toThrow();
   }
 });
+it('예전 공개 단계 저장은 지원하지 않는 형식으로 원본을 보존한다', () => {
+  for (const phase of ['revealPending', 'revealed']) {
+    const saved = { schemaVersion: 1, rulesVersion: 1, eventSequence: 0, state: fixtureState() };
+    Object.assign(saved.state.hand!, { phase, actorId: null, pending: [], showdown: false });
+    const original = structuredClone(saved);
+    expect(() => validateStored(saved)).toThrow('저장 핸드 정보가 손상되었습니다.');
+    expect(saved).toEqual(original);
+  }
+});

@@ -44,6 +44,9 @@ test('저장 읽기 무응답은 제한 후 두 선택지, 다시 시도는 기�
   await page.clock.fastForward(10001);
   await expect(page.getByRole('button', { name: '다시 시도', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: '새 토너먼트 시작', exact: true })).toBeVisible();
+  // The failure is recorded on the device with its phase so an intermittent error can be reported.
+  await page.getByText('오류 정보', { exact: true }).click();
+  await expect(page.locator('.error-log pre')).toContainText('게임 읽기 · Error');
   await page.evaluate(() => (window as unknown as { restoreReads: () => void }).restoreReads());
   await page.getByRole('button', { name: '다시 시도', exact: true }).click();
   await openLocal(page);

@@ -1,5 +1,8 @@
 import { it, expect } from 'vitest';
-import { fixtureState, apply } from '../game/helpers';
+import { fixtureState, apply, ctx } from '../game/helpers';
+import { transition } from '../../src/game/transition';
+import { historyRows } from '../../src/features/gameplay/model/history';
+import type { GameCommand } from '../../src/game/types';
 import { chipTransfers } from '../../src/features/local-game/model/localChipTransfers';
 import { eventsToTransfers } from '../../src/features/gameplay/model/eventTransfers';
 it('실제 납부만 이동하고 체크·취소·새 핸드 블라인드는 생략', () => {
@@ -74,4 +77,36 @@ it('확정 이벤트만으로도 같은 이동을 만든다 (온라인 서버 �
       'FOLD',
     ),
   ).toEqual([{ from: 'pot', to: 'p1', amount: 25, delay: 0, kind: 'payout' }]);
+});
+
+it('빈 SB에서 모두 BB에게 폴드하면 팟 0 정산: 반환 이동만, 기록은 반환과 핸드 종료', () => {
+  let s = fixtureState(4);
+  for (const command of [
+    { type: 'ALL_IN' },
+    { type: 'FOLD' },
+    { type: 'FOLD' },
+    { type: 'CALL' },
+    { type: 'SETTLE_HAND', winners: { pot0: ['p3'] } },
+    { type: 'FOLD' },
+  ] as GameCommand[])
+    s = apply(s, command);
+  expect(s.hand).toMatchObject({ number: 2, sbSeat: 2, bbSeat: 3, actorId: 'p1' });
+  expect(chipTransfers(s, { type: 'FOLD' })).toEqual([
+    { from: 'pot', to: 'p3', amount: 10, delay: 0, kind: 'return' },
+  ]);
+  const r = transition(s, { type: 'FOLD' }, ctx);
+  if (!r.ok) throw Error(r.errorCode);
+  expect(r.events.find((e) => e.type === 'PAYOUT')?.details).toEqual({
+    pot: 0,
+    payouts: { p0: 0, p1: 0, p2: 0, p3: 0 },
+  });
+  expect(historyRows(r.events, r.state.players).map((row) => row.text)).toEqual([
+    'HAND 02',
+    '프리플랍',
+    'B - 폴드',
+    'D - 미콜 10칩 반환',
+    '핸드 종료',
+    'HAND 03',
+    '프리플랍',
+  ]);
 });

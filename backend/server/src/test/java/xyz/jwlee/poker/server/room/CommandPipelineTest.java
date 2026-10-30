@@ -98,9 +98,30 @@ class CommandPipelineTest {
     void aRetryOfAnAnsweredRequestReplaysEvenWithAnotherGeneration() {
         CommandRequest first = CommandFixture.request("r1", 1, 1, f.room.version(), "SET_DEALER", DEALER_A);
         CommandResult applied = f.pipeline.execute(f.room, "a", first);
+        CommandRequest again = CommandFixture.request("r1", 1, 2, first.expectedStateVersion(), "SET_DEALER",
+                DEALER_A);
 
-        // Same request id, sequence and content: the duplicate check answers before the generation check.
+        // Generation is not part of the fingerprint; the duplicate check answers before the generation check.
+        assertThat(f.pipeline.execute(f.room, "a", again).outcome()).isEqualTo(applied.outcome());
+    }
+
+    @Test
+    void aRetryOfAnAnsweredRequestReplaysEvenAfterTheVersionMoved() {
+        CommandRequest first = CommandFixture.request("r1", 1, 1, f.room.version(), "SET_DEALER", DEALER_A);
+        CommandResult applied = f.pipeline.execute(f.room, "a", first);
+        f.pipeline.execute(f.room, "a",
+                CommandFixture.request("r2", 2, 1, f.room.version(), "SET_DEALER", DEALER_B));
+        assertThat(f.room.version()).isGreaterThan(first.expectedStateVersion() + 1);
+
         assertThat(f.pipeline.execute(f.room, "a", first).outcome()).isEqualTo(applied.outcome());
+    }
+
+    @Test
+    void controlGenerationIsCheckedBeforePermission() {
+        CommandRequest wrong = CommandFixture.request("r1", 1, 5, f.room.version(), "SET_DEALER", DEALER_A);
+
+        assertThatThrownBy(() -> f.pipeline.execute(f.room, "b", wrong))
+                .isInstanceOfSatisfying(RoomException.class, e -> rejectedWith(e, "CONTROL_LOST"));
     }
 
     @Test

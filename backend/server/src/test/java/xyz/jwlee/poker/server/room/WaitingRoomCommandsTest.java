@@ -40,6 +40,15 @@ class WaitingRoomCommandsTest {
     }
 
     @Test
+    void aLoneParticipantNamedLikeTheFillerStillGetsValidSettings() {
+        CommandFixture solo = new CommandFixture(1);
+        solo.room.rename("a", "SEAT0");
+
+        assertThat(CommandFixture.code(solo.send("a", "SET_SETTINGS", "{\"initial\":500,\"sb\":5,\"bb\":10}")))
+                .isEqualTo("OK");
+    }
+
+    @Test
     void badSettingsAreInvalidInput() {
         rejected("INVALID_INPUT", "a", "SET_SETTINGS", "{\"initial\":1000,\"sb\":20,\"bb\":10}");
         rejected("INVALID_INPUT", "a", "SET_SETTINGS", "{\"initial\":1000,\"sb\":7,\"bb\":20}");

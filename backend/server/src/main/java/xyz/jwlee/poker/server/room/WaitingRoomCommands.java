@@ -30,8 +30,14 @@ final class WaitingRoomCommands {
         room.participants().forEach(p -> names.add(p.name()));
         // The amount rules are checked together with the name rules; a room of one has too few names for the
         // validator, so pad with placeholders that cannot clash with each other.
+        // A filler never equals (ignoring case) a real name, or a lone "seat0" would clash with its own filler.
+        Set<String> taken = new HashSet<>();
+        names.forEach(n -> taken.add(n.toLowerCase(Locale.ROOT)));
         for (int i = 0; names.size() < 2; i++) {
-            names.add("seat" + i);
+            String filler = "seat" + i;
+            if (taken.add(filler)) {
+                names.add(filler);
+            }
         }
         GameSettings candidate = new GameSettings(names, initial, sb, bb, room.settings().button());
         if (!(SettingsValidator.validate(candidate) instanceof SettingsValidation.Valid)) {

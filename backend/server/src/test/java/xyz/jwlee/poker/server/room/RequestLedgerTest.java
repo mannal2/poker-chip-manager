@@ -8,7 +8,7 @@ import xyz.jwlee.poker.server.room.RequestLedger.Check;
 class RequestLedgerTest {
 
     private static RequestOutcome applied(String id, long seq) {
-        return new RequestOutcome(id, seq, RequestOutcome.Outcome.APPLIED, "OK", seq);
+        return new RequestOutcome(id, seq, RequestOutcome.Outcome.APPLIED, "OK", seq, null);
     }
 
     @Test
@@ -61,7 +61,7 @@ class RequestLedgerTest {
     @Test
     void rejectedOutcomeConsumesTheSequence() {
         var ledger = new RequestLedger();
-        var rejected = new RequestOutcome("a", 1, RequestOutcome.Outcome.REJECTED, "STALE", 0);
+        var rejected = new RequestOutcome("a", 1, RequestOutcome.Outcome.REJECTED, "STALE", 0, null);
         ledger.record(rejected, "f");
         assertThat(ledger.check("a", 1, "f")).isEqualTo(new Check.Replay(rejected));
         assertThat(ledger.check("b", 2, "g")).isInstanceOf(Check.New.class);

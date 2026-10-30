@@ -57,7 +57,7 @@ class SessionSecurityHttpTest {
         assertThat(r.statusCode()).isEqualTo(200);
         String setCookie = r.headers().firstValue("Set-Cookie").orElseThrow();
         assertThat(setCookie).startsWith("PCM_SESSION=").containsIgnoringCase("HttpOnly")
-                .containsIgnoringCase("SameSite=Lax");
+                .containsIgnoringCase("SameSite=Lax").contains("Max-Age=604800");
         assertThat(r.headers().firstValue("Cache-Control").orElseThrow()).contains("no-store");
         JsonNode body = MAPPER.readTree(r.body());
         assertThat(body.get("csrfToken").asString()).isNotBlank();
@@ -81,6 +81,7 @@ class SessionSecurityHttpTest {
         HttpResponse<String> r = send("POST", "/api/session/streams", s.cookie(), null, ORIGIN);
 
         assertThat(r.statusCode()).isEqualTo(403);
+        assertThat(MAPPER.readTree(r.body()).get("code").asString()).isEqualTo("CSRF_REJECTED");
     }
 
     @Test
@@ -109,6 +110,53 @@ class SessionSecurityHttpTest {
 
         assertThat(r.statusCode()).isEqualTo(401);
         assertThat(MAPPER.readTree(r.body()).get("code").asString()).isEqualTo("NO_SESSION");
+        assertThat(r.headers().firstValue("Set-Cookie")).isEmpty();
+    }
+
+    @Test
+    void postWithAStaleCookieIsUnauthorizedAndSetsNoCookie() throws Exception {
+        HttpResponse<String> r = send("POST", "/api/session/streams", "PCM_SESSION=stale", "x", ORIGIN);
+
+        assertThat(r.statusCode()).isEqualTo(401);
+        assertThat(MAPPER.readTree(r.body()).get("code").asString()).isEqualTo("NO_SESSION");
+        assertThat(r.headers().firstValue("Set-Cookie")).isEmpty();
+    }
+
+    @Test
+    void refreshResendsTheCookieWithAFreshMaxAge() throws Exception {
+        Session s = open();
+
+        HttpResponse<String> r = send("POST", "/api/session/refresh", s.cookie(), s.csrf(), ORIGIN);
+
+        assertThat(r.statusCode()).isEqualTo(200);
+        assertThat(r.headers().firstValue("Set-Cookie").orElseThrow()).startsWith(s.cookie())
+                .contains("Max-Age=604800");
+        assertThat(r.headers().firstValue("Cache-Control").orElseThrow()).contains("no-store");
+        assertThat(MAPPER.readTree(r.body()).get("csrfToken").asString()).isEqualTo(s.csrf());
+    }
+
+    @Test
+    void refreshWithoutASessionIsUnauthorized() throws Exception {
+        HttpResponse<String> r = send("POST", "/api/session/refresh", null, null, ORIGIN);
+
+        assertThat(r.statusCode()).isEqualTo(401);
+    }
+
+    @Test
+    void postWithAWrongTokenIsForbidden() throws Exception {
+        Session s = open();
+
+        HttpResponse<String> r = send("POST", "/api/session/streams", s.cookie(), "wrong", ORIGIN);
+
+        assertThat(r.statusCode()).isEqualTo(403);
+        assertThat(MAPPER.readTree(r.body()).get("code").asString()).isEqualTo("CSRF_REJECTED");
+    }
+
+    @Test
+    void crossOriginGetGetsNoCorsHeaders() throws Exception {
+        HttpResponse<String> r = send("GET", "/api/session", null, null, "http://evil.example");
+
+        assertThat(r.headers().map().keySet()).noneMatch(k -> k.toLowerCase().startsWith("access-control-"));
     }
 
     @Test

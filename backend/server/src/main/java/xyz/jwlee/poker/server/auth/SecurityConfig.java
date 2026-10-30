@@ -8,6 +8,7 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.csrf.CsrfException;
 import org.springframework.security.web.csrf.CsrfFilter;
 import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
 import org.springframework.security.web.csrf.HttpSessionCsrfTokenRepository;
@@ -32,16 +33,11 @@ class SecurityConfig {
                 .csrf(c -> c.csrfTokenRepository(new HttpSessionCsrfTokenRepository())
                         .csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler()))
                 .addFilterBefore(new OriginFilter(Set.copyOf(props.allowedOrigins())), CsrfFilter.class)
+                .addFilterBefore(new SessionGuardFilter(), CsrfFilter.class)
                 .exceptionHandling(e -> e
                         .authenticationEntryPoint((req, res, ex) -> JsonErrors.write(res, 401, "NO_SESSION"))
-                        .accessDeniedHandler((req, res, ex) -> {
-                            // No valid session id came with the request: the browser never opened a session.
-                            if (!req.isRequestedSessionIdValid()) {
-                                JsonErrors.write(res, 401, "NO_SESSION");
-                            } else {
-                                JsonErrors.write(res, 403, "CSRF_REJECTED");
-                            }
-                        }));
+                        .accessDeniedHandler((req, res, ex) -> JsonErrors.write(
+                                res, 403, ex instanceof CsrfException ? "CSRF_REJECTED" : "FORBIDDEN")));
         return http.build();
     }
 

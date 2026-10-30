@@ -12,10 +12,12 @@ server:
   servlet:
     session:
       timeout: 7d
+      tracking-modes: cookie
       cookie:
         name: PCM_SESSION
         http-only: true
         same-site: lax
+        max-age: 7d
 
 ---
 spring:

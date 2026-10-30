@@ -1,8 +1,12 @@
 package xyz.jwlee.poker.server.auth;
 
+import jakarta.servlet.SessionCookieConfig;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 import java.util.Map;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -27,6 +31,19 @@ class SessionController {
         request.getSession(true);
         response.setHeader("Cache-Control", "no-store");
         // getToken() loads or creates the deferred token and stores it in the session.
+        return Map.of("csrfToken", csrf.getToken(), "protocolVersion", Protocol.VERSION);
+    }
+
+    /** Keeps a live session alive: Tomcat sets the cookie only at creation, so it is sent again with a fresh Max-Age. */
+    @PostMapping("/api/session/refresh")
+    Map<String, Object> refresh(HttpServletRequest request, HttpServletResponse response, CsrfToken csrf) {
+        HttpSession session = request.getSession(false);
+        SessionCookieConfig cfg = request.getServletContext().getSessionCookieConfig();
+        ResponseCookie cookie = ResponseCookie.from(cfg.getName(), session.getId())
+                .path("/").httpOnly(cfg.isHttpOnly()).secure(cfg.isSecure())
+                .maxAge(cfg.getMaxAge()).sameSite("Lax").build();
+        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+        response.setHeader("Cache-Control", "no-store");
         return Map.of("csrfToken", csrf.getToken(), "protocolVersion", Protocol.VERSION);
     }
 

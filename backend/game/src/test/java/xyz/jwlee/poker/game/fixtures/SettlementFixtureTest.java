@@ -15,6 +15,7 @@ import xyz.jwlee.poker.game.Settlement;
 import xyz.jwlee.poker.game.SettlementPreview;
 import xyz.jwlee.poker.game.model.GameState;
 import xyz.jwlee.poker.game.model.Pot;
+import xyz.jwlee.poker.gamejson.GameJson;
 
 /** Mirrors {@code runSettlement} of the TS fixture runner. */
 class SettlementFixtureTest {
@@ -31,7 +32,7 @@ class SettlementFixtureTest {
     }
 
     private static void run(JsonNode f) {
-        GameState s = StateJson.read(f.get("initialState"));
+        GameState s = GameJson.readState(f.get("initialState"));
         JsonNode expected = f.get("expectedStateSubset");
         for (JsonNode command : f.get("commands")) {
             assertThat(command.get("type").asText()).isEqualTo("PREVIEW_SETTLEMENT");

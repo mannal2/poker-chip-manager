@@ -27,12 +27,20 @@ class SettingsFixtureTest {
                         in.get("sb").asInt(),
                         in.get("bb").asInt(),
                         in.get("button").asInt());
-                boolean expectedOk = c.get("expectedStateSubset").get("ok").asBoolean();
-                assertThat(SettingsValidator.validate(settings) instanceof SettingsValidation.Valid)
-                        .isEqualTo(expectedOk);
+                JsonNode expected = c.get("expectedStateSubset");
+                SettingsValidation result = SettingsValidator.validate(settings);
+                assertThat(result instanceof SettingsValidation.Valid).isEqualTo(expected.get("ok").asBoolean());
+                if (result instanceof SettingsValidation.Valid valid) {
+                    List<String> expectedNames = new ArrayList<>();
+                    expected.get("names").forEach(n -> expectedNames.add(n.asText()));
+                    assertThat(valid.settings().names()).isEqualTo(expectedNames);
+                } else {
+                    assertThat(((SettingsValidation.Invalid) result).code().name())
+                            .isEqualTo(expected.get("code").asText());
+                }
             }));
         }
-        assertThat(tests).hasSize(7);
+        assertThat(tests).hasSize(9);
         return tests;
     }
 }

@@ -14,6 +14,7 @@ import xyz.jwlee.poker.game.Settlement;
 import xyz.jwlee.poker.game.event.EventDetails;
 import xyz.jwlee.poker.game.model.GameState;
 import xyz.jwlee.poker.game.model.Pot;
+import xyz.jwlee.poker.gamejson.GameJson;
 
 /** Mirrors {@code runPots} of the TS fixture runner. */
 class PotsFixtureTest {
@@ -30,7 +31,7 @@ class PotsFixtureTest {
     }
 
     private static void run(JsonNode f) {
-        GameState s = StateJson.read(f.get("initialState"));
+        GameState s = GameJson.readState(f.get("initialState"));
         JsonNode expected = f.get("expectedStateSubset");
         int total = s.pot;
         List<Pot> built = List.of();

@@ -4,7 +4,7 @@
     "suite": "settings",
     "description": "설정 경계 S01",
     "initialState": {
-      "names": ["A", "B"],
+      "names": [" A ", "B"],
       "initial": 1000,
       "sb": 5,
       "bb": 10,
@@ -20,7 +20,8 @@
       "at": "2026-10-18T00:00:00Z"
     },
     "expectedStateSubset": {
-      "ok": true
+      "ok": true,
+      "names": ["A", "B"]
     },
     "expectedError": null,
     "expectedEvents": []
@@ -56,7 +57,18 @@
       "at": "2026-10-18T00:00:00Z"
     },
     "expectedStateSubset": {
-      "ok": true
+      "ok": true,
+      "names": [
+        "사람0",
+        "사람1",
+        "사람2",
+        "사람3",
+        "사람4",
+        "사람5",
+        "사람6",
+        "사람7",
+        "사람8"
+      ]
     },
     "expectedError": null,
     "expectedEvents": []
@@ -82,7 +94,8 @@
       "at": "2026-10-18T00:00:00Z"
     },
     "expectedStateSubset": {
-      "ok": false
+      "ok": false,
+      "code": "INVALID_NAMES"
     },
     "expectedError": null,
     "expectedEvents": []
@@ -108,7 +121,8 @@
       "at": "2026-10-18T00:00:00Z"
     },
     "expectedStateSubset": {
-      "ok": false
+      "ok": false,
+      "code": "INVALID_NAMES"
     },
     "expectedError": null,
     "expectedEvents": []
@@ -134,7 +148,8 @@
       "at": "2026-10-18T00:00:00Z"
     },
     "expectedStateSubset": {
-      "ok": false
+      "ok": false,
+      "code": "INVALID_CHIP_SETTINGS"
     },
     "expectedError": null,
     "expectedEvents": []
@@ -160,7 +175,8 @@
       "at": "2026-10-18T00:00:00Z"
     },
     "expectedStateSubset": {
-      "ok": false
+      "ok": false,
+      "code": "INVALID_CHIP_SETTINGS"
     },
     "expectedError": null,
     "expectedEvents": []
@@ -186,7 +202,62 @@
       "at": "2026-10-18T00:00:00Z"
     },
     "expectedStateSubset": {
-      "ok": false
+      "ok": false,
+      "code": "INVALID_CHIP_SETTINGS"
+    },
+    "expectedError": null,
+    "expectedEvents": []
+  },
+  {
+    "id": "S08",
+    "suite": "settings",
+    "description": "설정 경계 S08: 이름은 앞뒤 공백을 지우고 NFC로 정규화",
+    "initialState": {
+      "names": ["가 ", "B"],
+      "initial": 1000,
+      "sb": 5,
+      "bb": 10,
+      "button": 0
+    },
+    "commands": [
+      {
+        "type": "VALIDATE_SETTINGS"
+      }
+    ],
+    "context": {
+      "id": "S08",
+      "at": "2026-10-18T00:00:00Z"
+    },
+    "expectedStateSubset": {
+      "ok": true,
+      "names": ["가", "B"]
+    },
+    "expectedError": null,
+    "expectedEvents": []
+  },
+  {
+    "id": "S09",
+    "suite": "settings",
+    "description": "설정 경계 S09: 버튼 좌석 범위 밖",
+    "initialState": {
+      "names": ["A", "B"],
+      "initial": 1000,
+      "sb": 5,
+      "bb": 10,
+      "button": 2
+    },
+    "commands": [
+      {
+        "type": "VALIDATE_SETTINGS"
+      }
+    ],
+    "context": {
+      "id": "S09",
+      "at": "2026-10-18T00:00:00Z"
+    },
+    "expectedStateSubset": {
+      "ok": false,
+      "code": "INVALID_SEATS"
     },
     "expectedError": null,
     "expectedEvents": []

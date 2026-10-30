@@ -4,19 +4,18 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.fail;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.ArrayList;
 import java.util.List;
 import xyz.jwlee.poker.game.GameEngine;
 import xyz.jwlee.poker.game.Invariants;
 import xyz.jwlee.poker.game.Legal;
-import xyz.jwlee.poker.game.LegalActions;
 import xyz.jwlee.poker.game.Tournament;
 import xyz.jwlee.poker.game.TransitionResult;
 import xyz.jwlee.poker.game.command.GameCommand;
 import xyz.jwlee.poker.game.model.GameState;
 import xyz.jwlee.poker.game.model.TransitionContext;
+import xyz.jwlee.poker.gamejson.GameJson;
 
 /**
  * Runs one shared command-sequence fixture (TS {@code fixtureRunner.ts}). Implements the generic
@@ -35,8 +34,8 @@ public final class FixtureRunner {
         JsonNode initial = fixture.get("initialState");
         // Betting-style cases carry a full state; lifecycle-style cases carry the settings.
         GameState state = initial.has("players")
-                ? StateJson.read(initial)
-                : Tournament.create(StateJson.readSettings(initial), ctx);
+                ? GameJson.readState(initial)
+                : Tournament.create(GameJson.readSettings(initial), ctx);
         String expectedError = fixture.get("expectedError").isNull()
                 ? null
                 : fixture.get("expectedError").asText();
@@ -59,11 +58,11 @@ public final class FixtureRunner {
         }
         JsonNode subset = fixture.get("expectedStateSubset");
         if (subset != null && !subset.isNull()) {
-            JsonSubset.assertMatches(subset, StateJson.write(state));
+            JsonSubset.assertMatches(subset, GameJson.writeState(state));
         }
         JsonNode legal = fixture.get("expectedLegal");
         if (legal != null && !legal.isNull()) {
-            JsonSubset.assertMatches(legal, legalJson(Legal.of(state)));
+            JsonSubset.assertMatches(legal, GameJson.writeLegal(Legal.of(state)));
         }
         JsonNode expectedEvents = fixture.get("expectedEvents");
         if (expectedEvents != null) {
@@ -84,9 +83,9 @@ public final class FixtureRunner {
         for (String key : RUNNER_KEYS.split(" ")) {
             command.remove(key);
         }
-        JsonNode before = StateJson.write(s);
-        TransitionResult r = GameEngine.transition(s, StateJson.command(command), ctx);
-        assertThat(StateJson.write(s)).as("input state must not change").isEqualTo(before);
+        JsonNode before = GameJson.writeState(s);
+        TransitionResult r = GameEngine.transition(s, GameJson.readCommand(command), ctx);
+        assertThat(GameJson.writeState(s)).as("input state must not change").isEqualTo(before);
 
         if (expectError != null) {
             if (!(r instanceof TransitionResult.Rejected rejected)) {
@@ -94,7 +93,7 @@ public final class FixtureRunner {
             }
             assertThat(rejected.code().name()).isEqualTo(expectError);
             if (raw.has("expectedStateSubset")) {
-                JsonSubset.assertMatches(raw.get("expectedStateSubset"), StateJson.write(s));
+                JsonSubset.assertMatches(raw.get("expectedStateSubset"), GameJson.writeState(s));
             }
             return s;
         }
@@ -105,32 +104,14 @@ public final class FixtureRunner {
         Invariants.check(next);
         applied.events().forEach(e -> events.add(e.type()));
         if (raw.has("expectedStateSubset")) {
-            JsonSubset.assertMatches(raw.get("expectedStateSubset"), StateJson.write(next));
+            JsonSubset.assertMatches(raw.get("expectedStateSubset"), GameJson.writeState(next));
         }
         if (raw.has("expectRestores")) {
-            ObjectNode expected = ((ObjectNode) StateJson.write(history.get(raw.get("expectRestores").asInt())));
+            ObjectNode expected = GameJson.writeState(history.get(raw.get("expectRestores").asInt()));
             expected.put("version", s.version + 1);
             expected.putNull("undo");
-            assertThat(StateJson.write(next)).isEqualTo(expected);
+            assertThat(GameJson.writeState(next)).isEqualTo(expected);
         }
         return next;
-    }
-
-    /** Legal actions with the TS field names, for subset matching. */
-    static JsonNode legalJson(LegalActions l) {
-        ObjectNode n = JsonNodeFactory.instance.objectNode();
-        n.set("actor", l.actor() == null ? JsonNodeFactory.instance.nullNode() : StateJson.writePlayer(l.actor()));
-        n.put("callAdditional", l.callAdditional());
-        n.put("minRaiseAdditional", l.minRaiseAdditional());
-        n.put("maxAdditional", l.maxAdditional());
-        n.put("canRaise", l.canRaise());
-        n.put("canCheck", l.canCheck());
-        n.put("canCall", l.canCall());
-        if (l.reasonCode() == null) {
-            n.putNull("reasonCode");
-        } else {
-            n.put("reasonCode", l.reasonCode().name());
-        }
-        return n;
     }
 }

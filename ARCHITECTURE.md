@@ -205,11 +205,11 @@ PWA 등록은 로컬 게임에서 호출하는 `useLocalPWA`가 담당한다.
 - `backend/game`의 main 의존성은 JDK뿐이다. 별도 Gradle 모듈이므로 Spring·서버 코드를 import하면 컴파일이 실패한다.
   테스트 라이브러리(JUnit·AssertJ·Jackson)는 test 범위에만 있다. 버전은 [TECH_DECISIONS.md](TECH_DECISIONS.md) T60에 있다.
 - 상태 변경은 TS와 같이 명령마다 깊은 복사 후 복사본만 수정한다. 거절은 `RuleViolation`으로만 하고 다른 예외는 버그로 전파한다.
-- 필드명은 풀어 쓴다(`roundBet`=B, `handTotal`=H, `currentBet`=W, `minRaise`=R). JSON 이름 변환은 `StateJson`(테스트) 한 곳에서만 한다.
+- 필드명은 풀어 쓴다(`roundBet`=B, `handTotal`=H, `currentBet`=W, `minRaise`=R). JSON 이름 변환은 `game-json` 모듈의 `GameJson`·`EventJson` 한 곳에서만 한다(서버도 재사용).
 - `FORFEIT`는 서버 전용 규칙이다. 누가 누구를 기권시킬 수 있는지는 후속 방 계층이 검사하고 이 규칙은 대상이 나갈 수 있는지만 확인한다.
 - 공통 사례 형식 v2: 시작 상태는 완전한 GameState JSON이고 명령 목록과 `expectError`·`expectedStateSubset`·`expectRestores`가 이어진다.
   의미의 기준은 [schema.json](shared/game-fixtures/schema.json)의 description이다. `forfeit.json`은 Java 전용이다.
-- 테스트는 `backend/game/src/test/java/xyz/jwlee/poker/game/`에 있다. `fixtures/`의 `FixtureFiles`·`JsonSubset`·`StateJson`·`FixtureRunner`와 `*FixtureTest`가 공통 사례를 읽고, `RandomTournamentTest`는 고정 시드(20261029)의 2~10인 토너먼트를 기권 포함 무작위 명령으로 끝까지 진행하며 매 전환의 불변식·입력 불변을 검사한다.
+- 테스트는 `backend/game/src/test/java/xyz/jwlee/poker/game/`에 있다. `fixtures/`의 `FixtureFiles`·`JsonSubset`·`FixtureRunner`와 `*FixtureTest`가 공통 사례를 읽고, `RandomTournamentTest`는 고정 시드(20261029)의 2~10인 토너먼트를 기권 포함 무작위 명령으로 끝까지 진행하며 매 전환의 불변식·입력 불변을 검사한다.
 
 ```powershell
 backend/gradlew -p backend :game:test

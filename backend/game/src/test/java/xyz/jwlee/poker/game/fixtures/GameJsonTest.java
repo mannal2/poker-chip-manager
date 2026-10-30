@@ -14,8 +14,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestFactory;
 import xyz.jwlee.poker.game.model.GameState;
 import xyz.jwlee.poker.game.model.UndoSnapshot;
+import xyz.jwlee.poker.gamejson.GameJson;
 
-class StateJsonTest {
+class GameJsonTest {
     @TestFactory
     List<DynamicTest> everyFixtureStateRoundTrips() {
         List<DynamicTest> tests = new ArrayList<>();
@@ -26,7 +27,7 @@ class StateJsonTest {
                     continue;
                 }
                 tests.add(dynamicTest(suite + " " + c.get("id").asText(), () -> {
-                    assertThat(StateJson.write(StateJson.read(state))).isEqualTo(state);
+                    assertThat(GameJson.writeState(GameJson.readState(state))).isEqualTo(state);
                 }));
             }
         }
@@ -44,10 +45,10 @@ class StateJsonTest {
         snapshot.set("eventIds", ids);
         withUndo.set("undo", snapshot);
 
-        GameState read = StateJson.read(withUndo);
+        GameState read = GameJson.readState(withUndo);
         UndoSnapshot undo = read.undo;
         assertThat(undo.eventIds()).containsExactly("t:0", "t:1");
         assertThat(undo.state().undo).isNull();
-        assertThat(StateJson.write(read)).isEqualTo(withUndo);
+        assertThat(GameJson.writeState(read)).isEqualTo(withUndo);
     }
 }

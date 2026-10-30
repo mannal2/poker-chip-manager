@@ -1,4 +1,4 @@
-package xyz.jwlee.poker.game.fixtures;
+package xyz.jwlee.poker.gamejson;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -9,9 +9,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import xyz.jwlee.poker.game.LegalActions;
 import xyz.jwlee.poker.game.command.GameCommand;
-import xyz.jwlee.poker.game.event.EventDetails;
-import xyz.jwlee.poker.game.event.GameEvent;
 import xyz.jwlee.poker.game.model.Blinds;
 import xyz.jwlee.poker.game.model.GameSettings;
 import xyz.jwlee.poker.game.model.GameState;
@@ -22,17 +21,18 @@ import xyz.jwlee.poker.game.model.TournamentStatus;
 import xyz.jwlee.poker.game.model.UndoSnapshot;
 
 /**
- * Converts the shared fixtures' TS-named JSON to and from the Java model. This is the only place
- * that knows the TS-name to Java-name mapping (B/H, actedAt/reopenAt, W/R, sb/bb, ...).
+ * Converts the TS-named JSON (shared fixtures, server protocol) to and from the Java game model.
+ * Together with {@link EventJson} this is the only place that knows the TS-name to Java-name
+ * mapping (B/H, actedAt/reopenAt, W/R, sb/bb, ...).
  */
-public final class StateJson {
+public final class GameJson {
     private static final JsonNodeFactory F = JsonNodeFactory.instance;
 
-    private StateJson() {}
+    private GameJson() {}
 
     // ---- state ----
 
-    public static GameState read(JsonNode n) {
+    public static GameState readState(JsonNode n) {
         GameState s = new GameState();
         s.tournamentId = n.get("tournamentId").asText();
         s.version = n.get("version").asInt();
@@ -50,12 +50,12 @@ public final class StateJson {
         if (present(n, "undo")) {
             // The TS snapshot is the flat state minus "undo", plus optional eventIds.
             JsonNode u = n.get("undo");
-            s.undo = new UndoSnapshot(read(u), present(u, "eventIds") ? strings(u.get("eventIds")) : null);
+            s.undo = new UndoSnapshot(readState(u), present(u, "eventIds") ? strings(u.get("eventIds")) : null);
         }
         return s;
     }
 
-    public static JsonNode write(GameState s) {
+    public static ObjectNode writeState(GameState s) {
         ObjectNode n = F.objectNode();
         n.put("tournamentId", s.tournamentId);
         n.put("version", s.version);
@@ -79,7 +79,7 @@ public final class StateJson {
         if (s.undo == null) {
             n.putNull("undo");
         } else {
-            ObjectNode u = (ObjectNode) write(s.undo.state());
+            ObjectNode u = writeState(s.undo.state());
             u.remove("undo");
             if (s.undo.eventIds() != null) {
                 u.set("eventIds", stringArray(s.undo.eventIds()));
@@ -98,7 +98,7 @@ public final class StateJson {
                 n.get("button").asInt());
     }
 
-    private static ObjectNode writeSettings(GameSettings g) {
+    public static ObjectNode writeSettings(GameSettings g) {
         ObjectNode n = F.objectNode();
         n.set("names", stringArray(g.names()));
         n.put("initial", g.initial());
@@ -189,7 +189,7 @@ public final class StateJson {
 
     // ---- commands ----
 
-    public static GameCommand command(JsonNode n) {
+    public static GameCommand readCommand(JsonNode n) {
         String player = present(n, "playerId") ? n.get("playerId").asText() : null;
         return switch (n.get("type").asText()) {
             case "START_TOURNAMENT" -> new GameCommand.StartTournament();
@@ -216,62 +216,22 @@ public final class StateJson {
         return out;
     }
 
-    // ---- events ----
+    // ---- legal actions ----
 
-    public static JsonNode event(GameEvent e) {
+    /** Legal actions with the TS field names. */
+    public static ObjectNode writeLegal(LegalActions l) {
         ObjectNode n = F.objectNode();
-        n.put("id", e.id());
-        n.put("at", e.at());
-        n.put("tournamentId", e.tournamentId());
-        n.put("hand", e.hand());
-        n.put("type", e.type());
-        n.set("details", details(e.details()));
-        return n;
-    }
-
-    private static ObjectNode details(EventDetails d) {
-        ObjectNode n = F.objectNode();
-        switch (d) {
-            case EventDetails.HandStarted x -> {
-                n.put("buttonSeat", x.buttonSeat());
-                n.put("sbSeat", x.sbSeat());
-                n.put("bbSeat", x.bbSeat());
-                n.put("sb", x.smallBlind());
-                n.put("bb", x.bigBlind());
-            }
-            case EventDetails.PlayerActed x -> {
-                n.put("playerId", x.playerId());
-                n.put("additional", x.additional());
-            }
-            case EventDetails.UncalledReturned x -> {
-                n.put("playerId", x.playerId());
-                n.put("amount", x.amount());
-            }
-            case EventDetails.RoundClosed x -> n.put("showdown", x.showdown());
-            case EventDetails.StreetStarted x -> n.put("street", x.street());
-            case EventDetails.PotsPaid x -> {
-                n.put("pot", x.pot());
-                ObjectNode payouts = n.putObject("payouts");
-                x.payouts().forEach(payouts::put);
-            }
-            case EventDetails.PlayerEliminated x -> n.put("playerId", x.playerId());
-            case EventDetails.TournamentEnded x -> n.put("winner", x.winner());
-            case EventDetails.BlindsScheduled x -> {
-                n.put("sb", x.smallBlind());
-                n.put("bb", x.bigBlind());
-            }
-            case EventDetails.ActionUndone x -> {
-                if (x.eventIds() != null) {
-                    n.set("eventIds", stringArray(x.eventIds()));
-                }
-            }
-            case EventDetails.TournamentAborted x -> { }
-            case EventDetails.PlayerForfeited x -> n.put("playerId", x.playerId());
-            case EventDetails.ForfeitStackSplit x -> {
-                n.put("playerId", x.playerId());
-                ObjectNode shares = n.putObject("shares");
-                x.shares().forEach(shares::put);
-            }
+        n.set("actor", l.actor() == null ? F.nullNode() : writePlayer(l.actor()));
+        n.put("callAdditional", l.callAdditional());
+        n.put("minRaiseAdditional", l.minRaiseAdditional());
+        n.put("maxAdditional", l.maxAdditional());
+        n.put("canRaise", l.canRaise());
+        n.put("canCheck", l.canCheck());
+        n.put("canCall", l.canCall());
+        if (l.reasonCode() == null) {
+            n.putNull("reasonCode");
+        } else {
+            n.put("reasonCode", l.reasonCode().name());
         }
         return n;
     }
@@ -289,7 +249,7 @@ public final class StateJson {
         return out;
     }
 
-    private static ArrayNode stringArray(List<String> list) {
+    static ArrayNode stringArray(List<String> list) {
         ArrayNode a = F.arrayNode();
         list.forEach(a::add);
         return a;

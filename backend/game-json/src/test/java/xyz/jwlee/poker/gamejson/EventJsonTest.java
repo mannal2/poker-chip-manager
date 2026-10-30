@@ -1,0 +1,137 @@
+package xyz.jwlee.poker.gamejson;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.DynamicTest.dynamicTest;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.JsonNodeFactory;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
+import org.junit.jupiter.api.DynamicTest;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestFactory;
+import xyz.jwlee.poker.game.GameEngine;
+import xyz.jwlee.poker.game.Tournament;
+import xyz.jwlee.poker.game.TransitionResult;
+import xyz.jwlee.poker.game.command.GameCommand;
+import xyz.jwlee.poker.game.event.GameEvent;
+import xyz.jwlee.poker.game.model.GameSettings;
+import xyz.jwlee.poker.game.model.GameState;
+import xyz.jwlee.poker.game.model.TransitionContext;
+
+class EventJsonTest {
+    private static final ObjectMapper MAPPER = new ObjectMapper();
+
+    private static JsonNode eventCases() throws IOException {
+        Path file = Path.of(System.getProperty("fixtures.dir")).resolve("events.json");
+        return MAPPER.readTree(Files.readString(file));
+    }
+
+    /** Applies every command of an events fixture and returns all emitted events as JSON. */
+    private static List<ObjectNode> emitted(JsonNode fixture) {
+        JsonNode context = fixture.get("context");
+        TransitionContext ctx = new TransitionContext(context.get("id").asText(), context.get("at").asText());
+        GameState state = Tournament.create(GameJson.readSettings(fixture.get("initialState")), ctx);
+        List<ObjectNode> out = new ArrayList<>();
+        for (JsonNode command : fixture.get("commands")) {
+            TransitionResult r = GameEngine.transition(state, GameJson.readCommand(command), ctx);
+            if (!(r instanceof TransitionResult.Applied applied)) {
+                throw new AssertionError("Rejected: " + r);
+            }
+            applied.events().forEach(e -> out.add(EventJson.write(e)));
+            state = applied.state();
+        }
+        return out;
+    }
+
+    @TestFactory
+    List<DynamicTest> sharedEventCasesMatchTheTsDetails() throws IOException {
+        List<DynamicTest> tests = new ArrayList<>();
+        for (JsonNode c : eventCases()) {
+            tests.add(dynamicTest(c.get("id").asText() + " " + c.get("description").asText(), () -> {
+                ArrayNode projected = JsonNodeFactory.instance.arrayNode();
+                for (ObjectNode e : emitted(c)) {
+                    ObjectNode n = projected.addObject();
+                    n.set("type", e.get("type"));
+                    n.set("details", e.get("details"));
+                }
+                assertThat(projected).isEqualTo(c.get("expectedEventDetails"));
+            }));
+        }
+        assertThat(tests).hasSize(3);
+        return tests;
+    }
+
+    @Test
+    void sharedCasesCoverEveryTsEventType() throws IOException {
+        List<String> types = new ArrayList<>();
+        for (JsonNode c : eventCases()) {
+            c.get("expectedEventDetails").forEach(e -> types.add(e.get("type").asText()));
+        }
+        assertThat(types)
+                .contains(
+                        "HAND_START", "CHECK", "CALL", "BET", "RAISE", "FOLD", "ALL_IN", "RETURN", "STREET",
+                        "REVEAL", "PAYOUT", "ELIMINATED", "TOURNAMENT_END", "BLINDS_SCHEDULED", "UNDO", "ABORT");
+    }
+
+    @Test
+    void envelopeCarriesIdAtTournamentHandTypeAndDetails() {
+        TransitionContext ctx = new TransitionContext("T", "2026-10-18T00:00:00Z");
+        GameState s = Tournament.create(new GameSettings(List.of("A", "B"), 1000, 5, 10, 0), ctx);
+        TransitionResult.Applied r =
+                (TransitionResult.Applied) GameEngine.transition(s, new GameCommand.StartTournament(), ctx);
+        ObjectNode json = EventJson.write(r.events().get(0));
+
+        assertThat(json.fieldNames()).toIterable().containsExactly("id", "at", "tournamentId", "hand", "type", "details");
+        assertThat(json.get("id").asText()).isEqualTo("T:0");
+        assertThat(json.get("at").asText()).isEqualTo("2026-10-18T00:00:00Z");
+        assertThat(json.get("tournamentId").asText()).isEqualTo("T");
+        assertThat(json.get("hand").asInt()).isEqualTo(1);
+        assertThat(json.get("type").asText()).isEqualTo("HAND_START");
+    }
+
+    @Test
+    void forfeitEventsHaveTheirOwnDetailShapes() {
+        TransitionContext ctx = new TransitionContext("F", "2026-10-18T00:00:00Z");
+        GameState state = Tournament.create(new GameSettings(List.of("A", "B", "C"), 1000, 5, 10, 0), ctx);
+        List<GameEvent> events = new ArrayList<>();
+        List<GameCommand> commands =
+                List.of(new GameCommand.StartTournament(), new GameCommand.Forfeit("p1"), new GameCommand.Forfeit("p2"));
+        for (GameCommand command : commands) {
+            TransitionResult.Applied r = (TransitionResult.Applied) GameEngine.transition(state, command, ctx);
+            events.addAll(r.events());
+            state = r.state();
+        }
+        List<ObjectNode> json = events.stream().map(EventJson::write).toList();
+
+        // p0 never put chips in, so no live player owns the blinds: they go back to p1 and p2, who each
+        // leave with their full 1000 and hand it to the only survivor p0.
+        assertThat(details(json, "FORFEIT"))
+                .containsExactly(object("{\"playerId\":\"p1\"}"), object("{\"playerId\":\"p2\"}"));
+        assertThat(details(json, "FORFEIT_SPLIT"))
+                .containsExactly(
+                        object("{\"playerId\":\"p1\",\"shares\":{\"p0\":1000}}"),
+                        object("{\"playerId\":\"p2\",\"shares\":{\"p0\":1000}}"));
+    }
+
+    private static List<JsonNode> details(List<ObjectNode> events, String type) {
+        return events.stream()
+                .filter(e -> e.get("type").asText().equals(type))
+                .map(e -> e.get("details"))
+                .toList();
+    }
+
+    private static JsonNode object(String json) {
+        try {
+            return MAPPER.readTree(json);
+        } catch (IOException e) {
+            throw new AssertionError(e);
+        }
+    }
+}

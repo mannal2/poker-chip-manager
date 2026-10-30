@@ -64,7 +64,7 @@
 | T55 | 조작 세대별 요청 순번과 최근 결과로 중복 처리 방지 | SYSTEM_SPEC C3 확정, 구현 전 |
 | T56 | Spring Security로 요청 인증·접근 제어·CSRF 방어 구성 | 도구 확정, 구현 전 |
 | T57 | 메모리 HttpSession 인증·세션 저장 CSRF 토큰의 API/헤더 전달 | 구조 확정, 구현 전 |
-| T60 | 백엔드 Java 25 LTS + Gradle Kotlin DSL | 2026-10-29 확정, 구현 전 |
+| T60 | 백엔드 Java 25 LTS + Gradle Kotlin DSL | 2026-10-29 확정, 2026-10-30 버전 고정 |
 | T61 | 게임 규칙을 Spring 없는 별도 Gradle 모듈로 분리 | 2026-10-29 확정, 구현 전 |
 | T62 | 공통 사례 시작 상태를 완전한 GameState JSON으로 저장 | 2026-10-29 확정, 구현 전 |
 | T63 | Java 규칙: 깊은 복사 후 수정, 풀어 쓴 필드명, 종류별 sealed 이벤트 | 2026-10-29 확정, 구현 전 |
@@ -1075,6 +1075,11 @@ Node 24.18.0/npm 11.16.0에서 React 19.3.1, TypeScript 6.0.3, Vite 8.3.4, Vites
 ## T60. 백엔드 Java 25 LTS와 Gradle Kotlin DSL — 2026-10-29
 
 **결정:** 사용자 확정. Java 25 LTS(Gradle toolchain으로 고정)와 Gradle Kotlin DSL + wrapper를 쓴다. 정확한 Gradle 버전은 구현 시 Java 25 지원을 공식 호환표로 확인해 wrapper에 고정한다.
+
+**고정한 버전(2026-10-30, 계획 1에서 사용):**
+- Gradle 9.8.2 — wrapper의 `distributionSha256Sum`으로 배포본을 검증한다.
+- JDK Temurin 25 — `backend/build.gradle.kts`의 toolchain(25)과 foojay toolchain resolver 플러그인 1.0.0(`settings.gradle.kts`)으로 자동 내려받는다. CI는 `actions/setup-java`의 temurin 25를 쓴다.
+- 테스트 전용: JUnit 5.13.4(BOM), AssertJ 3.27.4, Jackson databind 2.20.0(공통 JSON 사례 읽기). `backend/game`의 main 의존성은 없다.
 
 **대안:** Java 21 LTS는 자료·호환 라이브러리가 가장 많지만 지원 기간이 짧다. 이 프로젝트에 필요한 record·sealed·패턴 매칭은 둘 다 지원한다. Maven은 선언적이고 정형화되어 예측이 쉽지만 설정이 길고 하위 모듈 추가가 번거롭다.
 

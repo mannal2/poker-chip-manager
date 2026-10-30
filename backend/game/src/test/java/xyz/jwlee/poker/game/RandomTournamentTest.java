@@ -19,21 +19,27 @@ import xyz.jwlee.poker.game.model.TournamentStatus;
 import xyz.jwlee.poker.game.model.TransitionContext;
 
 /**
- * Deterministic 2..10 player tournaments driven by random legal commands (and occasional forfeits).
- * Every applied transition must keep the invariants, leave its input untouched and the tournament
- * must end within the step bound. Mirrors the TS random tournament test (different PRNG).
+ * Deterministic 2..10 player tournaments driven by random legal commands: folds, calls, all-ins,
+ * bets and raises of any legal size, occasional undos, forfeits of any remaining player (several
+ * per hand and heads-up included) and split-winner settlements. Every applied transition must keep
+ * the invariants, leave its input untouched and the tournament must end within the step bound.
+ * Mirrors the TS random tournament test (different PRNG, wider command mix).
  */
 class RandomTournamentTest {
     private static final long SEED = 20261029L;
-    private static final int GAMES_PER_SIZE = 8;
+    private static final int GAMES_PER_SIZE = 20;
     private static final int MAX_STEPS = 2000;
+
+    private int forfeits;
+    private int undos;
+    private int sizedBets;
+    private int splits;
 
     @Test
     void randomTournamentsKeepInvariantsAndEnd() {
         Random rand = new Random(SEED);
         int tournaments = 0;
         int steps = 0;
-        int forfeits = 0;
         for (int n = 2; n <= 10; n++) {
             for (int game = 0; game < GAMES_PER_SIZE; game++) {
                 String label = "seed=" + SEED + " n=" + n + " game=" + game;
@@ -44,18 +50,21 @@ class RandomTournamentTest {
                     GameCommand command = choose(s, rand);
                     String where = label + " step=" + step + " command=" + command;
                     String before = StateJson.write(s).toString();
-                    TransitionResult r = GameEngine.transition(s, command, new TransitionContext(n + "-" + game + "-" + step, "test"));
+                    TransitionResult r;
+                    try {
+                        r = GameEngine.transition(s, command, new TransitionContext(n + "-" + game + "-" + step, "test"));
+                    } catch (RuntimeException e) {
+                        throw new AssertionError(where + " threw " + e, e);
+                    }
                     assertThat(StateJson.write(s).toString()).as(where + " mutated its input").isEqualTo(before);
-                    assertThat(r).as(where + " was rejected").isInstanceOf(TransitionResult.Applied.class);
+                    assertThat(r).as(where + " was rejected: " + r).isInstanceOf(TransitionResult.Applied.class);
                     s = ((TransitionResult.Applied) r).state();
                     try {
                         Invariants.check(s);
                     } catch (IllegalStateException e) {
                         throw new AssertionError(where + " broke invariant " + e.getMessage(), e);
                     }
-                    if (command instanceof GameCommand.Forfeit) {
-                        forfeits++;
-                    }
+                    count(command);
                 }
                 steps += step;
                 tournaments++;
@@ -64,8 +73,27 @@ class RandomTournamentTest {
                 assertThat(s.players.stream().filter(p -> p.stack > 0)).as(label).hasSize(1);
             }
         }
-        System.out.println("RandomTournamentTest: " + tournaments + " tournaments, " + steps + " steps, " + forfeits + " forfeits");
+        System.out.println("RandomTournamentTest: " + tournaments + " tournaments, " + steps + " steps, " + forfeits
+                + " forfeits, " + undos + " undos, " + sizedBets + " sized bets/raises, " + splits + " split settlements");
         assertThat(forfeits).as("forfeit coverage").isPositive();
+        assertThat(undos).as("undo coverage").isPositive();
+        assertThat(sizedBets).as("bet/raise size coverage").isPositive();
+        assertThat(splits).as("split winner coverage").isPositive();
+    }
+
+    private void count(GameCommand command) {
+        switch (command) {
+            case GameCommand.Forfeit x -> forfeits++;
+            case GameCommand.Undo x -> undos++;
+            case GameCommand.Bet x -> sizedBets++;
+            case GameCommand.Raise x -> sizedBets++;
+            case GameCommand.SettleHand x -> {
+                if (x.winners().values().stream().anyMatch(w -> w.size() > 1)) {
+                    splits++;
+                }
+            }
+            default -> {}
+        }
     }
 
     private static GameState start(int n, String label) {
@@ -81,10 +109,14 @@ class RandomTournamentTest {
     }
 
     private static GameCommand choose(GameState s, Random rand) {
-        // About 3% of steps forfeit a random player while at least two non-forfeited ones remain.
+        // Any player who has not left may forfeit (heads-up and several per hand included), as long
+        // as one non-forfeited player remains to receive the stacks.
         List<Player> leavable = s.players.stream().filter(p -> !p.eliminated && !p.forfeited).toList();
-        if (leavable.size() > 2 && rand.nextDouble() < 0.03) {
+        if (leavable.size() >= 2 && rand.nextDouble() < 0.04) {
             return new GameCommand.Forfeit(leavable.get(rand.nextInt(leavable.size())).id);
+        }
+        if (s.undo != null && rand.nextDouble() < 0.05) {
+            return new GameCommand.Undo();
         }
         if (s.hand.phase == Phase.BETTING) {
             LegalActions l = Legal.of(s);
@@ -92,17 +124,41 @@ class RandomTournamentTest {
             if (choice < 0.15) {
                 return new GameCommand.Fold(null);
             }
-            if (choice < 0.6 && l.canRaise()) {
+            if (choice < 0.3 && l.canRaise()) {
                 return new GameCommand.AllIn(null);
+            }
+            if (choice < 0.55 && l.canRaise() && l.minRaiseAdditional() < l.maxAdditional()) {
+                // Any multiple of 5 from the minimum raise up to the whole stack.
+                int sizes = (l.maxAdditional() - l.minRaiseAdditional()) / 5 + 1;
+                int amount = l.minRaiseAdditional() + 5 * rand.nextInt(sizes);
+                return s.hand.currentBet == 0 ? new GameCommand.Bet(amount, null) : new GameCommand.Raise(amount, null);
             }
             return l.canCall() ? new GameCommand.Call(null) : new GameCommand.Check(null);
         }
+        List<Pot> pots = Settlement.buildPots(s);
+        Map<String, List<String>> winners = new LinkedHashMap<>();
+        for (Pot pot : pots) {
+            List<String> chosen = new ArrayList<>();
+            for (String id : pot.eligible()) {
+                if (rand.nextDouble() < 0.4) {
+                    chosen.add(id);
+                }
+            }
+            if (chosen.isEmpty()) {
+                chosen.add(pot.eligible().get(rand.nextInt(pot.eligible().size())));
+            }
+            winners.put(pot.id(), chosen);
+        }
+        if (Settlement.preview(s, winners, pots).ok()) {
+            return new GameCommand.SettleHand(winners);
+        }
+        // Fallback when the random split is inconsistent: one ranking, the best eligible player wins each pot.
         List<Player> rank = s.players.stream()
                 .filter(p -> !p.folded && !p.eliminated)
                 .sorted((a, b) -> a.id.compareTo(b.id))
                 .toList();
-        Map<String, List<String>> winners = new LinkedHashMap<>();
-        for (Pot pot : Settlement.buildPots(s)) {
+        winners.clear();
+        for (Pot pot : pots) {
             Player w = rank.stream().filter(x -> pot.eligible().contains(x.id)).findFirst().orElseThrow();
             winners.put(pot.id(), List.of(w.id));
         }

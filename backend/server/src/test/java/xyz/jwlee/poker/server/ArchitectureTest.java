@@ -29,6 +29,5 @@ class ArchitectureTest {
     static final ArchRule supportDoesNotDependOnOtherServerPackages =
             noClasses().that().resideInAPackage("..server.support..")
                     .should().dependOnClassesThat().resideInAnyPackage(
-                            "..server.api..", "..server.auth..", "..server.room..", "..server.registry..")
-                    .allowEmptyShould(true);
+                            "..server.api..", "..server.auth..", "..server.room..", "..server.registry..");
 }

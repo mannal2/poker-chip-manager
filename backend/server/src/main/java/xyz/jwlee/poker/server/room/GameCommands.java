@@ -133,7 +133,7 @@ final class GameCommands {
         int potIndex = integer(body, "potIndex");
         Map<String, List<String>> winners = winners(requiredField(body, "winners"));
         List<Pot> pots = Settlement.buildPots(game);
-        if (potIndex < 0 || potIndex > pots.size()) {
+        if (potIndex < 0 || potIndex >= pots.size()) {
             throw invalid();
         }
         Map<String, Pot> byId = new HashMap<>();
@@ -163,11 +163,14 @@ final class GameCommands {
         return false;
     }
 
+    /** Applies the command; a settlement draft is dropped unless the command cannot change who may win. */
     private static void run(Room room, GameCommand command, CommandRequest request, Clock clock) {
         TransitionResult.Applied applied =
                 applied(GameEngine.transition(room.game(), command, context(request, clock)));
         room.updateGame(applied.state(), applied.events());
-        room.clearDraft();
+        if (!(command instanceof GameCommand.ScheduleBlinds)) {
+            room.clearDraft();
+        }
     }
 
     private static TransitionResult.Applied applied(TransitionResult result) {

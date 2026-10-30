@@ -294,8 +294,29 @@ class GameCommandsTest {
         assertRejected(f, f.send("a", "SETTLEMENT_DRAFT", "{\"potIndex\":0,\"winners\":{\"pot7\":[\"p1\"]}}"),
                 "INVALID_INPUT");
         assertRejected(f, f.send("a", "SETTLEMENT_DRAFT", "{\"potIndex\":9,\"winners\":{}}"), "INVALID_INPUT");
+        assertRejected(f, f.send("a", "SETTLEMENT_DRAFT", "{\"potIndex\":1,\"winners\":{}}"), "INVALID_INPUT");
+        assertRejected(f, f.send("a", "SETTLEMENT_DRAFT", "{\"potIndex\":-1,\"winners\":{}}"), "INVALID_INPUT");
+        f.check(f.send("a", "SETTLEMENT_DRAFT", "{\"potIndex\":0,\"winners\":{}}"));
         assertRejected(f, f.send("a", "SETTLEMENT_DRAFT", "{\"winners\":{}}"), "INVALID_INPUT");
-        assertThat(f.room.settlementDraft()).isNull();
+        assertThat(f.room.settlementDraft().potIndex()).isZero();
+    }
+
+    @Test
+    void theDraftSurvivesSchedulingBlindsDuringSettlement() {
+        GameFixture f = atSettlement();
+        f.check(f.send("a", "SETTLEMENT_DRAFT", "{\"potIndex\":0,\"winners\":{\"pot0\":[\"p1\"]}}"));
+
+        f.check(f.send("a", "SCHEDULE_BLINDS", "{\"sb\":10,\"bb\":20}"));
+
+        assertThat(f.room.settlementDraft()).isNotNull();
+        assertThat(f.room.settlementDraft().draftVersion()).isEqualTo(1);
+    }
+
+    @Test
+    void aRaiseBelowTheMinimumIsMinRaise() {
+        GameFixture f = GameFixture.started(3, 0);
+
+        assertRejected(f, f.send("a", "RAISE", "{\"additional\":15}"), "MIN_RAISE");
     }
 
     @Test

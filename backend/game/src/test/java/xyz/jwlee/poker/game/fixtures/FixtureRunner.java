@@ -3,8 +3,8 @@ package xyz.jwlee.poker.game.fixtures;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.fail;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.node.ObjectNode;
 import java.util.ArrayList;
 import java.util.List;
 import xyz.jwlee.poker.game.GameEngine;
@@ -30,7 +30,7 @@ public final class FixtureRunner {
 
     public static void run(JsonNode fixture) {
         JsonNode context = fixture.get("context");
-        TransitionContext ctx = new TransitionContext(context.get("id").asText(), context.get("at").asText());
+        TransitionContext ctx = new TransitionContext(context.get("id").asString(), context.get("at").asString());
         JsonNode initial = fixture.get("initialState");
         // Betting-style cases carry a full state; lifecycle-style cases carry the settings.
         GameState state = initial.has("players")
@@ -38,7 +38,7 @@ public final class FixtureRunner {
                 : Tournament.create(GameJson.readSettings(initial), ctx);
         String expectedError = fixture.get("expectedError").isNull()
                 ? null
-                : fixture.get("expectedError").asText();
+                : fixture.get("expectedError").asString();
 
         List<GameState> history = new ArrayList<>();
         List<String> events = new ArrayList<>();
@@ -47,7 +47,7 @@ public final class FixtureRunner {
             JsonNode raw = commands.get(i);
             boolean last = i == commands.size() - 1;
             history.add(state);
-            String expectError = raw.has("expectError") ? raw.get("expectError").asText() : null;
+            String expectError = raw.has("expectError") ? raw.get("expectError").asString() : null;
             if (last && expectedError != null) {
                 expectError = expectedError;
             }
@@ -67,7 +67,7 @@ public final class FixtureRunner {
         JsonNode expectedEvents = fixture.get("expectedEvents");
         if (expectedEvents != null) {
             for (JsonNode type : expectedEvents) {
-                assertThat(events).as("emitted event types").contains(type.asText());
+                assertThat(events).as("emitted event types").contains(type.asString());
             }
         }
     }

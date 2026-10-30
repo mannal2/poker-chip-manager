@@ -5,7 +5,8 @@ plugins {
 // Maps the Java game model to the TS-named JSON of the shared fixtures; the server reuses it.
 dependencies {
     api(project(":game"))
-    api("com.fasterxml.jackson.core:jackson-databind:2.20.0")
+    api(platform("tools.jackson:jackson-bom:3.1.7"))
+    api("tools.jackson.core:jackson-databind")
 
     testImplementation(platform("org.junit:junit-bom:5.13.4"))
     testImplementation("org.junit.jupiter:junit-jupiter")

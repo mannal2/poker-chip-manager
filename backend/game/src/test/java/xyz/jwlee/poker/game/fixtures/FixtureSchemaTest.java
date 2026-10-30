@@ -2,7 +2,7 @@ package xyz.jwlee.poker.game.fixtures;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.fasterxml.jackson.databind.JsonNode;
+import tools.jackson.databind.JsonNode;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -19,10 +19,10 @@ class FixtureSchemaTest {
         assertThat(cases).isNotEmpty();
         Set<String> ids = new HashSet<>();
         for (JsonNode testCase : cases) {
-            assertThat(testCase.path("id").isTextual()).as("id in %s", suite).isTrue();
-            assertThat(testCase.path("suite").asText()).as("suite of %s", testCase.path("id")).isEqualTo(suite);
+            assertThat(testCase.path("id").isString()).as("id in %s", suite).isTrue();
+            assertThat(testCase.path("suite").asString()).as("suite of %s", testCase.path("id")).isEqualTo(suite);
             assertThat(testCase.path("commands").isArray()).as("commands of %s", testCase.path("id")).isTrue();
-            assertThat(ids.add(testCase.get("id").asText())).as("unique id %s", testCase.get("id")).isTrue();
+            assertThat(ids.add(testCase.get("id").asString())).as("unique id %s", testCase.get("id")).isTrue();
         }
     }
 

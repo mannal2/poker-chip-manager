@@ -3,10 +3,10 @@ package xyz.jwlee.poker.game.fixtures;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.DynamicTest.dynamicTest;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.JsonNodeFactory;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.node.ArrayNode;
+import tools.jackson.databind.node.JsonNodeFactory;
+import tools.jackson.databind.node.ObjectNode;
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.DynamicTest;
@@ -26,7 +26,7 @@ class GameJsonTest {
                 if (!state.has("players")) {
                     continue;
                 }
-                tests.add(dynamicTest(suite + " " + c.get("id").asText(), () -> {
+                tests.add(dynamicTest(suite + " " + c.get("id").asString(), () -> {
                     assertThat(GameJson.writeState(GameJson.readState(state))).isEqualTo(state);
                 }));
             }
@@ -38,8 +38,8 @@ class GameJsonTest {
     @Test
     void undoSnapshotUsesTheFlatShapeWithOptionalEventIds() {
         JsonNode base = FixtureFiles.load("betting").get(0).get("initialState");
-        ObjectNode withUndo = base.deepCopy();
-        ObjectNode snapshot = base.deepCopy();
+        ObjectNode withUndo = (ObjectNode) base.deepCopy();
+        ObjectNode snapshot = (ObjectNode) base.deepCopy();
         snapshot.remove("undo");
         ArrayNode ids = JsonNodeFactory.instance.arrayNode().add("t:0").add("t:1");
         snapshot.set("eventIds", ids);

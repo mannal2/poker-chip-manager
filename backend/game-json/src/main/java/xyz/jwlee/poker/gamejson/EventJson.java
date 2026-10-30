@@ -1,7 +1,7 @@
 package xyz.jwlee.poker.gamejson;
 
-import com.fasterxml.jackson.databind.node.JsonNodeFactory;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import tools.jackson.databind.node.JsonNodeFactory;
+import tools.jackson.databind.node.ObjectNode;
 import xyz.jwlee.poker.game.event.EventDetails;
 import xyz.jwlee.poker.game.event.GameEvent;
 

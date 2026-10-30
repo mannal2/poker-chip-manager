@@ -1,9 +1,9 @@
 package xyz.jwlee.poker.gamejson;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.JsonNodeFactory;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.node.ArrayNode;
+import tools.jackson.databind.node.JsonNodeFactory;
+import tools.jackson.databind.node.ObjectNode;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -34,9 +34,9 @@ public final class GameJson {
 
     public static GameState readState(JsonNode n) {
         GameState s = new GameState();
-        s.tournamentId = n.get("tournamentId").asText();
+        s.tournamentId = n.get("tournamentId").asString();
         s.version = n.get("version").asInt();
-        s.status = TournamentStatus.valueOf(n.get("status").asText().toUpperCase(Locale.ROOT));
+        s.status = TournamentStatus.valueOf(n.get("status").asString().toUpperCase(Locale.ROOT));
         s.settings = readSettings(n.get("settings"));
         s.initialTotal = n.get("initialTotal").asInt();
         s.setupOrder = present(n, "setupOrder") ? strings(n.get("setupOrder")) : null;
@@ -110,8 +110,8 @@ public final class GameJson {
 
     private static Player readPlayer(JsonNode n) {
         Player p = new Player();
-        p.id = n.get("id").asText();
-        p.name = n.get("name").asText();
+        p.id = n.get("id").asString();
+        p.name = n.get("name").asString();
         p.stack = n.get("stack").asInt();
         p.eliminated = n.get("eliminated").asBoolean();
         p.folded = n.get("folded").asBoolean();
@@ -147,16 +147,16 @@ public final class GameJson {
 
     private static Hand readHand(JsonNode n) {
         Hand h = new Hand();
-        h.id = n.get("id").asText();
+        h.id = n.get("id").asString();
         h.number = n.get("number").asInt();
         h.street = n.get("street").asInt();
-        h.phase = Phase.valueOf(n.get("phase").asText().toUpperCase(Locale.ROOT));
+        h.phase = Phase.valueOf(n.get("phase").asString().toUpperCase(Locale.ROOT));
         h.buttonSeat = n.get("buttonSeat").asInt();
         h.sbSeat = n.get("sbSeat").asInt();
         h.bbSeat = n.get("bbSeat").asInt();
         h.smallBlind = n.get("sb").asInt();
         h.bigBlind = n.get("bb").asInt();
-        h.actorId = present(n, "actorId") ? n.get("actorId").asText() : null;
+        h.actorId = present(n, "actorId") ? n.get("actorId").asString() : null;
         h.currentBet = n.get("W").asInt();
         h.minRaise = n.get("R").asInt();
         h.pending = strings(n.get("pending"));
@@ -190,8 +190,8 @@ public final class GameJson {
     // ---- commands ----
 
     public static GameCommand readCommand(JsonNode n) {
-        String player = present(n, "playerId") ? n.get("playerId").asText() : null;
-        return switch (n.get("type").asText()) {
+        String player = present(n, "playerId") ? n.get("playerId").asString() : null;
+        return switch (n.get("type").asString()) {
             case "START_TOURNAMENT" -> new GameCommand.StartTournament();
             case "SETUP_UPDATE" -> new GameCommand.SetupUpdate(
                     readSettings(n.get("settings")), present(n, "order") ? strings(n.get("order")) : null);
@@ -206,7 +206,7 @@ public final class GameJson {
             case "UNDO" -> new GameCommand.Undo();
             case "ABORT" -> new GameCommand.Abort();
             case "FORFEIT" -> new GameCommand.Forfeit(player);
-            default -> throw new IllegalArgumentException("Unknown command type: " + n.get("type").asText());
+            default -> throw new IllegalArgumentException("Unknown command type: " + n.get("type").asString());
         };
     }
 
@@ -245,7 +245,7 @@ public final class GameJson {
 
     private static List<String> strings(JsonNode arr) {
         List<String> out = new ArrayList<>();
-        arr.forEach(x -> out.add(x.asText()));
+        arr.forEach(x -> out.add(x.asString()));
         return out;
     }
 

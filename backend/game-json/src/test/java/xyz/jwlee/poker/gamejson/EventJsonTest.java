@@ -3,11 +3,12 @@ package xyz.jwlee.poker.gamejson;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.DynamicTest.dynamicTest;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.JsonNodeFactory;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.node.ArrayNode;
+import tools.jackson.databind.node.JsonNodeFactory;
+import tools.jackson.databind.node.ObjectNode;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -36,7 +37,7 @@ class EventJsonTest {
     /** Applies every command of an events fixture and returns all emitted events as JSON. */
     private static List<ObjectNode> emitted(JsonNode fixture) {
         JsonNode context = fixture.get("context");
-        TransitionContext ctx = new TransitionContext(context.get("id").asText(), context.get("at").asText());
+        TransitionContext ctx = new TransitionContext(context.get("id").asString(), context.get("at").asString());
         GameState state = Tournament.create(GameJson.readSettings(fixture.get("initialState")), ctx);
         List<ObjectNode> out = new ArrayList<>();
         for (JsonNode command : fixture.get("commands")) {
@@ -54,7 +55,7 @@ class EventJsonTest {
     List<DynamicTest> sharedEventCasesMatchTheTsDetails() throws IOException {
         List<DynamicTest> tests = new ArrayList<>();
         for (JsonNode c : eventCases()) {
-            tests.add(dynamicTest(c.get("id").asText() + " " + c.get("description").asText(), () -> {
+            tests.add(dynamicTest(c.get("id").asString() + " " + c.get("description").asString(), () -> {
                 ArrayNode projected = JsonNodeFactory.instance.arrayNode();
                 for (ObjectNode e : emitted(c)) {
                     ObjectNode n = projected.addObject();
@@ -72,7 +73,7 @@ class EventJsonTest {
     void sharedCasesCoverEveryTsEventType() throws IOException {
         List<String> types = new ArrayList<>();
         for (JsonNode c : eventCases()) {
-            c.get("expectedEventDetails").forEach(e -> types.add(e.get("type").asText()));
+            c.get("expectedEventDetails").forEach(e -> types.add(e.get("type").asString()));
         }
         assertThat(types)
                 .contains(
@@ -88,12 +89,12 @@ class EventJsonTest {
                 (TransitionResult.Applied) GameEngine.transition(s, new GameCommand.StartTournament(), ctx);
         ObjectNode json = EventJson.write(r.events().get(0));
 
-        assertThat(json.fieldNames()).toIterable().containsExactly("id", "at", "tournamentId", "hand", "type", "details");
-        assertThat(json.get("id").asText()).isEqualTo("T:0");
-        assertThat(json.get("at").asText()).isEqualTo("2026-10-18T00:00:00Z");
-        assertThat(json.get("tournamentId").asText()).isEqualTo("T");
+        assertThat(json.propertyNames()).containsExactly("id", "at", "tournamentId", "hand", "type", "details");
+        assertThat(json.get("id").asString()).isEqualTo("T:0");
+        assertThat(json.get("at").asString()).isEqualTo("2026-10-18T00:00:00Z");
+        assertThat(json.get("tournamentId").asString()).isEqualTo("T");
         assertThat(json.get("hand").asInt()).isEqualTo(1);
-        assertThat(json.get("type").asText()).isEqualTo("HAND_START");
+        assertThat(json.get("type").asString()).isEqualTo("HAND_START");
     }
 
     @Test
@@ -122,7 +123,7 @@ class EventJsonTest {
 
     private static List<JsonNode> details(List<ObjectNode> events, String type) {
         return events.stream()
-                .filter(e -> e.get("type").asText().equals(type))
+                .filter(e -> e.get("type").asString().equals(type))
                 .map(e -> e.get("details"))
                 .toList();
     }
@@ -130,7 +131,7 @@ class EventJsonTest {
     private static JsonNode object(String json) {
         try {
             return MAPPER.readTree(json);
-        } catch (IOException e) {
+        } catch (JacksonException e) {
             throw new AssertionError(e);
         }
     }

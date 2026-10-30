@@ -1,0 +1,26 @@
+spring:
+  threads:
+    virtual:
+      enabled: true
+
+server:
+  servlet:
+    session:
+      timeout: 7d
+      cookie:
+        name: PCM_SESSION
+        http-only: true
+        same-site: lax
+
+---
+spring:
+  config:
+    activate:
+      on-profile: prod
+
+server:
+  servlet:
+    session:
+      cookie:
+        name: __Host-pcm-session
+        secure: true

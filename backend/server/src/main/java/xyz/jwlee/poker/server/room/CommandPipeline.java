@@ -1,7 +1,9 @@
 package xyz.jwlee.poker.server.room;
 
+import java.time.Clock;
 import java.util.Objects;
 import tools.jackson.databind.JsonNode;
+import xyz.jwlee.poker.game.model.GameState;
 
 /**
  * Runs one room command, one step per method, in this order; a step never replaces the one before it:
@@ -26,24 +28,60 @@ public final class CommandPipeline {
 
     @FunctionalInterface
     private interface Applier {
+        void apply(Room room, Participant actor, CommandRequest request, Clock clock);
+    }
+
+    @FunctionalInterface
+    private interface WaitingApplier {
         void apply(Room room, Participant actor, JsonNode payload);
     }
 
-    private record Handler(boolean hostOnly, Applier applier) { }
+    /**
+     * {@code handScoped}: the request must carry the current hand id; otherwise a hand id is optional but,
+     * when present, must match. {@code bumpsVersion}: false only for the settlement draft, which has its own counter.
+     */
+    private record Handler(boolean hostOnly, boolean handScoped, boolean bumpsVersion, Applier applier) { }
+
+    private static Handler plain(boolean hostOnly, Applier applier) {
+        return new Handler(hostOnly, false, true, applier);
+    }
+
+    private static Handler waiting(boolean hostOnly, WaitingApplier applier) {
+        return plain(hostOnly, (room, actor, request, clock) -> applier.apply(room, actor, request.payload()));
+    }
 
     /** The one place that connects a command type to its handler. */
     private static Handler handlerFor(String type) {
         return switch (type) {
-            case "SET_SETTINGS" -> new Handler(true, WaitingRoomCommands::setSettings);
-            case "SET_SEAT_ORDER" -> new Handler(true, WaitingRoomCommands::setSeatOrder);
-            case "SET_DEALER" -> new Handler(true, WaitingRoomCommands::setDealer);
-            case "RENAME" -> new Handler(false, WaitingRoomCommands::rename);
-            case "KICK" -> new Handler(true, WaitingRoomCommands::kick);
-            case "LEAVE" -> new Handler(false, WaitingRoomCommands::leave);
-            case "TRANSFER_HOST" -> new Handler(true, WaitingRoomCommands::transferHost);
-            // Add START and the game commands here (Task 7) and RE_READY (Task 8).
+            case "SET_SETTINGS" -> waiting(true, WaitingRoomCommands::setSettings);
+            case "SET_SEAT_ORDER" -> waiting(true, WaitingRoomCommands::setSeatOrder);
+            case "SET_DEALER" -> waiting(true, WaitingRoomCommands::setDealer);
+            case "RENAME" -> waiting(false, WaitingRoomCommands::rename);
+            case "KICK" -> waiting(true, WaitingRoomCommands::kick);
+            case "LEAVE" -> waiting(false, WaitingRoomCommands::leave);
+            case "TRANSFER_HOST" -> waiting(true, WaitingRoomCommands::transferHost);
+            case "START" -> plain(true, GameCommands::start);
+            case "CHECK", "CALL", "FOLD", "ALL_IN", "BET", "RAISE" ->
+                    new Handler(false, true, true, GameCommands::bet);
+            case "UNDO" -> plain(true, GameCommands::undo);
+            case "SCHEDULE_BLINDS" -> plain(true, GameCommands::scheduleBlinds);
+            case "SETTLE_HAND" -> new Handler(true, true, true, GameCommands::settleHand);
+            case "SETTLEMENT_DRAFT" -> new Handler(true, true, false, GameCommands::settlementDraft);
+            case "FORFEIT" -> plain(false, GameCommands::forfeit);
+            case "ABORT" -> plain(true, GameCommands::abort);
+            // Add RE_READY here (Task 8).
             default -> null;
         };
+    }
+
+    private final Clock clock;
+
+    public CommandPipeline(Clock clock) {
+        this.clock = clock;
+    }
+
+    public CommandPipeline() {
+        this(Clock.systemUTC());
     }
 
     public CommandResult execute(Room room, String participantId, CommandRequest request) {
@@ -59,10 +97,12 @@ public final class CommandPipeline {
         RequestOutcome outcome;
         try {
             checkPermission(room, actor, handler);
-            checkScope(room, request);
+            checkScope(room, request, handler);
             checkVersion(room, request);
-            handler.applier().apply(room, actor, request.payload());
-            room.bumpVersion();
+            handler.applier().apply(room, actor, request, clock);
+            if (handler.bumpsVersion()) {
+                room.bumpVersion();
+            }
             outcome = outcome(request, RequestOutcome.Outcome.APPLIED, "OK", room);
         } catch (RoomException e) {
             outcome = outcome(request, RequestOutcome.Outcome.REJECTED, e.code(), room);
@@ -110,11 +150,18 @@ public final class CommandPipeline {
         }
     }
 
-    /** The tournament is the room's game, or null while there is none; a hand never exists in the waiting room. */
-    private static void checkScope(Room room, CommandRequest request) {
-        String tournamentId = room.game() == null ? null : room.game().tournamentId;
-        // Task 7: compare handId with the current hand once hands exist.
-        if (!Objects.equals(tournamentId, request.tournamentId()) || request.handId() != null) {
+    /**
+     * The tournament is the room's game, or null while there is none. The hand is the game's current hand;
+     * a hand-scoped command must name it, any other command may leave it out.
+     */
+    private static void checkScope(Room room, CommandRequest request, Handler handler) {
+        GameState game = room.game();
+        String tournamentId = game == null ? null : game.tournamentId;
+        String handId = game == null || game.hand == null ? null : game.hand.id;
+        boolean handMatches = handler.handScoped()
+                ? Objects.equals(handId, request.handId())
+                : request.handId() == null || request.handId().equals(handId);
+        if (!Objects.equals(tournamentId, request.tournamentId()) || !handMatches) {
             throw new RoomException("TOURNAMENT_CHANGED");
         }
     }

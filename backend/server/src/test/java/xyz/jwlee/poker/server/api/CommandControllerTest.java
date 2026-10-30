@@ -187,7 +187,7 @@ class CommandControllerTest {
     void anUnknownTypeIs422InvalidInput() throws Exception {
         Client[] c = twoInARoom();
 
-        c[0].command("START", "{}").andExpect(status().is(422))
+        c[0].command("START_TOURNAMENT", "{}").andExpect(status().is(422))
                 .andExpect(jsonPath("$.code").value("INVALID_INPUT"));
         c[0].command("WHAT", null).andExpect(status().is(422))
                 .andExpect(jsonPath("$.code").value("INVALID_INPUT"));

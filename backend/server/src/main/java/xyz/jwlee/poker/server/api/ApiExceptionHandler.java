@@ -9,6 +9,7 @@ import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.ErrorResponse;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import xyz.jwlee.poker.server.room.RoomException;
 
 /** Maps domain rejections and framework errors to {@code {code, message}} with the HTTP status table. */
@@ -45,10 +46,10 @@ class ApiExceptionHandler {
         return respond(STATUS.getOrDefault(e.code(), 500), wire);
     }
 
-    /** Status of a rejection that was recorded in a ledger: 403 permission, 409 stale or lost, else 422. */
+    /** Status of a rejection that was recorded in a ledger: 403 permission or not your turn, 409 stale or lost, else 422. */
     static int rejectionStatus(String code) {
         return switch (code) {
-            case "FORBIDDEN" -> 403;
+            case "FORBIDDEN", "NOT_YOUR_TURN" -> 403;
             case "STALE_STATE", "CONTROL_LOST", "TOURNAMENT_CHANGED" -> 409;
             default -> 422;
         };
@@ -56,6 +57,12 @@ class ApiExceptionHandler {
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
     ResponseEntity<ApiError> unreadable(HttpMessageNotReadableException e) {
+        return respond(400, "INVALID_INPUT");
+    }
+
+    /** A query parameter that is not the number it should be. */
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    ResponseEntity<ApiError> mistyped(MethodArgumentTypeMismatchException e) {
         return respond(400, "INVALID_INPUT");
     }
 

@@ -135,7 +135,7 @@ class CommandPipelineTest {
     void anUnknownTypeIsRefusedWithoutUsingTheSequence() {
         assertThatThrownBy(() -> f.send("a", "NOPE", "{}"))
                 .isInstanceOfSatisfying(RoomException.class, e -> rejectedWith(e, "UNKNOWN_TYPE"));
-        assertThatThrownBy(() -> f.send("a", "START", "{}"))
+        assertThatThrownBy(() -> f.send("a", "START_TOURNAMENT", "{}"))
                 .isInstanceOfSatisfying(RoomException.class, e -> rejectedWith(e, "UNKNOWN_TYPE"));
         assertThat(CommandFixture.code(f.pipeline.execute(f.room, "a",
                 CommandFixture.request("r1", 1, 1, f.room.version(), "SET_DEALER", DEALER_A)))).isEqualTo("OK");

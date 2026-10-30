@@ -36,6 +36,7 @@ public final class Room {
     private final Map<String, String> playerIds = new HashMap<>();
     private final List<GameEvent> events = new ArrayList<>();
     private SettlementDraft settlementDraft;
+    private long draftVersion;
     private final Map<String, RequestLedger> ledgers = new HashMap<>();
     private int nextJoinOrder;
     private boolean closed;
@@ -117,7 +118,40 @@ public final class Room {
 
     void replaceSettings(RoomSettings next) { this.settings = next; }
 
-    void setHost(String participantId) { this.hostId = participantId; }
+    /** A new host starts from a clean draft: the old host's pick is not theirs to apply. */
+    void setHost(String participantId) {
+        this.hostId = participantId;
+        this.settlementDraft = null;
+    }
+
+    // Game mutations. Like the waiting-room ones, they leave the version to the command pipeline.
+
+    /** Seats a fresh tournament: the previous tournament's events are dropped. */
+    void beginGame(GameState state, Map<String, String> playerIdsByParticipant, RoomSettings startedWith) {
+        this.game = state;
+        this.playerIds.clear();
+        this.playerIds.putAll(playerIdsByParticipant);
+        this.events.clear();
+        this.settlementDraft = null;
+        this.lastStartSettings = startedWith;
+    }
+
+    /** Replaces the game state and appends the engine's events in order; the phase follows the game status. */
+    void updateGame(GameState state, List<GameEvent> appended) {
+        this.game = state;
+        this.events.addAll(appended);
+        this.phase = switch (state.status) {
+            case ENDED, ABORTED -> RoomPhase.RESULT;
+            default -> RoomPhase.PLAYING;
+        };
+    }
+
+    /** Stores the host's draft; its version only ever grows, also across clears. */
+    void saveDraft(int potIndex, Map<String, List<String>> winners) {
+        this.settlementDraft = new SettlementDraft(++draftVersion, potIndex, winners);
+    }
+
+    void clearDraft() { this.settlementDraft = null; }
 
     /** The participant the dealer button points at, or null while none is chosen. */
     private String dealerId() {
@@ -168,6 +202,9 @@ public final class Room {
         participants.removeIf(p -> p.participantId().equals(participantId));
         ledgers.keySet().removeIf(k -> k.startsWith(participantId + "#"));
         pointDealerAt(dealer);
+        if (participantId.equals(hostId)) {
+            settlementDraft = null;
+        }
         if (participants.isEmpty()) {
             hostId = null;
             closed = true;

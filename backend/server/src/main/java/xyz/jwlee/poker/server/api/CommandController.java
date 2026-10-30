@@ -2,6 +2,7 @@ package xyz.jwlee.poker.server.api;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
+import java.time.Clock;
 import java.util.Optional;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
@@ -37,10 +38,11 @@ class CommandController {
     private static final int MAX_TYPE_LENGTH = 64;
 
     private final RoomRegistry registry;
-    private final CommandPipeline pipeline = new CommandPipeline();
+    private final CommandPipeline pipeline;
 
-    CommandController(RoomRegistry registry) {
+    CommandController(RoomRegistry registry, Clock clock) {
         this.registry = registry;
+        this.pipeline = new CommandPipeline(clock);
     }
 
     @PostMapping("/api/rooms/{roomId}/commands")

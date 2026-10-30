@@ -95,10 +95,22 @@ final class WaitingRoomCommands {
         room.removeParticipant(actor.participantId());
     }
 
-    /** In the waiting room to anyone; once a game runs (2B+) only to someone not eliminated. */
+    /**
+     * In the waiting room to anyone on the roster; while a game runs only to someone still in it (not
+     * eliminated, not forfeited); never on the result screen.
+     */
     static void transferHost(Room room, Participant actor, JsonNode payload) {
-        requireWaiting(room);
-        room.setHost(existing(room, string(object(payload), "participantId")));
+        String target = existing(room, string(object(payload), "participantId"));
+        switch (room.phase()) {
+            case WAITING -> { }
+            case PLAYING -> {
+                if (!GameCommands.canHoldRoom(room, target)) {
+                    throw invalid();
+                }
+            }
+            case RESULT -> throw new RoomException("NOT_WAITING");
+        }
+        room.setHost(target);
     }
 
     private static void requireWaiting(Room room) {

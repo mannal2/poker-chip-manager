@@ -4,6 +4,7 @@ import java.util.List;
 import tools.jackson.databind.node.ArrayNode;
 import tools.jackson.databind.node.JsonNodeFactory;
 import tools.jackson.databind.node.ObjectNode;
+import xyz.jwlee.poker.game.Legal;
 import xyz.jwlee.poker.gamejson.GameJson;
 
 /** Builds the per-requester snapshot JSON. The caller holds the room lock. */
@@ -51,15 +52,18 @@ public final class SnapshotWriter {
         you.put("participantId", viewer.participantId());
         you.put("controlGeneration", viewer.controlGeneration());
         ObjectNode caps = you.putObject("capabilities");
-        // Only the waiting room is known so far; the full capability rules arrive with the command layer.
-        boolean editSetup = room.phase() == RoomPhase.WAITING && room.isHost(viewer.participantId());
-        caps.put("canAct", false);
-        caps.put("canUndo", false);
-        caps.put("canSettle", false);
-        caps.put("canEditSetup", editSetup);
-        caps.put("canEditBlinds", false);
+        Capabilities c = Capabilities.of(room, viewer.participantId());
+        caps.put("canAct", c.canAct());
+        caps.put("canUndo", c.canUndo());
+        caps.put("canSettle", c.canSettle());
+        caps.put("canEditSetup", c.canEditSetup());
+        caps.put("canEditBlinds", c.canEditBlinds());
         n.set("game", room.game() == null ? F.nullNode() : GameJson.writeState(room.game()));
-        n.putNull("legal");
+        if (c.canAct()) {
+            n.set("legal", GameJson.writeLegal(Legal.of(room.game())));
+        } else {
+            n.putNull("legal");
+        }
         SettlementDraft d = room.settlementDraft();
         if (d == null) {
             n.putNull("settlementDraft");

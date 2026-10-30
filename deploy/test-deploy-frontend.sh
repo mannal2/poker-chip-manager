@@ -88,7 +88,7 @@ run_case() {
     mkdir -p "$fixture/.local/deploy"; echo interrupted > "$fixture/.local/deploy/pending"
   fi
   result=0
-  bash "$fixture/deploy/deploy-frontend.sh" "$target" "$revision" https://54.180.47.226 > "$fixture/output" 2>&1 || result=$?
+  bash "$fixture/deploy/deploy-frontend.sh" "$target" "$revision" https://pcm.jwlee.xyz > "$fixture/output" 2>&1 || result=$?
   if [[ "$SCENARIO" == success ]]; then
     [[ $result == 0 ]] || { cat "$fixture/output"; return 1; }
     grep -q "FRONTEND_IMAGE=$target" "$fixture/.env"

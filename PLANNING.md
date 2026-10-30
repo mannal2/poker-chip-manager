@@ -55,17 +55,17 @@
 - GitHub 원격: https://github.com/mannal2/poker-chip-manager.git
 - 로컬 Git 저장소를 초기화하고 main 브랜치 및 origin 원격을 설정했다. 아직 최초 커밋·푸시는 하지 않았다. 위 폴더들은 계획이며 구현 폴더 생성은 아직 하지 않았다.
 
-### 도메인 구성 — 계획 확정, 구매 전
+### 도메인 구성 — 2026-10-30 주소 갱신, 서버 적용 전
 
-- 개인 사이트의 기본 도메인은 jwlee.xyz, Poker Chip Manager의 서비스 주소는 poker.jwlee.xyz로 계획한다. 기본 도메인은 개인 홈페이지·포트폴리오에, 다른 프로젝트는 별도 서브도메인에 배치하는 방향이다.
-- 도메인 구매 업체는 아직 선택하지 않았다. 가비아 등 후보의 신규 할인 가격과 갱신 비용을 구분해 최종 결제 전 확인한다.
-- 도메인 등록 가능 여부·소유권 확보·구매 완료를 확인한 상태가 아니다. 실제 등록·DNS·HTTPS 설정은 아직 수행하지 않았다.
+- 개인 사이트의 기본 도메인은 jwlee.xyz, Poker Chip Manager의 서비스 주소는 pcm.jwlee.xyz로 계획한다. 기본 도메인은 개인 홈페이지·포트폴리오에, 다른 프로젝트는 별도 서브도메인에 배치하는 방향이다.
+- 2026-10-30 사용자가 가비아 구매 완료와 DNS 설정 화면을 제공했다. 네임서버는 가비아를 사용하며 pcm A 레코드를 EC2 Elastic IP에 연결한다.
+- 도메인 HTTPS 서버 적용과 응답 검증은 아직 확인 전이다. deploy/edge/DOMAIN_SETUP.md 순서로 인증서 발급·Nginx 적용 후, Actions 검사 주소 변경을 main에 반영한다.
 
 ### Compose·접속 경로·HTTPS — 설계 확정, 설정 전
 
 - Compose를 공용 인프라(Nginx·HTTPS 인증서 관리), Poker Chip Manager(프론트엔드·백엔드), 다른 React 프로젝트의 세 묶음으로 분리한다. 각 묶음에 별도 Compose 프로젝트 이름을 지정한다.
 - 일반 앱 배포는 해당 프로젝트의 변경 서비스만 교체하고 공용 Nginx를 재시작하지 않는다. 공용 Nginx 장애는 두 프로젝트 모두에 영향을 줄 수 있다. Docker 네트워크 연결·서비스 교체 후 주소 재해석 등 상세 설정은 추가 설계·검증한다.
-- `poker.jwlee.xyz/`는 React 화면, `/api/…`는 Spring Boot REST API, `/ws`는 Spring Boot WebSocket으로 전달한다. 화면·API·WebSocket은 같은 도메인을 사용하고 백엔드 포트는 인터넷에 직접 공개하지 않는다.
+- `pcm.jwlee.xyz/`는 React 화면, `/api/…`는 Spring Boot REST API, `/ws`는 Spring Boot WebSocket으로 전달한다. 화면·API·WebSocket은 같은 도메인을 사용하고 백엔드 포트는 인터넷에 직접 공개하지 않는다.
 - HTTPS 인증서는 Let's Encrypt로 발급하고 Certbot으로 자동 갱신한다. 도메인 확보·DNS 및 서버 연결 이후 실제 설정한다. 인증서 저장·갱신 일정·Nginx 반영과 실패 확인은 상세 운영 명세에서 정한다.
 - 기술 비교는 TECH_DECISIONS.md T48~T50에 기록한다. 실제 Compose·Nginx·인증서 설정은 아직 적용하지 않았다.
 
@@ -737,3 +737,5 @@
 ### 단계 기록·팟 오류 수정 — 2026-10-18 최신 승인
 
 HAND와 단계 이름도 기록 행으로 포함해 역순에서 HAND가 해당 핸드의 맨 아래에 온다. 실제 프리플랍/플랍/턴/리버/쇼다운을 표시하고 폴드 종료는 핸드 종료로 구분한다. 단계 글자만520ms 금색·1.1배 강조 후 원상복귀하며 초기 표시/복원·같은 단계 재조작에는 재생하지 않고 동작 줄이기를 존중한다. 폴드 납부 높이 차이로 나눈 같은 수령 자격의 층은 실제 팟 확정 전에 합치며 진짜 올인 자격 경계는 보존한다. 한 팟은 POT/여러 팟만 MAIN·SIDE POT. 원본 HTML·저장 형식·원본 이벤트는 유지하며 검증 상태는 IMPLEMENTATION_PROGRESS 최신 절을 따른다.
+
+- 2026-10-30: 서비스 주소를 pcm.jwlee.xyz로 변경했다. 가비아 구매 사용자 확인과 도메인 HTTPS 전환·자동 배포 검사 절차를 반영했다. 실제 서버 적용 완료를 의미하지 않는다.

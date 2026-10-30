@@ -18,7 +18,7 @@
 
 각 앱과 edge 사이의 전용 외부 Docker 네트워크를 별도로 만든다. 다른 React 앱이 포커 백엔드 네트워크에 참여하지 않도록 한다. 서비스 이름·네트워크 alias는 프로젝트별로 구분한다. 호스트 공개 포트는 edge의80/443이며 backend 포트는 외부에 publish하지 않는다. SSH는 운영 관리용 별도 접근이다.
 
-계획 주소는 poker.jwlee.xyz다. `/api/`와 `/ws`는 backend, `/local/`·`/online/`·정적 파일은 frontend로 전달한다. API 오류에 SPA HTML fallback을 적용하지 않는다. API·인증 응답은 no-store, 해시 자산은 immutable, HTML·서비스 워커 파일은 재검증하도록 설정한다.
+서비스 주소는 pcm.jwlee.xyz다(2026-10-30 갱신). 가비아 구매는 사용자 확인 기준이며 DNS·도메인 HTTPS 서버 적용은 별도 확인한다. 인증서 발급·edge 적용 후 Actions 검사 주소를 전환하는 순서는 [도메인 전환 절차](deploy/edge/DOMAIN_SETUP.md)를 따른다. 기존 IP 접속은 로컬 브라우저 기록 접근을 위해 전환 기간에 유지한다. `/api/`와 `/ws`는 backend, `/local/`·`/online/`·정적 파일은 frontend로 전달한다. API 오류에 SPA HTML fallback을 적용하지 않는다. API·인증 응답은 no-store, 해시 자산은 immutable, HTML·서비스 워커 파일은 재검증하도록 설정한다.
 
 컨테이너 교체 시 IP가 바뀔 수 있으므로 Nginx에서 Docker DNS를 재조회하는 설정을 사용하고 실제 컨테이너 교체 시험을 한다. 고정 IP를 파일에 박아 넣지 않는다. 선택한 Nginx 버전에서 지원하는 resolver 구성을 검증한다. 일반 앱 배포로 edge 컨테이너를 재시작하지 않는다. [Docker Compose 네트워크](https://docs.docker.com/compose/how-tos/networking/)
 

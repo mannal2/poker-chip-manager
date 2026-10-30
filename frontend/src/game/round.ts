@@ -148,11 +148,19 @@ export function settle(
   c: TransitionContext,
   events: GameEvent[],
 ) {
-  const preview = previewSettlement(s, winners);
-  requireRule(preview.ok, preview.error);
-  emit(s, c, events, 'PAYOUT', { pot: s.pot, payouts: preview.payouts });
+  let payouts: Record<string, number>;
+  if (s.pot === 0) {
+    // Everything went back (e.g. dead small blind, all fold to the big blind): nothing to select,
+    // but PAYOUT still marks the end of the hand.
+    payouts = Object.fromEntries(s.players.map((p) => [p.id, 0]));
+  } else {
+    const preview = previewSettlement(s, winners);
+    requireRule(preview.ok, preview.error);
+    payouts = preview.payouts;
+  }
+  emit(s, c, events, 'PAYOUT', { pot: s.pot, payouts });
   s.players.forEach((p) => {
-    p.stack += preview.payouts[p.id];
+    p.stack += payouts[p.id];
     p.B = 0;
     p.H = 0;
     if (p.stack === 0 && !p.eliminated) {

@@ -184,11 +184,22 @@ public final class Round {
 
     public static void settle(
             GameState s, Map<String, List<String>> winners, TransitionContext c, List<GameEvent> events) {
-        SettlementPreview preview = Settlement.preview(s, winners);
-        Rules.require(preview.ok(), preview.ok() ? RuleErrorCode.INVALID_ACTION : RuleErrorCode.valueOf(preview.error().name()));
-        emit(s, c, events, new EventDetails.PotsPaid(s.pot, preview.payouts()));
+        LinkedHashMap<String, Integer> payouts;
+        if (s.pot == 0) {
+            // Everything went back (e.g. dead small blind, all fold to the big blind): nothing to
+            // select, but PAYOUT still marks the end of the hand.
+            payouts = new LinkedHashMap<>();
+            for (Player p : s.players) {
+                payouts.put(p.id, 0);
+            }
+        } else {
+            SettlementPreview preview = Settlement.preview(s, winners);
+            Rules.require(preview.ok(), preview.ok() ? RuleErrorCode.INVALID_ACTION : RuleErrorCode.valueOf(preview.error().name()));
+            payouts = preview.payouts();
+        }
+        emit(s, c, events, new EventDetails.PotsPaid(s.pot, payouts));
         for (Player p : s.players) {
-            p.stack += preview.payouts().get(p.id);
+            p.stack += payouts.get(p.id);
             p.roundBet = 0;
             p.handTotal = 0;
         }

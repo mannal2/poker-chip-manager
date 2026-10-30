@@ -18,7 +18,7 @@ class LifecycleFixtureTest {
             total++;
             tests.add(dynamicTest(c.get("id").asText() + " " + c.get("description").asText(), () -> FixtureRunner.run(c)));
         }
-        assertThat(total).isEqualTo(13);
+        assertThat(total).isEqualTo(14);
         assertThat(tests).hasSize(total);
         return tests;
     }

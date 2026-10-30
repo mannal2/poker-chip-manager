@@ -171,7 +171,7 @@ PWA 등록은 로컬 게임에서 호출하는 `useLocalPWA`가 담당한다.
 | `Round` | 베팅 라운드 진행·핸드 시작·정산·탈락 처리 |
 | `Legal`, `LegalActions`, `LegalReasonCode` | 현재 차례의 합법 행동(콜 금액·최소 레이즈·체크/콜/레이즈 가능) |
 | `Settlement`, `SettlementPreview`, `PotAllocation` | 메인·사이드 팟 구성, 승자별 지급 미리보기와 나머지 칩 배분 |
-| `Positions` | 딜러·SB·BB·UTG와 헤즈업 위치 계산 |
+| `Positions` | 딜러·SB·BB와 헤즈업 위치, 다음 좌석 계산 |
 | `Invariants` | 모든 성공 전환 뒤 칩 총량·팟 장부·차례 검사 |
 | `Tournament` | 설정 검증 후 준비 단계 상태 생성(`create`) |
 | `model/` | `GameState`·`Player`·`Hand`·`Pot`·`GameSettings`·`UndoSnapshot` 등 상태 모델과 `copy()` |

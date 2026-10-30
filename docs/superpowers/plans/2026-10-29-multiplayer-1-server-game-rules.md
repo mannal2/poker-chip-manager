@@ -266,3 +266,12 @@ MULTIPLAYER_MODE.md 10절을 규칙으로 옮긴다. 공통 사례 파일 `forfe
 - [ ] **Step 3: 문서** — ARCHITECTURE.md에 `backend/game` 패키지 표(model·command·event·rule·settings·commands + 최상위 GameEngine/Round/Legal/Settlement/Positions/Invariants)와 "TS 파일 ↔ Java 클래스" 대응표, 실행 명령, 공통 사례 형식 v2 설명을 추가. IMPLEMENTATION_PROGRESS.md에 작업별 검증 결과 기록.
 - [ ] **Step 4: 최종 검증** — Run: `backend/gradlew -p backend :game:test && npm --prefix frontend run typecheck && npm --prefix frontend run lint && npm --prefix frontend test -- --run` / Expected: 모두 PASS. 프런트 E2E는 Task 1에서 실행한 관련 파일 외 변경이 없으므로 전체를 다시 돌리지 않는다(memory: 작은 변경은 관련 spec).
 - [ ] **Step 5: 커밋** — `git commit -m "test(game): add random tournament invariant check and document the backend"`
+
+## 계획 2로 넘기는 항목
+
+계획 1 최종 리뷰(2026-10-30)에서 방·API 설계와 함께 정해야 해서 넘긴 항목이다.
+
+- **자동 체크·폴드와 방장 취소 스냅샷**: 연결이 끊긴 참가자의 자동 체크·폴드가 방장의 직전 행동 취소 스냅샷(`undo`)을 덮어쓰지 않도록 엔진에 훅(예: 자동 행동용 전환 모드)을 둔다 — MULTIPLAYER_MODE 13절 규칙. 지금 `GameEngine.transition`은 모든 행동을 같은 방식으로 취소 가능하게 기록한다.
+- **이벤트 detail JSON 일치 테스트**: Java 이벤트를 JSON으로 내보낼 때 TS 이벤트 detail과 같은 모양인지 사례로 검사한다. 알려진 차이: UNDO 이벤트가 TS는 스냅샷에 eventIds가 없으면 `{}`, Java는 항상 `eventIds: []`.
+- **SettingsFixtureTest 보강**: API로 노출하기 전에 정규화된 이름과 오류 코드까지 TS와 같은지 검사한다(지금은 통과 여부만 비교).
+- **중단 후 기권자 표시**: 핸드 도중 기권한 사람은 그 핸드가 끝날 때 탈락 처리되므로, 그 전에 ABORT하면 `forfeited = true`이면서 `eliminated = false`로 남는다. 결과 화면은 `forfeited` 플래그를 읽어 기권자로 보여야 한다.

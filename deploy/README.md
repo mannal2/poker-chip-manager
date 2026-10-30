@@ -9,6 +9,11 @@ the existing project at `/home/ubuntu/poker-chip-manager`, `.env`, a healthy
 frontend, the external `poker-edge` network and `poker-frontend-assets` volume.
 The root Docker account must already have GHCR read access.
 
+The service address is `https://pcm.jwlee.xyz/local/`. Before merging the workflow
+that switches health checks to this domain, complete the one-time
+[domain and HTTPS setup](edge/DOMAIN_SETUP.md) and verify its HTTPS response.
+The IP endpoint remains available during the transition for existing local data.
+
 ## Upload from Windows PowerShell
 
 Run from the repository root. Replace the address with the server's Tailscale IP.
@@ -32,7 +37,7 @@ printf 'Image: %s\nCommit: %s\n' "$digest" "$revision"
 unit="poker-deploy-$(date +%s)"
 sudo systemd-run --unit="$unit" --service-type=exec --wait --collect \
   /usr/bin/bash /home/ubuntu/poker-chip-manager/deploy/deploy-frontend.sh \
-  "$digest" "$revision" https://54.180.47.226
+  "$digest" "$revision" https://pcm.jwlee.xyz
 sudo journalctl -u "$unit" --no-pager -n 100
 sudo docker compose ps frontend
 sudo cat .local/deploy/current

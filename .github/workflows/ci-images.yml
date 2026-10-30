@@ -237,7 +237,7 @@ jobs:
           bash -n "$script"
           result=0
           sudo -n systemd-run --unit="$unit" --service-type=exec --wait --collect \
-            /usr/bin/bash "$script" "$image" "$revision" https://54.180.47.226 || result=$?
+            /usr/bin/bash "$script" "$image" "$revision" https://pcm.jwlee.xyz || result=$?
           sudo -n journalctl -u "$unit" --no-pager -n 200 || true
           exit "$result"
           REMOTE

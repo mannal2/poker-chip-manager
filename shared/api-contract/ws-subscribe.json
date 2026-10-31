@@ -1,0 +1,6 @@
+{
+  "type" : "SUBSCRIBE",
+  "roomId" : "00000000-0000-4000-8000-000000000003",
+  "protocolVersion" : 1,
+  "lastSeenVersion" : null
+}

@@ -1,0 +1,18 @@
+{
+  "method" : "POST",
+  "path" : "/api/recovery-requests",
+  "status" : 201,
+  "request" : {
+    "protocolVersion" : 1,
+    "streamId" : "00000000-0000-4000-8000-000000000012",
+    "requestId" : "screen-1",
+    "sequence" : 1,
+    "code" : "ABC234",
+    "name" : "Bob"
+  },
+  "response" : {
+    "recoveryRequestId" : "00000000-0000-4000-8000-000000000013",
+    "status" : "PENDING",
+    "expiresAt" : "2026-10-30T12:05:00Z"
+  }
+}

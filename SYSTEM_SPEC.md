@@ -156,9 +156,10 @@ HTTP 상태 코드와 구체적인 메시지·순번·저장 계약은 14절을 
 
 실제 요청·응답 예시는 [shared/api-contract/](shared/api-contract/README.md)에 있다. 위 표는 초안이고 현재 서버는 다음과 같다.
 
-- 구현된 경로: 표의 방 생성·코드 참가·현재 상태·명령·요청 결과·기록, 그리고 표에 없는 `GET /api/session`, `POST /api/session/refresh`, `POST /api/session/streams`, `GET /api/health`.
+- 구현된 경로: 표의 방 생성·코드 참가·현재 상태·명령·요청 결과·기록, 그리고 표에 없는 `GET /api/session`, `POST /api/session/refresh`, `POST /api/session/streams`, `DELETE /api/session/streams/{streamId}`, `GET /api/health`.
 - 화면 인수는 `commands`의 명령이 아니라 별도 경로 `POST /api/rooms/{roomId}/control`이다.
-- `POST /api/rooms/{roomId}/recovery-requests`와 `/ws`는 아직 없다(계획 2B). 오류 코드 `ROOM_GONE`·`TEMPORARY_FAILURE`도 서버가 아직 내지 않는다. 방이 없으면 404 `ROOM_NOT_FOUND`다.
+- 복구 신청 경로는 표와 다르다(2B). 복구 전에는 방 ID를 알려 주지 않으므로 `POST /api/recovery-requests`가 본문의 방 코드·이름으로 자리를 찾는다. 결과는 `GET /api/recovery-requests/{id}`로 신청한 세션만 조회하고, 다른 세션에는 404다. 조회가 승인이면 그때 세션을 자리에 연결하고 생성·참가와 같은 `{roomId, code, participantId, controlGeneration, state}`를 함께 돌려준다. 응답을 잃어도 다시 조회할 수 있다.
+- `/ws`는 구현되었다(14절 WebSocket 계약). `ROOM_GONE`은 소켓 메시지로만 알린다. REST는 방이 없으면 여전히 404 `ROOM_NOT_FOUND`이고 410 `ROOM_GONE`은 없다(필요하면 계획 3). `TEMPORARY_FAILURE`도 서버가 아직 내지 않는다.
 - 기록 조회는 `tournamentId`·`after`·`limit`만 받는다. 핸드별 조회는 없다.
 - LEAVE·KICK으로 자기 자리가 사라진 뒤의 재전송은 404다. 처음 응답을 잃은 클라이언트는 이 404를 나감으로 취급한다(계획 3 메모).
 
@@ -231,10 +232,14 @@ REST 응답 v10보다 WS v11이 먼저 왔다면 v10은 요청 결과 확인에�
 | 대기방 단절 | 판단 후5초 유예 | 자리 보존·시작 차단, 유효 재접속 시 취소 |
 | 대기방 유예 만료 | 제외·참가 권한 폐기 | 최신 연결 없음·동일 대기 단계 재확인 |
 | 대기방 방장 제외 | 연결된 참가자 중 최초 입장자 인수 | 좌석 순서와 구분,60초 추가 대기 없음 |
-| 진행 중 단절 | 자리·칩 보존, 필요 차례에서 대기 | 자동 체크/폴드/대리 베팅 없음 |
+| 진행 중 단절 | 자리·칩 보존, 기다리지 않고 자동 처리(MULTIPLAYER_MODE 13절) | 차례가 오면 낼 금액이 0이면 체크, 있으면 폴드. 연결된 생존자가 없으면 정지. 그 밖의 대리 베팅 없음 |
 | 진행/결과 방장 단절60초 | 단계별 자격자에게 인수 요청 | 최초 유효 수락만 원자적으로 반영 |
 | 전원 단절30분 | 진행/결과 방 삭제 | 현재도 전원 미접속인지 재확인 |
 | 빈 대기방 | 모든 유예 만료·명단 제외 후 삭제 | 유예 중 참가자는 빈 방으로 세지 않음 |
+
+자동 체크·폴드는 취소 스냅샷을 덮어쓰지 않는다. 직전 사람 행동을 취소하면 그 뒤의 자동 행동도 함께 복원한다.
+
+대기방의 5초 유예는 한 번이라도 연결한 사람에게 적용한다. 참가 후 아직 소켓을 연결하지 않은 사람은 첫 연결을 위해 30초를 기다린다. 복구 승인도 새 기기를 위해 이 30초 대기를 다시 건다. 이 대기 중에 다시 준비해도 남은 사람의 기준은 30초다.
 
 방장 인수 수락 전에 기존 방장이 돌아오면 요청을 취소하고, 인수가 먼저 확정됐다면 돌아온 이전 방장은 일반 참가자로 유지한다. 복구·인수 알림은 화면 팝업이 아니라 서버 현재 상태에서 재구성할 수 있어야 한다.
 
@@ -393,12 +398,11 @@ C1~C3은 승인되어 본문에 반영했다. 위 상세화 항목은 아래 14~
 - 세대별 요청 장부는 현재와 직전 세대만 보관한다. 두 번 이상 뒤처진 화면의 재시도는 CONTROL_LOST, `GET requests/{requestId}`는 404 REQUEST_NOT_FOUND이며 화면은 최신 상태로 재동기화한다. 이 경우 highWatermark도 세대 장부와 함께 사라지지만, 그 세대의 신규 명령은 세대 검사에서 계속 거절된다.
 - 인수는 room version을 올리지 않는다. 올리면 다른 참가자의 명령이 STALE_STATE가 된다.
 - 인수 경로 `POST /api/rooms/{roomId}/control`의 거절과 그 재전송은 `{code, message}`다. 성공 응답은 `{requestId, sequence, outcome, code, controlGeneration, latestState}`이고 `resultStateVersion`은 없다.
-- 세션 스트림은 세션당 8개까지이고 닫는 서버 경로가 없다. 정리는 클라이언트가 streamId를 재사용하는 데 의존한다(서버 경로는 2B).
+- 세션 스트림은 세션당 8개까지이고 `DELETE /api/session/streams/{streamId}`로 닫는다(2B).
 
 코드와 이 절이 다른 곳:
 
 - 변경 요청 필드에 `roomId`·`screenId`가 없다. roomId는 경로, 화면 구분은 조작 세대가 맡는다. 생성·참가·인수는 `streamId`를 쓴다.
-- 현재 상태에 접속 상태와 미처리 알림이 없다(2B).
 - 허용 행동 `legal`은 현재 행동자에게만 주고 다른 사람에게는 `null`이다.
 - 201 응답에 Location 헤더가 없다.
 - 기록 조회의 `TOURNAMENT_CHANGED`는 409가 아니라 410이다.
@@ -427,6 +431,19 @@ C1~C3은 승인되어 본문에 반영했다. 위 상세화 항목은 아래 14~
 
 구독 등록과 초기 스냅샷 캡처를 방 잠금 안에서 처리한다. 같은 방의 낮은/같은 버전은 무시하되 제어·인증 종료 메시지를 버전 필터로 버리지 않는다. PING 버전 불일치나 연결 복구 시 전체 상태를 요청한다. 재연결은1·2·4·8·최대15초와 지터를 초기안으로 사용하고 연결 후에도 최신 상태 확인 전 조작을 막는다. HTTP 조회만으로 참가자의 온라인 상태를 만들지 않는다.
 
+### 2B 서버 확정 사항 (2026-10-31)
+
+실제 메시지 예시는 [shared/api-contract/](shared/api-contract/README.md)의 `ws-*.json`이다.
+
+- SNAPSHOT 형식은 `{type, previousVersion, events, state}`다. `state`는 수신자별 `GET state`와 같다. 방이 바뀌어 보내는 메시지는 `previousVersion`에 지난 전송 시점의 버전을, `events`에 그 뒤의 게임 이벤트를 담는다. 번호 `sequence`는 기록 조회와 같다. 구독·RESYNC·조작 인수의 응답은 `previousVersion: null`, `events: []`다. 이 메시지를 받은 화면은 효과를 재생하지 않고 상태만 맞춘다.
+- 스냅샷에 `draftVersion`, `hostTakeoverOpen`, 참가자별 `connected`, `you.canTakeHost`, `recoveryRequests`가 있다. `recoveryRequests`는 방장에게만 채워지고 세션·자격 값은 넣지 않는다.
+- 승자 초안은 `stateVersion`을 올리지 않으므로 화면은 `(stateVersion, draftVersion)` 순서로 오래된 메시지를 버린다.
+- `lastSeenVersion`은 형식만 검사한다(숫자 또는 `null`). 서버는 구독할 때마다 전체 상태를 보낸다.
+- 잘못된 메시지와 다른 방 구독은 1008, 수신 4KiB 초과와 전송 256KiB 초과는 1009, 연결 한도 초과는 1013으로 닫고 방을 바꾸지 않는다. 다른 규약 버전은 PROTOCOL_INCOMPATIBLE, 자리가 없으면 ACCESS_REVOKED, 지워진 자기 방이면 ROOM_GONE을 보낸 뒤 1000으로 닫는다. 자리가 없는 세션에는 방 존재 여부를 구분해 주지 않는다.
+- 추가 명령: `TAKE_HOST`(요청이 열려 있지 않으면 409 `HOST_TAKEOVER_CLOSED`, 자격이 없으면 `FORBIDDEN`), `FORFEIT_DISCONNECTED`(방장 전용, 대상이 접속 중이면 422 `TARGET_CONNECTED`), `RECOVERY_APPROVE`·`RECOVERY_REJECT`(방장 전용, payload `recoveryRequestId`, 대기 중이 아니면 422 `RECOVERY_NOT_PENDING`).
+- 복구 오류: 자리 없음 404 `RECOVERY_TARGET_NOT_FOUND`, 자리당 3개 초과 422 `RECOVERY_LIMIT`, 이미 그 방의 자리에 있으면 422 `ALREADY_PARTICIPANT`, 방 코드 없음 404 `ROOM_NOT_FOUND`, 남의 신청 조회 404 `REQUEST_NOT_FOUND`. 신청 상태는 `PENDING`·`APPROVED`·`REJECTED`·`EXPIRED`·`SUPERSEDED`다. 승인된 뒤 그 자리를 다시 잃었으면 조회 결과는 `SUPERSEDED`다.
+- 복구 신청 생성은 방장이 보도록 상태 버전을 올린다. 연결 변경처럼 다른 참가자의 명령이 드물게 `STALE_STATE`가 될 수 있다. 승인으로 옛 연결이 닫힐 때 복구 대상이 현재 차례이면 자동 처리가 그 차례를 처리한다.
+
 ## 15. 인증 설정과 자원 보호 초안
 
 ### 세션과 출처
@@ -442,7 +459,9 @@ C1~C3은 승인되어 본문에 반영했다. 위 상세화 항목은 아래 14~
 | 대상 | 초기안 | 한도 도달 동작 |
 |---|---|---|
 | REST / 수신 WS | 32KiB / 4KiB | 접수 전 거절, 차감 없음 |
-| 참가자 동시 WS | 4개 | 새 연결 거절, 기존 정상 연결 유지 |
+| 참가자 동시 WS | 4개 | 새 연결 거절(1013), 기존 정상 연결 유지 |
+| 세션당 WS | 8개 | 새 연결 거절(1013). 구독 전 연결도 센다 |
+| 구독 기한 | 연결 후10초 | 구독하지 않은 소켓을 닫음 |
 | 서버 전체 WS / 세션 | 500개 / 2,000개 | 신규 접속·세션만 제한, 기존 세션 임의 축출 금지 |
 | 세션 화면 스트림 | 활성8개 | 추가 화면 거절; 유휴·폐기 스트림은 권한 폐기 후 정리 |
 | 복구 신청 | 자리당3개, 신청별5분 | 초과 거절·만료 표시, 신청 만료가 자리 삭제는 아님 |

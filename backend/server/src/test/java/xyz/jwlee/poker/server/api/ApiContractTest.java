@@ -25,6 +25,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Primary;
@@ -38,7 +39,9 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.node.ObjectNode;
+import xyz.jwlee.poker.server.realtime.ContractScreen;
 import xyz.jwlee.poker.server.registry.RoomRegistry;
+import xyz.jwlee.poker.server.room.RoomTestAccess;
 import xyz.jwlee.poker.server.support.IdGenerator;
 
 // 응답 DTO가 없으므로 대본을 실행해 실제 요청·응답과 공유 API 예시를 필드 단위로 비교한다.
@@ -59,6 +62,9 @@ class ApiContractTest {
 
     @Autowired
     RoomRegistry registry;
+
+    @Autowired
+    ApplicationContext context;
 
     private final Map<String, ObjectNode> exchanges = new TreeMap<>();
     private final List<String> csrfTokens = new ArrayList<>();
@@ -167,7 +173,30 @@ class ApiContractTest {
         assertThat(compare(broken, example("snapshot-waiting"))).singleElement().asString().contains("type");
     }
 
-    // 세션부터 결과·조작 인수까지 예시로 남길 교환을 실행한다.
+    // 2B에서 늘어난 필드가 스냅샷 예시와 소켓 예시에 모두 있는지 확인한다.
+    @Test
+    void theRealtimeFieldsAreInTheExamples() throws Exception {
+        for (JsonNode state : List.of(example("snapshot-playing").get("response"), example("ws-snapshot").get("state"))) {
+            assertThat(state.has("draftVersion")).isTrue();
+            assertThat(state.has("hostTakeoverOpen")).isTrue();
+            assertThat(state.has("recoveryRequests")).isTrue();
+            assertThat(state.get("participants").get(0).has("connected")).isTrue();
+            assertThat(state.get("you").has("canTakeHost")).isTrue();
+        }
+        JsonNode pending = example("ws-snapshot").get("state").get("recoveryRequests").get(0);
+        assertThat(pending.propertyNames()).contains("recoveryRequestId", "participantId", "name", "expiresAt");
+    }
+
+    // 소켓 예시가 변경분 형식(이전 버전과 이벤트)을 보여 주는지 확인한다.
+    @Test
+    void theSnapshotExampleCarriesAChangeAndItsEvents() throws Exception {
+        ObjectNode snapshot = example("ws-snapshot");
+
+        assertThat(snapshot.get("previousVersion").isIntegralNumber()).isTrue();
+        assertThat(snapshot.get("events")).isNotEmpty();
+    }
+
+    // 세션부터 결과·조작 인수·복구·방 삭제까지 예시로 남길 교환을 실행한다.
     private void play() throws Exception {
         Browser alice = new Browser("session", "stream");
         Browser bob = new Browser(null, null);
@@ -175,12 +204,8 @@ class ApiContractTest {
         roomId = created.get("roomId").asString();
         roomCode = created.get("code").asString();
         bob.screen("join-room", 200, "/api/room-joins", "\"code\":\"" + roomCode + "\",\"name\":\"Bob\"");
-        // 실제 소켓이 없으므로 레지스트리를 통해 두 사람의 연결을 붙인다.
-        registry.withRoom(roomId, room -> {
-            room.presence().attach(alice.participantId, "contract-alice", Instant.now());
-            room.presence().attach(bob.participantId, "contract-bob", Instant.now());
-            return room.bumpVersion();
-        });
+        ContractScreen aliceScreen = alice.subscribed("ws-subscribe");
+        ContractScreen bobScreen = bob.subscribed(null);
 
         alice.command(null, 200, "SET_SETTINGS", "{\"initial\":1000,\"sb\":5,\"bb\":10}");
         alice.command(null, 200, "SET_DEALER", "{\"participantId\":\"" + alice.participantId + "\"}");
@@ -192,7 +217,14 @@ class ApiContractTest {
         alice.commandAt("command-rejected", 409, "ALL_IN", null, playing.get("stateVersion").asLong() - 1, playing);
         String applied = alice.command("command-applied", 200, "ALL_IN", null);
         alice.call("request-result", 200, HttpMethod.GET, "/api/rooms/{roomId}/requests/{requestId}", applied, null);
+        Browser device = new Browser(null, null);
+        String recovery = device.screen("recovery-request", 201, "/api/recovery-requests",
+                "\"code\":\"" + roomCode + "\",\"name\":\"Bob\"").get("recoveryRequestId").asString();
         bob.command(null, 200, "CALL", null);
+        long afterCall = alice.snapshot(null).get("stateVersion").asLong();
+        exchanges.put("ws-snapshot", (ObjectNode) aliceScreen.next(
+                m -> m.get("type").asString().equals("SNAPSHOT")
+                        && m.get("state").get("stateVersion").asLong() == afterCall));
 
         alice.command(null, 200, "SETTLEMENT_DRAFT", "{\"potIndex\":0,\"winners\":{\"pot0\":[\"p0\"]}}");
         assertThat(alice.snapshot("snapshot-settlement").get("settlementDraft").isNull()).isFalse();
@@ -206,11 +238,23 @@ class ApiContractTest {
         bob.control("control-applied", 200, 1);
         bob.control("control-lost", 409, 1);
         bob.commandAt("command-control-lost", 409, "CHECK", null, result.get("stateVersion").asLong(), result);
+        aliceScreen.ping("nonce-example", result.get("stateVersion").asLong());
+        exchanges.put("ws-ping", (ObjectNode) aliceScreen.next("PING"));
+        alice.command(null, 200, "RECOVERY_APPROVE", "{\"recoveryRequestId\":\"" + recovery + "\"}");
+        exchanges.put("ws-access-revoked", (ObjectNode) bobScreen.next("ACCESS_REVOKED"));
+        assertThat(bobScreen.awaitClosed()).isEqualTo(1000);
+        device.call("recovery-approved", 200, HttpMethod.GET, "/api/recovery-requests/{requestId}", recovery, null);
         alice.commandSequence++;
         alice.commandAt("command-sequence-gap", 409, "UNDO", "{}", result.get("stateVersion").asLong(), result);
         alice.origin = "https://evil.example";
         alice.screen("error-origin-rejected", 403, "/api/rooms", "\"name\":\"Mallory\"");
         new Browser(null, null).call("error-not-found", 404, HttpMethod.GET, "/api/rooms/{roomId}/state", null, null);
+        registry.update(roomId, room -> {
+            RoomTestAccess.close(room);
+            return null;
+        });
+        exchanges.put("ws-room-gone", (ObjectNode) aliceScreen.next("ROOM_GONE"));
+        assertThat(aliceScreen.awaitClosed()).isEqualTo(1000);
     }
 
     // 교환 하나를 예시 형태로 저장한다.
@@ -323,6 +367,19 @@ class ApiContractTest {
                 participantId = answer.get("participantId").asString();
             }
             return answer;
+        }
+
+        // 소켓을 열어 구독하고 첫 스냅샷까지 받는다.
+        ContractScreen subscribed(String example) throws Exception {
+            ContractScreen screen = new ContractScreen(context, session);
+            String message = "{\"type\":\"SUBSCRIBE\",\"roomId\":\"" + roomId
+                    + "\",\"protocolVersion\":1,\"lastSeenVersion\":null}";
+            screen.say(message);
+            screen.next("SNAPSHOT");
+            if (example != null) {
+                exchanges.put(example, (ObjectNode) MAPPER.readTree(message));
+            }
+            return screen;
         }
 
         // 조작 화면 인수 요청을 보낸다.

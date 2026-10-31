@@ -7,9 +7,9 @@
     "roomId" : "00000000-0000-4000-8000-000000000003",
     "code" : "ABC234",
     "roomPhase" : "PLAYING",
-    "stateVersion" : 8,
+    "stateVersion" : 10,
     "draftVersion" : 1,
-    "tournamentId" : "00000000-0000-4000-8000-000000000008",
+    "tournamentId" : "00000000-0000-4000-8000-000000000010",
     "settings" : {
       "initial" : 1000,
       "sb" : 5,
@@ -46,7 +46,7 @@
       }
     },
     "game" : {
-      "tournamentId" : "00000000-0000-4000-8000-000000000008",
+      "tournamentId" : "00000000-0000-4000-8000-000000000010",
       "version" : 3,
       "status" : "playing",
       "settings" : {
@@ -80,7 +80,7 @@
         "reopenAt" : 1990
       } ],
       "hand" : {
-        "id" : "00000000-0000-4000-8000-000000000008:hand:1",
+        "id" : "00000000-0000-4000-8000-000000000010:hand:1",
         "number" : 1,
         "street" : 0,
         "phase" : "settlement",
@@ -98,7 +98,7 @@
       "pot" : 2000,
       "pendingBlinds" : null,
       "undo" : {
-        "tournamentId" : "00000000-0000-4000-8000-000000000008",
+        "tournamentId" : "00000000-0000-4000-8000-000000000010",
         "version" : 2,
         "status" : "playing",
         "settings" : {
@@ -132,7 +132,7 @@
           "reopenAt" : 0
         } ],
         "hand" : {
-          "id" : "00000000-0000-4000-8000-000000000008:hand:1",
+          "id" : "00000000-0000-4000-8000-000000000010:hand:1",
           "number" : 1,
           "street" : 0,
           "phase" : "betting",
@@ -149,7 +149,7 @@
         },
         "pot" : 1010,
         "pendingBlinds" : null,
-        "eventIds" : [ "00000000-0000-4000-8000-000000000010:0", "00000000-0000-4000-8000-000000000010:1" ]
+        "eventIds" : [ "00000000-0000-4000-8000-000000000014:0", "00000000-0000-4000-8000-000000000014:1" ]
       }
     },
     "legal" : null,
@@ -160,6 +160,12 @@
         "pot0" : [ "p0" ]
       }
     },
-    "recoveryRequests" : [ ]
+    "recoveryRequests" : [ {
+      "recoveryRequestId" : "00000000-0000-4000-8000-000000000013",
+      "participantId" : "00000000-0000-4000-8000-000000000006",
+      "name" : "Bob",
+      "requestedAt" : "2026-10-30T12:00:00Z",
+      "expiresAt" : "2026-10-30T12:05:00Z"
+    } ]
   }
 }

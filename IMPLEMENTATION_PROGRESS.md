@@ -583,3 +583,11 @@ A00~A11 단일 기기 구현과 자동 검증을 마쳤다. 멀티플레이·실
 - 검증(2026-10-31): `backend/gradlew -p backend test --rerun-tasks` 416개 PASS(실패·건너뜀 0), `npm --prefix frontend test -- --run` PASS, `:server:bootRun` 후 `/api/health` UP 확인.
 - 범위 밖: WebSocket·연결 판정·자동 체크/폴드·방장 자동 이전·기기 복구·방 자동 삭제(2B), 온라인 화면 연결(계획 3), 요청 빈도 제한·서버 배포(계획 4). C02·C03 전체 완료가 아니라 서버 REST 부분만 끝났다.
 - 한계: `backend-ci.yml`은 GitHub에서 실행해 본 적이 없다. 프런트 E2E·브라우저·실기기 검증은 하지 않았고 TS 쪽 계약 검사는 없다(계획 3).
+
+## 2026-10-31: 계획 2B: 실시간 전달과 방 수명 (C04·C05의 서버 범위)
+- 계획: [2026-10-31-multiplayer-2b-realtime-and-lifecycle.md](docs/superpowers/plans/2026-10-31-multiplayer-2b-realtime-and-lifecycle.md). `multiplayer-server` 브랜치, 작업 1~8, 로컬 커밋만(push/PR/merge/배포 없음).
+- 구현: 엔진의 자동 체크·폴드와 방장 기권 표시, `Presence`(참가자별 구독 연결), `AutoPlay`, `RoomLifecycle`의 유예 5초·첫 연결 30초·방장 인수 60초·전원 미접속 30분·복구 신청 5분, `RoomPublisher`로 잠금 밖 발행, `realtime` 패키지(`/ws` 구독·SNAPSHOT·PING/PONG·RESYNC, 연결당 대기열, 생존 확인 15/45초, 전송 정체 10초, 일괄 점검 1초), 세션 만료 시 연결 회수, 방장 승인 기기 복구(`SeatBinding` 자격 교체).
+- 작업 8: `shared/api-contract/`의 소켓·복구 예시 7개, `FullTournamentHttpTest`를 실제 WebSocket으로 교체, `DisconnectedTournamentHttpTest` 추가, ARCHITECTURE·SYSTEM_SPEC·MULTIPLAYER_MODE·TECH_DECISIONS(T71~T75) 갱신.
+- 검증(2026-10-31): `backend/gradlew -p backend test --rerun-tasks` 627개 PASS(실패·건너뜀 0), 컴파일 경고 없음(-Werror). `DisconnectedTournamentHttpTest`는 `poker.sweep.enabled=true`로 시계만 진행시켜 실제 `SweepTask`·`HeartbeatTask`가 도는 것을 확인했다(PING 수신과 응답, 무응답 소켓 닫힘, 방장 인수 요청 열림). 관련 소켓 테스트는 고정 대기 없이 제한 시간 있는 메시지 대기만 쓴다. 프런트 코드를 바꾸지 않아 프런트 검증은 생략했다.
+- 범위 밖: 온라인 화면, 자동·기권 기록 문구와 TS 이벤트 타입, 취소 알림 문구, 재연결 간격, 세션 6시간 갱신, 복구 결과 조회 주기, TS 계약 검사, REST의 410 `ROOM_GONE`(계획 3). 요청 빈도 제한, 운영 쿠키, 서버 배포(계획 4). C04·C05 전체 완료가 아니라 서버 부분만 끝났다.
+- 한계: 실기기 검증과 부하 시험(10방, 서버 전체 500연결 실사용, 장시간 메모리)은 하지 않았다. 500연결 한도는 가짜 소켓으로 채워 시험했고, 실제 Tomcat 소켓의 전송 정체(10초)는 재현하지 않았다. GitHub CI는 이번에도 실행하지 않았다. 시간 값은 측정 전 초기안이다.

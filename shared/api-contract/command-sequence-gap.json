@@ -4,13 +4,13 @@
   "status" : 409,
   "request" : {
     "protocolVersion" : 1,
-    "requestId" : "command-04-9",
-    "sequence" : 9,
+    "requestId" : "command-04-10",
+    "sequence" : 10,
     "controlGeneration" : 1,
-    "expectedStateVersion" : 9,
+    "expectedStateVersion" : 11,
     "type" : "UNDO",
-    "tournamentId" : "00000000-0000-4000-8000-000000000008",
-    "handId" : "00000000-0000-4000-8000-000000000008:hand:1",
+    "tournamentId" : "00000000-0000-4000-8000-000000000010",
+    "handId" : "00000000-0000-4000-8000-000000000010:hand:1",
     "payload" : { }
   },
   "response" : {

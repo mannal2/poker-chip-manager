@@ -7,7 +7,7 @@
     "roomId" : "00000000-0000-4000-8000-000000000003",
     "code" : "ABC234",
     "roomPhase" : "WAITING",
-    "stateVersion" : 5,
+    "stateVersion" : 6,
     "draftVersion" : 0,
     "tournamentId" : null,
     "settings" : {

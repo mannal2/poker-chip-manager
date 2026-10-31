@@ -217,45 +217,59 @@ backend/gradlew -p backend :game:test
 
 ## 백엔드 서버 앱 (`backend/server`)
 
-Spring Boot 4·Spring MVC·가상 스레드 앱이다. 방은 서버 메모리에만 있고 HTTP만으로 대기방부터 결과·다시 준비하기까지 진행한다(계획 2A).
-WebSocket·연결 판정·방장 자동 이전·기기 복구·방 자동 삭제는 없고(2B), 프런트엔드 온라인 화면은 이 서버에 아직 연결되지 않았다(계획 3). 배포도 아직 없다(계획 4).
+Spring Boot 4·Spring MVC·가상 스레드 앱이다. 방은 서버 메모리에만 있다. 게임 변경은 REST로 받고(계획 2A), 상태 전달·연결 판정·방 수명·기기 복구는 WebSocket과 예약 작업이 맡는다(계획 2B).
+프런트엔드 온라인 화면은 이 서버에 아직 연결되지 않았다(계획 3). 배포도 아직 없다(계획 4).
 패키지 `xyz.jwlee.poker.server` 아래 구조는 다음과 같다.
 
 | 위치 | 역할 한 줄 |
 | ---- | ---------- |
-| `api/` | `RoomController`(생성·참가·상태), `CommandController`(명령·요청 결과·조작 인수), `HistoryController`, `HealthController`, 본문 크기 필터, `ApiExceptionHandler`·`ApiError`(코드·HTTP 상태·문구) |
-| `auth/` | `SecurityConfig`, `OriginFilter`, `SessionGuardFilter`, `SessionController`(세션·스트림), `SessionIdentity`(세션 속성·스트림 장부의 유일한 입구) |
-| `room/` | `Room`(방 상태·잠금), `CommandPipeline`(검사 순서와 명령 연결), `WaitingRoomCommands`·`GameCommands`·`ResultCommands`, `RoomLifecycle`(연결 전환·시간 규칙), `StartConditions`, `Capabilities`, `RequestLedger`·`RequestOutcome`, `SnapshotWriter` |
+| `api/` | `RoomController`(생성·참가·상태), `CommandController`(명령·요청 결과·조작 인수), `RecoveryController`(복구 신청·결과 조회), `HistoryController`, `HealthController`, 본문 크기 필터, `ApiExceptionHandler`·`ApiError`(코드·HTTP 상태·문구) |
+| `auth/` | `SecurityConfig`, `OriginFilter`, `SessionGuardFilter`, `SessionController`(세션·스트림), `SessionIdentity`(세션 속성·스트림 장부의 유일한 입구, 방별 `SeatBinding` 보관), `WebSocketHandshakeGuard`(핸드셰이크의 Origin·세션 검사) |
+| `realtime/` | `RealtimeConfig`(`/ws` 등록), `RoomSocketHandler`(소켓 열림·닫힘, SUBSCRIBE·PONG·RESYNC), `ConnectionHub`(열린 연결 표, `RoomPublisher` 구현), `Connection`(소켓 하나의 전송 대기열), `HeartbeatTask`(1초 주기 PING·무응답·전송 정체·미구독 정리), `SweepTask`(1초 주기 방 점검), `SessionExpiryListener`(세션이 끝나면 연결 회수) |
+| `room/` | `Room`(방 상태·잠금), `CommandPipeline`(검사 순서와 명령 연결), `WaitingRoomCommands`·`GameCommands`·`ResultCommands`·`RecoveryCommands`, `RoomLifecycle`(연결 전환·시간 규칙), `Presence`(참가자별 구독 연결·끊김 시각), `AutoPlay`(끊긴 사람의 자동 체크·폴드), `RecoveryRequests`, `SeatBinding`(자리와 자격의 묶음), `StartConditions`, `Capabilities`, `RequestLedger`·`RequestOutcome`, `SnapshotWriter`, `PublicationBuilder`·`Publication`·`RoomPublisher`(방 변경을 수신자별 메시지로 모으는 경계) |
 | `registry/` | `RoomRegistry`(방 표·한도·코드·잠금 진입), `RoomCodes` |
 | `support/` | `IdGenerator`, `Clock` 빈, `Protocol` |
 
 ### 의존 방향과 잠금
 
-- `api`·`auth` → `room`·`registry` → `game`·`game-json`. `room`·`registry`는 `api`·`auth`·Spring Web·Servlet을 쓰지 않고 `support`는 다른 서버 패키지를 쓰지 않는다. [ArchitectureTest](backend/server/src/test/java/xyz/jwlee/poker/server/ArchitectureTest.java)가 검사한다.
+- `api`·`auth`·`realtime` → `room`·`registry` → `game`·`game-json`. `realtime`은 `auth`를 쓸 수 있고 `realtime`과 `api`는 서로 쓰지 않는다. `auth`도 `realtime`을 모르므로 `SessionExpiryListener`는 `realtime`에 있다. `room`·`registry`는 `api`·`auth`·`realtime`·Spring Web·Spring WebSocket·Servlet을 쓰지 않고 `support`는 다른 서버 패키지를 쓰지 않는다. [ArchitectureTest](backend/server/src/test/java/xyz/jwlee/poker/server/ArchitectureTest.java)가 검사한다.
 - 잠금 순서는 스트림 장부 → 공용 잠금 → 방 잠금 → 세션 모니터다. 역순으로 잡지 않는다. `RoomRegistry.withRoom`의 작업 안에서 공용 잠금을 부르지 않는다. 방 삭제는 방 잠금 안에서 닫고, 푼 뒤에 표에서 뺀다.
 - 명령 검사 순서는 `CommandPipeline` 주석이 기준이다: 형식 → 방 → 참가자 → 조작 세대 → 중복 → 권한 → 토너먼트·핸드 → 상태 버전 → 규칙.
 - 생성·참가·인수는 세션 스트림 장부, 게임 명령은 참가자·조작 세대별 장부를 쓴다. 세대 장부는 현재와 직전만 보관한다.
 - 명령의 CONTROL_LOST(세대 장부)는 순번을 소진하지 않는 유일한 비즈니스 거절이다. `/control`의 CONTROL_LOST는 세션 스트림 장부에 기록되어 순번을 소진한다. 인수는 room version을 올리지 않는다. 승자 초안도 room version 대신 자기 `draftVersion`을 쓴다.
-- 세션 스트림을 닫는 서버 경로는 없고 클라이언트의 streamId 재사용에 의존한다(서버 경로는 2B). `StartConditions`의 전원 연결은 항상 참이며 2B에서 교체한다.
+- 세션 스트림은 `DELETE /api/session/streams/{streamId}`로 닫는다. `StartConditions`의 전원 연결은 `Presence`의 실제 판정이다.
+
+### 잠금과 전송의 경계
+
+- 방을 바꾸는 경로는 모두 `RoomRegistry.update`를 지난다. 작업이 끝나면 방 잠금 안에서 `PublicationBuilder.collect`가 수신자별 메시지를 만들고, 잠금을 푼 뒤 `RoomPublisher.publish`로 넘긴다. 시간 규칙의 `sweepAll`과 닫힌 방의 표 제거도 같은 길이다. 응답 기록은 장부 잠금 안에서 끝나므로 발행은 장부 잠금 안일 수 있고, 그래서 `ConnectionHub.publish`는 대기열에 넣기만 하고 바로 돌아온다.
+- 소켓 전송은 `Connection`마다 가상 스레드 하나가 한다. 대기는 진행 중 1개, PING 1개, 최신 스냅샷 1개, 마지막 메시지 1개뿐이다. 중간 스냅샷은 대체되고, 발행 순서가 뒤바뀌어도 `(stateVersion, draftVersion)`이 낮은 스냅샷은 버린다. 같은 값은 새 시점의 화면(RESYNC·조작 인수)일 수 있어 보낸다. ACCESS_REVOKED·ROOM_GONE·PROTOCOL_INCOMPATIBLE은 대체되지 않고 이것을 보낸 뒤 연결을 닫는다.
+- 전송 실패는 연결을 닫을 뿐 게임 변경을 되돌리지 않는다. 등록되지 않았거나 회수된 연결로 가는 전달은 버린다.
+- 구독은 방 잠금 안에서 자리 자격·연결 한도를 확인하고 `connected`와 첫 스냅샷 예약까지 한 번에 처리한다. 닫힘과 겹치면 먼저 방을 기록하고 잠금 안에서 닫힘을 확인하는 순서로, 닫힌 연결이 붙은 채 남지 않게 한다. RESYNC와 두 번째 SUBSCRIBE도 자리 자격을 다시 확인한다.
+- 연결 상태 전환, 방장 인수 요청 열림, 복구 신청 생성은 상태 버전을 올린다. 생존 응답과 조작 화면 인수는 올리지 않는다. 인수 뒤에는 그 참가자의 연결마다 스냅샷을 다시 보내 새 `controlGeneration`을 알린다. 30분 미접속으로 방을 닫을 때도 올리지 않는다. 볼 사람이 없고 ROOM_GONE에는 버전이 없기 때문이다.
+- 참가자를 명단에서 뺄 때 `Presence.forget`이 돌려준 연결은 `revokedConnections`로 나가 ACCESS_REVOKED를 받는다. 복구 승인도 같은 길로 옛 연결을 닫고 `Presence.forget`·`Presence.joined`로 첫 연결 대기를 다시 건다. 승인 때 대상이 차례이면 `AutoPlay`가 바로 처리한다. 첫 연결 전인 사람은 다시 준비 뒤에도 30초 대기를 유지한다. 방장 인수 요청은 방장 본인이 돌아올 때만 닫힌다.
 
 ### 경로
 
 | 경로 | 처리 |
 | ---- | ---- |
 | `GET /api/health` | 상태·프로토콜·빌드 버전 |
-| `GET /api/session`, `POST /api/session/refresh`, `POST /api/session/streams` | 세션·CSRF 토큰, 쿠키 연장, 화면 스트림 |
+| `GET /api/session`, `POST /api/session/refresh`, `POST /api/session/streams`, `DELETE /api/session/streams/{streamId}` | 세션·CSRF 토큰, 쿠키 연장, 화면 스트림 |
 | `POST /api/rooms`, `POST /api/room-joins` | 방 생성, 코드로 참가 |
 | `GET /api/rooms/{roomId}/state` | 요청자별 스냅샷 |
 | `POST /api/rooms/{roomId}/commands` | 대기방·게임·결과 명령 |
 | `GET /api/rooms/{roomId}/requests/{requestId}` | 저장된 요청 결과 |
 | `POST /api/rooms/{roomId}/control` | 같은 참가자의 다른 화면으로 조작 인수 |
 | `GET /api/rooms/{roomId}/history` | 현재 토너먼트 기록 |
+| `POST /api/recovery-requests`, `GET /api/recovery-requests/{id}` | 새 기기의 복구 신청, 자기 신청의 결과 조회(승인이면 세션을 자리에 연결) |
+| `GET /ws` | WebSocket. 핸드셰이크에서 Origin·세션을 보고 메시지마다 자리 자격을 다시 본다 |
 
-요청·응답의 실제 예시는 [shared/api-contract/](shared/api-contract/README.md)에 있고 [ApiContractTest](backend/server/src/test/java/xyz/jwlee/poker/server/api/ApiContractTest.java)가 실제 응답과 비교한다. 명세와 다른 곳은 [SYSTEM_SPEC.md](SYSTEM_SPEC.md) 6·14절의 2A 항목에 표시했다.
+요청·응답·소켓 메시지의 실제 예시는 [shared/api-contract/](shared/api-contract/README.md)에 있고 [ApiContractTest](backend/server/src/test/java/xyz/jwlee/poker/server/api/ApiContractTest.java)가 실제 응답과 비교한다. 명세와 다른 곳은 [SYSTEM_SPEC.md](SYSTEM_SPEC.md) 6·14절의 2A·2B 항목에 표시했다.
 
 ### 실행과 테스트
 
-- `FullTournamentHttpTest`: 실제 포트·쿠키·CSRF·Origin, 세션 3개로 토너먼트 전체와 재시작.
+- `FullTournamentHttpTest`: 실제 포트·쿠키·CSRF·Origin과 실제 WebSocket, 세션 3개로 토너먼트 전체와 재시작. 화면마다 마지막 SNAPSHOT이 `GET state`와 같은지 본다.
+- `DisconnectedTournamentHttpTest`: 시계만 진행시키고 실제 예약 작업이 반응하게 해 무응답 끊김·자동 처리·복귀, 방장 인수, 끊긴 사람의 기권 처리까지 진행한다.
+- `RoomSocketHttpTest`·`RecoverySocketHttpTest`: 실제 포트의 핸드셰이크·구독·닫힘 코드·접근 회수.
 - `RoomConcurrencyTest`: 같은 상태 버전 스레드 20개에서 적용 1개, 나머지 `STALE_STATE`, 칩 총량 보존.
 - 그 밖의 API 테스트는 MockMvc, 쿠키·본문 크기 경계는 `RoomHttpTest`·`SessionSecurityHttpTest`의 실제 HTTP.
 
@@ -352,13 +366,18 @@ backend/gradlew -p backend :server:bootRun
 | 테이블·카드·보드 배치나 글자 크기 변경  | [Table.tsx](frontend/src/features/gameplay/components/Table.tsx), [table.css](frontend/src/features/gameplay/styles/table.css)                                                                                                                | `seatCoordinates`, `useScreenFit`, `useFitText`, DOM 선택자                                        |
 | 칩 이동 금액 또는 효과 변경             | [eventTransfers.ts](frontend/src/features/gameplay/model/eventTransfers.ts), [localChipTransfers.ts](frontend/src/features/local-game/model/localChipTransfers.ts), [useChipMotion.ts](frontend/src/features/gameplay/hooks/useChipMotion.ts) | 계산과 재생을 구분하고 저장 성공·재시도·정리 확인                                                  |
 | 설치 제안·업데이트 노출 시점 변경       | [usePwaPresentation.ts](frontend/src/features/pwa/usePwaPresentation.ts), [register.ts](frontend/src/features/pwa/register.ts)                                                                                                                | 홈 여부·저장 잠금·미확정 요청·업데이트 적용                                                        |
-| 멀티플레이 연결 시작                    | [main.online.tsx](frontend/src/main.online.tsx), [session.ts](frontend/src/features/gameplay/session.ts)                                                                                                                                      | `GameSession` 계약, 공통 UI의 props 경계와 [SYSTEM_SPEC.md](SYSTEM_SPEC.md); 서버 REST는 있고 WebSocket은 없음, 예시는 `shared/api-contract/` |
+| 멀티플레이 연결 시작                    | [main.online.tsx](frontend/src/main.online.tsx), [session.ts](frontend/src/features/gameplay/session.ts)                                                                                                                                      | `GameSession` 계약, 공통 UI의 props 경계와 [SYSTEM_SPEC.md](SYSTEM_SPEC.md); 서버 REST와 WebSocket은 있고 화면 연결은 계획 3, 예시는 `shared/api-contract/` |
 | 서버 규칙(베팅·팟·정산·무르기) 변경 | `backend/game/.../game/`의 `command/BettingCommands`, `Legal`, `Settlement`, `Round`, `command/FlowCommands` | 같은 TS 파일(위 대응표)과 `shared/game-fixtures/` 기대값. 두 엔진이 모두 통과해야 한다 |
 | 서버 전용 기권 규칙 변경 | [ForfeitCommand.java](backend/game/src/main/java/xyz/jwlee/poker/game/command/ForfeitCommand.java), 주인 없는 층 반환은 `Round.returnOwnerless` | `shared/game-fixtures/forfeit.json`(Java 전용), MULTIPLAYER_MODE.md 10절 |
 | 서버 불변식·무작위 검사 변경 | [Invariants.java](backend/game/src/main/java/xyz/jwlee/poker/game/Invariants.java), `RandomTournamentTest` | 프런트 `invariants.ts`와 같은 코드 이름 |
 | 서버 명령 추가·검사 순서 변경 | [CommandPipeline.java](backend/server/src/main/java/xyz/jwlee/poker/server/room/CommandPipeline.java), `room/`의 명령 처리 클래스 | `handlerFor` 한 곳, HTTP 상태는 `ApiExceptionHandler`, SYSTEM_SPEC 7절 |
 | 서버 응답 모양 변경 | [SnapshotWriter.java](backend/server/src/main/java/xyz/jwlee/poker/server/room/SnapshotWriter.java), `api/`의 컨트롤러 | `shared/api-contract/` 예시를 다시 만들고 diff 검토, 프런트 타입과의 일치 |
 | 방 한도·잠금·방 삭제 변경 | [RoomRegistry.java](backend/server/src/main/java/xyz/jwlee/poker/server/registry/RoomRegistry.java) | 공용 → 방 잠금 순서, `Room.close`, `RoomDeletionRaceTest` |
+| 소켓 메시지·구독·닫힘 코드 변경 | [RoomSocketHandler.java](backend/server/src/main/java/xyz/jwlee/poker/server/realtime/RoomSocketHandler.java), [Connection.java](backend/server/src/main/java/xyz/jwlee/poker/server/realtime/Connection.java) | `RoomSocketHttpTest`, `shared/api-contract/ws-*.json`, 구독과 닫힘의 순서 주석 |
+| 스냅샷 전달·이벤트 묶음 변경 | [PublicationBuilder.java](backend/server/src/main/java/xyz/jwlee/poker/server/room/PublicationBuilder.java), `ConnectionHub` | 방 잠금 밖 전송, 대체되지 않는 마지막 메시지, `PublicationBuilderTest` |
+| 시간 규칙(유예·인수·삭제) 변경 | [RoomLifecycle.java](backend/server/src/main/java/xyz/jwlee/poker/server/room/RoomLifecycle.java), [HeartbeatTask.java](backend/server/src/main/java/xyz/jwlee/poker/server/realtime/HeartbeatTask.java) | 상수는 한 곳씩, [MULTIPLAYER_MODE.md](MULTIPLAYER_MODE.md) 13절, `RoomLifecycleTest`, `DisconnectedTournamentHttpTest` |
+| 끊긴 사람의 자동 처리 변경 | [AutoPlay.java](backend/server/src/main/java/xyz/jwlee/poker/server/room/AutoPlay.java), `GameEngine.autoAct` | 취소 스냅샷 유지, `AutoPlayTest`, 전원 끊김 시 정지 |
+| 기기 복구 변경 | [RecoveryCommands.java](backend/server/src/main/java/xyz/jwlee/poker/server/room/RecoveryCommands.java), [RecoveryController.java](backend/server/src/main/java/xyz/jwlee/poker/server/api/RecoveryController.java), `SeatBinding` | 옛 연결 회수, `RecoverySocketHttpTest`, `RecoveryApiTest` |
 | 세션·CSRF·Origin 변경 | [SecurityConfig.java](backend/server/src/main/java/xyz/jwlee/poker/server/auth/SecurityConfig.java), `OriginFilter`, `SessionIdentity` | `SessionSecurityHttpTest`, SYSTEM_SPEC 15절 |
 | CI·정적 자산 보존·배포 복구 변경        | [ci-images.yml](.github/workflows/ci-images.yml), [deploy-frontend.sh](deploy/deploy-frontend.sh)                                                                                                                                             | 이미지 digest·revision, 과거 자산 보존, 복구 마커                                                  |
 

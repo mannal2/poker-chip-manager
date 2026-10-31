@@ -29,14 +29,18 @@ public final class GameEngine {
             switch (cmd) {
                 case GameCommand.StartTournament x -> SetupCommands.START_TOURNAMENT.apply(s, x, c, events);
                 case GameCommand.SetupUpdate x -> SetupCommands.SETUP_UPDATE.apply(s, x, c, events);
-                case GameCommand.Check x -> BettingCommands.act(s, ActionType.CHECK, x.playerId(), 0, c, events);
-                case GameCommand.Call x -> BettingCommands.act(s, ActionType.CALL, x.playerId(), 0, c, events);
-                case GameCommand.Fold x -> BettingCommands.act(s, ActionType.FOLD, x.playerId(), 0, c, events);
-                case GameCommand.AllIn x -> BettingCommands.act(s, ActionType.ALL_IN, x.playerId(), 0, c, events);
+                case GameCommand.Check x ->
+                    BettingCommands.act(s, ActionType.CHECK, x.playerId(), 0, c, events, false);
+                case GameCommand.Call x ->
+                    BettingCommands.act(s, ActionType.CALL, x.playerId(), 0, c, events, false);
+                case GameCommand.Fold x ->
+                    BettingCommands.act(s, ActionType.FOLD, x.playerId(), 0, c, events, false);
+                case GameCommand.AllIn x ->
+                    BettingCommands.act(s, ActionType.ALL_IN, x.playerId(), 0, c, events, false);
                 case GameCommand.Bet x ->
-                    BettingCommands.act(s, ActionType.BET, x.playerId(), x.additional(), c, events);
+                    BettingCommands.act(s, ActionType.BET, x.playerId(), x.additional(), c, events, false);
                 case GameCommand.Raise x ->
-                    BettingCommands.act(s, ActionType.RAISE, x.playerId(), x.additional(), c, events);
+                    BettingCommands.act(s, ActionType.RAISE, x.playerId(), x.additional(), c, events, false);
                 case GameCommand.SettleHand x -> FlowCommands.settleHand(s, x, c, events);
                 case GameCommand.ScheduleBlinds x -> FlowCommands.scheduleBlinds(s, x, c, events);
                 case GameCommand.Undo x -> FlowCommands.undo(s, x, c, events);
@@ -47,6 +51,36 @@ public final class GameEngine {
                 GameState snapshot = input.copy();
                 snapshot.undo = null;
                 s.undo = new UndoSnapshot(snapshot, events.stream().map(GameEvent::id).toList());
+            }
+            s.version = input.version + 1;
+            Invariants.check(s);
+            return new TransitionResult.Applied(s, events);
+        } catch (RuleViolation e) {
+            return new TransitionResult.Rejected(e.code());
+        }
+    }
+
+    // 현재 행동자를 콜 금액이 없으면 체크, 있으면 폴드로 자동 처리한다
+    /**
+     * Server-driven action for an absent actor. It copies, versions and checks like {@link #transition}
+     * but never takes an undo snapshot: an existing snapshot (before the last human action) is kept
+     * and only gains the automatic events, so undoing that human action restores them too.
+     */
+    public static TransitionResult autoAct(GameState input, TransitionContext c) {
+        GameState s = input.copy();
+        List<GameEvent> events = new ArrayList<>();
+        try {
+            BettingCommands.autoAct(s, c, events);
+            if (input.undo == null) {
+                s.undo = null;
+            } else {
+                UndoSnapshot kept = input.undo.copy();
+                List<String> ids = new ArrayList<>();
+                if (kept.eventIds() != null) {
+                    ids.addAll(kept.eventIds());
+                }
+                events.forEach(e -> ids.add(e.id()));
+                s.undo = new UndoSnapshot(kept.state(), List.copyOf(ids));
             }
             s.version = input.version + 1;
             Invariants.check(s);

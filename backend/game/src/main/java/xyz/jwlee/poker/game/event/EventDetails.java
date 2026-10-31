@@ -20,7 +20,9 @@ public sealed interface EventDetails {
     }
 
     // 플레이어가 베팅 행동을 한 이벤트
-    record PlayerActed(ActionType action, String playerId, int additional) implements EventDetails {
+    /** {@code automatic} is true when the server acted for an absent player. */
+    record PlayerActed(ActionType action, String playerId, int additional, boolean automatic)
+            implements EventDetails {
         @Override
         public String type() {
             return action.name();
@@ -102,7 +104,8 @@ public sealed interface EventDetails {
     }
 
     // 플레이어가 기권한 이벤트
-    record PlayerForfeited(String playerId) implements EventDetails {
+    /** {@code byHost} is true when the host forfeited the player instead of the player leaving. */
+    record PlayerForfeited(String playerId, boolean byHost) implements EventDetails {
         @Override
         public String type() {
             return "FORFEIT";

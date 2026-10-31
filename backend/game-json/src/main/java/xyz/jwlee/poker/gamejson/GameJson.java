@@ -215,7 +215,7 @@ public final class GameJson {
             case "SCHEDULE_BLINDS" -> new GameCommand.ScheduleBlinds(n.get("sb").asInt(), n.get("bb").asInt());
             case "UNDO" -> new GameCommand.Undo();
             case "ABORT" -> new GameCommand.Abort();
-            case "FORFEIT" -> new GameCommand.Forfeit(player);
+            case "FORFEIT" -> new GameCommand.Forfeit(player, false);
             default -> throw new IllegalArgumentException("Unknown command type: " + n.get("type").asString());
         };
     }

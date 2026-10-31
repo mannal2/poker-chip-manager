@@ -20,10 +20,20 @@ import xyz.jwlee.poker.game.rule.Rules;
 public final class BettingCommands {
     private BettingCommands() {}
 
+    // 현재 행동자를 콜 금액이 없으면 체크, 있으면 폴드로 처리한다
+    /** Rejected like any betting action when nobody is to act. */
+    public static void autoAct(GameState s, TransitionContext c, List<GameEvent> events) {
+        HandGuard.inPlay(s);
+        LegalActions legal = Legal.of(s);
+        Rules.require(legal.actor() != null);
+        act(s, legal.canCheck() ? ActionType.CHECK : ActionType.FOLD, null, 0, c, events, true);
+    }
+
     // 베팅 행동 하나를 검증하고 칩을 지불한 뒤 라운드를 진행한다
     /**
      * @param playerId the acting player, or null for the current actor
      * @param requested the requested additional chips (BET and RAISE only)
+     * @param automatic whether the server acted for an absent player; only marks the event
      */
     public static void act(
             GameState s,
@@ -31,7 +41,8 @@ public final class BettingCommands {
             String playerId,
             int requested,
             TransitionContext c,
-            List<GameEvent> events) {
+            List<GameEvent> events,
+            boolean automatic) {
         Hand h = HandGuard.inPlay(s);
         Rules.require(h.phase == Phase.BETTING);
         LegalActions legal = Legal.of(s);
@@ -80,7 +91,7 @@ public final class BettingCommands {
                 h.pending.add(other.id);
             }
         }
-        Round.emit(s, c, events, new EventDetails.PlayerActed(type, p.id, amount));
+        Round.emit(s, c, events, new EventDetails.PlayerActed(type, p.id, amount, automatic));
         Round.resolveRound(s, index, c, events);
     }
 }

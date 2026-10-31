@@ -36,7 +36,7 @@ public final class ForfeitCommand {
         p.folded = true;
         h.pending.remove(p.id);
         s.undo = null;
-        Round.emit(s, c, events, new EventDetails.PlayerForfeited(p.id));
+        Round.emit(s, c, events, new EventDetails.PlayerForfeited(p.id, cmd.byHost()));
         if (h.phase == Phase.BETTING) {
             int n = s.players.size();
             int actorSeat = indexOf(s, h.actorId);

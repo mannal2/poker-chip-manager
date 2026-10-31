@@ -103,7 +103,7 @@ class EventJsonTest {
         GameState state = Tournament.create(new GameSettings(List.of("A", "B", "C"), 1000, 5, 10, 0), ctx);
         List<GameEvent> events = new ArrayList<>();
         List<GameCommand> commands =
-                List.of(new GameCommand.StartTournament(), new GameCommand.Forfeit("p1"), new GameCommand.Forfeit("p2"));
+                List.of(new GameCommand.StartTournament(), new GameCommand.Forfeit("p1", false), new GameCommand.Forfeit("p2", false));
         for (GameCommand command : commands) {
             TransitionResult.Applied r = (TransitionResult.Applied) GameEngine.transition(state, command, ctx);
             events.addAll(r.events());
@@ -119,6 +119,30 @@ class EventJsonTest {
                 .containsExactly(
                         object("{\"playerId\":\"p1\",\"shares\":{\"p0\":1000}}"),
                         object("{\"playerId\":\"p2\",\"shares\":{\"p0\":1000}}"));
+    }
+
+    @Test
+    void automaticActionsAndHostForfeitsCarryTheirMarksOnlyWhenTrue() {
+        String at = "2026-10-31T00:00:00Z";
+        TransitionContext ctx = new TransitionContext("M", at);
+        GameState state = Tournament.create(new GameSettings(List.of("A", "B", "C"), 1000, 5, 10, 0), ctx);
+        state = ((TransitionResult.Applied) GameEngine.transition(state, new GameCommand.StartTournament(), ctx))
+                .state();
+        TransitionResult.Applied human = (TransitionResult.Applied)
+                GameEngine.transition(state, new GameCommand.Call(null), new TransitionContext("M1", at));
+        TransitionResult.Applied auto =
+                (TransitionResult.Applied) GameEngine.autoAct(human.state(), new TransitionContext("M2", at));
+        TransitionResult.Applied byHost = (TransitionResult.Applied) GameEngine.transition(
+                auto.state(), new GameCommand.Forfeit("p0", true), new TransitionContext("M3", at));
+        TransitionResult.Applied bySelf = (TransitionResult.Applied) GameEngine.transition(
+                state, new GameCommand.Forfeit("p0", false), new TransitionContext("M4", at));
+
+        assertThat(EventJson.write(human.events().get(0)).get("details").has("auto")).isFalse();
+        assertThat(EventJson.write(auto.events().get(0)).get("details").get("auto").asBoolean())
+                .isTrue();
+        assertThat(EventJson.write(byHost.events().get(0)).get("details").get("byHost").asBoolean())
+                .isTrue();
+        assertThat(EventJson.write(bySelf.events().get(0)).get("details").has("byHost")).isFalse();
     }
 
     private static List<JsonNode> details(List<ObjectNode> events, String type) {

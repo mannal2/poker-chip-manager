@@ -41,6 +41,9 @@ public final class EventJson {
             case EventDetails.PlayerActed x -> {
                 n.put("playerId", x.playerId());
                 n.put("additional", x.additional());
+                if (x.automatic()) {
+                    n.put("auto", true);
+                }
             }
             case EventDetails.UncalledReturned x -> {
                 n.put("playerId", x.playerId());
@@ -65,7 +68,12 @@ public final class EventJson {
                 }
             }
             case EventDetails.TournamentAborted x -> { }
-            case EventDetails.PlayerForfeited x -> n.put("playerId", x.playerId());
+            case EventDetails.PlayerForfeited x -> {
+                n.put("playerId", x.playerId());
+                if (x.byHost()) {
+                    n.put("byHost", true);
+                }
+            }
             case EventDetails.ForfeitStackSplit x -> {
                 n.put("playerId", x.playerId());
                 ObjectNode shares = n.putObject("shares");

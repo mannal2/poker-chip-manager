@@ -126,7 +126,7 @@ final class GameCommands {
         if (playerId == null) {
             throw new RoomException("INVALID_ACTION");
         }
-        run(room, new GameCommand.Forfeit(playerId), contexts);
+        run(room, new GameCommand.Forfeit(playerId, false), contexts);
     }
 
     // 정산 중인 팟의 승자 선택 초안을 자격만 확인해 저장한다

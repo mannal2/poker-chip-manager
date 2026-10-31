@@ -113,7 +113,7 @@ class RandomTournamentTest {
         // as one non-forfeited player remains to receive the stacks.
         List<Player> leavable = s.players.stream().filter(p -> !p.eliminated && !p.forfeited).toList();
         if (leavable.size() >= 2 && rand.nextDouble() < 0.04) {
-            return new GameCommand.Forfeit(leavable.get(rand.nextInt(leavable.size())).id);
+            return new GameCommand.Forfeit(leavable.get(rand.nextInt(leavable.size())).id, false);
         }
         if (s.undo != null && rand.nextDouble() < 0.05) {
             return new GameCommand.Undo();

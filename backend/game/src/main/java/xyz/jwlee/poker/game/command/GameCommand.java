@@ -46,5 +46,6 @@ public sealed interface GameCommand {
     record Abort() implements GameCommand {}
 
     // 플레이어를 기권시키는 명령
-    record Forfeit(String playerId) implements GameCommand {}
+    /** {@code byHost} marks a forfeit the host made for another player. */
+    record Forfeit(String playerId, boolean byHost) implements GameCommand {}
 }

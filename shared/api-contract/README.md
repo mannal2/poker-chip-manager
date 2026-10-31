@@ -23,22 +23,25 @@
 | `snapshot-waiting`, `snapshot-playing`, `snapshot-settlement`, `snapshot-result` | 단계별 `GET state` 스냅샷 |
 | `command-applied`, `command-rejected` | 명령 APPLIED, 명령 REJECTED(`STALE_STATE`, 409) |
 | `command-control-lost` | 옛 세대 명령의 409 `CONTROL_LOST` |
+| `command-sequence-gap` | 순번을 건너뛴 명령의 409 `SEQUENCE_GAP` |
 | `request-result` | `GET requests/{requestId}` |
 | `history` | 기록 한 페이지 |
 | `control-applied`, `control-lost` | 조작 화면 인수 성공, 409 `CONTROL_LOST` |
 | `error-not-found` | 오류 본문 `{code, message}`(404 `ROOM_NOT_FOUND`) |
+| `error-origin-rejected` | 필터 오류 본문 `{code}`(403 `ORIGIN_REJECTED`) |
 
 ## 응답 모양이 갈리는 곳
 
+- 생성·참가 성공은 `{roomId, code, participantId, controlGeneration, state}`다.
 - 장부에 기록된 명령 결과는 `{requestId, sequence, outcome, code, resultStateVersion, latestState}`다.
-- 명령의 `CONTROL_LOST`는 장부에 기록되지 않아 `outcome` 없이 `{code, message}`다. 인수 거절도 같은 모양이다.
-- 필터가 거절한 요청(`ORIGIN_REJECTED` 등)과 `TOO_MANY_STREAMS`의 본문은 `{code}`뿐이다.
+- 명령의 `CONTROL_LOST`처럼 명령 장부에 기록되지 않은 거절은 `outcome` 없이 `{code, message}`다. `SEQUENCE_GAP`·`PROTOCOL_INCOMPATIBLE`·`INVALID_INPUT`·`ROOM_NOT_FOUND`도 그렇다. 인수 거절도 같은 모양이다.
+- 본문이 `{code}`뿐인 것은 `ORIGIN_REJECTED`·`CSRF_REJECTED`·`NO_SESSION`(필터 응답)과 `TOO_MANY_STREAMS`다. 본문 과대 413은 `{code, message}`다.
 
 ## 검사와 갱신
 
 `ApiContractTest`는 예시 파일 목록과 실제 교환 목록이 같은지, 필드 이름·타입·값이 같은지 검사한다. 서버에 응답 DTO가 없어 DTO 왕복 대신 이 비교를 쓴다. TS 쪽 검사는 계획 3에서 추가한다.
 
-응답을 의도적으로 바꿨을 때만 저장소 루트에서 다시 만들고 diff를 검토한다.
+응답을 의도적으로 바꿨을 때만 저장소 루트에서 다시 만든다. 값이 정확히 `1`일 때만 동작하고 `CI` 환경 변수가 있으면 거절한다. 다시 만든 실행은 일부러 실패하므로, diff를 검토한 뒤 변수 없이 다시 실행해 통과를 확인한다.
 
 ```bash
 UPDATE_API_CONTRACT=1 backend/gradlew -p backend :server:cleanTest :server:test --tests '*ApiContractTest*'

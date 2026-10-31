@@ -26,6 +26,7 @@ import xyz.jwlee.poker.server.room.RequestOutcome;
 import xyz.jwlee.poker.server.room.Room;
 import xyz.jwlee.poker.server.room.RoomException;
 import xyz.jwlee.poker.server.room.SnapshotWriter;
+import xyz.jwlee.poker.server.support.IdGenerator;
 import xyz.jwlee.poker.server.support.Protocol;
 
 // 방 안에서 게임 명령과 조작권 인수 요청을 받아 처리하는 컨트롤러
@@ -43,9 +44,9 @@ class CommandController {
     private final RoomRegistry registry;
     private final CommandPipeline pipeline;
 
-    CommandController(RoomRegistry registry, Clock clock) {
+    CommandController(RoomRegistry registry, Clock clock, IdGenerator ids) {
         this.registry = registry;
-        this.pipeline = new CommandPipeline(clock);
+        this.pipeline = new CommandPipeline(clock, ids);
     }
 
     // 명령을 검증하고 방 잠금 안에서 파이프라인으로 실행해 결과를 응답한다

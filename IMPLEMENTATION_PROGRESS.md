@@ -580,6 +580,6 @@ A00~A11 단일 기기 구현과 자동 검증을 마쳤다. 멀티플레이·실
 - 계획: [2026-10-30-multiplayer-2a-rooms-and-api.md](docs/superpowers/plans/2026-10-30-multiplayer-2a-rooms-and-api.md). `multiplayer-server` 브랜치, 작업 1~10, 로컬 커밋만(push/PR/merge/배포 없음).
 - 구현: `backend/game-json`, `backend/server`(세션·CSRF·Origin·화면 스트림, 요청 장부, 방 레지스트리, 명령 파이프라인, 대기방·게임·결과 명령, 기록 조회, 조작 화면 인수). 방은 서버 메모리에만 있다.
 - 작업 10: `shared/api-contract/` 예시(실제 응답에서 생성)와 `ApiContractTest`, `FullTournamentHttpTest`(실제 HTTP, 세션 3개), `RoomConcurrencyTest`(스레드 20개), ARCHITECTURE·SYSTEM_SPEC·MULTIPLAYER_MODE 갱신.
-- 검증(2026-10-31): `backend/gradlew -p backend test --rerun-tasks` 414개 PASS(실패·건너뜀 0), `npm --prefix frontend test -- --run` PASS, `:server:bootRun` 후 `/api/health` UP 확인.
+- 검증(2026-10-31): `backend/gradlew -p backend test --rerun-tasks` 416개 PASS(실패·건너뜀 0), `npm --prefix frontend test -- --run` PASS, `:server:bootRun` 후 `/api/health` UP 확인.
 - 범위 밖: WebSocket·연결 판정·자동 체크/폴드·방장 자동 이전·기기 복구·방 자동 삭제(2B), 온라인 화면 연결(계획 3), 요청 빈도 제한·서버 배포(계획 4). C02·C03 전체 완료가 아니라 서버 REST 부분만 끝났다.
 - 한계: `backend-ci.yml`은 GitHub에서 실행해 본 적이 없다. 프런트 E2E·브라우저·실기기 검증은 하지 않았고 TS 쪽 계약 검사는 없다(계획 3).

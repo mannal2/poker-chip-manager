@@ -1,0 +1,15 @@
+{
+  "method" : "POST",
+  "path" : "/api/rooms",
+  "status" : 403,
+  "request" : {
+    "protocolVersion" : 1,
+    "streamId" : "00000000-0000-4000-8000-000000000001",
+    "requestId" : "screen-2",
+    "sequence" : 2,
+    "name" : "Mallory"
+  },
+  "response" : {
+    "code" : "ORIGIN_REJECTED"
+  }
+}

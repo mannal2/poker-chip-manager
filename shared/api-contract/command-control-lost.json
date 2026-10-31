@@ -9,8 +9,8 @@
     "controlGeneration" : 1,
     "expectedStateVersion" : 8,
     "type" : "CHECK",
-    "tournamentId" : "command-04-3",
-    "handId" : "command-04-3:hand:1"
+    "tournamentId" : "00000000-0000-4000-8000-000000000006",
+    "handId" : "00000000-0000-4000-8000-000000000006:hand:1"
   },
   "response" : {
     "code" : "CONTROL_LOST",

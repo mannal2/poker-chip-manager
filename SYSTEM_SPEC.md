@@ -366,7 +366,7 @@ C1~C3은 승인되어 본문에 반영했다. 위 상세화 항목은 아래 14~
 - 응답: requestId, sequence, outcome(APPLIED/REJECTED), code, resultStateVersion, latestState. latestState는 현재 조회 시점이며 과거 요청 결과 버전과 같다고 가정하지 않는다. 캐시에는 전체 스냅샷 대신 최소 처리 결과와 본문 비교 자료를 저장한다.
 - 현재 상태: roomId, tournamentId, stateVersion, roomPhase, 설정, 좌석·참가 상태, 방장, 게임 상태, 접속 상태, 요청자 자신의 조작 권한, 허용 행동 및 최소·최대 추가 금액, 권한에 맞는 미처리 알림. 세션·쿠키·타인의 복구 신청자 인증 정보는 포함하지 않는다. 전체 게임 기록은 포함하지 않는다.
 - 기록은 eventSequence 오름차순, tournamentId와 마지막 순번 커서, 기본50·최대100개씩 조회한다. 취소는 기존 기록 삭제가 아니라 취소 대상 기록 ID를 참조하는 새 기록이다.
-- 게임 명령은 CHECK/CALL/BET/RAISE/FOLD/ALL_IN/UNDO/SETTLE_HAND(서버 전용 FORFEIT은 MULTIPLAYER_MODE.md 10절). BEGIN_REVEAL/ADVANCE_STREET는 2026-10-30 제거(TECH_DECISIONS T64) — 스트리트는 자동 진행한다. 관리 명령은 설정·좌석·시작·블라인드 예약·중단·재준비·방장 이전·인수·복구 승인/거절·화면 인수다. SETTLE_HAND는 모든 팟의 승자 목록을 한 번에 검증한다. CALL 금액은 서버 계산, BET/RAISE/ALL_IN은 추가 금액 의도를 검증한다.
+- 게임 명령은 CHECK/CALL/BET/RAISE/FOLD/ALL_IN/UNDO/SETTLE_HAND(서버 전용 FORFEIT은 MULTIPLAYER_MODE.md 10절). BEGIN_REVEAL/ADVANCE_STREET는 2026-10-30 제거(TECH_DECISIONS T64) — 스트리트는 자동 진행한다. 관리 명령은 설정·좌석·시작·블라인드 예약·중단(ABORT)·승자 초안(SETTLEMENT_DRAFT)·재준비·방장 이전·내보내기(KICK)·인수·복구 승인/거절·화면 인수이고, 참가자 본인 명령으로 이름 변경(RENAME)과 나가기(LEAVE)가 있다. SETTLE_HAND는 모든 팟의 승자 목록을 한 번에 검증한다. CALL 금액은 서버 계산, BET/RAISE/ALL_IN은 추가 금액 의도를 검증한다.
 
 | HTTP | 분류 | 재시도 원칙 |
 |---|---|---|
@@ -389,7 +389,7 @@ C1~C3은 승인되어 본문에 반영했다. 위 상세화 항목은 아래 14~
 
 ### 2A 서버 확정 사항 (2026-10-31)
 
-- CONTROL_LOST는 순번을 소진하지 않는 유일한 비즈니스 거절이다. 옛 세대가 새 세대 번호를 태우면 안 되기 때문이다. 장부에 기록하지 않으므로 명령의 CONTROL_LOST 응답은 `outcome`·`latestState` 없이 `{code, message}`다.
+- 명령의 CONTROL_LOST(세대 장부)는 순번을 소진하지 않는 유일한 비즈니스 거절이다. 옛 세대가 새 세대 번호를 태우면 안 되기 때문이다. 장부에 기록하지 않으므로 응답은 `outcome`·`latestState` 없이 `{code, message}`다. 반면 `/control`의 CONTROL_LOST는 세션 스트림 장부에 기록되어 그 스트림의 순번을 소진한다.
 - 세대별 요청 장부는 현재와 직전 세대만 보관한다. 두 번 이상 뒤처진 화면의 재시도는 CONTROL_LOST, `GET requests/{requestId}`는 404 REQUEST_NOT_FOUND이며 화면은 최신 상태로 재동기화한다. 이 경우 highWatermark도 세대 장부와 함께 사라지지만, 그 세대의 신규 명령은 세대 검사에서 계속 거절된다.
 - 인수는 room version을 올리지 않는다. 올리면 다른 참가자의 명령이 STALE_STATE가 된다.
 - 인수 경로 `POST /api/rooms/{roomId}/control`의 거절과 그 재전송은 `{code, message}`다. 성공 응답은 `{requestId, sequence, outcome, code, controlGeneration, latestState}`이고 `resultStateVersion`은 없다.
@@ -403,7 +403,13 @@ C1~C3은 승인되어 본문에 반영했다. 위 상세화 항목은 아래 14~
 - 201 응답에 Location 헤더가 없다.
 - 기록 조회의 `TOURNAMENT_CHANGED`는 409가 아니라 410이다.
 - `SEQUENCE_GAP`·`REQUEST_CONFLICT`·`RESULT_EXPIRED` 응답도 장부 결과가 아니므로 `{code, message}`다.
-- `UNKNOWN_STREAM`·`TOO_MANY_STREAMS`도 409다. 필터가 거절한 요청과 `TOO_MANY_STREAMS`의 본문은 `{code}`뿐이다.
+- `UNKNOWN_STREAM`·`TOO_MANY_STREAMS`도 409다. 본문이 `{code}`뿐인 것은 `ORIGIN_REJECTED`·`CSRF_REJECTED`·`NO_SESSION`(필터 응답)과 `TOO_MANY_STREAMS`다. `BodySizeFilter`의 413은 `{code, message}`다.
+- 생성·참가 성공 응답은 공통 응답이 아니라 `{roomId, code, participantId, controlGeneration, state}`다.
+- 503 `ROOM_LIMIT`에 Retry-After 헤더가 없다.
+- 형식 검사에서 `tournamentId`·`handId`·`payload`는 선택이다. 다만 게임이 있는 동안 `tournamentId`가 현재 값과 다르거나 없으면 범위 검사에서 `TOURNAMENT_CHANGED`다. `handId`는 베팅 6종과 `SETTLE_HAND`·`SETTLEMENT_DRAFT`에만 필수다. 다른 명령은 보낼 때만 일치를 검사한다.
+- 기록의 순번 필드는 `eventSequence`가 아니라 `sequence`이고 다음 커서는 `nextAfter`다.
+- `/commands`의 `PROTOCOL_INCOMPATIBLE`·형식 오류 `INVALID_INPUT`·`ROOM_NOT_FOUND`도 장부 결과가 아니므로 `{code, message}`다.
+- 옛 세대 요청은 내용이 달라도 REQUEST_CONFLICT가 아니라 CONTROL_LOST다. 정확히 같은 재전송만 보관 결과를 받는다.
 
 ### 저장 스키마 초안
 

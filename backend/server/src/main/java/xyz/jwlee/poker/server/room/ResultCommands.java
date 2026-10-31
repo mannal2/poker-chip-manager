@@ -1,6 +1,7 @@
 package xyz.jwlee.poker.server.room;
 
-import java.time.Clock;
+import java.util.function.Supplier;
+import xyz.jwlee.poker.game.model.TransitionContext;
 import tools.jackson.databind.JsonNode;
 
 // 결과 화면에서 쓰는 명령을 처리한다
@@ -19,7 +20,7 @@ final class ResultCommands {
      * are the ones the tournament started with (blinds raised during the game do not carry over) and the
      * dealer button is cleared. A guest who forfeited stays on the roster: that flag lived in the game.
      */
-    static void reReady(Room room, Participant actor, CommandRequest request, Clock clock) {
+    static void reReady(Room room, Participant actor, CommandRequest request, Supplier<TransitionContext> contexts) {
         JsonNode payload = request.payload();
         if (payload != null && !payload.isNull() && !(payload.isObject() && payload.isEmpty())) {
             throw new RoomException("INVALID_INPUT");

@@ -8,7 +8,7 @@
     "code" : "ABC234",
     "roomPhase" : "PLAYING",
     "stateVersion" : 7,
-    "tournamentId" : "command-04-3",
+    "tournamentId" : "00000000-0000-4000-8000-000000000006",
     "settings" : {
       "initial" : 1000,
       "sb" : 5,
@@ -41,7 +41,7 @@
       }
     },
     "game" : {
-      "tournamentId" : "command-04-3",
+      "tournamentId" : "00000000-0000-4000-8000-000000000006",
       "version" : 3,
       "status" : "playing",
       "settings" : {
@@ -75,7 +75,7 @@
         "reopenAt" : 1990
       } ],
       "hand" : {
-        "id" : "command-04-3:hand:1",
+        "id" : "00000000-0000-4000-8000-000000000006:hand:1",
         "number" : 1,
         "street" : 0,
         "phase" : "settlement",
@@ -93,7 +93,7 @@
       "pot" : 2000,
       "pendingBlinds" : null,
       "undo" : {
-        "tournamentId" : "command-04-3",
+        "tournamentId" : "00000000-0000-4000-8000-000000000006",
         "version" : 2,
         "status" : "playing",
         "settings" : {
@@ -127,7 +127,7 @@
           "reopenAt" : 0
         } ],
         "hand" : {
-          "id" : "command-04-3:hand:1",
+          "id" : "00000000-0000-4000-8000-000000000006:hand:1",
           "number" : 1,
           "street" : 0,
           "phase" : "betting",
@@ -144,7 +144,7 @@
         },
         "pot" : 1010,
         "pendingBlinds" : null,
-        "eventIds" : [ "command-05-1:0", "command-05-1:1" ]
+        "eventIds" : [ "00000000-0000-4000-8000-000000000008:0", "00000000-0000-4000-8000-000000000008:1" ]
       }
     },
     "legal" : null,

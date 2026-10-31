@@ -1,6 +1,7 @@
 package xyz.jwlee.poker.server.api;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.request;
 
 import java.io.IOException;
@@ -89,24 +90,48 @@ class ApiContractTest {
         play();
         exchanges.replaceAll((name, exchange) -> (ObjectNode) MAPPER.readTree(mask(exchange.toString())));
         played = exchanges;
-        if (System.getenv("UPDATE_API_CONTRACT") != null) {
-            Files.createDirectories(directory());
-            for (Map.Entry<String, ObjectNode> e : played.entrySet()) {
-                String text = MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(e.getValue()) + "\n";
-                Files.writeString(directory().resolve(e.getKey() + ".json"), text);
-            }
+    }
+
+    // 값이 정확히 1이고 CI가 아닐 때만 재생성을 허용한다.
+    static boolean regenerationAsked(String update, String ci) {
+        boolean asked = "1".equals(update);
+        if (asked && ci != null) {
+            throw new AssertionError("UPDATE_API_CONTRACT is refused when CI is set");
+        }
+        return asked;
+    }
+
+    // 예시 파일을 실제 교환으로 다시 쓴다.
+    private static void writeExamples() throws IOException {
+        Files.createDirectories(directory());
+        for (Map.Entry<String, ObjectNode> e : played.entrySet()) {
+            String text = MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(e.getValue()) + "\n";
+            Files.writeString(directory().resolve(e.getKey() + ".json"), text);
         }
     }
 
     // 모든 예시 파일이 대본의 실제 요청·응답과 같은지 확인한다.
     @Test
     void everyExampleIsWhatTheServerReallyAnswers() throws Exception {
+        if (regenerationAsked(System.getenv("UPDATE_API_CONTRACT"), System.getenv("CI"))) {
+            writeExamples();
+            throw new AssertionError("examples regenerated, review and rerun");
+        }
         assertThat(exampleNames()).isEqualTo(new TreeSet<>(played.keySet()));
         List<String> differences = new ArrayList<>();
         for (Map.Entry<String, ObjectNode> e : played.entrySet()) {
             differences(e.getKey(), example(e.getKey()), e.getValue(), differences);
         }
         assertThat(differences).isEmpty();
+    }
+
+    // 재생성 요청 값은 정확히 1만 인정하고 CI에서는 거절하는지 확인한다.
+    @Test
+    void onlyAnExactOneOutsideCiRegenerates() {
+        assertThat(regenerationAsked("1", null)).isTrue();
+        assertThat(regenerationAsked("true", null)).isFalse();
+        assertThat(regenerationAsked(null, "true")).isFalse();
+        assertThatThrownBy(() -> regenerationAsked("1", "true")).isInstanceOf(AssertionError.class);
     }
 
     // 필드가 빠진 예시를 비교기가 잡아내는지 확인한다.
@@ -171,6 +196,10 @@ class ApiContractTest {
         bob.control("control-applied", 200, 1);
         bob.control("control-lost", 409, 1);
         bob.commandAt("command-control-lost", 409, "CHECK", null, result.get("stateVersion").asLong(), result);
+        alice.commandSequence++;
+        alice.commandAt("command-sequence-gap", 409, "UNDO", "{}", result.get("stateVersion").asLong(), result);
+        alice.origin = "https://evil.example";
+        alice.screen("error-origin-rejected", 403, "/api/rooms", "\"name\":\"Mallory\"");
         new Browser(null, null).call("error-not-found", 404, HttpMethod.GET, "/api/rooms/{roomId}/state", null, null);
     }
 
@@ -259,6 +288,7 @@ class ApiContractTest {
         final String csrf;
         final String streamId;
         String participantId;
+        String origin = ORIGIN;
         long screenSequence;
         long commandSequence;
 
@@ -279,7 +309,9 @@ class ApiContractTest {
         // 생성·참가 요청을 보낸다.
         JsonNode screen(String example, int status, String path, String fields) throws Exception {
             JsonNode answer = call(example, status, HttpMethod.POST, path, null, screenBody(fields));
-            participantId = answer.get("participantId").asString();
+            if (answer.has("participantId")) {
+                participantId = answer.get("participantId").asString();
+            }
             return answer;
         }
 
@@ -340,7 +372,7 @@ class ApiContractTest {
                     .replace("{requestId}", String.valueOf(requestId));
             MockHttpServletRequestBuilder builder = request(method, path).session(session);
             if (method == HttpMethod.POST) {
-                builder.header("X-CSRF-TOKEN", csrf).header("Origin", ORIGIN);
+                builder.header("X-CSRF-TOKEN", csrf).header("Origin", origin);
             }
             if (body != null) {
                 builder.contentType(MediaType.APPLICATION_JSON).content(body);

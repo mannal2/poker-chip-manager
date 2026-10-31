@@ -30,15 +30,15 @@ class GameCommandsTest {
 
         assertThat(f.room.phase()).isEqualTo(RoomPhase.PLAYING);
         assertThat(f.room.version()).isEqualTo(before + 1);
-        assertThat(f.room.game().tournamentId).isEqualTo("req-a-3");
+        assertThat(f.room.game().tournamentId).isNotBlank().doesNotContain("req-");
         assertThat(f.room.game().pot).isEqualTo(15);
         assertThat(f.room.game().hand.actorId).isEqualTo("p0");
         assertThat(f.room.playerIds()).containsEntry("a", "p0").containsEntry("b", "p1").containsEntry("c", "p2");
         assertThat(f.room.lastStartSettings()).isEqualTo(new RoomSettings(1000, 5, 10, 0));
         assertThat(f.room.events()).isNotEmpty();
         assertThat(f.room.events().get(0).type()).isEqualTo("HAND_START");
-        assertThat(f.room.events().get(0).id()).isEqualTo("req-a-3:0");
-        assertThat(f.room.game().hand.id).isEqualTo("req-a-3:hand:1");
+        assertThat(f.room.events().get(0).id()).doesNotContain("req-").endsWith(":0");
+        assertThat(f.room.game().hand.id).isEqualTo(f.room.game().tournamentId + ":hand:1");
     }
 
     @Test
@@ -161,7 +161,7 @@ class GameCommandsTest {
 
         assertThat(f.room.events()).hasSize(atStart + 1);
         assertThat(f.room.events().get(atStart).type()).isEqualTo("CALL");
-        assertThat(f.room.events().get(atStart).id()).isEqualTo("req-a-4:0");
+        assertThat(f.room.events().get(atStart).id()).doesNotContain("req-").endsWith(":0");
     }
 
     // ---- scope ----
@@ -443,5 +443,15 @@ class GameCommandsTest {
 
         assertRejected(f, f.send("b", "LEAVE", "{}"), "NOT_WAITING");
         assertRejected(f, f.send("a", "KICK", "{\"participantId\":\"b\"}"), "NOT_WAITING");
+    }
+
+    // 같은 requestId 값으로 시작해도 토너먼트·핸드 ID가 겹치지 않는지 확인한다.
+    @Test
+    void startsWithTheSameRequestIdGetDifferentTournamentAndHandIds() {
+        GameFixture first = GameFixture.started(3, 0);
+        GameFixture second = GameFixture.started(3, 0);
+
+        assertThat(second.room.game().tournamentId).isNotEqualTo(first.room.game().tournamentId);
+        assertThat(second.room.game().hand.id).isNotEqualTo(first.room.game().hand.id);
     }
 }

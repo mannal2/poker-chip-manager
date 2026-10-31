@@ -1,12 +1,12 @@
 package xyz.jwlee.poker.server.room;
 
-import java.time.Clock;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
 import tools.jackson.databind.JsonNode;
 import xyz.jwlee.poker.game.GameEngine;
 import xyz.jwlee.poker.game.Legal;
@@ -27,15 +27,15 @@ import xyz.jwlee.poker.game.model.TransitionContext;
 /**
  * START and the in-game command rules. Like {@link WaitingRoomCommands}, each method validates everything
  * before it changes the room, so a refusal leaves the room untouched; the caller holds the room lock and
- * the pipeline bumps the version after a success. The engine gets the command's request id as its context id,
- * so event ids and hand ids derive from it and a replay of the same request never shows up twice.
+ * the pipeline bumps the version after a success. Every engine call gets a context with a server-generated id,
+ * so tournament, hand and event ids never depend on a client's request id; a replay does not reach the engine.
  */
 final class GameCommands {
 
     private GameCommands() {}
 
     // 시작 조건을 확인하고 참가자 순서대로 토너먼트를 만들어 게임을 시작한다
-    static void start(Room room, Participant actor, CommandRequest request, Clock clock) {
+    static void start(Room room, Participant actor, CommandRequest request, Supplier<TransitionContext> contexts) {
         emptyPayload(request.payload());
         StartConditions.blockReason(room).ifPresent(reason -> {
             throw new RoomException(reason);
@@ -48,7 +48,7 @@ final class GameCommands {
             ids.put(seated.get(seat).participantId(), "p" + seat);
         }
         RoomSettings s = room.settings();
-        TransitionContext ctx = context(request, clock);
+        TransitionContext ctx = contexts.get();
         GameState created;
         try {
             created = Tournament.create(new GameSettings(names, s.initial(), s.sb(), s.bb(), s.button()), ctx);
@@ -63,7 +63,7 @@ final class GameCommands {
 
     // 현재 차례 참가자 본인의 베팅 행동을 엔진에 전달한다
     /** CHECK, CALL, FOLD, ALL_IN, BET and RAISE: only the current actor, always as themselves. */
-    static void bet(Room room, Participant actor, CommandRequest request, Clock clock) {
+    static void bet(Room room, Participant actor, CommandRequest request, Supplier<TransitionContext> contexts) {
         GameState game = requirePlaying(room);
         String playerId = requireTurn(room, actor, game);
         GameCommand command = switch (request.type()) {
@@ -81,39 +81,39 @@ final class GameCommands {
             case "RAISE" -> new GameCommand.Raise(integer(object(request.payload()), "additional"), playerId);
             default -> throw new IllegalStateException("not a betting command: " + request.type());
         };
-        run(room, command, request, clock);
+        run(room, command, contexts);
     }
 
     // 직전 행동을 되돌린다
-    static void undo(Room room, Participant actor, CommandRequest request, Clock clock) {
+    static void undo(Room room, Participant actor, CommandRequest request, Supplier<TransitionContext> contexts) {
         requireGame(room);
-        run(room, new GameCommand.Undo(), request, clock);
+        run(room, new GameCommand.Undo(), contexts);
     }
 
     // 다음 핸드부터 쓸 블라인드를 예약한다
-    static void scheduleBlinds(Room room, Participant actor, CommandRequest request, Clock clock) {
+    static void scheduleBlinds(Room room, Participant actor, CommandRequest request, Supplier<TransitionContext> contexts) {
         requireGame(room);
         JsonNode body = object(request.payload());
-        run(room, new GameCommand.ScheduleBlinds(integer(body, "sb"), integer(body, "bb")), request, clock);
+        run(room, new GameCommand.ScheduleBlinds(integer(body, "sb"), integer(body, "bb")), contexts);
     }
 
     // 방장이 고른 승자대로 핸드를 정산한다
-    static void settleHand(Room room, Participant actor, CommandRequest request, Clock clock) {
+    static void settleHand(Room room, Participant actor, CommandRequest request, Supplier<TransitionContext> contexts) {
         requireGame(room);
         JsonNode body = object(request.payload());
-        run(room, new GameCommand.SettleHand(winners(requiredField(body, "winners"))), request, clock);
+        run(room, new GameCommand.SettleHand(winners(requiredField(body, "winners"))), contexts);
     }
 
     // 진행 중인 게임을 중단한다
-    static void abort(Room room, Participant actor, CommandRequest request, Clock clock) {
+    static void abort(Room room, Participant actor, CommandRequest request, Supplier<TransitionContext> contexts) {
         requireGame(room);
         emptyPayload(request.payload());
-        run(room, new GameCommand.Abort(), request, clock);
+        run(room, new GameCommand.Abort(), contexts);
     }
 
     // 방장이 아닌 참가자가 자기 자리를 포기한다
     /** A person gives up their own seat. The host must hand the room over first (MULTIPLAYER_MODE section 10). */
-    static void forfeit(Room room, Participant actor, CommandRequest request, Clock clock) {
+    static void forfeit(Room room, Participant actor, CommandRequest request, Supplier<TransitionContext> contexts) {
         requirePlaying(room);
         emptyPayload(request.payload());
         if (room.isHost(actor.participantId())) {
@@ -123,7 +123,7 @@ final class GameCommands {
         if (playerId == null) {
             throw new RoomException("INVALID_ACTION");
         }
-        run(room, new GameCommand.Forfeit(playerId), request, clock);
+        run(room, new GameCommand.Forfeit(playerId), contexts);
     }
 
     // 정산 중인 팟의 승자 선택 초안을 자격만 확인해 저장한다
@@ -132,7 +132,7 @@ final class GameCommands {
      * when SETTLE_HAND is applied. The room version stays (the pipeline does not bump it for this command):
      * the draft has its own counter.
      */
-    static void settlementDraft(Room room, Participant actor, CommandRequest request, Clock clock) {
+    static void settlementDraft(Room room, Participant actor, CommandRequest request, Supplier<TransitionContext> contexts) {
         GameState game = requirePlaying(room);
         Hand hand = game.hand;
         if (hand == null || hand.phase != Phase.SETTLEMENT) {
@@ -175,9 +175,9 @@ final class GameCommands {
 
     // 엔진으로 명령을 실행해 게임을 갱신하고 필요하면 초안을 지운다
     /** Applies the command; a settlement draft is dropped unless the command cannot change who may win. */
-    private static void run(Room room, GameCommand command, CommandRequest request, Clock clock) {
+    private static void run(Room room, GameCommand command, Supplier<TransitionContext> contexts) {
         TransitionResult.Applied applied =
-                applied(GameEngine.transition(room.game(), command, context(request, clock)));
+                applied(GameEngine.transition(room.game(), command, contexts.get()));
         room.updateGame(applied.state(), applied.events());
         if (!(command instanceof GameCommand.ScheduleBlinds)) {
             room.clearDraft();
@@ -190,11 +190,6 @@ final class GameCommands {
             case TransitionResult.Applied a -> a;
             case TransitionResult.Rejected r -> throw new RoomException(r.code().name());
         };
-    }
-
-    // 요청 id와 현재 시각으로 엔진용 문맥을 만든다
-    private static TransitionContext context(CommandRequest request, Clock clock) {
-        return new TransitionContext(request.requestId(), clock.instant().toString());
     }
 
     // 게임이 있는지 확인하고 돌려준다

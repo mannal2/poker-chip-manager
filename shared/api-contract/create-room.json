@@ -32,7 +32,8 @@
         "name" : "Alice",
         "seat" : 0,
         "playerId" : null,
-        "isHost" : true
+        "isHost" : true,
+        "connected" : false
       } ],
       "you" : {
         "participantId" : "00000000-0000-4000-8000-000000000004",

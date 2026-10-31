@@ -7,7 +7,7 @@
     "requestId" : "command-05-2",
     "sequence" : 2,
     "controlGeneration" : 1,
-    "expectedStateVersion" : 8,
+    "expectedStateVersion" : 9,
     "type" : "CHECK",
     "tournamentId" : "00000000-0000-4000-8000-000000000006",
     "handId" : "00000000-0000-4000-8000-000000000006:hand:1"

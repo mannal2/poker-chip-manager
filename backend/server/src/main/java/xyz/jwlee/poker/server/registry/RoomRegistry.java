@@ -88,7 +88,7 @@ public class RoomRegistry {
             String participantId = ids.next();
             room.lock().lock();
             try {
-                room.addParticipant(participantId, hostName);
+                room.addParticipant(participantId, hostName, clock.instant());
                 rooms.put(room.roomId(), room);
                 byCode.put(room.code(), room);
                 bind.accept(room.roomId(), participantId);
@@ -125,7 +125,7 @@ public class RoomRegistry {
                 return new Entry(room.roomId(), room.code(), bound.get(), room.version());
             }
             String participantId = ids.next();
-            room.addParticipant(participantId, nameRule.apply(name));
+            room.addParticipant(participantId, nameRule.apply(name), clock.instant());
             bind.accept(room.roomId(), participantId);
             return new Entry(room.roomId(), room.code(), participantId, room.version());
         } finally {

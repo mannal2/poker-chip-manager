@@ -38,6 +38,7 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.node.ObjectNode;
+import xyz.jwlee.poker.server.registry.RoomRegistry;
 import xyz.jwlee.poker.server.support.IdGenerator;
 
 // 응답 DTO가 없으므로 대본을 실행해 실제 요청·응답과 공유 API 예시를 필드 단위로 비교한다.
@@ -55,6 +56,9 @@ class ApiContractTest {
 
     @Autowired
     MockMvc mvc;
+
+    @Autowired
+    RoomRegistry registry;
 
     private final Map<String, ObjectNode> exchanges = new TreeMap<>();
     private final List<String> csrfTokens = new ArrayList<>();
@@ -171,6 +175,12 @@ class ApiContractTest {
         roomId = created.get("roomId").asString();
         roomCode = created.get("code").asString();
         bob.screen("join-room", 200, "/api/room-joins", "\"code\":\"" + roomCode + "\",\"name\":\"Bob\"");
+        // 실제 소켓이 없으므로 레지스트리를 통해 두 사람의 연결을 붙인다.
+        registry.withRoom(roomId, room -> {
+            room.presence().attach(alice.participantId, "contract-alice", Instant.now());
+            room.presence().attach(bob.participantId, "contract-bob", Instant.now());
+            return room.bumpVersion();
+        });
 
         alice.command(null, 200, "SET_SETTINGS", "{\"initial\":1000,\"sb\":5,\"bb\":10}");
         alice.command(null, 200, "SET_DEALER", "{\"participantId\":\"" + alice.participantId + "\"}");

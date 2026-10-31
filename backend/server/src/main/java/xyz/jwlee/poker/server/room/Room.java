@@ -41,6 +41,7 @@ public final class Room {
     private final Map<String, RequestLedger> ledgers = new HashMap<>();
     private int nextJoinOrder;
     private boolean closed;
+    private final Presence presence = new Presence();
 
     public Room(String roomId, String code, Instant createdAt) {
         this.roomId = roomId;
@@ -52,6 +53,7 @@ public final class Room {
     public String code() { return code; }
     public Instant createdAt() { return createdAt; }
     public ReentrantLock lock() { return lock; }
+    public Presence presence() { return presence; }
 
     public RoomPhase phase() { return phase; }
     public void setPhase(RoomPhase phase) { this.phase = phase; bumpVersion(); }
@@ -121,7 +123,7 @@ public final class Room {
      * Seats a new participant (the first one becomes the host). The name must already follow the name rule;
      * duplicates are compared case-insensitively.
      */
-    public Participant addParticipant(String participantId, String name) {
+    public Participant addParticipant(String participantId, String name, Instant now) {
         if (phase != RoomPhase.WAITING) {
             throw new RoomException("NOT_WAITING");
         }
@@ -134,6 +136,7 @@ public final class Room {
         }
         Participant p = new Participant(participantId, name, nextJoinOrder++, INITIAL_CONTROL_GENERATION);
         participants.add(p);
+        presence.joined(participantId, now);
         if (hostId == null) {
             hostId = participantId;
         }

@@ -38,12 +38,8 @@ public final class StartConditions {
         return Optional.empty();
     }
 
-    // 모든 참가자가 연결 중인지 확인한다(현재는 항상 참)
-    /**
-     * 2A stub: connections are not tracked yet, so everyone counts as connected.
-     * 2B replaces this with the real presence check (the single place to change).
-     */
+    // 모든 참가자가 연결 중인지 확인한다
     private static boolean everyoneConnected(Room room) {
-        return true;
+        return room.participants().stream().allMatch(p -> room.presence().isConnected(p.participantId()));
     }
 }

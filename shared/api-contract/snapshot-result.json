@@ -7,7 +7,7 @@
     "roomId" : "00000000-0000-4000-8000-000000000003",
     "code" : "ABC234",
     "roomPhase" : "RESULT",
-    "stateVersion" : 8,
+    "stateVersion" : 9,
     "tournamentId" : "00000000-0000-4000-8000-000000000006",
     "settings" : {
       "initial" : 1000,
@@ -21,13 +21,15 @@
       "name" : "Alice",
       "seat" : 0,
       "playerId" : "p0",
-      "isHost" : true
+      "isHost" : true,
+      "connected" : true
     }, {
       "participantId" : "00000000-0000-4000-8000-000000000005",
       "name" : "Bob",
       "seat" : 1,
       "playerId" : "p1",
-      "isHost" : false
+      "isHost" : false,
+      "connected" : true
     } ],
     "you" : {
       "participantId" : "00000000-0000-4000-8000-000000000004",

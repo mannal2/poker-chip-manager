@@ -19,7 +19,8 @@ final class CommandFixture {
         String[] ids = {"a", "b", "c", "d"};
         String[] names = {"Alice", "Bob", "Carol", "Dave"};
         for (int i = 0; i < people; i++) {
-            room.addParticipant(ids[i], names[i]);
+            room.addParticipant(ids[i], names[i], Instant.EPOCH);
+            room.presence().attach(ids[i], "conn-" + ids[i], Instant.EPOCH);
         }
     }
 

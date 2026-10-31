@@ -31,7 +31,7 @@ class HistoryControllerTest {
 
     /** A started table with hand 1 under way and enough actions taken to have a few events. */
     private GameClient[] table() throws Exception {
-        GameClient[] c = GameClient.room(mvc, "Alice", "Bob", "Carol");
+        GameClient[] c = GameClient.room(mvc, registry, "Alice", "Bob", "Carol");
         c[0].send("SET_SETTINGS", "{\"initial\":1000,\"sb\":5,\"bb\":10}").andExpect(status().isOk());
         c[0].send("SET_DEALER", "{\"participantId\":\"" + c[0].participantId + "\"}").andExpect(status().isOk());
         c[0].send("START", "{}").andExpect(status().isOk());
@@ -116,7 +116,7 @@ class HistoryControllerTest {
 
     @Test
     void aRoomWithoutAGameHasNoHistory() throws Exception {
-        GameClient[] c = GameClient.room(mvc, "Alice", "Bob");
+        GameClient[] c = GameClient.room(mvc, registry, "Alice", "Bob");
 
         c[0].history("?tournamentId=anything").andExpect(status().isGone());
     }

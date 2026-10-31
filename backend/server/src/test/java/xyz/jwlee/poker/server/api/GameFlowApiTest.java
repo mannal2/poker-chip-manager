@@ -31,7 +31,7 @@ class GameFlowApiTest {
 
     /** Alice (host, seat 0, dealer), Bob, Carol; blinds 5/10; started. */
     private GameClient[] startedTable() throws Exception {
-        GameClient[] c = GameClient.room(mvc, "Alice", "Bob", "Carol");
+        GameClient[] c = GameClient.room(mvc, registry, "Alice", "Bob", "Carol");
         c[0].send("SET_SETTINGS", "{\"initial\":1000,\"sb\":5,\"bb\":10}").andExpect(status().isOk());
         c[0].send("SET_DEALER", "{\"participantId\":\"" + c[0].participantId + "\"}").andExpect(status().isOk());
         c[0].send("START", "{}").andExpect(status().isOk())

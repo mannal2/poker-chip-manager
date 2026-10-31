@@ -79,6 +79,10 @@ class RoomConcurrencyTest {
     // 설정·딜러·시작까지 진행해 게임 중인 방을 만든다.
     private void setUp(String roomId, List<String> ids) {
         String hostId = ids.get(0);
+        registry.withRoom(roomId, room -> {
+            ids.forEach(id -> room.presence().attach(id, "conn-" + id, java.time.Instant.now()));
+            return room.bumpVersion();
+        });
         applied(roomId, hostId, "SET_SETTINGS", "{\"initial\":1000,\"sb\":5,\"bb\":10}");
         applied(roomId, hostId, "SET_DEALER", "{\"participantId\":\"" + hostId + "\"}");
         applied(roomId, hostId, "START", "{}");

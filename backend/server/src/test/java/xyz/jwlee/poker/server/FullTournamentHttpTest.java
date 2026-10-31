@@ -8,6 +8,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpRequest.BodyPublishers;
 import java.net.http.HttpResponse;
 import java.net.http.HttpResponse.BodyHandlers;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.AfterEach;
@@ -189,6 +190,11 @@ class FullTournamentHttpTest {
                     + "\",\"sequence\":" + n + "," + fields + "}";
             JsonNode answer = expect(send("POST", path, cookie, csrf, body, ORIGIN), status);
             participantId = answer.get("participantId").asString();
+            // 임시로 레지스트리를 통해 연결을 붙인다(실제 소켓은 Task 8에서 쓴다).
+            registry.withRoom(answer.get("roomId").asString(), room -> {
+                room.presence().attach(participantId, "test-" + name, Instant.now());
+                return room.bumpVersion();
+            });
             return answer;
         }
 

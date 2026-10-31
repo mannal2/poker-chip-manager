@@ -167,8 +167,8 @@ class WaitingRoomCommandsTest {
     @Test
     void joinOrderStaysUniqueAfterSomeoneLeaves() {
         ok("b", "LEAVE", "{}");
-        f.room.addParticipant("e", "Eve");
-        f.room.addParticipant("f", "Fay");
+        f.room.addParticipant("e", "Eve", java.time.Instant.EPOCH);
+        f.room.addParticipant("f", "Fay", java.time.Instant.EPOCH);
 
         assertThat(f.room.participants().stream().map(Participant::joinOrder).distinct().count())
                 .isEqualTo(f.room.participants().size());

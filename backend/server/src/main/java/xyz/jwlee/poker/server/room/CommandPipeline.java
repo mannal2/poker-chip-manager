@@ -3,10 +3,8 @@ package xyz.jwlee.poker.server.room;
 import java.time.Clock;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.function.Supplier;
 import tools.jackson.databind.JsonNode;
 import xyz.jwlee.poker.game.model.GameState;
-import xyz.jwlee.poker.game.model.TransitionContext;
 import xyz.jwlee.poker.server.support.IdGenerator;
 
 // 방 명령 하나를 검증 단계 순서대로 거쳐 실행하고 결과를 기록한다
@@ -38,7 +36,7 @@ public final class CommandPipeline {
     // 명령 종류별 규칙을 방에 적용하는 처리기 형식
     @FunctionalInterface
     private interface Applier {
-        void apply(Room room, Participant actor, CommandRequest request, Supplier<TransitionContext> contexts);
+        void apply(Room room, Participant actor, CommandRequest request, RoomEnv env);
     }
 
     // 대기실 명령처럼 payload만 필요한 처리기 형식
@@ -61,7 +59,7 @@ public final class CommandPipeline {
 
     // 대기실 명령용 처리기를 만든다
     private static Handler waiting(boolean hostOnly, WaitingApplier applier) {
-        return plain(hostOnly, (room, actor, request, contexts) -> applier.apply(room, actor, request.payload()));
+        return plain(hostOnly, (room, actor, request, env) -> applier.apply(room, actor, request.payload()));
     }
 
     // 명령 종류에 맞는 처리기를 찾고 없으면 null을 돌려준다
@@ -89,21 +87,14 @@ public final class CommandPipeline {
         };
     }
 
-    private final Clock clock;
-    private final IdGenerator ids;
+    private final RoomEnv env;
 
     public CommandPipeline(Clock clock, IdGenerator ids) {
-        this.clock = clock;
-        this.ids = ids;
+        this.env = new RoomEnv(clock, ids);
     }
 
     public CommandPipeline() {
         this(Clock.systemUTC(), IdGenerator.random());
-    }
-
-    // 서버가 만든 ID와 현재 시각으로 엔진 문맥을 만든다
-    private TransitionContext nextContext() {
-        return new TransitionContext(ids.next(), clock.instant().toString());
     }
 
     // 종류, 참가자, 조작권, 중복, 권한, 범위, 버전을 차례로 확인하고 명령을 적용한다
@@ -124,7 +115,7 @@ public final class CommandPipeline {
             checkPermission(room, actor, handler);
             checkScope(room, request, handler);
             checkVersion(room, request);
-            handler.applier().apply(room, actor, request, this::nextContext);
+            handler.applier().apply(room, actor, request, env);
             if (handler.bumpsVersion()) {
                 room.bumpVersion();
             }

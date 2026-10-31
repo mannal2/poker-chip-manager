@@ -49,6 +49,7 @@ public final class SnapshotWriter {
                 o.put("playerId", playerId);
             }
             o.put("isHost", room.isHost(p.participantId()));
+            o.put("connected", room.presence().isConnected(p.participantId()));
         }
         ObjectNode you = n.putObject("you");
         you.put("participantId", viewer.participantId());

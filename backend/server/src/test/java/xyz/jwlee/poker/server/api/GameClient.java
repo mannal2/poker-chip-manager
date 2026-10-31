@@ -3,6 +3,7 @@ package xyz.jwlee.poker.server.api;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
+import java.time.Instant;
 import java.util.concurrent.atomic.AtomicLong;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockHttpSession;
@@ -11,6 +12,7 @@ import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.ResultActions;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
+import xyz.jwlee.poker.server.registry.RoomRegistry;
 
 /**
  * One browser session playing through the HTTP API. Before every command it reads the room state, so it sends
@@ -44,7 +46,7 @@ final class GameClient {
     }
 
     /** A room of {@code names.length} people, the first being the host. */
-    static GameClient[] room(MockMvc mvc, String... names) throws Exception {
+    static GameClient[] room(MockMvc mvc, RoomRegistry registry, String... names) throws Exception {
         GameClient[] clients = new GameClient[names.length];
         for (int i = 0; i < names.length; i++) {
             clients[i] = new GameClient(mvc);
@@ -54,8 +56,17 @@ final class GameClient {
                 clients[i].adopt(clients[i].postJson("/api/room-joins", clients[i].screen(
                         ",\"code\":\"" + clients[0].code + "\",\"name\":\"" + names[i] + "\"")));
             }
+            clients[i].connect(registry);
         }
         return clients;
+    }
+
+    // 참가 직후 테스트 연결을 붙여 시작 조건을 채운다
+    private void connect(RoomRegistry registry) {
+        registry.withRoom(roomId, room -> {
+            room.presence().attach(participantId, "test-" + participantId, Instant.now());
+            return room.bumpVersion();
+        });
     }
 
     private ResultActions postJson(String path, String json) throws Exception {

@@ -33,13 +33,15 @@
         "name" : "Alice",
         "seat" : 0,
         "playerId" : null,
-        "isHost" : true
+        "isHost" : true,
+        "connected" : false
       }, {
         "participantId" : "00000000-0000-4000-8000-000000000005",
         "name" : "Bob",
         "seat" : 1,
         "playerId" : null,
-        "isHost" : false
+        "isHost" : false,
+        "connected" : false
       } ],
       "you" : {
         "participantId" : "00000000-0000-4000-8000-000000000005",

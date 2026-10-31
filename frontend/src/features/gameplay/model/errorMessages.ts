@@ -6,9 +6,11 @@ import type {
 } from '../../../game/errors';
 import type { SessionRejectionCode } from '../session';
 
+// 화면에 안내할 수 있는 모든 거절 사유 코드
 export type ErrorCode =
   RuleErrorCode | SettingsErrorCode | LegalReasonCode | DraftRejection | SessionRejectionCode;
 
+// 거절 사유 코드별 한국어 안내 문구
 export const errorMessages: Record<ErrorCode, string> = {
   INVALID_ACTION: '지금 할 수 없는 조작입니다.',
   INVALID_AMOUNT: '칩 금액을 확인하세요.',
@@ -39,6 +41,7 @@ export const errorMessages: Record<ErrorCode, string> = {
   NO_PENDING_REQUEST: '재시도할 요청이 없습니다.',
 };
 
+// 거절 코드를 사용자에게 보여줄 문구로 바꾼다
 /**
  * Text for a rejection code. Unknown codes keep the code visible for support; non-code text
  * (exception messages, results stored before codes existed) is shown as is.

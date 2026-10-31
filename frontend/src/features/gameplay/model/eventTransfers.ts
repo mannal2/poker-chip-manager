@@ -1,6 +1,7 @@
 import type { GameCommand, GameEvent } from '../../../game/types';
 import type { ChipTransfer } from './chipTransfer';
 
+// 이벤트 목록을 칩 이동 애니메이션 목록으로 바꾼다
 /**
  * Turns confirmed (online) or predicted (local) events into chip flights. Each event group plays
  * 720ms after the previous one; a final fold shows its return and payout as one flight each.

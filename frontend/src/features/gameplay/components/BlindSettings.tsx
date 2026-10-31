@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { validChips } from '../../../game/settings';
+// 다음 핸드의 SB/BB를 입력받아 예약하는 폼
 export function BlindSettings({
   initialSB,
   initialBB,

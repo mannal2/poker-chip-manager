@@ -1,5 +1,6 @@
 import { useLayoutEffect, useRef } from 'react';
 
+// 스트리트에 맞는 수의 공용 카드 자리를 그리고 새 카드에 등장 효과를 준다
 export function BoardCards({
   phase,
   street,

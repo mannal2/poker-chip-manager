@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { buildPots, previewSettlement } from '../../../game/settlement';
 import type { GameState, WinnerSelection } from '../../../game/types';
 
+// 팟별 승자 선택과 정산 미리보기를 관리하는 훅
 /** Change scope for a new tournament, hand or input session, excluding version-only updates. */
 export function useSettlementSelection(
   state: GameState | null,
@@ -26,6 +27,7 @@ export function useSettlementSelection(
   const currentPot = pots[potIndex];
   const preview = state && pots.length ? previewSettlement(state, winners) : null;
 
+  // 현재 팟의 승자 선택을 토글한다
   function selectWinner(id: string) {
     if (busy || !currentPot) return notify('저장 완료를 기다려주세요.');
     if (!currentPot.eligible.includes(id)) return notify('이 팟의 승자 자격이 없습니다.');
@@ -54,6 +56,7 @@ export function useSettlementSelection(
         }
       : undefined;
 
+  // 승자 선택을 모두 초기화한다
   function resetWinners() {
     setDraft({ key: '', winners: {}, index: 0 });
   }

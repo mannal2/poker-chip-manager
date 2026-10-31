@@ -16,6 +16,7 @@ import { buildTableView } from './model/tableView';
 import type { GameCommand } from '../../game/types';
 import type { GameDialog, GameScreenHandle, GameSession, SetupControls } from './session';
 
+// 모드와 무관한 게임 화면으로, 헤더/테이블/하단 조작부/대화상자를 구성한다
 /** Mode-independent game screen: header, table, dock and game dialogs. */
 export function GameScreen({
   session,
@@ -35,6 +36,7 @@ export function GameScreen({
   ref?: Ref<GameScreenHandle>;
 }) {
   const { state: s, busy, scope, notify, run, capabilities: can } = session;
+  // 권한을 확인한 뒤 세션으로 명령을 전달한다
   /** Capability check shared by every command the screen issues itself. */
   async function dispatch(command: GameCommand) {
     if (!permits(can, command.type)) {
@@ -58,6 +60,7 @@ export function GameScreen({
     useSettlementSelection(s, settlementScope, busy, notify);
   useImperativeHandle(ref, () => ({ resetSelection: resetWinners }));
   const close = () => onDialog('');
+  // 직전 행동 취소를 권한/상태 확인 후 실행한다
   function undo() {
     const blocked = session.guard();
     if (blocked) return notify(blocked);
@@ -70,6 +73,7 @@ export function GameScreen({
       }
     });
   }
+  // 베팅 버튼 입력을 명령으로 만들어 실행한다
   function bettingAction(action: BetAction, amount = 0) {
     const blocked = session.guard();
     if (blocked) return notify(blocked);

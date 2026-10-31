@@ -4,6 +4,7 @@ import type { GameCommand, GameState } from '../../../game/types';
 import { useSeatDrag } from './useSeatDrag';
 import { messageFor } from '../model/errorMessages';
 
+// 좌석 순서, 이름, 첫 딜러, 설정 저장, 시작을 다루는 설정 편집 훅
 /** Setup editing shared by modes: seat order, names, first dealer, settings and start. */
 export function useSetupEditing({
   state: s,
@@ -30,6 +31,7 @@ export function useSetupEditing({
 }) {
   const [renameId, setRenameId] = useState('');
   const finishName = useRef<{ key: string; finish: () => Promise<boolean> } | null>(null);
+  // 설정(과 좌석 순서)을 저장하는 명령을 실행한다
   function saveSettings(settings: GameSettings, order?: string[]) {
     if (busy) return notify('저장 완료를 기다려주세요.');
     void run(async () => {
@@ -63,6 +65,7 @@ export function useSetupEditing({
         : Promise.resolve(!busy && !isLocked());
     },
   );
+  // 이름 편집 시작/종료 상태를 기록한다
   function onNameEditing(id: string, editing: boolean, finish?: () => Promise<boolean>) {
     const key = draftScope + ':' + id;
     if (editing) {
@@ -95,6 +98,7 @@ export function useSetupEditing({
           })();
         }
       : undefined;
+  // 설정을 검증하고 필요하면 저장한 뒤 토너먼트를 시작한다
   function start(settings: GameSettings) {
     if (renameId.startsWith(draftScope + ':'))
       return notify('이름 입력을 Enter로 저장하거나 다른 곳을 눌러 완료하세요.');
@@ -111,6 +115,7 @@ export function useSetupEditing({
       await dispatch({ type: 'START_TOURNAMENT' });
     });
   }
+  // 이름 편집 상태를 해제한다
   function clearEditing() {
     setRenameId('');
   }

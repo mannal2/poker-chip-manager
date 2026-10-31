@@ -3,6 +3,7 @@ import { BoardCards } from './BoardCards';
 import { useRef } from 'react';
 import { useFitText } from '../../../shared/hooks/useFitText';
 import { seatCoordinates } from '../model/seatLayout';
+// 설정 단계에서만 쓰는 테이블 편집 조작 모음
 export interface TableSetup {
   drag?: {
     order: string[];
@@ -18,6 +19,7 @@ export interface TableSetup {
   onRemove?: () => void;
   onRotate?: () => void;
 }
+// 팟, 공용 카드, 플레이어 좌석을 배치해 그리는 포커 테이블
 export function Table({
   players,
   pot,

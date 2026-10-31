@@ -1,5 +1,6 @@
 import type { SettlementErrorCode } from './errors';
 import type { GameState, Pot, WinnerSelection } from './types';
+// 플레이어별 누적 베팅액으로 메인/사이드 팟 목록을 만든다
 export function buildPots(s: GameState): Pot[] {
   const heights = [...new Set(s.players.map((p) => p.H).filter((n) => n > 0))].sort(
     (a, b) => a - b,
@@ -24,6 +25,7 @@ export function buildPots(s: GameState): Pot[] {
   }
   return pots;
 }
+// 승자 선택을 검증하고 팟별 분배와 지급액을 미리 계산한다
 export function previewSettlement(
   s: GameState,
   winners: WinnerSelection,

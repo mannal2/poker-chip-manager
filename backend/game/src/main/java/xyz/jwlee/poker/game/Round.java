@@ -17,10 +17,12 @@ import xyz.jwlee.poker.game.model.TransitionContext;
 import xyz.jwlee.poker.game.rule.RuleErrorCode;
 import xyz.jwlee.poker.game.rule.Rules;
 
+// 칩 지불, 라운드/스트리트 진행, 핸드 시작과 정산 등 핸드 진행 로직을 모은다
 /** Hand progression shared by the command handlers: payments, rounds, streets and payouts. */
 public final class Round {
     private Round() {}
 
+    // 플레이어의 스택에서 팟으로 칩을 옮겨 베팅 기록에 반영한다
     public static void pay(GameState s, int index, int amount) {
         Player p = s.players.get(index);
         p.stack -= amount;
@@ -29,12 +31,14 @@ public final class Round {
         s.pot += amount;
     }
 
+    // 이벤트 목록에 새 이벤트를 추가한다
     /** Appends an event whose id is {@code {ctx.id}:{index within this transition}}. */
     public static void emit(GameState s, TransitionContext c, List<GameEvent> events, EventDetails details) {
         events.add(new GameEvent(
                 c.id() + ":" + events.size(), c.at(), s.tournamentId, s.hand == null ? 0 : s.hand.number, details));
     }
 
+    // 아무도 받지 않은 최고 베팅분을 해당 플레이어에게 돌려준다
     /** Gives the unmatched part of the highest round bet back; null when nothing is uncalled. */
     public static EventDetails.UncalledReturned returnUncalled(GameState s) {
         List<Player> sorted = new ArrayList<>(s.players);
@@ -51,6 +55,7 @@ public final class Round {
         return new EventDetails.UncalledReturned(p.id, amount);
     }
 
+    // 주인 없는 상위 팟 구간의 칩을 기여자에게 환불한다(기권 처리용)
     /**
      * Server only (forfeits): contribution layers above the highest live contribution have nobody
      * left who could win them, because every player who reached them folded. Each contributor gets
@@ -77,6 +82,7 @@ public final class Round {
         }
     }
 
+    // 행동 후 다음 차례를 정하거나 라운드 종료/단독 승리를 처리한다
     public static void resolveRound(GameState s, int after, TransitionContext c, List<GameEvent> events) {
         Hand h = s.hand;
         List<Player> live = s.players.stream().filter(p -> !p.folded && !p.eliminated).toList();
@@ -112,6 +118,7 @@ public final class Round {
         finishRound(s, c, events);
     }
 
+    // 다음 스트리트로 넘어가며 라운드 베팅 상태를 초기화한다
     public static void advanceStreet(GameState s, TransitionContext c, List<GameEvent> events) {
         Hand h = s.hand;
         h.street++;
@@ -131,6 +138,7 @@ public final class Round {
         resolveRound(s, h.buttonSeat, c, events);
     }
 
+    // 베팅 라운드를 마감하고 쇼다운 또는 다음 스트리트로 진행한다
     public static void finishRound(GameState s, TransitionContext c, List<GameEvent> events) {
         Hand h = s.hand;
         EventDetails.UncalledReturned returned = returnUncalled(s);
@@ -150,6 +158,7 @@ public final class Round {
         }
     }
 
+    // 새 핸드를 만들고 블라인드를 낸 뒤 첫 차례를 정한다
     public static void startHand(GameState s, TransitionContext c, List<GameEvent> events) {
         Hand previous = s.hand;
         boolean[] alive = new boolean[s.players.size()];
@@ -210,6 +219,7 @@ public final class Round {
         resolveRound(s, position.bbSeat(), c, events);
     }
 
+    // 선택된 승자에게 팟을 지급하고 탈락 처리 후 다음 핸드 또는 종료로 이어간다
     public static void settle(
             GameState s, Map<String, List<String>> winners, TransitionContext c, List<GameEvent> events) {
         LinkedHashMap<String, Integer> payouts;
@@ -251,6 +261,7 @@ public final class Round {
         }
     }
 
+    // 기권한 플레이어의 남은 스택을 생존자에게 나눠 준다
     /**
      * After the payouts, each forfeited player's stack goes to the survivors in 5-chip units; the
      * leftover units go one each from the seat after the button. The emptied stack is then

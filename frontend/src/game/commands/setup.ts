@@ -3,6 +3,7 @@ import { requireRule, type CommandHandler } from '../rule';
 import { startHand } from '../round';
 import { createTournament } from '../tournament';
 
+// 설정을 확인하고 토너먼트를 시작해 첫 핸드를 연다
 const startTournament: CommandHandler<'START_TOURNAMENT'> = (s, _cmd, c, events) => {
   requireRule(s.status === 'setup');
   const v = validateSettings(s.settings);
@@ -12,6 +13,7 @@ const startTournament: CommandHandler<'START_TOURNAMENT'> = (s, _cmd, c, events)
   startHand(s, c, events);
 };
 
+// 새 설정으로 플레이어와 좌석 순서를 다시 구성한다
 const setupUpdate: CommandHandler<'SETUP_UPDATE'> = (s, cmd, c) => {
   requireRule(s.status === 'setup' && cmd.settings);
   const v = validateSettings(cmd.settings);
@@ -38,6 +40,7 @@ const setupUpdate: CommandHandler<'SETUP_UPDATE'> = (s, cmd, c) => {
   ];
 };
 
+// 설정 명령별 핸들러 모음
 export const setupHandlers = {
   START_TOURNAMENT: startTournament,
   SETUP_UPDATE: setupUpdate,

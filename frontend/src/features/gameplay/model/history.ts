@@ -1,4 +1,5 @@
 import type { GameEvent } from '../../../game/types';
+// 베팅 행동 종류별 한국어 표시 이름
 const actions: Record<string, string> = {
   CHECK: '체크',
   CALL: '콜',
@@ -7,12 +8,14 @@ const actions: Record<string, string> = {
   ALL_IN: '올인',
   FOLD: '폴드',
 };
+// 기록 화면에 표시할 한 줄
 export interface HistoryRow {
   id: string;
   hand: number;
   text: string;
   kind: 'hand' | 'stage' | 'action';
 }
+// 이벤트(되돌려진 것 제외)를 핸드/단계/행동별 기록 행으로 바꾼다
 export function historyRows(
   events: GameEvent[],
   players: { id: string; name: string }[],

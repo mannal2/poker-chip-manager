@@ -1,9 +1,11 @@
 import { useLayoutEffect, type RefObject } from 'react';
 
+// 뷰포트의 너비와 높이
 type ViewportSize = { width: number; height: number };
 let lastViewport: ViewportSize | undefined;
 let editingViewport: ViewportSize | undefined;
 
+// 키보드 입력 중 화면 축소를 무시하고 레이아웃 기준 뷰포트를 정한다
 // Shared by the screen and dialogs so they never write competing root dimensions.
 function designViewport(width: number, height: number): ViewportSize {
   const editing = document.activeElement?.matches('input,textarea,[contenteditable="true"]');
@@ -18,6 +20,7 @@ function designViewport(width: number, height: number): ViewportSize {
   return lastViewport;
 }
 
+// 화면 크기에 맞춰 비율 단위(--u)와 뷰포트 변수를 갱신하는 훅
 // Use actual CSS dimensions, so pointer coordinates and card hit areas stay aligned.
 export function useScreenFit(ref: RefObject<HTMLElement | null>, scrollable = false) {
   useLayoutEffect(() => {

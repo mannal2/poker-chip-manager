@@ -7,9 +7,11 @@ import xyz.jwlee.poker.game.model.Phase;
 import xyz.jwlee.poker.game.model.Player;
 import xyz.jwlee.poker.game.model.TournamentStatus;
 
+// 현재 차례 플레이어가 할 수 있는 행동을 계산한다
 public final class Legal {
     private Legal() {}
 
+    // 현재 차례의 콜/레이즈 금액과 체크/콜/레이즈 가능 여부를 계산한다
     /**
      * Legal actions of the current actor. The returned {@code actor} is {@code s}'s own mutable
      * {@link Player} object, not a copy: command handlers working on their private state copy may

@@ -2,6 +2,7 @@ import { useState, useRef } from 'react';
 import type { GameSettings } from '../../../game/settings';
 import { validateSettings } from '../../../game/settings';
 import { messageFor } from '../model/errorMessages';
+// 시작 칩과 블라인드를 입력하고 게임을 시작하는 설정 패널
 export function SetupPanel({
   settings,
   busy,
@@ -20,6 +21,7 @@ export function SetupPanel({
     }),
     [error, setError] = useState('');
   const composing = useRef(false);
+  // 입력 초안을 숫자로 바꾼 설정 값을 만든다
   function values() {
     return {
       ...settings,
@@ -28,6 +30,7 @@ export function SetupPanel({
       bb: Number(draft.bb),
     };
   }
+  // 입력을 검증해 바뀐 설정이면 저장을 요청한다
   function save() {
     if (composing.current) return;
     const s = values(),

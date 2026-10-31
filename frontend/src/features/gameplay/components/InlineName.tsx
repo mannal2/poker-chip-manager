@@ -1,4 +1,5 @@
 import { useLayoutEffect, useRef, useState } from 'react';
+// 이름을 그 자리에서 눌러 수정하는 입력 컴포넌트
 export function InlineName({
   name,
   busy,
@@ -21,10 +22,12 @@ export function InlineName({
     editingCallback.current = onEditing;
   });
   useLayoutEffect(() => () => editingCallback.current(false), []);
+  // 편집 모드를 닫고 편집 종료를 알린다
   function close() {
     setEditing(false);
     onEditing(false);
   }
+  // 입력한 이름을 저장하고 저장 결과를 돌려준다
   function save(): Promise<boolean> {
     if (pending.current) return pending.current;
     if (skipBlur.current || composing.current || busy) return Promise.resolve(false);

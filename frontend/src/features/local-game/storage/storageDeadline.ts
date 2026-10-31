@@ -1,3 +1,4 @@
+// 저장소 작업이 8초 안에 끝나지 않으면 취소하고 실패시킨다
 // A suspended or broken IndexedDB request must not leave the app waiting forever.
 export async function storageDeadline<T>(promise: Promise<T>, phase: string, cancel = () => {}) {
   let timer: ReturnType<typeof setTimeout> | undefined;

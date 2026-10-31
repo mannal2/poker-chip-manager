@@ -1,6 +1,7 @@
 import { Dialog } from '../../shared/ui/Dialog';
 import type { useInstallPrompt } from './useInstallPrompt';
 
+// 앱 설치 방법을 안내하는 대화상자
 export function InstallNotice({ install }: { install: ReturnType<typeof useInstallPrompt> }) {
   if (!install.visible) return null;
   return (

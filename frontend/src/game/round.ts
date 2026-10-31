@@ -3,6 +3,7 @@ import { nextSeat, nextPositions, initialBlindSeats } from './positions';
 import { buildPots, previewSettlement } from './settlement';
 import { requireRule } from './rule';
 
+// 플레이어의 스택에서 팟으로 칩을 옮겨 베팅 기록에 반영한다
 /** Hand progression shared by the command handlers: payments, rounds, streets and payouts. */
 export function pay(s: GameState, index: number, amount: number) {
   const p = s.players[index];
@@ -11,6 +12,7 @@ export function pay(s: GameState, index: number, amount: number) {
   p.H += amount;
   s.pot += amount;
 }
+// 이벤트 목록에 새 이벤트를 추가한다
 export function emit(
   s: GameState,
   c: TransitionContext,
@@ -27,6 +29,7 @@ export function emit(
     details,
   });
 }
+// 아무도 받지 않은 최고 베팅분을 해당 플레이어에게 돌려준다
 export function returnUncalled(s: GameState): { playerId: string; amount: number } | null {
   const sorted = [...s.players].sort((a, b) => b.B - a.B);
   if (sorted[0].B <= sorted[1].B) return null;
@@ -38,6 +41,7 @@ export function returnUncalled(s: GameState): { playerId: string; amount: number
   s.pot -= amount;
   return { playerId: p.id, amount };
 }
+// 행동 후 다음 차례를 정하거나 라운드 종료/단독 승리를 처리한다
 export function resolveRound(
   s: GameState,
   after: number,
@@ -72,6 +76,7 @@ export function resolveRound(
   }
   finishRound(s, c, events);
 }
+// 다음 스트리트로 넘어가며 라운드 베팅 상태를 초기화한다
 export function advanceStreet(s: GameState, c: TransitionContext, events: GameEvent[]) {
   const h = s.hand!;
   h.street++;
@@ -87,6 +92,7 @@ export function advanceStreet(s: GameState, c: TransitionContext, events: GameEv
   emit(s, c, events, 'STREET', { street: h.street });
   resolveRound(s, h.buttonSeat, c, events);
 }
+// 베팅 라운드를 마감하고 쇼다운 또는 다음 스트리트로 진행한다
 export function finishRound(s: GameState, c: TransitionContext, events: GameEvent[]) {
   const h = s.hand!;
   const returned = returnUncalled(s);
@@ -100,6 +106,7 @@ export function finishRound(s: GameState, c: TransitionContext, events: GameEven
   if (h.showdown) h.phase = 'settlement';
   else advanceStreet(s, c, events);
 }
+// 새 핸드를 만들고 블라인드를 낸 뒤 첫 차례를 정한다
 export function startHand(s: GameState, c: TransitionContext, events: GameEvent[]) {
   const previous = s.hand,
     alive = s.players.map((p) => !p.eliminated);
@@ -142,6 +149,7 @@ export function startHand(s: GameState, c: TransitionContext, events: GameEvent[
   emit(s, c, events, 'HAND_START', { ...position, ...blinds });
   resolveRound(s, position.bbSeat, c, events);
 }
+// 선택된 승자에게 팟을 지급하고 탈락 처리 후 다음 핸드 또는 종료로 이어간다
 export function settle(
   s: GameState,
   winners: WinnerSelection,

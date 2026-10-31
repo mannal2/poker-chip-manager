@@ -1,6 +1,7 @@
 import { initialBlindSeats } from '../../../game/positions';
 import type { GameState, Pot, WinnerSelection } from '../../../game/types';
 
+// 게임 상태를 테이블 화면에 그릴 좌석/팟/단계 정보로 변환한다
 export function buildTableView(
   state: GameState,
   {

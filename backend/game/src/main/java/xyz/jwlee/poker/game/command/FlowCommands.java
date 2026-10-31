@@ -16,10 +16,12 @@ import xyz.jwlee.poker.game.rule.RuleErrorCode;
 import xyz.jwlee.poker.game.rule.Rules;
 import xyz.jwlee.poker.game.settings.SettingsValidator;
 
+// 정산, 되돌리기, 블라인드 예약, 중단 같은 핸드 흐름 명령을 처리한다
 /** Hand-flow commands (TS {@code flow.ts}); undo, blind scheduling, settlement and abort. */
 public final class FlowCommands {
     private FlowCommands() {}
 
+    // 승자 선택대로 팟을 정산한다
     /** Pays the pots to the chosen winners, then starts the next hand or ends the tournament. */
     public static void settleHand(
             GameState s, GameCommand.SettleHand cmd, TransitionContext c, List<GameEvent> events) {
@@ -28,6 +30,7 @@ public final class FlowCommands {
         Round.settle(s, cmd.winners(), c, events);
     }
 
+    // 저장된 스냅샷으로 상태를 되돌리고 되돌림 이벤트를 남긴다
     /** Restores the snapshot once; version is kept and a blind schedule made in the same hand survives. */
     public static void undo(GameState s, GameCommand.Undo cmd, TransitionContext c, List<GameEvent> events) {
         HandGuard.inPlay(s, true);
@@ -54,6 +57,7 @@ public final class FlowCommands {
         Round.emit(s, c, events, new EventDetails.ActionUndone(u.eventIds() == null ? List.of() : u.eventIds()));
     }
 
+    // 다음 핸드부터 적용할 블라인드를 예약한다
     /** Queues new blinds for the next hand; an undo snapshot keeps the schedule too. */
     public static void scheduleBlinds(
             GameState s, GameCommand.ScheduleBlinds cmd, TransitionContext c, List<GameEvent> events) {
@@ -70,6 +74,7 @@ public final class FlowCommands {
         Round.emit(s, c, events, new EventDetails.BlindsScheduled(cmd.smallBlind(), cmd.bigBlind()));
     }
 
+    // 토너먼트를 중단 상태로 바꾼다
     /** Ends the tournament early. */
     public static void abort(GameState s, GameCommand.Abort cmd, TransitionContext c, List<GameEvent> events) {
         Hand h = HandGuard.inPlay(s);

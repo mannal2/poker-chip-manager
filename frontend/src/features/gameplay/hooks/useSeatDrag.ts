@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type PointerEvent } from 'react';
 import { seatCoordinates } from '../model/seatLayout';
 import { gapTarget, moveCircularSeat } from '../model/seatOrder';
+// 길게 눌러 끌어서 좌석 순서를 바꾸는 포인터 조작을 처리하는 훅
 export function useSeatDrag(
   ids: string[],
   enabled: boolean,
@@ -55,6 +56,7 @@ export function useSeatDrag(
       clear();
     };
   }, [key, viewSeat, clear]);
+  // 좌석 카드 하나에 붙일 포인터/클릭 이벤트 처리기를 만든다
   function handlers(id: string) {
     return {
       onPointerDown: (e: PointerEvent<HTMLElement>) => {

@@ -15,6 +15,7 @@ import xyz.jwlee.poker.game.model.TournamentStatus;
 import xyz.jwlee.poker.game.model.TransitionContext;
 import xyz.jwlee.poker.game.rule.Rules;
 
+// 플레이어 기권(서버 전용) 명령을 처리한다
 /**
  * FORFEIT, server only (MULTIPLAYER_MODE section 10). Who may forfeit whom is checked by the room
  * layer; this rule only checks that the target can still leave the game. The stack itself is split
@@ -23,6 +24,7 @@ import xyz.jwlee.poker.game.rule.Rules;
 public final class ForfeitCommand {
     private ForfeitCommand() {}
 
+    // 대상을 폴드 처리하고 라운드/정산을 이어서 진행한다
     public static void forfeit(GameState s, GameCommand.Forfeit cmd, TransitionContext c, List<GameEvent> events) {
         Hand h = HandGuard.inPlay(s);
         Player p = s.players.stream()
@@ -57,6 +59,7 @@ public final class ForfeitCommand {
         }
     }
 
+    // 플레이어 id의 좌석 인덱스를 찾는다
     private static int indexOf(GameState s, String id) {
         for (int i = 0; i < s.players.size(); i++) {
             if (s.players.get(i).id.equals(id)) {

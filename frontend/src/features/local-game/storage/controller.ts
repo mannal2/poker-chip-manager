@@ -3,6 +3,7 @@ import type { ControlLease, Request, DispatchResult } from './types';
 import type { GameState } from '../../../game/types';
 import type { GameSettings } from '../../../game/settings';
 import { storageDeadline } from './storageDeadline';
+// 조작권(lease)과 요청 순서를 관리하며 명령을 저장소에 보내는 컨트롤러
 export class LocalController {
   lease: ControlLease | null = null;
   state: GameState | null = null;
@@ -14,6 +15,7 @@ export class LocalController {
     private repository: LocalRepository,
     private screenId: string,
   ) {}
+  // 이 화면이 조작권을 가져오고 상태를 다시 읽는다
   async takeControl() {
     if (this.running) throw Error('저장 완료를 기다려주세요.');
     this.lease = await this.repository.takeControl(this.screenId);
@@ -21,6 +23,7 @@ export class LocalController {
     this.pending = null;
     await this.refresh();
   }
+  // 저장소의 게임과 조작권을 읽어 최신 상태로 맞춘다
   async refresh() {
     const version = ++this.refreshVersion;
     const [saved, c] = await storageDeadline(
@@ -41,9 +44,11 @@ export class LocalController {
     }
     if (this.lease && c && !this.running && !this.pending) this.sequence = c.highWatermark;
   }
+  // 진행 중인 refresh 결과를 무시하도록 표시한다
   cancelRefresh() {
     this.refreshVersion++;
   }
+  // 저장소를 비우고 새 토너먼트와 조작권으로 다시 시작한다
   async restart(settings: GameSettings) {
     if (this.running) throw Error('저장 완료를 기다려주세요.');
     this.cancelRefresh();
@@ -53,6 +58,7 @@ export class LocalController {
     this.sequence = 0;
     this.pending = null;
   }
+  // 명령을 요청으로 만들어 대기 상태로 두고 저장소에 보낸다
   async dispatch(command: Request['command']): Promise<DispatchResult> {
     if (this.running || this.pending)
       return { status: 'REJECTED', requestId: '', state: this.state, reason: 'REQUEST_PENDING' };
@@ -69,6 +75,7 @@ export class LocalController {
     };
     return this.retry();
   }
+  // 대기 중인 요청을 저장소로 (재)전송하고 결과를 반영한다
   async retry(): Promise<DispatchResult> {
     if (this.running || !this.pending)
       return { status: 'REJECTED', requestId: '', state: this.state, reason: 'NO_PENDING_REQUEST' };

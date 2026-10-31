@@ -1,5 +1,6 @@
 import { useLayoutEffect, type RefObject } from 'react';
 
+// 셀의 글자가 넘치지 않도록 글꼴 크기를 줄이는 훅
 /**
  * Shrinks the font of each matching cell until its text fits, starting from the container's
  * size variable. A cell that still overflows at the minimum and has a `data-short` attribute

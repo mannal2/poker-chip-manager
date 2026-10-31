@@ -24,6 +24,7 @@ import '../../shared/styles/base.css';
 import '../gameplay/styles/header.css';
 import '../gameplay/styles/table.css';
 import '../gameplay/styles/controls.css';
+// 단일 기기 모드의 최상위 화면으로, 저장소 복구 시 게임 화면을 새로 마운트한다
 export function LocalGamePage() {
   const [updateDeferred, setUpdateDeferred] = useState(false);
   const [recovery, setRecovery] = useState({
@@ -44,6 +45,7 @@ export function LocalGamePage() {
     />
   );
 }
+// 저장 세션, 홈/게임 화면, 업데이트·설치 안내, 토스트를 조립하는 본 화면
 function LocalGame({
   updateDeferred,
   onDeferUpdate,

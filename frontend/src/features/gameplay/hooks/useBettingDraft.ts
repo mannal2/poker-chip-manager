@@ -4,6 +4,7 @@ import { messageFor } from '../model/errorMessages';
 import type { BetAction } from '../components/BetControls';
 import type { GameCommand, GameState, LegalActions } from '../../../game/types';
 
+// 칩으로 쌓는 베팅 금액 초안과 제출 가능 여부를 관리하는 훅
 /** Change scope for a new tournament or input session; undefined disables the draft. */
 export function useBettingDraft(
   state: GameState | null,
@@ -19,6 +20,7 @@ export function useBettingDraft(
   const currentBet = state?.hand?.W ?? 0;
   const submitAllowed = !!legal && classifyDraft(legal, draftAmount, currentBet).ok;
 
+  // 버튼 입력에 따라 초안을 바꾸거나 실행할 명령을 만든다
   function prepareAction(action: BetAction, amount = 0): GameCommand | undefined {
     if (!state || !legal?.actor) {
       notify(messageFor('NOT_ACTOR'));

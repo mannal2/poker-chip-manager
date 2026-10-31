@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { GameEvent, Player } from '../../../game/types';
 import { historyRows } from '../model/history';
+// 기록 행 목록을 정렬/더 보기와 함께 보여주는 패널
 export function HistoryPanel({
   events,
   players,

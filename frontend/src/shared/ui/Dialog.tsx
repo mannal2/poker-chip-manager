@@ -1,5 +1,6 @@
 import { useScreenFit } from '../hooks/useScreenFit';
 import { useEffect, useRef, type ReactNode } from 'react';
+// 모달 대화상자로, 바깥 클릭/취소 키로 닫기를 처리한다
 export function Dialog({
   title,
   onClose,

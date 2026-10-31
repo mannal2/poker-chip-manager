@@ -1,5 +1,7 @@
+// 베팅 조작부에서 발생하는 버튼 입력 종류
 /** Draft inputs (CHIP, CLEAR, DRAFT_ALL, SUBMIT) and direct betting commands. */
 export type BetAction = 'CHECK' | 'CALL' | 'FOLD' | 'DRAFT_ALL' | 'CHIP' | 'CLEAR' | 'SUBMIT';
+// 취소/체크·콜/폴드/올인과 칩 버튼으로 이뤄진 베팅 조작부
 export function BetControls({
   call = 0,
   canUndo = false,

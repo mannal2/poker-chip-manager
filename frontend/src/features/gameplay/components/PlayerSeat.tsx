@@ -1,6 +1,7 @@
 import type { CSSProperties, HTMLAttributes } from 'react';
 import { InlineName } from './InlineName';
 
+// 좌석 카드에 표시할 플레이어 정보
 export interface CardPlayer {
   id: string;
   name: string;
@@ -15,6 +16,7 @@ export interface CardPlayer {
   eligible?: boolean;
 }
 
+// 큰 칩 금액을 만/억 단위의 축약 문자열로 만든다
 // Shown only when the full amount cannot fit even at the smallest font. Rounds down so a
 // shortened amount never claims more chips than the player has.
 function shortChips(value: number) {
@@ -24,6 +26,7 @@ function shortChips(value: number) {
   return amount.toLocaleString('ko-KR', { maximumFractionDigits: 1 }) + label;
 }
 
+// 이름, 베팅액, 남은 칩을 보여주는 플레이어 좌석 카드
 export function PlayerSeat({
   player: p,
   phase,

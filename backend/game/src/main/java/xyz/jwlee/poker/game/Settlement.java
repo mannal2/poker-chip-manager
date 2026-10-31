@@ -13,10 +13,12 @@ import xyz.jwlee.poker.game.model.Player;
 import xyz.jwlee.poker.game.model.Pot;
 import xyz.jwlee.poker.game.rule.SettlementErrorCode;
 
+// 메인/사이드 팟을 만들고 승자 선택을 검증해 분배를 계산한다
 /** Pot construction and winner-selection validation (TS {@code settlement.ts}). */
 public final class Settlement {
     private Settlement() {}
 
+    // 플레이어별 누적 베팅액으로 메인/사이드 팟 목록을 만든다
     public static List<Pot> buildPots(GameState s) {
         List<Integer> heights = s.players.stream()
                 .map(p -> p.handTotal)
@@ -49,10 +51,12 @@ public final class Settlement {
         return pots;
     }
 
+    // 현재 상태의 팟으로 승자 선택의 정산 결과를 미리 계산한다
     public static SettlementPreview preview(GameState s, Map<String, List<String>> winners) {
         return preview(s, winners, buildPots(s));
     }
 
+    // 주어진 팟 목록에 대해 승자 선택을 검증하고 지급액을 계산한다
     public static SettlementPreview preview(GameState s, Map<String, List<String>> winners, List<Pot> pots) {
         LinkedHashMap<String, Integer> payouts = new LinkedHashMap<>();
         for (Player p : s.players) {
@@ -137,6 +141,7 @@ public final class Settlement {
         return new SettlementPreview(true, payouts, null, allocations);
     }
 
+    // 버튼 다음 좌석부터 센 순서로 나머지 칩 우선순위를 구한다
     private static int rank(GameState s, String id, int button, int count) {
         int seat = 0;
         for (int i = 0; i < s.players.size(); i++) {
@@ -148,6 +153,7 @@ public final class Settlement {
         return (seat - button - 1 + count) % count;
     }
 
+    // 동점 그룹의 대표 id를 경로 압축하며 찾는다(union-find)
     private static String find(Map<String, String> parent, String id) {
         String p = parent.get(id);
         if (p.equals(id)) {
@@ -158,6 +164,7 @@ public final class Settlement {
         return root;
     }
 
+    // 승패 관계 그래프에 순환이 있는지 깊이 우선으로 검사한다
     private static boolean hasCycle(
             Map<String, Set<String>> edges, String id, Set<String> visiting, Set<String> visited) {
         if (visiting.contains(id)) {
@@ -177,6 +184,7 @@ public final class Settlement {
         return false;
     }
 
+    // 오류 코드를 담은 실패 정산 결과를 만든다
     private static SettlementPreview fail(LinkedHashMap<String, Integer> payouts, SettlementErrorCode error) {
         return new SettlementPreview(false, payouts, error, null);
     }

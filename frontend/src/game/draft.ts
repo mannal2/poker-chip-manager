@@ -1,9 +1,11 @@
 import type { DraftRejection } from './errors';
 import type { GameCommand, LegalActions } from './types';
 
+// 임시 베팅 금액을 분류한 결과(실행할 명령 또는 거절 사유)
 export type DraftClassification =
   { ok: true; command: GameCommand } | { ok: false; code: DraftRejection };
 
+// 입력한 추가 금액을 콜/올인/벳/레이즈 명령으로 바꾸거나 거절 사유를 돌려준다
 /** Turns a drafted additional amount into the betting command the rules will accept. */
 export function classifyDraft(
   legal: LegalActions,

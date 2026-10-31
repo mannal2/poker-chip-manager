@@ -1,5 +1,6 @@
 package xyz.jwlee.poker.game.model;
 
+// 플레이어 한 명의 스택과 베팅 상태
 public final class Player {
     public String id;
     public String name;
@@ -19,6 +20,7 @@ public final class Player {
 
     public Player() {}
 
+    // 플레이어의 복사본을 만든다
     public Player copy() {
         Player p = new Player();
         p.id = id;

@@ -10,17 +10,20 @@ import java.util.Set;
 import java.util.regex.Pattern;
 import xyz.jwlee.poker.game.model.GameSettings;
 
+// 테이블 설정(이름, 칩, 블라인드, 버튼)을 검증한다
 public final class SettingsValidator {
     private static final Pattern NAME = Pattern.compile("^[가-힣a-zA-Z0-9 ]{1,10}$");
     private static final int MAX_CHIPS = 1_000_000;
 
     private SettingsValidator() {}
 
+    // 칩 금액이 유효한 범위와 단위인지 확인한다
     /** Chip amounts are positive multiples of 5 up to 1,000,000. */
     public static boolean validChips(int n) {
         return n > 0 && n <= MAX_CHIPS && n % 5 == 0;
     }
 
+    // 이름을 앞뒤 공백 제거 후 NFC로 정규화하고 이름 규칙을 만족하는지 검사한다
     /** A name trimmed and NFC-normalized, or empty when it breaks the name rule (1-10 Hangul, Latin, digit or space). */
     public static Optional<String> normalizeName(String raw) {
         if (raw == null) {
@@ -30,6 +33,7 @@ public final class SettingsValidator {
         return NAME.matcher(name).matches() ? Optional.of(name) : Optional.empty();
     }
 
+    // 이름을 정규화하고 이름/칩/좌석 규칙을 검사해 검증 결과를 돌려준다
     public static SettingsValidation validate(GameSettings input) {
         List<String> names = new ArrayList<>();
         boolean namesValid = true;

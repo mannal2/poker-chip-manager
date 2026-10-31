@@ -15,10 +15,12 @@ import xyz.jwlee.poker.game.model.TransitionContext;
 import xyz.jwlee.poker.game.rule.RuleErrorCode;
 import xyz.jwlee.poker.game.rule.Rules;
 
+// 체크/콜/폴드/올인/벳/레이즈 베팅 행동을 처리한다
 /** CHECK, CALL, FOLD, ALL_IN, BET and RAISE share one rule path. */
 public final class BettingCommands {
     private BettingCommands() {}
 
+    // 베팅 행동 하나를 검증하고 칩을 지불한 뒤 라운드를 진행한다
     /**
      * @param playerId the acting player, or null for the current actor
      * @param requested the requested additional chips (BET and RAISE only)

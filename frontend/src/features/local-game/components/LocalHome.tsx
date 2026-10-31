@@ -1,3 +1,4 @@
+// 단일 기기 모드 진입, 앱 설치, 업데이트 버튼이 있는 앱 홈
 export function LocalHome({
   busy,
   onLocal,

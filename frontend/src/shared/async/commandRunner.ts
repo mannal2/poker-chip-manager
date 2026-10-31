@@ -1,3 +1,4 @@
+// 비동기 실행의 단계별 콜백(바쁨, 시작, 오류, 해제)
 export interface RunHooks {
   /** Called instead of the action while another one holds the lock. */
   onBusy?: () => void;
@@ -7,6 +8,7 @@ export interface RunHooks {
   onRelease?: () => void;
 }
 
+// 한 번에 하나씩만 비동기 작업을 실행하는 실행기를 만든다
 /** One-at-a-time async runner: storage saves locally, awaited server replies online. */
 export function createCommandRunner() {
   let locked = false;

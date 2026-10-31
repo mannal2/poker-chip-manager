@@ -10,9 +10,11 @@ import xyz.jwlee.poker.game.model.TransitionContext;
 import xyz.jwlee.poker.game.settings.SettingsValidation;
 import xyz.jwlee.poker.game.settings.SettingsValidator;
 
+// 토너먼트 초기 상태를 만드는 팩토리
 public final class Tournament {
     private Tournament() {}
 
+    // 설정을 검증하고 플레이어가 배치된 설정 단계의 초기 상태를 만든다
     /** Builds a setup-phase tournament; invalid settings throw {@link IllegalArgumentException} with the code. */
     public static GameState create(GameSettings settings, TransitionContext ctx) {
         SettingsValidation validation = SettingsValidator.validate(settings);

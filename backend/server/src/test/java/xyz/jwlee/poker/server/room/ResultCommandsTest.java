@@ -83,6 +83,44 @@ class ResultCommandsTest {
         assertThat(f.room.playerIds()).hasSize(3);
     }
 
+    // 두 번째 토너먼트 뒤의 다시 준비는 첫 번째가 아니라 두 번째 시작 설정으로 돌아가는지 확인한다.
+    @Test
+    void reReadyAfterASecondTournamentRestoresTheSecondStartSettings() {
+        GameFixture f = onResult();
+        f.check(f.send("a", "RE_READY", "{}"));
+        f.check(f.send("a", "SET_SETTINGS", "{\"initial\":2000,\"sb\":10,\"bb\":20}"));
+        f.check(f.send("a", "SET_DEALER", "{\"participantId\":\"b\"}"));
+        f.check(f.send("a", "START", "{}"));
+        f.check(f.send("a", "SCHEDULE_BLINDS", "{\"sb\":50,\"bb\":100}"));
+        f.check(f.send("a", "ABORT", "{}"));
+
+        f.check(f.send("a", "RE_READY", "{}"));
+
+        assertThat(f.room.settings()).isEqualTo(new RoomSettings(2000, 10, 20, -1));
+    }
+
+    // 결과 화면에서는 탈락자를 포함해 명단의 누구에게나 방장을 넘길 수 있는지 확인한다.
+    @Test
+    void onTheResultScreenTheRoomPassesToAnyoneOnTheRoster() {
+        GameFixture ended = GameFixture.started(2, 0);
+        ended.check(ended.send("a", "ALL_IN", null));
+        ended.check(ended.send("b", "CALL", null));
+        ended.check(ended.send("a", "SETTLE_HAND", "{\"winners\":{\"pot0\":[\"p0\"]}}"));
+        assertThat(ended.room.phase()).isEqualTo(RoomPhase.RESULT);
+        assertThat(ended.room.game().players.get(1).eliminated).isTrue();
+
+        ended.check(ended.send("a", "TRANSFER_HOST", "{\"participantId\":\"b\"}"));
+
+        assertThat(ended.room.hostId()).isEqualTo("b");
+        ended.check(ended.send("b", "RE_READY", "{}"));
+
+        GameFixture aborted = onResult();
+        aborted.check(aborted.send("a", "TRANSFER_HOST", "{\"participantId\":\"c\"}"));
+        assertThat(aborted.room.hostId()).isEqualTo("c");
+        assertThat(code(aborted.send("a", "TRANSFER_HOST", "{\"participantId\":\"b\"}"))).isEqualTo("FORBIDDEN");
+        assertThat(code(aborted.send("c", "TRANSFER_HOST", "{\"participantId\":\"zzz\"}"))).isEqualTo("INVALID_INPUT");
+    }
+
     @Test
     void aForfeitedGuestStaysOnTheRosterAndPlaysAgain() {
         GameFixture f = GameFixture.started(3, 0);

@@ -104,8 +104,9 @@ final class WaitingRoomCommands {
 
     // 방장 자리를 다른 참가자에게 넘긴다
     /**
-     * In the waiting room to anyone on the roster; while a game runs only to someone still in it (not
-     * eliminated, not forfeited); never on the result screen.
+     * While a game runs only to someone still in it (not eliminated, not forfeited); otherwise, in the waiting
+     * room and after the game ended or was aborted, to anyone on the roster (MULTIPLAYER_MODE sections 7 and 13:
+     * "종료·중단 후에는 누구에게나").
      */
     static void transferHost(Room room, Participant actor, JsonNode payload) {
         String target = existing(room, string(object(payload), "participantId"));
@@ -116,7 +117,7 @@ final class WaitingRoomCommands {
                     throw invalid();
                 }
             }
-            case RESULT -> throw new RoomException("NOT_WAITING");
+            case RESULT -> { }
         }
         room.setHost(target);
     }

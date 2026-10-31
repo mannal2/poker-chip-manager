@@ -143,4 +143,19 @@ class HistoryControllerTest {
         mvc.perform(get("/api/rooms/" + c[0].roomId + "/history?tournamentId=" + tournament))
                 .andExpect(status().is4xxClientError());
     }
+
+    // 결과 화면에서 나간 사람은 세션에 남은 연결로 기록을 읽을 수 없는지 확인한다.
+    @Test
+    void someoneWhoLeftOnTheResultScreenCannotReadTheHistory() throws Exception {
+        GameClient[] c = table();
+        String tournament = c[0].refresh().get("tournamentId").asString();
+        c[0].send("ABORT", "{}").andExpect(status().isOk());
+        c[1].history("?tournamentId=" + tournament).andExpect(status().isOk());
+
+        c[1].send("LEAVE", "{}").andExpect(status().isOk());
+
+        c[1].history("?tournamentId=" + tournament).andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("ROOM_NOT_FOUND"));
+        c[0].history("?tournamentId=" + tournament).andExpect(status().isOk());
+    }
 }

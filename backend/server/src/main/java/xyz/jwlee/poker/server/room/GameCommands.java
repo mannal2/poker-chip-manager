@@ -87,6 +87,9 @@ final class GameCommands {
     // 직전 행동을 되돌린다
     static void undo(Room room, Participant actor, CommandRequest request, Supplier<TransitionContext> contexts) {
         requireGame(room);
+        if (room.hasPlayerLeft()) {
+            throw new RoomException("UNDO_LOCKED");
+        }
         run(room, new GameCommand.Undo(), contexts);
     }
 

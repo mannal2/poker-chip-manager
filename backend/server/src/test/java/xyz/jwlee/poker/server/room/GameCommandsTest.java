@@ -445,6 +445,80 @@ class GameCommandsTest {
         assertRejected(f, f.send("a", "KICK", "{\"participantId\":\"b\"}"), "NOT_WAITING");
     }
 
+    // ---- undo after someone left ----
+
+    // 세 명이 올인하고 방장이 이겨 게임이 끝난 결과 화면을 만든다.
+    private static GameFixture threeAllInAndTheHostWins() {
+        GameFixture f = GameFixture.started(3, 0);
+        f.check(f.send("a", "ALL_IN", null));
+        f.check(f.send("b", "CALL", null));
+        f.check(f.send("c", "CALL", null));
+        f.check(f.send("a", "SETTLE_HAND", "{\"winners\":{\"pot0\":[\"p0\"]}}"));
+        assertThat(f.room.game().status).isEqualTo(TournamentStatus.ENDED);
+        assertThat(f.room.phase()).isEqualTo(RoomPhase.RESULT);
+        return f;
+    }
+
+    // 참가자가 나간 뒤에는 취소 권한이 꺼지고 취소가 거절되며 게임이 끝난 채로 남는지 확인한다.
+    @Test
+    void onceAPlayerHasLeftUndoIsLockedAndTheGameStaysEnded() {
+        GameFixture f = threeAllInAndTheHostWins();
+        assertThat(Capabilities.of(f.room, "a").canUndo()).isTrue();
+
+        f.check(f.send("b", "LEAVE", "{}"));
+
+        assertThat(Capabilities.of(f.room, "a").canUndo()).isFalse();
+        assertRejected(f, f.send("a", "UNDO", "{}"), "UNDO_LOCKED");
+        assertThat(f.room.game().status).isEqualTo(TournamentStatus.ENDED);
+        assertThat(f.room.phase()).isEqualTo(RoomPhase.RESULT);
+    }
+
+    // 방장이 나가도 새 방장이 취소할 수 없는지 확인한다.
+    @Test
+    void aHostLeavingAlsoLocksUndoForTheNewHost() {
+        GameFixture f = threeAllInAndTheHostWins();
+
+        f.check(f.send("a", "LEAVE", "{}"));
+
+        assertThat(f.room.hostId()).isEqualTo("b");
+        assertThat(Capabilities.of(f.room, "b").canUndo()).isFalse();
+        assertRejected(f, f.send("b", "UNDO", "{}"), "UNDO_LOCKED");
+        assertThat(f.room.game().status).isEqualTo(TournamentStatus.ENDED);
+    }
+
+    // 나간 사람이 없던 새 토너먼트에서는 취소가 다시 가능한지 확인한다.
+    @Test
+    void theNextTournamentCanUndoAgain() {
+        GameFixture f = threeAllInAndTheHostWins();
+        f.check(f.send("b", "LEAVE", "{}"));
+        f.check(f.send("a", "RE_READY", "{}"));
+        f.check(f.send("a", "SET_DEALER", "{\"participantId\":\"a\"}"));
+        f.check(f.send("a", "START", "{}"));
+        f.check(f.send("a", "CALL", null));
+
+        assertThat(Capabilities.of(f.room, "a").canUndo()).isTrue();
+        f.check(f.send("a", "UNDO", "{}"));
+    }
+
+    // 핸드 범위 명령인 정산은 handId 없이 보내면 거절되는지 확인한다.
+    @Test
+    void settleHandWithoutAHandIdIsRefused() {
+        GameFixture f = atSettlement();
+
+        assertRejected(f, f.sendWithoutHand("a", "SETTLE_HAND", "{\"winners\":{\"pot0\":[\"p1\"]}}"),
+                "TOURNAMENT_CHANGED");
+        assertThat(f.room.game().hand.phase).isEqualTo(Phase.SETTLEMENT);
+    }
+
+    // 권한 검사가 범위 검사보다 먼저인지 확인한다.
+    @Test
+    void permissionIsCheckedBeforeTheTournamentScope() {
+        GameFixture f = GameFixture.started(3, 0);
+
+        assertRejected(f, f.sendScoped("b", "ABORT", "{}", "another-tournament", null), "FORBIDDEN");
+        assertRejected(f, f.sendScoped("a", "ABORT", "{}", "another-tournament", null), "TOURNAMENT_CHANGED");
+    }
+
     // 같은 requestId 값으로 시작해도 토너먼트·핸드 ID가 겹치지 않는지 확인한다.
     @Test
     void startsWithTheSameRequestIdGetDifferentTournamentAndHandIds() {

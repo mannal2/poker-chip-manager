@@ -30,6 +30,7 @@ record ApiError(String code, String message) {
             Map.entry("SEQUENCE_GAP", "요청 순번이 맞지 않습니다."),
             Map.entry("UNKNOWN_STREAM", "등록되지 않은 화면입니다."),
             Map.entry("BODY_TOO_LARGE", "요청 본문이 너무 큽니다."),
+            Map.entry("HTTP_ERROR", "요청을 처리할 수 없습니다."),
             Map.entry("INTERNAL_ERROR", "서버 오류가 발생했습니다."));
 
     // 오류 코드에 해당하는 메시지를 붙여 오류 본문을 만든다

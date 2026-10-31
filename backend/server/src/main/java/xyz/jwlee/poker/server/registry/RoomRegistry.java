@@ -24,8 +24,8 @@ import xyz.jwlee.poker.server.support.IdGenerator;
  * The order is always global then room, never the reverse. {@link #withRoom} holds only the room lock
  * while its action runs, so that action must not call anything that takes the global lock.
  *
- * <p>Deleting a room: the decision is made under the room lock (the last person leaving calls
- * {@code Room.close()}), the room lock is released, and only then {@link #remove} takes the global lock.
+ * <p>Deleting a room: the decision is made under the room lock ({@code Room.removeParticipant} sets the closed
+ * flag when the last person leaves), the room lock is released, and only then {@link #remove} takes the global lock.
  * No thread ever holds a room lock while waiting for the global one, so the order stays global then room.
  * Between the close and the removal the room is still in the table but {@link #withRoom} and {@link #join}
  * see the closed flag under the room lock and answer ROOM_NOT_FOUND, so nobody can be seated in a room that

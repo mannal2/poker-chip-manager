@@ -111,6 +111,11 @@ public final class Room {
         return participantId.equals(hostId);
     }
 
+    // 이 게임의 참가자 중 명단을 떠난 사람이 있는지 확인한다
+    boolean hasPlayerLeft() {
+        return playerIds.keySet().stream().anyMatch(id -> !hasParticipant(id));
+    }
+
     // 대기실에 새 참가자를 앉히고 첫 참가자를 방장으로 정한다
     /**
      * Seats a new participant (the first one becomes the host). The name must already follow the name rule;
@@ -270,9 +275,6 @@ public final class Room {
         participants.removeIf(p -> p.participantId().equals(participantId));
         ledgers.keySet().removeIf(k -> k.startsWith(participantId + "#"));
         pointDealerAt(dealer);
-        if (participantId.equals(hostId)) {
-            settlementDraft = null;
-        }
         if (participants.isEmpty()) {
             hostId = null;
             closed = true;

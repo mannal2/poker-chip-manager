@@ -118,6 +118,22 @@ class RoomControllerTest {
                 .andExpect(jsonPath("$.stateVersion").isNumber());
     }
 
+    // 프레임워크가 내는 404·405·415도 코드가 아니라 한국어 메시지로 응답하는지 확인한다.
+    @Test
+    void frameworkErrorsAnswerWithAKoreanMessage() throws Exception {
+        Client client = new Client();
+        String message = "요청을 처리할 수 없습니다.";
+
+        mvc.perform(get("/api/no-such-path").session(client.session)).andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("HTTP_ERROR")).andExpect(jsonPath("$.message").value(message));
+        mvc.perform(get("/api/rooms").session(client.session)).andExpect(status().isMethodNotAllowed())
+                .andExpect(jsonPath("$.code").value("HTTP_ERROR")).andExpect(jsonPath("$.message").value(message));
+        mvc.perform(post("/api/rooms").session(client.session).header("X-CSRF-TOKEN", client.csrf)
+                        .header("Origin", ORIGIN).contentType(MediaType.TEXT_PLAIN).content("hello"))
+                .andExpect(status().isUnsupportedMediaType())
+                .andExpect(jsonPath("$.code").value("HTTP_ERROR")).andExpect(jsonPath("$.message").value(message));
+    }
+
     @Test
     void anotherSessionCannotReadTheState() throws Exception {
         JsonNode created = new Client().create("Alice");

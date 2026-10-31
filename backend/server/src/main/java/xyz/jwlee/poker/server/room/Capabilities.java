@@ -19,7 +19,7 @@ public record Capabilities(boolean canAct, boolean canUndo, boolean canSettle, b
         String playerId = room.playerIds().get(participantId);
         boolean canAct = hand != null && hand.phase == Phase.BETTING && playerId != null
                 && playerId.equals(hand.actorId);
-        boolean canUndo = host && game != null && game.undo != null;
+        boolean canUndo = host && game != null && game.undo != null && !room.hasPlayerLeft();
         boolean canSettle = host && hand != null && hand.phase == Phase.SETTLEMENT;
         boolean canEditSetup = host && room.phase() == RoomPhase.WAITING;
         boolean canEditBlinds = host && room.phase() == RoomPhase.PLAYING;

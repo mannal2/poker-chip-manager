@@ -16,10 +16,12 @@ import tools.jackson.databind.json.JsonMapper;
 import xyz.jwlee.poker.server.auth.SessionIdentity;
 import xyz.jwlee.poker.server.auth.WebSocketHandshakeGuard;
 import xyz.jwlee.poker.server.registry.RoomRegistry;
+import xyz.jwlee.poker.server.room.Participant;
 import xyz.jwlee.poker.server.room.Room;
 import xyz.jwlee.poker.server.room.RoomEnv;
 import xyz.jwlee.poker.server.room.RoomException;
 import xyz.jwlee.poker.server.room.RoomLifecycle;
+import xyz.jwlee.poker.server.room.SeatBinding;
 import xyz.jwlee.poker.server.support.IdGenerator;
 import xyz.jwlee.poker.server.support.Protocol;
 
@@ -28,7 +30,8 @@ import xyz.jwlee.poker.server.support.Protocol;
  * A bad message closes the socket and changes nothing. Reading the session here never touches its idle timer, so
  * socket traffic does not extend a session. The seat check, the connection limit, {@code connected} and the
  * first snapshot share one {@code RoomRegistry.update}, which leaves no gap between subscribing and the snapshot
- * (M05).
+ * (M05). Every SUBSCRIBE and RESYNC checks the session's seat credential under the room lock, so a socket of a
+ * device that lost its seat gets nothing more.
  *
  * <p>Close race: a subscribe records the room first and then, under the room lock, attaches only if the connection
  * is not closing; a close sets closing first and then detaches under the room lock. Whichever comes second sees the
@@ -111,7 +114,7 @@ class RoomSocketHandler extends TextWebSocketHandler {
         switch (type) {
             case "SUBSCRIBE" -> subscribe(connection, parsed.get(), identity(session));
             case "PONG" -> pong(connection, parsed.get());
-            case "RESYNC" -> resync(connection);
+            case "RESYNC" -> resync(connection, identity(session));
             default -> connection.close(Connection.CLOSE_POLICY);
         }
     }
@@ -142,29 +145,29 @@ class RoomSocketHandler extends TextWebSocketHandler {
         } else if (!protocol.canConvertToInt() || protocol.asInt() != Protocol.VERSION) {
             connection.offerFinal(ConnectionHub.control("PROTOCOL_INCOMPATIBLE"));
         } else if (connection.roomId() != null) {
-            resync(connection);
+            resync(connection, identity);
         } else {
-            seatOf(identity, roomId).ifPresentOrElse(
-                    participantId -> attach(connection, roomId, participantId),
+            bindingOf(identity, roomId).ifPresentOrElse(
+                    binding -> attach(connection, roomId, binding),
                     () -> connection.offerFinal(ConnectionHub.control("ACCESS_REVOKED")));
         }
     }
 
-    // 세션이 이 방에서 맡은 자리를 찾고 세션이 이미 끝났으면 빈 값을 돌려준다
-    private static Optional<String> seatOf(SessionIdentity identity, String roomId) {
+    // 세션이 이 방에 들고 있는 자리 자격을 찾고 세션이 이미 끝났으면 빈 값을 돌려준다
+    private static Optional<SeatBinding> bindingOf(SessionIdentity identity, String roomId) {
         try {
-            return identity.participantIn(roomId);
+            return identity.bindingIn(roomId);
         } catch (IllegalStateException sessionEnded) {
             return Optional.empty();
         }
     }
 
     // 방 잠금 안에서 자리와 한도를 확인하고 연결을 붙여 첫 스냅샷을 예약한다
-    private void attach(Connection connection, String roomId, String participantId) {
+    private void attach(Connection connection, String roomId, SeatBinding binding) {
         connection.subscribeTo(roomId);
         Subscription result;
         try {
-            result = registry.update(roomId, room -> attachInRoom(room, connection, participantId));
+            result = registry.update(roomId, room -> attachInRoom(room, connection, binding));
         } catch (RoomException e) {
             requireGone(e);
             connection.offerFinal(ConnectionHub.control("ROOM_GONE"));
@@ -178,10 +181,12 @@ class RoomSocketHandler extends TextWebSocketHandler {
     }
 
     // 구독 판정을 내리고 받아들이면 연결을 붙인다. 호출자가 방 잠금을 잡고 있다
-    private Subscription attachInRoom(Room room, Connection connection, String participantId) {
-        if (!room.hasParticipant(participantId)) {
+    private Subscription attachInRoom(Room room, Connection connection, SeatBinding binding) {
+        Optional<Participant> seat = room.seatOf(binding);
+        if (seat.isEmpty()) {
             return Subscription.NO_SEAT;
         }
+        String participantId = seat.get().participantId();
         if (room.presence().connectionCount(participantId) >= MAX_CONNECTIONS_PER_PARTICIPANT) {
             return Subscription.FULL;
         }
@@ -210,21 +215,35 @@ class RoomSocketHandler extends TextWebSocketHandler {
         }
     }
 
-    // 버전을 올리지 않고 현재 상태를 다시 보내도록 예약한다
-    private void resync(Connection connection) {
+    // 자리 자격을 다시 확인한 뒤 버전을 올리지 않고 현재 상태를 다시 보내도록 예약한다
+    private void resync(Connection connection, SessionIdentity identity) {
         String roomId = connection.roomId();
         if (roomId == null) {
             return;
         }
+        Optional<SeatBinding> binding = bindingOf(identity, roomId);
+        boolean seated;
         try {
-            registry.update(roomId, room -> {
-                room.requestSnapshot(connection.connectionId());
-                return null;
-            });
+            seated = registry.update(roomId, room -> requestSnapshotInRoom(room, connection, binding));
         } catch (RoomException e) {
             requireGone(e);
             connection.offerFinal(ConnectionHub.control("ROOM_GONE"));
+            return;
         }
+        if (!seated) {
+            connection.offerFinal(ConnectionHub.control("ACCESS_REVOKED"));
+        }
+    }
+
+    // 연결이 붙은 자리를 세션이 아직 들고 있으면 스냅샷을 예약한다. 호출자가 방 잠금을 잡고 있다
+    private static boolean requestSnapshotInRoom(Room room, Connection connection, Optional<SeatBinding> binding) {
+        String connectionId = connection.connectionId();
+        String attachedTo = room.presence().subscribers().get(connectionId);
+        boolean seated = binding.flatMap(room::seatOf).filter(p -> p.participantId().equals(attachedTo)).isPresent();
+        if (seated) {
+            room.requestSnapshot(connectionId);
+        }
+        return seated;
     }
 
     // 닫힌 연결을 목록에서 빼고 구독한 방에서 뗀다. 구독 전이면 방을 건드리지 않는다

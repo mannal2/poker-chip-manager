@@ -51,7 +51,8 @@
       },
       "game" : null,
       "legal" : null,
-      "settlementDraft" : null
+      "settlementDraft" : null,
+      "recoveryRequests" : [ ]
     }
   }
 }

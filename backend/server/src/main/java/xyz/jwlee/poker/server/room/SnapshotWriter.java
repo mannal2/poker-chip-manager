@@ -83,6 +83,24 @@ public final class SnapshotWriter {
                 v.forEach(a::add);
             });
         }
+        writeRecoveryRequests(n.putArray("recoveryRequests"), room, viewer);
         return new RoomSnapshot(n, room.version());
+    }
+
+    // 방장에게만 자리가 남아 있는 대기 복구 신청을 쓴다. 세션과 자격 값은 넣지 않는다
+    private static void writeRecoveryRequests(ArrayNode out, Room room, Participant viewer) {
+        if (!room.isHost(viewer.participantId())) {
+            return;
+        }
+        for (RecoveryRequests.Request r : room.recoveryRequests().pending()) {
+            room.participant(r.participantId()).ifPresent(seat -> {
+                ObjectNode o = out.addObject();
+                o.put("recoveryRequestId", r.id());
+                o.put("participantId", seat.participantId());
+                o.put("name", seat.name());
+                o.put("requestedAt", r.requestedAt().toString());
+                o.put("expiresAt", r.expiresAt().toString());
+            });
+        }
     }
 }

@@ -19,6 +19,7 @@ import xyz.jwlee.poker.server.registry.RoomRegistry;
 import xyz.jwlee.poker.server.room.EventView;
 import xyz.jwlee.poker.server.room.Room;
 import xyz.jwlee.poker.server.room.RoomException;
+import xyz.jwlee.poker.server.room.SeatBinding;
 
 // 방의 현재 토너먼트 이벤트 기록을 페이지 단위로 제공하는 컨트롤러
 /**
@@ -54,10 +55,10 @@ class HistoryController {
         if (session == null) {
             throw new RoomException("NO_SESSION");
         }
-        String participantId = SessionIdentity.from(session).participantIn(roomId)
+        SeatBinding binding = SessionIdentity.from(session).bindingIn(roomId)
                 .orElseThrow(() -> new RoomException("ROOM_NOT_FOUND"));
         return registry.withRoom(roomId, room -> {
-            if (!room.hasParticipant(participantId)) {
+            if (room.seatOf(binding).isEmpty()) {
                 throw new RoomException("ROOM_NOT_FOUND");
             }
             if (room.game() == null || !room.game().tournamentId.equals(tournamentId)) {

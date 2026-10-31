@@ -9,8 +9,8 @@
     "controlGeneration" : 1,
     "expectedStateVersion" : 9,
     "type" : "UNDO",
-    "tournamentId" : "00000000-0000-4000-8000-000000000006",
-    "handId" : "00000000-0000-4000-8000-000000000006:hand:1",
+    "tournamentId" : "00000000-0000-4000-8000-000000000008",
+    "handId" : "00000000-0000-4000-8000-000000000008:hand:1",
     "payload" : { }
   },
   "response" : {

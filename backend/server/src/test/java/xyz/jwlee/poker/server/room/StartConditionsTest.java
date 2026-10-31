@@ -29,7 +29,7 @@ class StartConditionsTest {
     void tenPlayersAreStillWithinTheLimit() {
         CommandFixture f = new CommandFixture(2);
         for (int i = 0; i < 8; i++) {
-            f.room.addParticipant("p" + i, "P" + i, Instant.EPOCH);
+            f.room.addParticipant("p" + i, "P" + i, "cred", Instant.EPOCH);
             f.room.presence().attach("p" + i, "conn-p" + i, Instant.EPOCH);
         }
         f.send("a", "SET_DEALER", "{\"participantId\":\"p0\"}");
@@ -70,7 +70,7 @@ class StartConditionsTest {
     void aParticipantWhoNeverConnectedBlocksTheStart() {
         CommandFixture f = new CommandFixture(2);
         f.send("a", "SET_DEALER", "{\"participantId\":\"b\"}");
-        f.room.addParticipant("c", "Carol", Instant.EPOCH);
+        f.room.addParticipant("c", "Carol", "cred", Instant.EPOCH);
 
         assertThat(StartConditions.blockReason(f.room)).contains("NOT_CONNECTED");
     }

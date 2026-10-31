@@ -9,13 +9,15 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 import xyz.jwlee.poker.server.room.RequestLedger;
 import xyz.jwlee.poker.server.room.RoomException;
+import xyz.jwlee.poker.server.room.SeatBinding;
 
-// HttpSession의 화면 스트림별 요청 원장과 방별 참가자 정보를 읽고 쓰는 역할을 전담한다
+// HttpSession의 화면 스트림별 요청 원장, 방별 자리 자격, 복구 신청을 읽고 쓰는 역할을 전담한다
 /** The only reader and writer of the app's HttpSession attributes. */
 public final class SessionIdentity {
 
     private static final String STREAMS = "pcm.streams";
     private static final String PARTICIPANTS = "pcm.participants";
+    private static final String RECOVERIES = "pcm.recoveries";
 
     private final HttpSession session;
 
@@ -67,14 +69,15 @@ public final class SessionIdentity {
         return ledger;
     }
 
-    // 이 세션이 해당 방에서 맡은 참가자 id를 찾는다
-    public Optional<String> participantIn(String roomId) {
+    // 이 세션이 해당 방에서 들고 있는 자리 자격을 찾는다
+    /** What this session holds for the room; whether it still opens a seat is for {@code Room.seatOf} to say. */
+    public Optional<SeatBinding> bindingIn(String roomId) {
         return Optional.ofNullable(participants().get(roomId));
     }
 
-    // 이 세션의 방별 참가자 정보에 방 ID와 참가자 ID의 연결을 저장한다
-    public void bind(String roomId, String participantId) {
-        participants().put(roomId, participantId);
+    // 이 세션의 방별 자리 자격을 저장한다
+    public void bind(String roomId, SeatBinding binding) {
+        participants().put(roomId, binding);
     }
 
     // 세션과 방의 참가자 연결을 해제한다
@@ -82,9 +85,29 @@ public final class SessionIdentity {
         participants().remove(roomId);
     }
 
-    // 방별 참가자 id 맵을 돌려준다
-    private Map<String, String> participants() {
+    // 이 세션이 만든 복구 신청과 그 방을 기억한다
+    public void rememberRecovery(String recoveryRequestId, String roomId) {
+        recoveries().put(recoveryRequestId, roomId);
+    }
+
+    // 이 세션이 만든 복구 신청의 방을 찾는다
+    public Optional<String> recoveryRoom(String recoveryRequestId) {
+        return Optional.ofNullable(recoveries().get(recoveryRequestId));
+    }
+
+    // 사라진 복구 신청을 잊는다
+    public void forgetRecovery(String recoveryRequestId) {
+        recoveries().remove(recoveryRequestId);
+    }
+
+    // 방별 자리 자격 맵을 돌려준다
+    private Map<String, SeatBinding> participants() {
         return slot(PARTICIPANTS, ConcurrentHashMap::new);
+    }
+
+    // 복구 신청 id에서 방 id로 가는 맵을 돌려준다
+    private Map<String, String> recoveries() {
+        return slot(RECOVERIES, ConcurrentHashMap::new);
     }
 
     // 세션 속성을 읽고 없으면 만들어 저장한다

@@ -15,7 +15,7 @@
       "roomPhase" : "PLAYING",
       "stateVersion" : 7,
       "draftVersion" : 0,
-      "tournamentId" : "00000000-0000-4000-8000-000000000006",
+      "tournamentId" : "00000000-0000-4000-8000-000000000008",
       "settings" : {
         "initial" : 1000,
         "sb" : 5,
@@ -32,7 +32,7 @@
         "isHost" : true,
         "connected" : true
       }, {
-        "participantId" : "00000000-0000-4000-8000-000000000005",
+        "participantId" : "00000000-0000-4000-8000-000000000006",
         "name" : "Bob",
         "seat" : 1,
         "playerId" : "p1",
@@ -52,7 +52,7 @@
         }
       },
       "game" : {
-        "tournamentId" : "00000000-0000-4000-8000-000000000006",
+        "tournamentId" : "00000000-0000-4000-8000-000000000008",
         "version" : 2,
         "status" : "playing",
         "settings" : {
@@ -86,7 +86,7 @@
           "reopenAt" : 0
         } ],
         "hand" : {
-          "id" : "00000000-0000-4000-8000-000000000006:hand:1",
+          "id" : "00000000-0000-4000-8000-000000000008:hand:1",
           "number" : 1,
           "street" : 0,
           "phase" : "betting",
@@ -104,7 +104,7 @@
         "pot" : 1010,
         "pendingBlinds" : null,
         "undo" : {
-          "tournamentId" : "00000000-0000-4000-8000-000000000006",
+          "tournamentId" : "00000000-0000-4000-8000-000000000008",
           "version" : 1,
           "status" : "playing",
           "settings" : {
@@ -138,7 +138,7 @@
             "reopenAt" : 0
           } ],
           "hand" : {
-            "id" : "00000000-0000-4000-8000-000000000006:hand:1",
+            "id" : "00000000-0000-4000-8000-000000000008:hand:1",
             "number" : 1,
             "street" : 0,
             "phase" : "betting",
@@ -155,11 +155,12 @@
           },
           "pot" : 15,
           "pendingBlinds" : null,
-          "eventIds" : [ "00000000-0000-4000-8000-000000000007:0" ]
+          "eventIds" : [ "00000000-0000-4000-8000-000000000009:0" ]
         }
       },
       "legal" : null,
-      "settlementDraft" : null
+      "settlementDraft" : null,
+      "recoveryRequests" : [ ]
     }
   }
 }

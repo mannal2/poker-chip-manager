@@ -16,6 +16,7 @@ public final class RoomLifecycle {
     static final Duration FIRST_CONNECTION_WAIT = Duration.ofSeconds(30);
     static final Duration HOST_TAKEOVER_DELAY = Duration.ofSeconds(60);
     static final Duration ABANDONED_ROOM_LIMIT = Duration.ofMinutes(30);
+    static final Duration RECOVERY_REQUEST_LIFETIME = Duration.ofMinutes(5);
 
     private RoomLifecycle() {}
 
@@ -43,6 +44,9 @@ public final class RoomLifecycle {
     // 현재 단계의 시간 규칙을 한 번 판정한다
     public static void sweep(Room room, RoomEnv env) {
         Instant now = env.now();
+        if (room.recoveryRequests().sweep(now)) {
+            room.bumpVersion();
+        }
         switch (room.phase()) {
             case WAITING -> expireAbsences(room, now);
             case PLAYING, RESULT -> {

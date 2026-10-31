@@ -9,7 +9,7 @@
     "roomPhase" : "PLAYING",
     "stateVersion" : 8,
     "draftVersion" : 1,
-    "tournamentId" : "00000000-0000-4000-8000-000000000006",
+    "tournamentId" : "00000000-0000-4000-8000-000000000008",
     "settings" : {
       "initial" : 1000,
       "sb" : 5,
@@ -26,7 +26,7 @@
       "isHost" : true,
       "connected" : true
     }, {
-      "participantId" : "00000000-0000-4000-8000-000000000005",
+      "participantId" : "00000000-0000-4000-8000-000000000006",
       "name" : "Bob",
       "seat" : 1,
       "playerId" : "p1",
@@ -46,7 +46,7 @@
       }
     },
     "game" : {
-      "tournamentId" : "00000000-0000-4000-8000-000000000006",
+      "tournamentId" : "00000000-0000-4000-8000-000000000008",
       "version" : 3,
       "status" : "playing",
       "settings" : {
@@ -80,7 +80,7 @@
         "reopenAt" : 1990
       } ],
       "hand" : {
-        "id" : "00000000-0000-4000-8000-000000000006:hand:1",
+        "id" : "00000000-0000-4000-8000-000000000008:hand:1",
         "number" : 1,
         "street" : 0,
         "phase" : "settlement",
@@ -98,7 +98,7 @@
       "pot" : 2000,
       "pendingBlinds" : null,
       "undo" : {
-        "tournamentId" : "00000000-0000-4000-8000-000000000006",
+        "tournamentId" : "00000000-0000-4000-8000-000000000008",
         "version" : 2,
         "status" : "playing",
         "settings" : {
@@ -132,7 +132,7 @@
           "reopenAt" : 0
         } ],
         "hand" : {
-          "id" : "00000000-0000-4000-8000-000000000006:hand:1",
+          "id" : "00000000-0000-4000-8000-000000000008:hand:1",
           "number" : 1,
           "street" : 0,
           "phase" : "betting",
@@ -149,7 +149,7 @@
         },
         "pot" : 1010,
         "pendingBlinds" : null,
-        "eventIds" : [ "00000000-0000-4000-8000-000000000008:0", "00000000-0000-4000-8000-000000000008:1" ]
+        "eventIds" : [ "00000000-0000-4000-8000-000000000010:0", "00000000-0000-4000-8000-000000000010:1" ]
       }
     },
     "legal" : null,
@@ -159,6 +159,7 @@
       "winners" : {
         "pot0" : [ "p0" ]
       }
-    }
+    },
+    "recoveryRequests" : [ ]
   }
 }

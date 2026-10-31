@@ -22,8 +22,10 @@ import xyz.jwlee.poker.server.room.Fingerprint;
 import xyz.jwlee.poker.server.room.Participant;
 import xyz.jwlee.poker.server.room.RequestLedger;
 import xyz.jwlee.poker.server.room.RequestOutcome;
+import xyz.jwlee.poker.server.room.Room;
 import xyz.jwlee.poker.server.room.RoomException;
 import xyz.jwlee.poker.server.room.RoomSnapshot;
+import xyz.jwlee.poker.server.room.SeatBinding;
 import xyz.jwlee.poker.server.room.SnapshotWriter;
 import xyz.jwlee.poker.server.support.Protocol;
 
@@ -62,7 +64,7 @@ class RoomController {
         String name = f.string("name");
         return bind(request, f, "join\n" + code + "\n" + name, 200, identity -> {
             String canonical = RoomCodes.normalize(code).orElseThrow(() -> new RoomException("ROOM_NOT_FOUND"));
-            return registry.join(canonical, name, identity::participantIn, identity::bind, RoomController::normalized);
+            return registry.join(canonical, name, identity::bindingIn, identity::bind, RoomController::normalized);
         });
     }
 
@@ -73,11 +75,11 @@ class RoomController {
         if (session == null) {
             throw new RoomException("NO_SESSION");
         }
-        // Not bound, or bound but no longer on the roster: both look like a missing room.
-        String participantId = SessionIdentity.from(session).participantIn(roomId)
+        // Not bound, or bound to a seat this session no longer holds: both look like a missing room.
+        SeatBinding binding = SessionIdentity.from(session).bindingIn(roomId)
                 .orElseThrow(() -> new RoomException("ROOM_NOT_FOUND"));
         RoomSnapshot snapshot = registry.withRoom(roomId,
-                room -> SnapshotWriter.snapshot(room, member(room.participant(participantId))));
+                room -> SnapshotWriter.snapshot(room, member(room.seatOf(binding))));
         return ResponseEntity.ok().header(HttpHeaders.CACHE_CONTROL, "no-store").body(snapshot.json());
     }
 
@@ -100,10 +102,7 @@ class RoomController {
                 if (outcome.outcome() == RequestOutcome.Outcome.REJECTED) {
                     throw new RoomException(outcome.code());
                 }
-                String roomId = outcome.roomId();
-                String participantId = identity.participantIn(roomId)
-                        .orElseThrow(() -> new RoomException("ROOM_NOT_FOUND"));
-                return respond(okStatus, roomId, participantId);
+                return respond(okStatus, outcome.roomId(), identity);
             }
             RoomRegistry.Entry entry;
             try {
@@ -116,24 +115,27 @@ class RoomController {
             // Record first: the work is done, so a failure while building the body must not lose the outcome.
             ledger.record(new RequestOutcome(f.requestId, f.sequence, RequestOutcome.Outcome.APPLIED, "OK",
                     entry.stateVersion(), entry.roomId()), fingerprint);
-            return respond(okStatus, entry.roomId(), entry.participantId());
+            return respond(okStatus, entry.roomId(), identity);
         }
     }
 
-    // 방과 참가자 정보, 상태 스냅샷을 응답 본문으로 만든다
-    private ResponseEntity<ObjectNode> respond(int status, String roomId, String participantId) {
-        ObjectNode body = registry.withRoom(roomId, room -> {
-            Participant me = member(room.participant(participantId));
-            RoomSnapshot snapshot = SnapshotWriter.snapshot(room, me);
-            ObjectNode o = JsonNodeFactory.instance.objectNode();
-            o.put("roomId", room.roomId());
-            o.put("code", room.code());
-            o.put("participantId", me.participantId());
-            o.put("controlGeneration", me.controlGeneration());
-            o.set("state", snapshot.json());
-            return o;
-        });
+    // 세션이 지금 들고 있는 자리로 응답을 만든다
+    private ResponseEntity<ObjectNode> respond(int status, String roomId, SessionIdentity identity) {
+        SeatBinding binding = identity.bindingIn(roomId).orElseThrow(() -> new RoomException("ROOM_NOT_FOUND"));
+        ObjectNode body = registry.withRoom(roomId, room -> entry(room, member(room.seatOf(binding))));
         return ResponseEntity.status(status).header(HttpHeaders.CACHE_CONTROL, "no-store").body(body);
+    }
+
+    // 방과 참가자 정보, 상태 스냅샷을 응답 본문으로 만든다. 호출자가 방 잠금을 잡고 있다
+    static ObjectNode entry(Room room, Participant me) {
+        RoomSnapshot snapshot = SnapshotWriter.snapshot(room, me);
+        ObjectNode o = JsonNodeFactory.instance.objectNode();
+        o.put("roomId", room.roomId());
+        o.put("code", room.code());
+        o.put("participantId", me.participantId());
+        o.put("controlGeneration", me.controlGeneration());
+        o.set("state", snapshot.json());
+        return o;
     }
 
     // 참가자가 없으면 방을 찾을 수 없다는 예외를 던진다
@@ -148,7 +150,7 @@ class RoomController {
 
     // 생성/입장 요청의 공통 필드(스트림, 요청 id, 순번)를 검증해 담는다
     /** The envelope every create/join request carries, validated field by field (type and presence). */
-    private static final class Fields {
+    static final class Fields {
 
         private final JsonNode node;
         final String streamId;

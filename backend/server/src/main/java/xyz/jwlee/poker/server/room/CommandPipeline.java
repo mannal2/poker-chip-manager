@@ -14,7 +14,8 @@ import xyz.jwlee.poker.server.support.IdGenerator;
  *   <li>format: the envelope shape is the API layer's job; {@link #validateType} here refuses a type that
  *       does not exist (UNKNOWN_TYPE, wire code INVALID_INPUT). Nothing is recorded.</li>
  *   <li>room lookup: done by the caller ({@code RoomRegistry.update}; a closed room is not found).</li>
- *   <li>session participant: the caller is on the roster, else ROOM_NOT_FOUND.</li>
+ *   <li>session participant: the caller has matched the session to this seat with {@link Room#seatOf} under
+ *       the same lock; here the seat must be on the roster, else ROOM_NOT_FOUND.</li>
  *   <li>control generation: the request's generation picks the ledger. Any generation other than the
  *       participant's current one (old or never issued) gets only the exact retry of a request that
  *       generation's ledger still holds; everything else is CONTROL_LOST. No ledger is created for it and
@@ -85,6 +86,8 @@ public final class CommandPipeline {
             case "FORFEIT_DISCONNECTED" -> plain(true, GameCommands::forfeitDisconnected);
             case "ABORT" -> plain(true, GameCommands::abort);
             case "RE_READY" -> plain(true, ResultCommands::reReady);
+            case "RECOVERY_APPROVE" -> plain(true, RecoveryCommands::approve);
+            case "RECOVERY_REJECT" -> plain(true, RecoveryCommands::reject);
             default -> null;
         };
     }

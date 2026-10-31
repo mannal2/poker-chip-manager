@@ -13,7 +13,7 @@
   "response" : {
     "roomId" : "00000000-0000-4000-8000-000000000003",
     "code" : "ABC234",
-    "participantId" : "00000000-0000-4000-8000-000000000005",
+    "participantId" : "00000000-0000-4000-8000-000000000006",
     "controlGeneration" : 1,
     "state" : {
       "roomId" : "00000000-0000-4000-8000-000000000003",
@@ -38,7 +38,7 @@
         "isHost" : true,
         "connected" : false
       }, {
-        "participantId" : "00000000-0000-4000-8000-000000000005",
+        "participantId" : "00000000-0000-4000-8000-000000000006",
         "name" : "Bob",
         "seat" : 1,
         "playerId" : null,
@@ -46,7 +46,7 @@
         "connected" : false
       } ],
       "you" : {
-        "participantId" : "00000000-0000-4000-8000-000000000005",
+        "participantId" : "00000000-0000-4000-8000-000000000006",
         "controlGeneration" : 1,
         "canTakeHost" : false,
         "capabilities" : {
@@ -59,7 +59,8 @@
       },
       "game" : null,
       "legal" : null,
-      "settlementDraft" : null
+      "settlementDraft" : null,
+      "recoveryRequests" : [ ]
     }
   }
 }

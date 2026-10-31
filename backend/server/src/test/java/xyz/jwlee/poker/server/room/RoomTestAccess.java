@@ -9,4 +9,9 @@ public final class RoomTestAccess {
     public static void close(Room room) {
         room.close();
     }
+
+    // 연결은 그대로 두고 자격만 바꾼다. 호출자는 방 잠금 안에 있어야 한다
+    public static void replaceCredential(Room room, String participantId, String credential) {
+        room.replaceCredential(participantId, credential);
+    }
 }

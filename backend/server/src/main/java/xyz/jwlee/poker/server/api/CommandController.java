@@ -25,6 +25,7 @@ import xyz.jwlee.poker.server.room.RequestLedger;
 import xyz.jwlee.poker.server.room.RequestOutcome;
 import xyz.jwlee.poker.server.room.Room;
 import xyz.jwlee.poker.server.room.RoomException;
+import xyz.jwlee.poker.server.room.SeatBinding;
 import xyz.jwlee.poker.server.room.SnapshotWriter;
 import xyz.jwlee.poker.server.support.IdGenerator;
 import xyz.jwlee.poker.server.support.Protocol;
@@ -54,10 +55,10 @@ class CommandController {
             @PathVariable String roomId, @RequestBody(required = false) JsonNode body, HttpServletRequest request) {
         CommandRequest command = parse(body);
         CommandPipeline.validateType(command);
-        String participantId = participantIn(roomId, request);
+        SeatBinding binding = bindingIn(roomId, request);
         return registry.update(roomId, room -> {
-            CommandResult result = pipeline.execute(room, participantId, command);
-            return respond(result.outcome(), room, participantId);
+            CommandResult result = pipeline.execute(room, seat(room, binding).participantId(), command);
+            return respond(result.outcome(), room, binding);
         });
     }
 
@@ -65,12 +66,11 @@ class CommandController {
     @GetMapping("/api/rooms/{roomId}/requests/{requestId}")
     ResponseEntity<ObjectNode> request(
             @PathVariable String roomId, @PathVariable String requestId, HttpServletRequest request) {
-        String participantId = participantIn(roomId, request);
+        SeatBinding binding = bindingIn(roomId, request);
         return registry.withRoom(roomId, room -> {
-            Participant me = room.participant(participantId).orElseThrow(() -> new RoomException("ROOM_NOT_FOUND"));
-            RequestOutcome outcome = room.findRequest(me, requestId)
+            RequestOutcome outcome = room.findRequest(seat(room, binding), requestId)
                     .orElseThrow(() -> new RoomException("REQUEST_NOT_FOUND"));
-            return respond(outcome, room, participantId);
+            return respond(outcome, room, binding);
         });
     }
 
@@ -102,19 +102,15 @@ class CommandController {
                 if (first.outcome() == RequestOutcome.Outcome.REJECTED) {
                     throw new RoomException(first.code());
                 }
-                // Kicked and rejoined: the generation was issued to a participant this session no longer is.
-                if (!first.issuedTo().equals(participantIn(roomId, request))) {
-                    throw new RoomException("ROOM_NOT_FOUND");
-                }
-                return registry.withRoom(roomId, room -> respondToControl(first, room));
+                return respondToControl(first, roomId, request);
             }
             RequestOutcome outcome;
             try {
-                String participantId = participantIn(roomId, request);
+                SeatBinding binding = bindingIn(roomId, request);
                 outcome = registry.update(roomId, room -> {
+                    String participantId = seat(room, binding).participantId();
                     long issued = CommandPipeline.takeControl(room, participantId, expected);
-                    return new RequestOutcome(requestId, sequence, RequestOutcome.Outcome.APPLIED, "OK",
-                            room.version(), null, issued, participantId);
+                    return RequestOutcome.takeover(requestId, sequence, room.version(), issued, participantId);
                 });
             } catch (RoomException e) {
                 ledger.record(new RequestOutcome(
@@ -123,45 +119,61 @@ class CommandController {
             }
             // Record first: the work is done, so a failure while building the body must not lose the outcome.
             ledger.record(outcome, fingerprint);
-            return registry.withRoom(roomId, room -> respondToControl(outcome, room));
+            return respondToControl(outcome, roomId, request);
         }
     }
 
     // 조작권 인수 결과와 최신 방 상태를 응답 본문으로 만든다
-    /** The generation is the one this request was issued; {@code latestState} shows the current one. */
-    private static ResponseEntity<ObjectNode> respondToControl(RequestOutcome outcome, Room room) {
-        Participant me = room.participant(outcome.issuedTo()).orElseThrow(() -> new RoomException("ROOM_NOT_FOUND"));
-        ObjectNode o = JsonNodeFactory.instance.objectNode();
-        o.put("requestId", outcome.requestId());
-        o.put("sequence", outcome.sequence());
-        o.put("outcome", outcome.outcome().name());
-        o.put("code", outcome.code());
-        o.put("controlGeneration", outcome.issuedGeneration());
-        o.set("latestState", SnapshotWriter.snapshot(room, me).json());
-        return ResponseEntity.ok().header(HttpHeaders.CACHE_CONTROL, "no-store").body(o);
+    /**
+     * The generation is the one this request was issued; {@code latestState} shows the current one. A first answer
+     * and a retry both pass the seat check: the seat may have gone to another device, or this session may have been
+     * kicked and rejoined as a participant the generation was not issued to.
+     */
+    private ResponseEntity<ObjectNode> respondToControl(
+            RequestOutcome outcome, String roomId, HttpServletRequest request) {
+        SeatBinding binding = bindingIn(roomId, request);
+        return registry.withRoom(roomId, room -> {
+            Participant me = seat(room, binding);
+            if (!outcome.issuedTo().equals(me.participantId())) {
+                throw new RoomException("ROOM_NOT_FOUND");
+            }
+            ObjectNode o = JsonNodeFactory.instance.objectNode();
+            o.put("requestId", outcome.requestId());
+            o.put("sequence", outcome.sequence());
+            o.put("outcome", outcome.outcome().name());
+            o.put("code", outcome.code());
+            o.put("controlGeneration", outcome.issuedGeneration());
+            o.set("latestState", SnapshotWriter.snapshot(room, me).json());
+            return ResponseEntity.ok().header(HttpHeaders.CACHE_CONTROL, "no-store").body(o);
+        });
     }
 
-    // 세션에 묶인 이 방의 참가자 id를 찾는다
-    private static String participantIn(String roomId, HttpServletRequest request) {
+    // 방 잠금 안에서 세션의 자격이 여는 자리를 찾는다
+    private static Participant seat(Room room, SeatBinding binding) {
+        return room.seatOf(binding).orElseThrow(() -> new RoomException("ROOM_NOT_FOUND"));
+    }
+
+    // 세션이 이 방에 들고 있는 자리 자격을 찾는다
+    private static SeatBinding bindingIn(String roomId, HttpServletRequest request) {
         HttpSession session = request.getSession(false);
         if (session == null) {
             throw new RoomException("NO_SESSION");
         }
-        // Not bound, or bound but no longer on the roster (checked again under the lock): a missing room.
-        return SessionIdentity.from(session).participantIn(roomId)
+        // Not bound: a missing room. Whether the binding still opens a seat is checked under the room lock.
+        return SessionIdentity.from(session).bindingIn(roomId)
                 .orElseThrow(() -> new RoomException("ROOM_NOT_FOUND"));
     }
 
     // 명령 처리 결과와 최신 방 상태를 응답 본문으로 만든다
-    private static ResponseEntity<ObjectNode> respond(RequestOutcome outcome, Room room, String participantId) {
+    private static ResponseEntity<ObjectNode> respond(RequestOutcome outcome, Room room, SeatBinding binding) {
         ObjectNode o = JsonNodeFactory.instance.objectNode();
         o.put("requestId", outcome.requestId());
         o.put("sequence", outcome.sequence());
         o.put("outcome", outcome.outcome().name());
         o.put("code", outcome.code());
         o.put("resultStateVersion", outcome.resultStateVersion());
-        // Whoever just left or was removed has no view of the room any more.
-        Optional<Participant> me = room.participant(participantId);
+        // Whoever just left, was removed or approved their own seat away has no view of the room any more.
+        Optional<Participant> me = room.seatOf(binding);
         if (me.isPresent()) {
             o.set("latestState", SnapshotWriter.snapshot(room, me.get()).json());
         } else {

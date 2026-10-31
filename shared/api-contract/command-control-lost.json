@@ -4,13 +4,13 @@
   "status" : 409,
   "request" : {
     "protocolVersion" : 1,
-    "requestId" : "command-05-2",
+    "requestId" : "command-06-2",
     "sequence" : 2,
     "controlGeneration" : 1,
     "expectedStateVersion" : 9,
     "type" : "CHECK",
-    "tournamentId" : "00000000-0000-4000-8000-000000000006",
-    "handId" : "00000000-0000-4000-8000-000000000006:hand:1"
+    "tournamentId" : "00000000-0000-4000-8000-000000000008",
+    "handId" : "00000000-0000-4000-8000-000000000008:hand:1"
   },
   "response" : {
     "code" : "CONTROL_LOST",

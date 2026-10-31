@@ -22,6 +22,7 @@ import tools.jackson.databind.ObjectMapper;
 import xyz.jwlee.poker.server.auth.SessionIdentity;
 import xyz.jwlee.poker.server.registry.RoomRegistry;
 import xyz.jwlee.poker.server.room.RoomPhase;
+import xyz.jwlee.poker.server.room.SeatBinding;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -152,7 +153,7 @@ class RoomControllerTest {
         Client host = new Client();
         JsonNode created = host.create("Alice");
         Client ghost = new Client();
-        SessionIdentity.from(ghost.session).bind(created.get("roomId").asString(), "gone");
+        SessionIdentity.from(ghost.session).bind(created.get("roomId").asString(), new SeatBinding("gone", "x"));
 
         ghost.state(created.get("roomId").asString()).andExpect(status().isNotFound());
     }

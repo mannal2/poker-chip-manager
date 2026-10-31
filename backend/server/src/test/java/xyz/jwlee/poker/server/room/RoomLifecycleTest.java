@@ -91,7 +91,7 @@ class RoomLifecycleTest {
     @Test
     void aFirstConnectionHasThirtySeconds() {
         Room room = new CommandFixture(1, clock).room;
-        room.addParticipant("late", "Late", clock.instant());
+        room.addParticipant("late", "Late", "cred", clock.instant());
 
         pass(29_900);
         RoomLifecycle.sweep(room, env);
@@ -156,7 +156,7 @@ class RoomLifecycleTest {
         drop(room, "b");
         pass(5_000);
         RoomLifecycle.sweep(room, env);
-        room.addParticipant("b2", "Bob", clock.instant());
+        room.addParticipant("b2", "Bob", "cred", clock.instant());
         RoomLifecycle.connected(room, "b2", "conn-b2", env);
         drop(room, "a");
         pass(5_000);

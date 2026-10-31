@@ -29,6 +29,7 @@ import xyz.jwlee.poker.server.room.MutableClock;
 import xyz.jwlee.poker.server.room.Publication;
 import xyz.jwlee.poker.server.room.Room;
 import xyz.jwlee.poker.server.room.RoomException;
+import xyz.jwlee.poker.server.room.SeatBinding;
 
 class RoomRegistryTest {
 
@@ -211,10 +212,11 @@ class RoomRegistryTest {
     // 이미 앉아 있는 사람의 재입장은 알림을 만들지 않는지 확인한다
     @Test
     void aJoinThatChangesNothingPublishesNothing() {
-        var host = registry.create("Host");
+        SeatBinding[] held = new SeatBinding[1];
+        var host = registry.create("Host", (roomId, binding) -> held[0] = binding);
         subscribe(host, "conn");
 
-        registry.join(host.code(), "Ignored", roomId -> Optional.of(host.participantId()), (r, p) -> { }, n -> n);
+        registry.join(host.code(), "Ignored", roomId -> Optional.of(held[0]), (r, b) -> { }, n -> n);
 
         assertThat(published).isEmpty();
     }

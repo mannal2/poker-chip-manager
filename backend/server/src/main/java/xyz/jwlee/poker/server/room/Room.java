@@ -45,6 +45,7 @@ public final class Room {
     private int nextJoinOrder;
     private boolean closed;
     private final Presence presence = new Presence();
+    private final RecoveryRequests recoveryRequests = new RecoveryRequests();
     private boolean hostTakeoverOpen;
     private final List<String> pendingRevocations = new ArrayList<>();
     private final Set<String> snapshotRequests = new HashSet<>();
@@ -63,6 +64,7 @@ public final class Room {
     public Instant createdAt() { return createdAt; }
     public ReentrantLock lock() { return lock; }
     public Presence presence() { return presence; }
+    public RecoveryRequests recoveryRequests() { return recoveryRequests; }
 
     public RoomPhase phase() { return phase; }
     public void setPhase(RoomPhase phase) { this.phase = phase; bumpVersion(); }
@@ -169,6 +171,13 @@ public final class Room {
         return participants.stream().filter(p -> p.participantId().equals(participantId)).findFirst();
     }
 
+    // 세션의 자격이 아직 이 자리를 여는지 명단과 credential을 함께 확인한다
+    /** The one check of a session's right to a seat: on the roster and holding the seat's current credential. */
+    public Optional<Participant> seatOf(SeatBinding binding) {
+        return participant(binding.participantId()).filter(p -> p.credential().equals(binding.credential()));
+    }
+
+    // 명단에 있는지만 본다. 세션의 자리 확인에는 seatOf를 쓴다
     public boolean hasParticipant(String participantId) {
         return participant(participantId).isPresent();
     }
@@ -187,7 +196,7 @@ public final class Room {
      * Seats a new participant (the first one becomes the host). The name must already follow the name rule;
      * duplicates are compared case-insensitively.
      */
-    public Participant addParticipant(String participantId, String name, Instant now) {
+    public Participant addParticipant(String participantId, String name, String credential, Instant now) {
         if (phase != RoomPhase.WAITING) {
             throw new RoomException("NOT_WAITING");
         }
@@ -198,7 +207,7 @@ public final class Room {
         if (participants.stream().anyMatch(p -> p.name().toLowerCase(Locale.ROOT).equals(lowered))) {
             throw new RoomException("DUPLICATE_NAME");
         }
-        Participant p = new Participant(participantId, name, nextJoinOrder++, INITIAL_CONTROL_GENERATION);
+        Participant p = new Participant(participantId, name, nextJoinOrder++, INITIAL_CONTROL_GENERATION, credential);
         participants.add(p);
         presence.joined(participantId, now);
         if (hostId == null) {
@@ -311,7 +320,8 @@ public final class Room {
         for (int i = 0; i < participants.size(); i++) {
             Participant p = participants.get(i);
             if (p.participantId().equals(participantId)) {
-                participants.set(i, new Participant(p.participantId(), name, p.joinOrder(), p.controlGeneration()));
+                participants.set(i, new Participant(
+                        p.participantId(), name, p.joinOrder(), p.controlGeneration(), p.credential()));
             }
         }
     }
@@ -327,12 +337,36 @@ public final class Room {
             Participant p = participants.get(i);
             if (p.participantId().equals(participantId)) {
                 long next = p.controlGeneration() + 1;
-                participants.set(i, new Participant(p.participantId(), p.name(), p.joinOrder(), next));
+                participants.set(i, new Participant(p.participantId(), p.name(), p.joinOrder(), next, p.credential()));
                 ledgers.remove(participantId + "#" + (next - 2));
                 return next;
             }
         }
         throw new RoomException("ROOM_NOT_FOUND");
+    }
+
+    // 자리의 자격 값을 바꾼다
+    void replaceCredential(String participantId, String credential) {
+        for (int i = 0; i < participants.size(); i++) {
+            Participant p = participants.get(i);
+            if (p.participantId().equals(participantId)) {
+                participants.set(i, new Participant(
+                        p.participantId(), p.name(), p.joinOrder(), p.controlGeneration(), credential));
+            }
+        }
+    }
+
+    // 자리를 새 기기로 넘긴다. 칩과 방장은 그대로 두고 옛 연결을 끊어야 할 목록에 넣는다
+    /**
+     * Gives the seat to a new device: a new credential and control generation, and the old connections wait in
+     * {@link #drainPendingRevocations}. Presence starts over, so the seat is absent since now and a waiting room
+     * gives the new device the first-connection wait. The version is left to the command pipeline.
+     */
+    void recoverSeat(String participantId, String credential, Instant now) {
+        replaceCredential(participantId, credential);
+        advanceControl(participantId);
+        pendingRevocations.addAll(presence.forget(participantId));
+        presence.joined(participantId, now);
     }
 
     // 참가자를 내보내고 방장 승계와 방 닫기를 처리한다

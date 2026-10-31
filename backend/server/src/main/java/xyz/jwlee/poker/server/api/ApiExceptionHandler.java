@@ -25,6 +25,7 @@ class ApiExceptionHandler {
             Map.entry("FORBIDDEN", 403),
             Map.entry("ROOM_NOT_FOUND", 404),
             Map.entry("REQUEST_NOT_FOUND", 404),
+            Map.entry("RECOVERY_TARGET_NOT_FOUND", 404),
             Map.entry("UNKNOWN_TYPE", 422),
             Map.entry("STALE_STATE", 409),
             Map.entry("CONTROL_LOST", 409),
@@ -39,6 +40,9 @@ class ApiExceptionHandler {
             Map.entry("DUPLICATE_NAME", 422),
             Map.entry("NOT_WAITING", 422),
             Map.entry("ROOM_FULL", 422),
+            Map.entry("RECOVERY_LIMIT", 422),
+            Map.entry("ALREADY_PARTICIPANT", 422),
+            Map.entry("RECOVERY_NOT_PENDING", 422),
             Map.entry("ROOM_LIMIT", 503));
 
     // 방 도메인 예외를 코드에 맞는 HTTP 상태로 응답한다
@@ -50,10 +54,11 @@ class ApiExceptionHandler {
     }
 
     // 기록된 거절 코드에 대응하는 HTTP 상태를 돌려준다
-    /** Status of a rejection that was recorded in a ledger: 403 permission or not your turn, 409 stale or lost, else 422. */
+    /** Status of a rejection that was recorded in a ledger: 403 permission or not your turn, 404 no such seat, 409 stale or lost, else 422. */
     static int rejectionStatus(String code) {
         return switch (code) {
             case "FORBIDDEN", "NOT_YOUR_TURN" -> 403;
+            case "RECOVERY_TARGET_NOT_FOUND" -> 404;
             case "STALE_STATE", "CONTROL_LOST", "TOURNAMENT_CHANGED", "HOST_TAKEOVER_CLOSED" -> 409;
             default -> 422;
         };

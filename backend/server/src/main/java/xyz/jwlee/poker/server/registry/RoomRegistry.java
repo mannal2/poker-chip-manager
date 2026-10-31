@@ -13,6 +13,7 @@ import java.util.function.UnaryOperator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
+import xyz.jwlee.poker.server.room.Participant;
 import xyz.jwlee.poker.server.room.Publication;
 import xyz.jwlee.poker.server.room.PublicationBuilder;
 import xyz.jwlee.poker.server.room.Room;
@@ -20,6 +21,7 @@ import xyz.jwlee.poker.server.room.RoomEnv;
 import xyz.jwlee.poker.server.room.RoomException;
 import xyz.jwlee.poker.server.room.RoomLifecycle;
 import xyz.jwlee.poker.server.room.RoomPublisher;
+import xyz.jwlee.poker.server.room.SeatBinding;
 import xyz.jwlee.poker.server.support.IdGenerator;
 
 // 활성 방을 보관하고 전역 잠금과 방 잠금으로 접근을 조율하는 저장소
@@ -90,21 +92,22 @@ public class RoomRegistry {
     // 새 방을 만들고 방장 착석 직후 잠금 안에서 세션 연결을 실행한다
     /**
      * Like {@link #create(String)}; {@code bind} runs under the locks, right after the host is seated, so a
-     * caller can attach the new participant to its session atomically (the session monitor is a leaf lock).
+     * caller can attach the new seat's binding to its session atomically (the session monitor is a leaf lock).
      */
-    public Entry create(String hostName, BiConsumer<String, String> bind) {
+    public Entry create(String hostName, BiConsumer<String, SeatBinding> bind) {
         Created created = withGlobal(() -> {
             if (rooms.size() >= MAX_ROOMS) {
                 throw new RoomException("ROOM_LIMIT");
             }
             Room room = new Room(ids.next(), codes.next(byCode.keySet()), clock.instant());
             String participantId = ids.next();
+            String credential = ids.next();
             room.lock().lock();
             try {
-                room.addParticipant(participantId, hostName, clock.instant());
+                room.addParticipant(participantId, hostName, credential, clock.instant());
                 rooms.put(room.roomId(), room);
                 byCode.put(room.code(), room);
-                bind.accept(room.roomId(), participantId);
+                bind.accept(room.roomId(), new SeatBinding(participantId, credential));
                 Entry entry = new Entry(room.roomId(), room.code(), participantId, room.version());
                 return new Created(entry, PublicationBuilder.collect(room));
             } finally {
@@ -120,25 +123,26 @@ public class RoomRegistry {
         return join(code, name, roomId -> Optional.empty(), (roomId, participantId) -> { }, n -> n);
     }
 
-    // 이미 연결된 참가자가 있으면 그대로 돌려주고 아니면 새 참가자로 앉힌다
+    // 세션의 자격이 아직 여는 자리가 있으면 그대로 돌려주고 아니면 새 참가자로 앉힌다
     /**
      * Looks the room up by code under the global lock, then, under the room lock, either returns the
-     * participant the caller is already bound to in this room (any phase, {@code name} ignored, never
+     * seat the caller's binding still opens in this room (any phase, {@code name} ignored, never
      * validated) or seats a new one under {@code nameRule}, which throws for an invalid name. {@code existing} and {@code bind} run inside the room lock, so the check and the binding are
      * atomic for one session.
      */
-    public Entry join(String code, String name, Function<String, Optional<String>> existing,
-            BiConsumer<String, String> bind, UnaryOperator<String> nameRule) {
+    public Entry join(String code, String name, Function<String, Optional<SeatBinding>> existing,
+            BiConsumer<String, SeatBinding> bind, UnaryOperator<String> nameRule) {
         Room room = RoomCodes.normalize(code).flatMap(this::findByCode)
                 .orElseThrow(() -> new RoomException("ROOM_NOT_FOUND"));
         return change(room, r -> {
-            Optional<String> bound = existing.apply(r.roomId()).filter(r::hasParticipant);
-            if (bound.isPresent()) {
-                return new Entry(r.roomId(), r.code(), bound.get(), r.version());
+            Optional<Participant> seat = existing.apply(r.roomId()).flatMap(r::seatOf);
+            if (seat.isPresent()) {
+                return new Entry(r.roomId(), r.code(), seat.get().participantId(), r.version());
             }
             String participantId = ids.next();
-            r.addParticipant(participantId, nameRule.apply(name), clock.instant());
-            bind.accept(r.roomId(), participantId);
+            String credential = ids.next();
+            r.addParticipant(participantId, nameRule.apply(name), credential, clock.instant());
+            bind.accept(r.roomId(), new SeatBinding(participantId, credential));
             return new Entry(r.roomId(), r.code(), participantId, r.version());
         });
     }

@@ -27,9 +27,19 @@ final class CommandFixture {
         String[] ids = {"a", "b", "c", "d"};
         String[] names = {"Alice", "Bob", "Carol", "Dave"};
         for (int i = 0; i < people; i++) {
-            room.addParticipant(ids[i], names[i], Instant.EPOCH);
+            room.addParticipant(ids[i], names[i], credential(ids[i]), Instant.EPOCH);
             room.presence().attach(ids[i], "conn-" + ids[i], Instant.EPOCH);
         }
+    }
+
+    // 참가자의 처음 자격 값을 돌려준다
+    static String credential(String who) {
+        return "cred-" + who;
+    }
+
+    // 참가자의 처음 자리 자격을 돌려준다
+    static SeatBinding binding(String who) {
+        return new SeatBinding(who, credential(who));
     }
 
     static JsonNode json(String text) {

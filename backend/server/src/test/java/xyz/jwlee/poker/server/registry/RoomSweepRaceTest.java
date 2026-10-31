@@ -49,7 +49,7 @@ class RoomSweepRaceTest {
                 IdGenerator ids = () -> "id" + counter.incrementAndGet();
                 MutableClock clock = new MutableClock(Instant.parse("2026-10-31T00:00:00Z"));
                 RoomEnv env = new RoomEnv(clock, ids);
-                RoomRegistry registry = new RoomRegistry(ids, clock);
+                RoomRegistry registry = new RoomRegistry(ids, clock, publication -> { });
                 RoomRegistry.Entry host = registry.create("Host");
                 RoomRegistry.Entry guest = registry.join(host.code(), "Guest");
                 String roomId = host.roomId();
@@ -63,7 +63,7 @@ class RoomSweepRaceTest {
                 Future<Boolean> reconnect = pool.submit(() -> {
                     go.await();
                     try {
-                        return registry.withRoom(roomId, room -> {
+                        return registry.update(roomId, room -> {
                             RoomLifecycle.connected(room, guest.participantId(), "back", env);
                             return true;
                         });
@@ -101,7 +101,7 @@ class RoomSweepRaceTest {
         IdGenerator ids = () -> "id" + counter.incrementAndGet();
         MutableClock clock = new MutableClock(Instant.parse("2026-10-31T00:00:00Z"));
         RoomEnv env = new RoomEnv(clock, ids);
-        RoomRegistry registry = new RoomRegistry(ids, clock);
+        RoomRegistry registry = new RoomRegistry(ids, clock, publication -> { });
         RoomRegistry.Entry gone = registry.create("Gone");
         clock.advance(Duration.ofSeconds(20));
         RoomRegistry.Entry stays = registry.create("Stays");

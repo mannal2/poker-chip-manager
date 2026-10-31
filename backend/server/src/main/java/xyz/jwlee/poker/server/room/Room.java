@@ -4,10 +4,12 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.locks.ReentrantLock;
 import xyz.jwlee.poker.game.event.GameEvent;
 import xyz.jwlee.poker.game.model.GameState;
@@ -15,7 +17,7 @@ import xyz.jwlee.poker.game.model.GameState;
 // 방 하나의 참가자, 설정, 게임, 요청 원장 등 모든 상태를 담는다
 /**
  * Everything about one room. Not thread-safe by itself: every read or write of the mutable state
- * happens while {@link #lock()} is held (see {@code RoomRegistry.withRoom}). The lock order is always
+ * happens while {@link #lock()} is held (see {@code RoomRegistry.update} and {@code withRoom}). The lock order is always
  * the registry global lock first, then a room lock, never the reverse.
  */
 public final class Room {
@@ -45,6 +47,10 @@ public final class Room {
     private final Presence presence = new Presence();
     private boolean hostTakeoverOpen;
     private final List<String> pendingRevocations = new ArrayList<>();
+    private final Set<String> snapshotRequests = new HashSet<>();
+    private long collectedVersion;
+    private long collectedDraftVersion;
+    private int collectedEventCount;
 
     public Room(String roomId, String code, Instant createdAt) {
         this.roomId = roomId;
@@ -73,6 +79,8 @@ public final class Room {
     public Map<String, String> playerIds() { return playerIds; }
     public List<GameEvent> events() { return events; }
     public SettlementDraft settlementDraft() { return settlementDraft; }
+    // 지금까지 저장한 승자 초안의 마지막 버전을 돌려준다
+    public long draftVersion() { return draftVersion; }
     // 참가자의 조작권 세대별 요청 원장을 돌려주고 없으면 만든다
     /**
      * The command ledger of one participant's control generation, created on first use. A new generation
@@ -115,6 +123,36 @@ public final class Room {
         List<String> drained = List.copyOf(pendingRevocations);
         pendingRevocations.clear();
         return drained;
+    }
+
+    // 버전 변화 없이 다음 수집에서 이 연결에 현재 상태를 보내도록 표시한다
+    public void requestSnapshot(String connectionId) {
+        snapshotRequests.add(connectionId);
+    }
+
+    // 스냅샷을 요청한 연결을 꺼내고 목록을 비운다
+    Set<String> drainSnapshotRequests() {
+        Set<String> drained = Set.copyOf(snapshotRequests);
+        snapshotRequests.clear();
+        return drained;
+    }
+
+    // 지난 수집 뒤 상태 버전이나 초안 버전이 움직였는지 확인한다
+    boolean changedSinceCollect() {
+        return version != collectedVersion || draftVersion != collectedDraftVersion;
+    }
+
+    // 지난 수집 때의 상태 버전을 돌려준다
+    long collectedVersion() { return collectedVersion; }
+
+    // 지난 수집까지 내보낸 이벤트 개수를 돌려준다
+    int collectedEventCount() { return collectedEventCount; }
+
+    // 수집 위치를 현재 상태로 옮긴다
+    void markCollected() {
+        collectedVersion = version;
+        collectedDraftVersion = draftVersion;
+        collectedEventCount = events.size();
     }
 
     // id로 참가자를 찾는다
@@ -182,6 +220,7 @@ public final class Room {
         this.playerIds.clear();
         this.playerIds.putAll(playerIdsByParticipant);
         this.events.clear();
+        this.collectedEventCount = 0;
         this.settlementDraft = null;
         this.lastStartSettings = startedWith;
     }
@@ -200,6 +239,7 @@ public final class Room {
         this.game = null;
         this.playerIds.clear();
         this.events.clear();
+        this.collectedEventCount = 0;
         this.settlementDraft = null;
         this.phase = RoomPhase.WAITING;
     }

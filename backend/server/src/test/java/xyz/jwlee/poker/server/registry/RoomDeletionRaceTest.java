@@ -27,23 +27,20 @@ class RoomDeletionRaceTest {
         try {
             for (int round = 0; round < 300; round++) {
                 AtomicInteger ids = new AtomicInteger();
-                RoomRegistry registry = new RoomRegistry(() -> "id" + ids.incrementAndGet(), Clock.systemUTC());
+                RoomRegistry registry = new RoomRegistry(
+                        () -> "id" + ids.incrementAndGet(), Clock.systemUTC(), publication -> { });
                 RoomRegistry.Entry host = registry.create("Host");
                 CountDownLatch go = new CountDownLatch(1);
 
                 Future<Boolean> leave = pool.submit(() -> {
                     go.await();
-                    boolean closed = registry.withRoom(host.roomId(), room -> {
+                    return registry.update(host.roomId(), room -> {
                         // Whatever version the room has by now: only the lock order is under test.
                         CommandRequest request = new CommandRequest(1, null, "r1", 1, 1, room.version(), null,
                                 "LEAVE", MAPPER.readTree("{}"));
                         new CommandPipeline().execute(room, host.participantId(), request);
                         return room.isClosed();
                     });
-                    if (closed) {
-                        registry.remove(host.roomId());
-                    }
-                    return closed;
                 });
                 Future<RoomRegistry.Entry> join = pool.submit(() -> {
                     go.await();

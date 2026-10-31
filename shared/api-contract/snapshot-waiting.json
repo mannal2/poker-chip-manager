@@ -8,6 +8,7 @@
     "code" : "ABC234",
     "roomPhase" : "WAITING",
     "stateVersion" : 5,
+    "draftVersion" : 0,
     "tournamentId" : null,
     "settings" : {
       "initial" : 1000,

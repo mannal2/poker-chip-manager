@@ -20,6 +20,7 @@
       "code" : "ABC234",
       "roomPhase" : "RESULT",
       "stateVersion" : 9,
+      "draftVersion" : 1,
       "tournamentId" : "00000000-0000-4000-8000-000000000006",
       "settings" : {
         "initial" : 1000,

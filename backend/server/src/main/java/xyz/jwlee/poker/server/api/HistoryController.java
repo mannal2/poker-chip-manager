@@ -14,9 +14,9 @@ import tools.jackson.databind.node.ArrayNode;
 import tools.jackson.databind.node.JsonNodeFactory;
 import tools.jackson.databind.node.ObjectNode;
 import xyz.jwlee.poker.game.event.GameEvent;
-import xyz.jwlee.poker.gamejson.EventJson;
 import xyz.jwlee.poker.server.auth.SessionIdentity;
 import xyz.jwlee.poker.server.registry.RoomRegistry;
+import xyz.jwlee.poker.server.room.EventView;
 import xyz.jwlee.poker.server.room.Room;
 import xyz.jwlee.poker.server.room.RoomException;
 
@@ -76,9 +76,7 @@ class HistoryController {
         long last = after;
         // Sequence n is index n - 1; an after beyond the end simply returns nothing.
         for (long seq = after + 1; seq <= all.size() && events.size() < limit; seq++) {
-            ObjectNode e = EventJson.write(all.get((int) seq - 1));
-            e.put("sequence", seq);
-            events.add(e);
+            events.add(EventView.write(all.get((int) seq - 1), seq));
             last = seq;
         }
         out.put("nextAfter", last);

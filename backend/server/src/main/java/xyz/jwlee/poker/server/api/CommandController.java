@@ -31,9 +31,8 @@ import xyz.jwlee.poker.server.support.Protocol;
 
 // 방 안에서 게임 명령과 조작권 인수 요청을 받아 처리하는 컨트롤러
 /**
- * Room commands. The pipeline runs under the room lock inside {@code RoomRegistry.withRoom}. When the last
- * person leaves, the room closes under that lock and is removed from the registry only after the room lock
- * is released (lock order stays global then room; see {@code RoomRegistry}).
+ * Room commands. The pipeline runs under the room lock inside {@code RoomRegistry.update}, which also publishes
+ * the change and removes a room the last person left, both after that lock is released.
  */
 @RestController
 class CommandController {
@@ -56,15 +55,10 @@ class CommandController {
         CommandRequest command = parse(body);
         CommandPipeline.validateType(command);
         String participantId = participantIn(roomId, request);
-        record Done(ResponseEntity<ObjectNode> response, boolean closed) { }
-        Done done = registry.withRoom(roomId, room -> {
+        return registry.update(roomId, room -> {
             CommandResult result = pipeline.execute(room, participantId, command);
-            return new Done(respond(result.outcome(), room, participantId), room.isClosed());
+            return respond(result.outcome(), room, participantId);
         });
-        if (done.closed()) {
-            registry.remove(roomId);
-        }
-        return done.response();
     }
 
     // 이미 처리된 요청의 결과를 다시 조회한다
@@ -117,7 +111,7 @@ class CommandController {
             RequestOutcome outcome;
             try {
                 String participantId = participantIn(roomId, request);
-                outcome = registry.withRoom(roomId, room -> {
+                outcome = registry.update(roomId, room -> {
                     long issued = CommandPipeline.takeControl(room, participantId, expected);
                     return new RequestOutcome(requestId, sequence, RequestOutcome.Outcome.APPLIED, "OK",
                             room.version(), null, issued, participantId);

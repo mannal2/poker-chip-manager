@@ -25,7 +25,8 @@ class RoomConcurrencyTest {
     private static final int PEOPLE = Room.MAX_PARTICIPANTS;
     private static final int THREADS = 20;
 
-    private final RoomRegistry registry = new RoomRegistry(IdGenerator.random(), Clock.systemUTC());
+    private final RoomRegistry registry = new RoomRegistry(
+            IdGenerator.random(), Clock.systemUTC(), publication -> { });
     private final CommandPipeline pipeline = new CommandPipeline();
     private final Map<String, Long> sequences = new HashMap<>();
 
@@ -102,7 +103,7 @@ class RoomConcurrencyTest {
         String handId = game == null || game.hand == null ? null : game.hand.id;
         CommandRequest request = new CommandRequest(1, tournamentId, who + "-" + sequence, sequence, 1, version,
                 handId, type, CommandFixture.json(payload));
-        return registry.withRoom(roomId, room -> pipeline.execute(room, who, request).outcome());
+        return registry.update(roomId, room -> pipeline.execute(room, who, request).outcome());
     }
 
     // 역할별로 규칙상 유효한 명령 종류를 고른다.

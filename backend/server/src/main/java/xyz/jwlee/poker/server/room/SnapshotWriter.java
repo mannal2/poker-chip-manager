@@ -22,6 +22,7 @@ public final class SnapshotWriter {
         n.put("code", room.code());
         n.put("roomPhase", room.phase().name());
         n.put("stateVersion", room.version());
+        n.put("draftVersion", room.draftVersion());
         if (room.game() == null) {
             n.putNull("tournamentId");
         } else {

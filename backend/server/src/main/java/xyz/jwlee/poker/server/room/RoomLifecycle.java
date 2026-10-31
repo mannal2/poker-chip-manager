@@ -8,7 +8,7 @@ import java.util.List;
 /**
  * The room's time rules (MULTIPLAYER_MODE section 13, SYSTEM_SPEC section 9). Every decision reads the current
  * connections and the injected clock, so a late sweep cannot act on a state that has already changed. The caller
- * holds the room lock; a room this closes is removed from the registry by the caller, after releasing that lock.
+ * holds the room lock; a room this closes leaves the registry in {@code RoomRegistry.update}, after that lock is released.
  */
 public final class RoomLifecycle {
 

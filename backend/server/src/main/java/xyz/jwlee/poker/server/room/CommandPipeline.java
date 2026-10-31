@@ -13,7 +13,7 @@ import xyz.jwlee.poker.server.support.IdGenerator;
  * <ol>
  *   <li>format: the envelope shape is the API layer's job; {@link #validateType} here refuses a type that
  *       does not exist (UNKNOWN_TYPE, wire code INVALID_INPUT). Nothing is recorded.</li>
- *   <li>room lookup: done by the caller ({@code RoomRegistry.withRoom}; a closed room is not found).</li>
+ *   <li>room lookup: done by the caller ({@code RoomRegistry.update}; a closed room is not found).</li>
  *   <li>session participant: the caller is on the roster, else ROOM_NOT_FOUND.</li>
  *   <li>control generation: the request's generation picks the ledger. Any generation other than the
  *       participant's current one (old or never issued) gets only the exact retry of a request that

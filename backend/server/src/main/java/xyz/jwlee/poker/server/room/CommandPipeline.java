@@ -101,12 +101,12 @@ public final class CommandPipeline {
         this(Clock.systemUTC(), IdGenerator.random());
     }
 
-    // 종류, 참가자, 조작권, 중복, 권한, 범위, 버전을 차례로 확인하고 명령을 적용한다
     // 서버가 만든 ID와 현재 시각으로 엔진 문맥을 만든다
     private TransitionContext nextContext() {
         return new TransitionContext(ids.next(), clock.instant().toString());
     }
 
+    // 종류, 참가자, 조작권, 중복, 권한, 범위, 버전을 차례로 확인하고 명령을 적용한다
     public CommandResult execute(Room room, String participantId, CommandRequest request) {
         Handler handler = requireKnownType(request);
         Participant actor = requireParticipant(room, participantId);

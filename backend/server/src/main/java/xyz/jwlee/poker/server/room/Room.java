@@ -80,16 +80,15 @@ public final class Room {
         return Optional.ofNullable(ledgers.get(participantId + "#" + controlGeneration));
     }
 
-    /** The stored result of a participant's request, in the newest generation that has it. Creates no ledger. */
+    /**
+     * The stored result of a participant's request in the current generation or, failing that, the one before
+     * it: only those two keep a ledger (see {@link #advanceControl}). Creates no ledger.
+     */
     public Optional<RequestOutcome> findRequest(Participant participant, String requestId) {
-        for (long g = participant.controlGeneration(); g >= INITIAL_CONTROL_GENERATION; g--) {
-            Optional<RequestOutcome> found =
-                    existingLedger(participant.participantId(), g).flatMap(ledger -> ledger.find(requestId));
-            if (found.isPresent()) {
-                return found;
-            }
-        }
-        return Optional.empty();
+        String id = participant.participantId();
+        long current = participant.controlGeneration();
+        return existingLedger(id, current).flatMap(ledger -> ledger.find(requestId))
+                .or(() -> existingLedger(id, current - 1).flatMap(ledger -> ledger.find(requestId)));
     }
 
     /** True once the room has been emptied; a closed room is treated as not found. Set under the room lock. */
@@ -227,13 +226,18 @@ public final class Room {
         }
     }
 
-    /** Moves a participant to the next control generation, in the same seat; the state version stays. */
+    /**
+     * Moves a participant to the next control generation, in the same seat; the state version stays. Only the
+     * new generation and the one before it keep a ledger, so repeated takeovers cannot grow the room: a screen
+     * two or more takeovers behind has lost its stored results, and even its exact retry is CONTROL_LOST.
+     */
     long advanceControl(String participantId) {
         for (int i = 0; i < participants.size(); i++) {
             Participant p = participants.get(i);
             if (p.participantId().equals(participantId)) {
                 long next = p.controlGeneration() + 1;
                 participants.set(i, new Participant(p.participantId(), p.name(), p.joinOrder(), next));
+                ledgers.remove(participantId + "#" + (next - 2));
                 return next;
             }
         }

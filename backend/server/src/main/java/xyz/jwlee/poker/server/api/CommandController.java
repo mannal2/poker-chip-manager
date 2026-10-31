@@ -103,30 +103,34 @@ class CommandController {
                 if (first.outcome() == RequestOutcome.Outcome.REJECTED) {
                     throw new RoomException(first.code());
                 }
-                String participantId = participantIn(roomId, request);
-                return registry.withRoom(roomId, room -> respondToControl(first, room, participantId));
+                // Kicked and rejoined: the generation was issued to a participant this session no longer is.
+                if (!first.issuedTo().equals(participantIn(roomId, request))) {
+                    throw new RoomException("ROOM_NOT_FOUND");
+                }
+                return registry.withRoom(roomId, room -> respondToControl(first, room));
             }
+            RequestOutcome outcome;
             try {
                 String participantId = participantIn(roomId, request);
-                return registry.withRoom(roomId, room -> {
+                outcome = registry.withRoom(roomId, room -> {
                     long issued = CommandPipeline.takeControl(room, participantId, expected);
-                    RequestOutcome outcome = new RequestOutcome(requestId, sequence, RequestOutcome.Outcome.APPLIED,
-                            "OK", room.version(), null, issued);
-                    // Record first: the work is done, so a failure while building the body must not lose it.
-                    ledger.record(outcome, fingerprint);
-                    return respondToControl(outcome, room, participantId);
+                    return new RequestOutcome(requestId, sequence, RequestOutcome.Outcome.APPLIED, "OK",
+                            room.version(), null, issued, participantId);
                 });
             } catch (RoomException e) {
                 ledger.record(new RequestOutcome(
                         requestId, sequence, RequestOutcome.Outcome.REJECTED, e.code(), 0, null), fingerprint);
                 throw e;
             }
+            // Record first: the work is done, so a failure while building the body must not lose the outcome.
+            ledger.record(outcome, fingerprint);
+            return registry.withRoom(roomId, room -> respondToControl(outcome, room));
         }
     }
 
     /** The generation is the one this request was issued; {@code latestState} shows the current one. */
-    private static ResponseEntity<ObjectNode> respondToControl(RequestOutcome outcome, Room room, String participantId) {
-        Participant me = room.participant(participantId).orElseThrow(() -> new RoomException("ROOM_NOT_FOUND"));
+    private static ResponseEntity<ObjectNode> respondToControl(RequestOutcome outcome, Room room) {
+        Participant me = room.participant(outcome.issuedTo()).orElseThrow(() -> new RoomException("ROOM_NOT_FOUND"));
         ObjectNode o = JsonNodeFactory.instance.objectNode();
         o.put("requestId", outcome.requestId());
         o.put("sequence", outcome.sequence());

@@ -275,9 +275,10 @@ class ControlTakeoverTest {
         Client alice = host();
         alice.dealer("c1", 1, 1, alice.participantId).andExpect(status().isOk());
         alice.control(alice.openStream(), "t1", 1, 1).andExpect(status().isOk());
+        alice.dealer("n1", 1, 2, alice.participantId).andExpect(status().isOk());
         long version = alice.version();
 
-        // Next in the old ledger, a gap, and a number already answered with another id.
+        // In the new ledger: 2 would be the next number, 9 a gap and 1 a conflict with n1.
         for (long sequence : new long[] {2, 9, 1}) {
             alice.dealer("late" + sequence, sequence, 1, alice.participantId).andExpect(status().isConflict())
                     .andExpect(jsonPath("$.code").value("CONTROL_LOST"));
@@ -387,6 +388,131 @@ class ControlTakeoverTest {
         alice.getRequest("c1").andExpect(status().isOk()).andExpect(jsonPath("$.outcome").value("APPLIED"));
         alice.getRequest("n1").andExpect(status().isOk()).andExpect(jsonPath("$.requestId").value("n1"));
         bob.getRequest("c1").andExpect(status().isNotFound());
+    }
+
+    @Test
+    void onlyTheCurrentAndThePreviousGenerationKeepTheirLedgers() throws Exception {
+        Client alice = host();
+        String phone = alice.openStream();
+        long atC1 = alice.version();
+        alice.dealer("c1", 1, 1, alice.participantId, atC1).andExpect(status().isOk());
+        alice.control(phone, "t1", 1, 1).andExpect(status().isOk());
+        long atC2 = alice.version();
+        alice.dealer("c2", 1, 2, alice.participantId, atC2).andExpect(status().isOk());
+        alice.control(phone, "t2", 2, 2).andExpect(status().isOk());
+        long atC3 = alice.version();
+        alice.dealer("c3", 1, 3, alice.participantId, atC3).andExpect(status().isOk());
+
+        // Two takeovers: generation 1 is gone, generation 2 is the previous one.
+        assertThat(alice.hasLedger(1)).isFalse();
+        alice.dealer("c1", 1, 1, alice.participantId, atC1).andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("CONTROL_LOST"));
+        alice.getRequest("c1").andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("REQUEST_NOT_FOUND"));
+        alice.dealer("c2", 1, 2, alice.participantId, atC2).andExpect(status().isOk());
+        alice.getRequest("c2").andExpect(status().isOk());
+
+        // The third takeover ends generation 2 the same way; generation 3 is now the previous one.
+        alice.control(phone, "t3", 3, 3).andExpect(status().isOk());
+
+        assertThat(alice.hasLedger(2)).isFalse();
+        alice.dealer("c2", 1, 2, alice.participantId, atC2).andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("CONTROL_LOST"));
+        alice.getRequest("c2").andExpect(status().isNotFound());
+        alice.dealer("c3", 1, 3, alice.participantId, atC3).andExpect(status().isOk());
+        alice.getRequest("c3").andExpect(status().isOk());
+    }
+
+    @Test
+    void aRetriedTakeoverIsNotFoundOnceTheSessionRejoinedAsAnotherParticipant() throws Exception {
+        Client alice = host();
+        Client bob = guestOf(alice);
+        String phone = bob.openStream();
+        bob.control(phone, "t1", 1, 1).andExpect(status().isOk());
+        alice.postJson("/api/rooms/" + alice.roomId + "/commands", kick(alice, bob, "k", 1))
+                .andExpect(status().isOk());
+        String kicked = bob.participantId;
+        bob.adopt(bob.postJson("/api/room-joins", "{\"protocolVersion\":1,\"streamId\":\"" + bob.stream
+                + "\",\"requestId\":\"rejoin\",\"sequence\":2,\"code\":\"" + alice.code + "\",\"name\":\"Bob\"}"));
+        assertThat(bob.participantId).isNotEqualTo(kicked);
+
+        bob.control(phone, "t1", 1, 1).andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("ROOM_NOT_FOUND"));
+    }
+
+    @Test
+    void oneSessionInTwoRoomsCannotReuseAStreamRequestAcrossThem() throws Exception {
+        Client alice = host();
+        String phone = alice.openStream();
+        String firstRoom = alice.roomId;
+        alice.control(phone, "t1", 1, 1).andExpect(status().isOk());
+        alice.adopt(alice.postJson("/api/rooms", "{\"protocolVersion\":1,\"streamId\":\"" + alice.stream
+                + "\",\"requestId\":\"create2\",\"sequence\":2,\"name\":\"Alice\"}"));
+        assertThat(alice.roomId).isNotEqualTo(firstRoom);
+
+        alice.control(phone, "t1", 1, 1).andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("REQUEST_CONFLICT"));
+    }
+
+    @Test
+    void aTakeoverAndItsRetryAreNotFoundOnceTheRoomIsClosed() throws Exception {
+        Client alice = host();
+        String phone = alice.openStream();
+        alice.control(phone, "t1", 1, 1).andExpect(status().isOk());
+        alice.postJson("/api/rooms/" + alice.roomId + "/commands", leave("l", 1, 2, alice.version()))
+                .andExpect(status().isOk());
+
+        alice.control(phone, "t1", 1, 1).andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("ROOM_NOT_FOUND"));
+        alice.control(phone, "t2", 2, 2).andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("ROOM_NOT_FOUND"));
+    }
+
+    /** Leaves the guest a ledger in generations 1 and 2, with sequence 1 of generation 2 used. */
+    private void giveTwoLedgers(Client bob) throws Exception {
+        bob.dealer("c1", 1, 1, bob.participantId).andExpect(status().isForbidden());
+        bob.control(bob.openStream(), "t1", 1, 1).andExpect(status().isOk());
+        bob.dealer("n1", 1, 2, bob.participantId).andExpect(status().isForbidden());
+        assertThat(bob.hasLedger(1)).isTrue();
+        assertThat(bob.hasLedger(2)).isTrue();
+    }
+
+    @Test
+    void leavingClearsTheLedgersOfEveryGeneration() throws Exception {
+        Client alice = host();
+        Client bob = guestOf(alice);
+        giveTwoLedgers(bob);
+
+        bob.postJson("/api/rooms/" + bob.roomId + "/commands", leave("l", 2, 2, bob.version()))
+                .andExpect(status().isOk());
+
+        assertThat(bob.hasLedger(1)).isFalse();
+        assertThat(bob.hasLedger(2)).isFalse();
+    }
+
+    @Test
+    void aKickClearsTheLedgersOfEveryGeneration() throws Exception {
+        Client alice = host();
+        Client bob = guestOf(alice);
+        giveTwoLedgers(bob);
+
+        alice.postJson("/api/rooms/" + alice.roomId + "/commands", kick(alice, bob, "k", 1))
+                .andExpect(status().isOk());
+
+        assertThat(bob.hasLedger(1)).isFalse();
+        assertThat(bob.hasLedger(2)).isFalse();
+    }
+
+    private static String leave(String requestId, long sequence, long generation, long version) {
+        return "{\"protocolVersion\":1,\"requestId\":\"" + requestId + "\",\"sequence\":" + sequence
+                + ",\"controlGeneration\":" + generation + ",\"expectedStateVersion\":" + version
+                + ",\"type\":\"LEAVE\",\"payload\":{}}";
+    }
+
+    private static String kick(Client host, Client target, String requestId, long sequence) {
+        return "{\"protocolVersion\":1,\"requestId\":\"" + requestId + "\",\"sequence\":" + sequence
+                + ",\"controlGeneration\":1,\"expectedStateVersion\":" + host.version()
+                + ",\"type\":\"KICK\",\"payload\":{\"participantId\":\"" + target.participantId + "\"}}";
     }
 
     @Test

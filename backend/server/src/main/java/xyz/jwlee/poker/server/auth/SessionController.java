@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 import xyz.jwlee.poker.server.support.IdGenerator;
 import xyz.jwlee.poker.server.support.Protocol;
 
+// 세션 생성, 유지, 화면 스트림 등록을 처리하는 컨트롤러
 @RestController
 class SessionController {
 
@@ -26,6 +27,7 @@ class SessionController {
         this.ids = ids;
     }
 
+    // 세션을 만들고 CSRF 토큰과 프로토콜 버전을 돌려준다
     @GetMapping("/api/session")
     Map<String, Object> session(HttpServletRequest request, HttpServletResponse response, CsrfToken csrf) {
         request.getSession(true);
@@ -34,6 +36,7 @@ class SessionController {
         return Map.of("csrfToken", csrf.getToken(), "protocolVersion", Protocol.VERSION);
     }
 
+    // 세션 쿠키를 새 만료 시간으로 다시 보내 세션을 유지한다
     /** Keeps a live session alive: Tomcat sets the cookie only at creation, so it is sent again with a fresh Max-Age. */
     @PostMapping("/api/session/refresh")
     Map<String, Object> refresh(HttpServletRequest request, HttpServletResponse response, CsrfToken csrf) {
@@ -47,6 +50,7 @@ class SessionController {
         return Map.of("csrfToken", csrf.getToken(), "protocolVersion", Protocol.VERSION);
     }
 
+    // 화면 스트림을 새로 등록하고 id를 돌려주며 한도를 넘으면 거절한다
     @PostMapping("/api/session/streams")
     ResponseEntity<Map<String, String>> openStream(HttpServletRequest request) {
         SessionIdentity identity = SessionIdentity.from(request.getSession(false));

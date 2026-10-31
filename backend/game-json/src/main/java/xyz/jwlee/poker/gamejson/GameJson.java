@@ -20,6 +20,7 @@ import xyz.jwlee.poker.game.model.Player;
 import xyz.jwlee.poker.game.model.TournamentStatus;
 import xyz.jwlee.poker.game.model.UndoSnapshot;
 
+// TS 이름의 JSON과 자바 게임 모델 사이를 서로 변환한다
 /**
  * Converts the TS-named JSON (shared fixtures, server protocol) to and from the Java game model.
  * Together with {@link EventJson} this is the only place that knows the TS-name to Java-name
@@ -32,6 +33,7 @@ public final class GameJson {
 
     // ---- state ----
 
+    // JSON에서 게임 상태(되돌리기 스냅샷 포함)를 읽는다
     public static GameState readState(JsonNode n) {
         GameState s = new GameState();
         s.tournamentId = n.get("tournamentId").asString();
@@ -55,6 +57,7 @@ public final class GameJson {
         return s;
     }
 
+    // 게임 상태를 JSON 객체로 쓴다
     public static ObjectNode writeState(GameState s) {
         ObjectNode n = F.objectNode();
         n.put("tournamentId", s.tournamentId);
@@ -89,6 +92,7 @@ public final class GameJson {
         return n;
     }
 
+    // JSON에서 테이블 설정을 읽는다
     public static GameSettings readSettings(JsonNode n) {
         return new GameSettings(
                 strings(n.get("names")),
@@ -98,6 +102,7 @@ public final class GameJson {
                 n.get("button").asInt());
     }
 
+    // 테이블 설정을 JSON 객체로 쓴다
     public static ObjectNode writeSettings(GameSettings g) {
         ObjectNode n = F.objectNode();
         n.set("names", stringArray(g.names()));
@@ -108,6 +113,7 @@ public final class GameJson {
         return n;
     }
 
+    // JSON에서 플레이어를 읽는다
     private static Player readPlayer(JsonNode n) {
         Player p = new Player();
         p.id = n.get("id").asString();
@@ -124,6 +130,7 @@ public final class GameJson {
         return p;
     }
 
+    // 플레이어를 JSON 객체로 쓴다
     public static ObjectNode writePlayer(Player p) {
         ObjectNode n = F.objectNode();
         n.put("id", p.id);
@@ -145,6 +152,7 @@ public final class GameJson {
         return n;
     }
 
+    // JSON에서 핸드를 읽는다
     private static Hand readHand(JsonNode n) {
         Hand h = new Hand();
         h.id = n.get("id").asString();
@@ -164,6 +172,7 @@ public final class GameJson {
         return h;
     }
 
+    // 핸드를 JSON 객체로 쓴다
     private static ObjectNode writeHand(Hand h) {
         ObjectNode n = F.objectNode();
         n.put("id", h.id);
@@ -189,6 +198,7 @@ public final class GameJson {
 
     // ---- commands ----
 
+    // JSON의 type 값에 맞는 게임 명령 객체를 만든다
     public static GameCommand readCommand(JsonNode n) {
         String player = present(n, "playerId") ? n.get("playerId").asString() : null;
         return switch (n.get("type").asString()) {
@@ -210,6 +220,7 @@ public final class GameJson {
         };
     }
 
+    // 팟별 승자 JSON을 맵으로 읽는다
     private static Map<String, List<String>> winners(JsonNode n) {
         Map<String, List<String>> out = new LinkedHashMap<>();
         n.properties().forEach(e -> out.put(e.getKey(), strings(e.getValue())));
@@ -218,6 +229,7 @@ public final class GameJson {
 
     // ---- legal actions ----
 
+    // 가능한 행동 정보를 JSON 객체로 쓴다
     /** Legal actions with the TS field names. */
     public static ObjectNode writeLegal(LegalActions l) {
         ObjectNode n = F.objectNode();
@@ -238,17 +250,20 @@ public final class GameJson {
 
     // ---- helpers ----
 
+    // 키가 있고 null이 아닌지 확인한다
     private static boolean present(JsonNode n, String key) {
         JsonNode v = n.get(key);
         return v != null && !v.isNull();
     }
 
+    // JSON 배열을 문자열 목록으로 읽는다
     private static List<String> strings(JsonNode arr) {
         List<String> out = new ArrayList<>();
         arr.forEach(x -> out.add(x.asString()));
         return out;
     }
 
+    // 문자열 목록을 JSON 배열로 만든다
     static ArrayNode stringArray(List<String> list) {
         ArrayNode a = F.arrayNode();
         list.forEach(a::add);

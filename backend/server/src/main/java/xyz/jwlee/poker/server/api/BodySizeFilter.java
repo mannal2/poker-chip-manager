@@ -15,6 +15,7 @@ import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import org.springframework.web.filter.OncePerRequestFilter;
 
+// 요청 본문이 크기 한도를 넘으면 413으로 거절하는 필터
 /**
  * Rejects request bodies over {@value #MAX_BYTES} bytes with 413. A declared Content-Length is checked up
  * front; a body without one (chunked) is read, at most one byte past the limit, and replayed to the app.
@@ -23,11 +24,13 @@ final class BodySizeFilter extends OncePerRequestFilter {
 
     static final int MAX_BYTES = 32 * 1024;
 
+    // /api/ 이외의 경로는 검사하지 않는다
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         return !request.getRequestURI().startsWith("/api/");
     }
 
+    // 선언된 길이나 실제 읽은 길이로 본문 크기를 검사하고 통과시킨다
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
             throws ServletException, IOException {
@@ -55,6 +58,7 @@ final class BodySizeFilter extends OncePerRequestFilter {
         chain.doFilter(new ReplayedBody(request, body), response);
     }
 
+    // 오류 본문을 JSON으로 직접 써서 응답한다
     private static void error(HttpServletResponse response, int status, String code) throws IOException {
         ApiError error = ApiError.of(code);
         response.setStatus(status);
@@ -65,6 +69,7 @@ final class BodySizeFilter extends OncePerRequestFilter {
         response.getWriter().write("{\"code\":\"" + error.code() + "\",\"message\":\"" + error.message() + "\"}");
     }
 
+    // 이미 읽은 본문을 다시 읽을 수 있게 감싼 요청
     /** The already-read body, handed to the rest of the chain as if it were still the live stream. */
     private static final class ReplayedBody extends HttpServletRequestWrapper {
 
@@ -75,6 +80,7 @@ final class BodySizeFilter extends OncePerRequestFilter {
             this.body = body;
         }
 
+        // 저장해 둔 본문 바이트를 읽는 입력 스트림을 돌려준다
         @Override
         public ServletInputStream getInputStream() {
             ByteArrayInputStream in = new ByteArrayInputStream(body);
@@ -106,6 +112,7 @@ final class BodySizeFilter extends OncePerRequestFilter {
             };
         }
 
+        // 저장해 둔 본문을 문자 스트림으로 읽는다
         @Override
         public BufferedReader getReader() {
             String encoding = getCharacterEncoding();

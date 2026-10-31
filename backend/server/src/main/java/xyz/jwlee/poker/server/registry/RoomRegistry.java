@@ -16,6 +16,7 @@ import xyz.jwlee.poker.server.room.Room;
 import xyz.jwlee.poker.server.room.RoomException;
 import xyz.jwlee.poker.server.support.IdGenerator;
 
+// 활성 방을 보관하고 전역 잠금과 방 잠금으로 접근을 조율하는 저장소
 /**
  * All active rooms (waiting, playing and result), at most {@value #MAX_ROOMS}.
  *
@@ -35,6 +36,7 @@ public class RoomRegistry {
 
     public static final int MAX_ROOMS = 10;
 
+    // 생성/입장 결과(방, 코드, 참가자, 상태 버전)
     /** Where a participant ended up after create or join. */
     public record Entry(String roomId, String code, String participantId, long stateVersion) { }
 
@@ -56,6 +58,7 @@ public class RoomRegistry {
         this.codes = codes;
     }
 
+    // 전역 잠금을 잡고 작업을 실행한다
     public <T> T withGlobal(Supplier<T> action) {
         global.lock();
         try {
@@ -65,11 +68,13 @@ public class RoomRegistry {
         }
     }
 
+    // 방장 이름으로 새 방을 만든다
     /** Creates a room with {@code hostName} (already normalized) as host, or refuses with ROOM_LIMIT. */
     public Entry create(String hostName) {
         return create(hostName, (roomId, participantId) -> { });
     }
 
+    // 새 방을 만들고 방장 착석 직후 잠금 안에서 세션 연결을 실행한다
     /**
      * Like {@link #create(String)}; {@code bind} runs under the locks, right after the host is seated, so a
      * caller can attach the new participant to its session atomically (the session monitor is a leaf lock).
@@ -94,10 +99,12 @@ public class RoomRegistry {
         });
     }
 
+    // 방 코드로 새 참가자를 입장시킨다
     public Entry join(String code, String name) {
         return join(code, name, roomId -> Optional.empty(), (roomId, participantId) -> { }, n -> n);
     }
 
+    // 이미 연결된 참가자가 있으면 그대로 돌려주고 아니면 새 참가자로 앉힌다
     /**
      * Looks the room up by code under the global lock, then, under the room lock, either returns the
      * participant the caller is already bound to in this room (any phase, {@code name} ignored, never
@@ -126,10 +133,12 @@ public class RoomRegistry {
         }
     }
 
+    // 방 코드로 방을 찾는다
     public Optional<Room> findByCode(String code) {
         return withGlobal(() -> Optional.ofNullable(byCode.get(code)));
     }
 
+    // 방 잠금을 잡고 작업을 실행하며 없는 방이면 예외를 던진다
     /** Runs {@code action} holding the room lock; ROOM_NOT_FOUND when the room is gone. */
     public <T> T withRoom(String roomId, Function<Room, T> action) {
         Room room = withGlobal(() -> rooms.get(roomId));
@@ -147,6 +156,7 @@ public class RoomRegistry {
         }
     }
 
+    // 방을 목록과 코드 색인에서 제거한다
     public void remove(String roomId) {
         withGlobal(() -> {
             Room room = rooms.remove(roomId);
@@ -157,10 +167,12 @@ public class RoomRegistry {
         });
     }
 
+    // 활성 방의 개수를 돌려준다
     public int size() {
         return withGlobal(rooms::size);
     }
 
+    // 활성 방 id 목록의 복사본을 돌려준다
     public List<String> roomIds() {
         return withGlobal(() -> List.copyOf(rooms.keySet()));
     }

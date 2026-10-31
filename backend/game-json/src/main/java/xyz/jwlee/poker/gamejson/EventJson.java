@@ -5,6 +5,7 @@ import tools.jackson.databind.node.ObjectNode;
 import xyz.jwlee.poker.game.event.EventDetails;
 import xyz.jwlee.poker.game.event.GameEvent;
 
+// 게임 이벤트를 TS 형식의 JSON으로 변환한다
 /**
  * Writes game events as TS-shaped JSON: {@code {id, at, tournamentId, hand, type, details}}. The
  * details match the TS {@code emit} arguments; FORFEIT and FORFEIT_SPLIT exist on the server only.
@@ -14,6 +15,7 @@ public final class EventJson {
 
     private EventJson() {}
 
+    // 이벤트 하나를 id/시각/종류/상세를 가진 JSON 객체로 만든다
     public static ObjectNode write(GameEvent e) {
         ObjectNode n = F.objectNode();
         n.put("id", e.id());
@@ -25,6 +27,7 @@ public final class EventJson {
         return n;
     }
 
+    // 이벤트 종류별 상세 내용을 JSON 객체로 만든다
     private static ObjectNode details(EventDetails d) {
         ObjectNode n = F.objectNode();
         switch (d) {

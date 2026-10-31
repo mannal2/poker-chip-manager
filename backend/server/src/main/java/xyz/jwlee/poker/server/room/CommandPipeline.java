@@ -6,6 +6,7 @@ import java.util.Optional;
 import tools.jackson.databind.JsonNode;
 import xyz.jwlee.poker.game.model.GameState;
 
+// 방 명령 하나를 검증 단계 순서대로 거쳐 실행하고 결과를 기록한다
 /**
  * Runs one room command, one step per method, in this order; a step never replaces the one before it:
  * <ol>
@@ -31,30 +32,36 @@ import xyz.jwlee.poker.game.model.GameState;
  */
 public final class CommandPipeline {
 
+    // 명령 종류별 규칙을 방에 적용하는 처리기 형식
     @FunctionalInterface
     private interface Applier {
         void apply(Room room, Participant actor, CommandRequest request, Clock clock);
     }
 
+    // 대기실 명령처럼 payload만 필요한 처리기 형식
     @FunctionalInterface
     private interface WaitingApplier {
         void apply(Room room, Participant actor, JsonNode payload);
     }
 
+    // 명령 종류별 실행 조건(방장 전용, 핸드 범위, 버전 증가)과 처리기
     /**
      * {@code handScoped}: the request must carry the current hand id; otherwise a hand id is optional but,
      * when present, must match. {@code bumpsVersion}: false only for the settlement draft, which has its own counter.
      */
     private record Handler(boolean hostOnly, boolean handScoped, boolean bumpsVersion, Applier applier) { }
 
+    // 핸드 범위가 없고 버전을 올리는 일반 처리기를 만든다
     private static Handler plain(boolean hostOnly, Applier applier) {
         return new Handler(hostOnly, false, true, applier);
     }
 
+    // 대기실 명령용 처리기를 만든다
     private static Handler waiting(boolean hostOnly, WaitingApplier applier) {
         return plain(hostOnly, (room, actor, request, clock) -> applier.apply(room, actor, request.payload()));
     }
 
+    // 명령 종류에 맞는 처리기를 찾고 없으면 null을 돌려준다
     /** The one place that connects a command type to its handler. */
     private static Handler handlerFor(String type) {
         return switch (type) {
@@ -89,6 +96,7 @@ public final class CommandPipeline {
         this(Clock.systemUTC());
     }
 
+    // 종류, 참가자, 조작권, 중복, 권한, 범위, 버전을 차례로 확인하고 명령을 적용한다
     public CommandResult execute(Room room, String participantId, CommandRequest request) {
         Handler handler = requireKnownType(request);
         Participant actor = requireParticipant(room, participantId);
@@ -118,6 +126,7 @@ public final class CommandPipeline {
         return new CommandResult(outcome, room);
     }
 
+    // 현재 세대가 맞을 때만 참가자에게 다음 조작권 세대를 발급한다
     /**
      * Issues the participant's next control generation when {@code expectedGeneration} is the current one, else
      * CONTROL_LOST, so of two screens racing for the same generation one wins. The new generation's ledger starts
@@ -132,11 +141,13 @@ public final class CommandPipeline {
         return room.advanceControl(participantId);
     }
 
+    // 존재하지 않는 명령 종류를 미리 거절한다
     /** Step 1, for a caller that wants to refuse before looking the room up. */
     public static void validateType(CommandRequest request) {
         requireKnownType(request);
     }
 
+    // 명령 종류의 처리기를 찾고 없으면 예외를 던진다
     private static Handler requireKnownType(CommandRequest request) {
         Handler handler = handlerFor(request.type());
         if (handler == null) {
@@ -145,10 +156,12 @@ public final class CommandPipeline {
         return handler;
     }
 
+    // 방 참가자를 찾고 없으면 예외를 던진다
     private static Participant requireParticipant(Room room, String participantId) {
         return room.participant(participantId).orElseThrow(() -> new RoomException("ROOM_NOT_FOUND"));
     }
 
+    // 현재가 아닌 세대의 정확한 재시도는 저장된 결과로, 그 외는 조작권 상실로 처리한다
     /** The stored outcome of an exact retry under a generation that is not the current one, else CONTROL_LOST. */
     private static RequestOutcome replayOfAnotherGeneration(
             Room room, Participant actor, CommandRequest request, String fingerprint) {
@@ -158,12 +171,14 @@ public final class CommandPipeline {
                 .orElseThrow(() -> new RoomException("CONTROL_LOST"));
     }
 
+    // 방장 전용 명령을 방장이 아닌 사람이 보내면 거절한다
     private static void checkPermission(Room room, Participant actor, Handler handler) {
         if (handler.hostOnly() && !room.isHost(actor.participantId())) {
             throw new RoomException("FORBIDDEN");
         }
     }
 
+    // 요청의 토너먼트와 핸드가 현재 게임과 맞는지 확인한다
     /**
      * The tournament is the room's game, or null while there is none. The hand is the game's current hand;
      * a hand-scoped command must name it, any other command may leave it out.
@@ -180,12 +195,14 @@ public final class CommandPipeline {
         }
     }
 
+    // 요청이 기대한 방 상태 버전이 현재와 같은지 확인한다
     private static void checkVersion(Room room, CommandRequest request) {
         if (request.expectedStateVersion() != room.version()) {
             throw new RoomException("STALE_STATE");
         }
     }
 
+    // 요청 결과 기록 객체를 만든다
     private static RequestOutcome outcome(CommandRequest request, RequestOutcome.Outcome kind, String code, Room room) {
         return new RequestOutcome(request.requestId(), request.sequence(), kind, code, room.version(), null);
     }

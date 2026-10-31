@@ -23,6 +23,7 @@ import xyz.jwlee.poker.game.model.Pot;
 import xyz.jwlee.poker.game.model.TournamentStatus;
 import xyz.jwlee.poker.game.model.TransitionContext;
 
+// 게임 시작과 진행 중 명령(베팅, 되돌리기, 정산, 기권 등)의 규칙을 방에 적용한다
 /**
  * START and the in-game command rules. Like {@link WaitingRoomCommands}, each method validates everything
  * before it changes the room, so a refusal leaves the room untouched; the caller holds the room lock and
@@ -33,6 +34,7 @@ final class GameCommands {
 
     private GameCommands() {}
 
+    // 시작 조건을 확인하고 참가자 순서대로 토너먼트를 만들어 게임을 시작한다
     static void start(Room room, Participant actor, CommandRequest request, Clock clock) {
         emptyPayload(request.payload());
         StartConditions.blockReason(room).ifPresent(reason -> {
@@ -59,6 +61,7 @@ final class GameCommands {
         room.updateGame(applied.state(), applied.events());
     }
 
+    // 현재 차례 참가자 본인의 베팅 행동을 엔진에 전달한다
     /** CHECK, CALL, FOLD, ALL_IN, BET and RAISE: only the current actor, always as themselves. */
     static void bet(Room room, Participant actor, CommandRequest request, Clock clock) {
         GameState game = requirePlaying(room);
@@ -81,29 +84,34 @@ final class GameCommands {
         run(room, command, request, clock);
     }
 
+    // 직전 행동을 되돌린다
     static void undo(Room room, Participant actor, CommandRequest request, Clock clock) {
         requireGame(room);
         run(room, new GameCommand.Undo(), request, clock);
     }
 
+    // 다음 핸드부터 쓸 블라인드를 예약한다
     static void scheduleBlinds(Room room, Participant actor, CommandRequest request, Clock clock) {
         requireGame(room);
         JsonNode body = object(request.payload());
         run(room, new GameCommand.ScheduleBlinds(integer(body, "sb"), integer(body, "bb")), request, clock);
     }
 
+    // 방장이 고른 승자대로 핸드를 정산한다
     static void settleHand(Room room, Participant actor, CommandRequest request, Clock clock) {
         requireGame(room);
         JsonNode body = object(request.payload());
         run(room, new GameCommand.SettleHand(winners(requiredField(body, "winners"))), request, clock);
     }
 
+    // 진행 중인 게임을 중단한다
     static void abort(Room room, Participant actor, CommandRequest request, Clock clock) {
         requireGame(room);
         emptyPayload(request.payload());
         run(room, new GameCommand.Abort(), request, clock);
     }
 
+    // 방장이 아닌 참가자가 자기 자리를 포기한다
     /** A person gives up their own seat. The host must hand the room over first (MULTIPLAYER_MODE section 10). */
     static void forfeit(Room room, Participant actor, CommandRequest request, Clock clock) {
         requirePlaying(room);
@@ -118,6 +126,7 @@ final class GameCommands {
         run(room, new GameCommand.Forfeit(playerId), request, clock);
     }
 
+    // 정산 중인 팟의 승자 선택 초안을 자격만 확인해 저장한다
     /**
      * The host's pick for the pot being settled. Only the eligibility is checked here; the payout rules run
      * when SETTLE_HAND is applied. The room version stays (the pipeline does not bump it for this command):
@@ -148,6 +157,7 @@ final class GameCommands {
         room.saveDraft(potIndex, winners);
     }
 
+    // 탈락·기권하지 않아 방장을 넘겨받을 수 있는 참가자인지 확인한다
     /** Whether a hand-over target can still play: seated in the game and neither eliminated nor forfeited. */
     static boolean canHoldRoom(Room room, String participantId) {
         GameState game = room.game();
@@ -163,6 +173,7 @@ final class GameCommands {
         return false;
     }
 
+    // 엔진으로 명령을 실행해 게임을 갱신하고 필요하면 초안을 지운다
     /** Applies the command; a settlement draft is dropped unless the command cannot change who may win. */
     private static void run(Room room, GameCommand command, CommandRequest request, Clock clock) {
         TransitionResult.Applied applied =
@@ -173,6 +184,7 @@ final class GameCommands {
         }
     }
 
+    // 전이 결과가 거절이면 예외로 바꾸고 성공이면 꺼내 쓴다
     private static TransitionResult.Applied applied(TransitionResult result) {
         return switch (result) {
             case TransitionResult.Applied a -> a;
@@ -180,10 +192,12 @@ final class GameCommands {
         };
     }
 
+    // 요청 id와 현재 시각으로 엔진용 문맥을 만든다
     private static TransitionContext context(CommandRequest request, Clock clock) {
         return new TransitionContext(request.requestId(), clock.instant().toString());
     }
 
+    // 게임이 있는지 확인하고 돌려준다
     private static GameState requireGame(Room room) {
         if (room.game() == null) {
             throw new RoomException("INVALID_ACTION");
@@ -191,6 +205,7 @@ final class GameCommands {
         return room.game();
     }
 
+    // 게임이 진행 중인지 확인하고 돌려준다
     /** A running game: in the waiting room or on the result screen there is nothing to play. */
     private static GameState requirePlaying(Room room) {
         GameState game = requireGame(room);
@@ -200,6 +215,7 @@ final class GameCommands {
         return game;
     }
 
+    // 요청자가 현재 차례의 플레이어인지 확인하고 플레이어 id를 돌려준다
     private static String requireTurn(Room room, Participant actor, GameState game) {
         String playerId = room.playerIds().get(actor.participantId());
         if (playerId == null || game.hand == null || !playerId.equals(game.hand.actorId)) {
@@ -208,12 +224,14 @@ final class GameCommands {
         return playerId;
     }
 
+    // payload가 비어 있는지 확인한다
     private static void emptyPayload(JsonNode payload) {
         if (payload != null && !payload.isNull() && !(payload.isObject() && payload.isEmpty())) {
             throw invalid();
         }
     }
 
+    // payload가 객체인지 확인한다
     private static JsonNode object(JsonNode payload) {
         if (payload == null || !payload.isObject()) {
             throw invalid();
@@ -221,6 +239,7 @@ final class GameCommands {
         return payload;
     }
 
+    // 필수 필드를 꺼내고 없으면 예외를 던진다
     private static JsonNode requiredField(JsonNode body, String field) {
         JsonNode v = body.get(field);
         if (v == null) {
@@ -229,6 +248,7 @@ final class GameCommands {
         return v;
     }
 
+    // 정수 필드를 꺼내고 형식이 틀리면 예외를 던진다
     private static int integer(JsonNode body, String field) {
         JsonNode v = body.get(field);
         if (v == null || !v.isIntegralNumber() || !v.canConvertToInt()) {
@@ -237,6 +257,7 @@ final class GameCommands {
         return v.asInt();
     }
 
+    // 팟별 승자 JSON을 맵으로 읽는다
     /** {@code {potId: [playerId, ...]}}. */
     private static Map<String, List<String>> winners(JsonNode node) {
         if (node == null || !node.isObject()) {
@@ -259,6 +280,7 @@ final class GameCommands {
         return out;
     }
 
+    // 입력 형식 오류 예외를 만든다
     private static RoomException invalid() {
         return new RoomException("INVALID_INPUT");
     }

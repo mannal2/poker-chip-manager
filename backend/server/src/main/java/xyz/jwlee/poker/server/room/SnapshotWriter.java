@@ -7,6 +7,7 @@ import tools.jackson.databind.node.ObjectNode;
 import xyz.jwlee.poker.game.Legal;
 import xyz.jwlee.poker.gamejson.GameJson;
 
+// 요청자별 방 상태 스냅샷 JSON을 만든다
 /** Builds the per-requester snapshot JSON. The caller holds the room lock. */
 public final class SnapshotWriter {
 
@@ -14,6 +15,7 @@ public final class SnapshotWriter {
 
     private SnapshotWriter() {}
 
+    // 방, 참가자, 권한, 게임, 가능한 행동, 정산 초안을 담은 스냅샷을 만든다
     public static RoomSnapshot snapshot(Room room, Participant viewer) {
         ObjectNode n = F.objectNode();
         n.put("roomId", room.roomId());

@@ -4,6 +4,7 @@ export type SettingsErrorCode = 'INVALID_NAMES' | 'INVALID_CHIP_SETTINGS' | 'INV
 // 정산 불가 사유 코드
 export type SettlementErrorCode =
   'NO_POT' | 'WINNER_REQUIRED' | 'TIE_CONFLICT' | 'POT_ORDER_CONFLICT';
+// 행동이 막힌 이유를 나타내는 코드
 /** Why the current actor cannot (re-)raise, or why nobody can act. */
 export type LegalReasonCode = 'NOT_ACTOR' | 'NO_OPPONENT' | 'RAISE_CLOSED';
 // 베팅 입력이 거절된 사유 코드

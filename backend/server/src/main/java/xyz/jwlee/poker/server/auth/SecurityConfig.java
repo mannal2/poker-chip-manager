@@ -13,6 +13,7 @@ import org.springframework.security.web.csrf.CsrfFilter;
 import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
 import org.springframework.security.web.csrf.HttpSessionCsrfTokenRepository;
 
+// 로그인 없이 세션 쿠키, CSRF, Origin 검사로 요청을 보호하는 보안 설정
 /**
  * No login: every /api request is allowed, and the session cookie plus a CSRF header and an Origin
  * allow-list protect state-changing requests. Errors are JSON, never redirects.
@@ -21,6 +22,7 @@ import org.springframework.security.web.csrf.HttpSessionCsrfTokenRepository;
 @EnableConfigurationProperties(AuthProperties.class)
 class SecurityConfig {
 
+    // CSRF, Origin, 세션 필터와 JSON 오류 응답을 갖춘 보안 필터 체인을 만든다
     @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity http, AuthProperties props) {
         // The repository's default header name is X-CSRF-TOKEN. The plain (non-XOR) handler keeps the
@@ -41,6 +43,7 @@ class SecurityConfig {
         return http.build();
     }
 
+    // 빈 사용자 저장소를 등록해 기본 사용자 생성을 막는다
     // An empty user store stops Boot from generating a default user and logging its password.
     @Bean
     UserDetailsService userDetailsService() {

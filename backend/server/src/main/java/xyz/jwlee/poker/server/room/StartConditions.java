@@ -7,11 +7,13 @@ import xyz.jwlee.poker.game.model.GameSettings;
 import xyz.jwlee.poker.game.settings.SettingsValidation;
 import xyz.jwlee.poker.game.settings.SettingsValidator;
 
+// 대기실에서 게임을 시작할 수 있는지 판단한다
 /** Why a waiting room cannot start a game yet, as a stable code; empty when it can. */
 public final class StartConditions {
 
     private StartConditions() {}
 
+    // 시작을 막는 이유 코드를 돌려주고 시작 가능하면 빈 값을 돌려준다
     public static Optional<String> blockReason(Room room) {
         if (room.phase() != RoomPhase.WAITING) {
             return Optional.of("NOT_WAITING");
@@ -36,6 +38,7 @@ public final class StartConditions {
         return Optional.empty();
     }
 
+    // 모든 참가자가 연결 중인지 확인한다(현재는 항상 참)
     /**
      * 2A stub: connections are not tracked yet, so everyone counts as connected.
      * 2B replaces this with the real presence check (the single place to change).

@@ -10,6 +10,7 @@ import xyz.jwlee.poker.game.model.GameSettings;
 import xyz.jwlee.poker.game.settings.SettingsValidation;
 import xyz.jwlee.poker.game.settings.SettingsValidator;
 
+// 대기실 명령(설정, 좌석, 딜러, 이름, 강퇴, 퇴장, 방장 이전)의 규칙을 방에 적용한다
 /**
  * The waiting-room command rules. Each method validates everything first and changes the room only after
  * every check passed, so a rejected command leaves the room untouched. A rejection is a
@@ -20,6 +21,7 @@ final class WaitingRoomCommands {
 
     private WaitingRoomCommands() {}
 
+    // 시작 칩과 블라인드를 검증한 뒤 방 설정에 반영한다
     static void setSettings(Room room, Participant actor, JsonNode payload) {
         requireWaiting(room);
         JsonNode body = object(payload);
@@ -46,6 +48,7 @@ final class WaitingRoomCommands {
         room.replaceSettings(new RoomSettings(initial, sb, bb, room.settings().button()));
     }
 
+    // 현재 참가자 전원이 정확히 한 번씩 들어 있을 때만 좌석 순서를 바꾼다
     static void setSeatOrder(Room room, Participant actor, JsonNode payload) {
         requireWaiting(room);
         List<String> order = strings(object(payload), "participantIds");
@@ -57,11 +60,13 @@ final class WaitingRoomCommands {
         room.reorder(order);
     }
 
+    // 방에 있는 참가자를 첫 딜러로 지정한다
     static void setDealer(Room room, Participant actor, JsonNode payload) {
         requireWaiting(room);
         room.setDealer(existing(room, string(object(payload), "participantId")));
     }
 
+    // 이름 규칙과 중복을 확인한 뒤 요청자의 이름을 바꾼다
     static void rename(Room room, Participant actor, JsonNode payload) {
         requireWaiting(room);
         String raw = string(object(payload), "name");
@@ -75,6 +80,7 @@ final class WaitingRoomCommands {
         room.rename(actor.participantId(), name);
     }
 
+    // 본인이 아닌 참가자를 방에서 내보낸다
     static void kick(Room room, Participant actor, JsonNode payload) {
         requireWaiting(room);
         String target = existing(room, string(object(payload), "participantId"));
@@ -84,6 +90,7 @@ final class WaitingRoomCommands {
         room.removeParticipant(target);
     }
 
+    // 게임이 진행 중이 아닐 때 요청자가 방을 떠난다
     /** Allowed in the waiting room and on the result screen, not while a game runs. */
     static void leave(Room room, Participant actor, JsonNode payload) {
         if (room.phase() == RoomPhase.PLAYING) {
@@ -95,6 +102,7 @@ final class WaitingRoomCommands {
         room.removeParticipant(actor.participantId());
     }
 
+    // 방장 자리를 다른 참가자에게 넘긴다
     /**
      * In the waiting room to anyone on the roster; while a game runs only to someone still in it (not
      * eliminated, not forfeited); never on the result screen.
@@ -113,12 +121,14 @@ final class WaitingRoomCommands {
         room.setHost(target);
     }
 
+    // 방이 대기 단계인지 확인한다
     private static void requireWaiting(Room room) {
         if (room.phase() != RoomPhase.WAITING) {
             throw new RoomException("NOT_WAITING");
         }
     }
 
+    // 방에 있는 참가자 id인지 확인하고 돌려준다
     private static String existing(Room room, String participantId) {
         if (!room.hasParticipant(participantId)) {
             throw invalid();
@@ -126,6 +136,7 @@ final class WaitingRoomCommands {
         return participantId;
     }
 
+    // payload가 객체인지 확인한다
     private static JsonNode object(JsonNode payload) {
         if (payload == null || !payload.isObject()) {
             throw invalid();
@@ -133,6 +144,7 @@ final class WaitingRoomCommands {
         return payload;
     }
 
+    // 문자열 필드를 꺼내고 형식이 틀리면 예외를 던진다
     private static String string(JsonNode body, String field) {
         JsonNode v = body.get(field);
         if (v == null || !v.isString()) {
@@ -141,6 +153,7 @@ final class WaitingRoomCommands {
         return v.asString();
     }
 
+    // 정수 필드를 꺼내고 형식이 틀리면 예외를 던진다
     private static int integer(JsonNode body, String field) {
         JsonNode v = body.get(field);
         if (v == null || !v.isIntegralNumber() || !v.canConvertToInt()) {
@@ -149,6 +162,7 @@ final class WaitingRoomCommands {
         return v.asInt();
     }
 
+    // 문자열 배열 필드를 꺼내고 형식이 틀리면 예외를 던진다
     private static List<String> strings(JsonNode body, String field) {
         JsonNode v = body.get(field);
         if (v == null || !v.isArray()) {
@@ -164,6 +178,7 @@ final class WaitingRoomCommands {
         return out;
     }
 
+    // 입력 형식 오류 예외를 만든다
     private static RoomException invalid() {
         return new RoomException("INVALID_INPUT");
     }

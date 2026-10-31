@@ -20,6 +20,7 @@ import xyz.jwlee.poker.server.registry.RoomRegistry;
 import xyz.jwlee.poker.server.room.Room;
 import xyz.jwlee.poker.server.room.RoomException;
 
+// 방의 현재 토너먼트 이벤트 기록을 페이지 단위로 제공하는 컨트롤러
 /**
  * The room's event history for the current tournament, a page at a time. Events are numbered from 1 in the
  * order they happened; {@code after} is the last number the caller already has. An undone event stays in the
@@ -37,6 +38,7 @@ class HistoryController {
         this.registry = registry;
     }
 
+    // 참가자 확인 후 지정 번호 이후의 이벤트 한 페이지를 응답한다
     @GetMapping("/api/rooms/{roomId}/history")
     ResponseEntity<?> history(
             @PathVariable String roomId,
@@ -66,6 +68,7 @@ class HistoryController {
         });
     }
 
+    // 번호가 붙은 이벤트를 최대 개수까지 모아 다음 조회 기준과 함께 만든다
     private static ObjectNode page(Room room, long after, int limit) {
         List<GameEvent> all = room.events();
         ObjectNode out = JsonNodeFactory.instance.objectNode();

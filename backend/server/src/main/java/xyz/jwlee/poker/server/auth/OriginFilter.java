@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.util.Set;
 import org.springframework.web.filter.OncePerRequestFilter;
 
+// 허용 목록에 없는 Origin의 상태 변경 요청을 막는 필터
 /** Rejects state-changing requests whose Origin header is missing or not on the allow-list. */
 final class OriginFilter extends OncePerRequestFilter {
 
@@ -17,6 +18,7 @@ final class OriginFilter extends OncePerRequestFilter {
         this.allowed = Set.copyOf(allowed);
     }
 
+    // GET/HEAD 외 요청의 Origin을 검사하고 통과시키거나 403으로 거절한다
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
             throws ServletException, IOException {

@@ -3,6 +3,7 @@ package xyz.jwlee.poker.server.room;
 import java.time.Clock;
 import tools.jackson.databind.JsonNode;
 
+// 결과 화면에서 쓰는 명령을 처리한다
 /**
  * Commands of the result screen. Like the other command classes, a method validates first and changes the
  * room only afterwards; the caller holds the room lock and the pipeline bumps the version after a success.
@@ -11,6 +12,7 @@ final class ResultCommands {
 
     private ResultCommands() {}
 
+    // 결과 화면에서 대기실로 돌아가 새 토너먼트를 준비한다
     /**
      * Back to the waiting room for another tournament. The code, roster, names, seats, host, control
      * generations and request ledgers stay; the game and everything that belongs to it go. The settings

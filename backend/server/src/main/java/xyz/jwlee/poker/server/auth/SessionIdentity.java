@@ -10,6 +10,7 @@ import java.util.function.Supplier;
 import xyz.jwlee.poker.server.room.RequestLedger;
 import xyz.jwlee.poker.server.room.RoomException;
 
+// HttpSession에 저장된 스트림 원장과 방 참가자 정보를 읽고 쓰는 유일한 창구
 /** The only reader and writer of the app's HttpSession attributes. */
 public final class SessionIdentity {
 
@@ -22,15 +23,18 @@ public final class SessionIdentity {
         this.session = session;
     }
 
+    // 세션을 감싼 SessionIdentity를 만든다
     public static SessionIdentity from(HttpSession session) {
         return new SessionIdentity(session);
     }
 
+    // 이 세션의 화면 스트림별 요청 원장 맵을 돌려준다
     /** The live map of this session's screen streams, each with its request ledger; synchronize on it to change it. */
     private Map<String, RequestLedger> streams() {
         return slot(STREAMS, () -> Collections.synchronizedMap(new LinkedHashMap<>()));
     }
 
+    // 새 스트림과 요청 원장을 등록하고 한도 초과 시 거절한다
     /** Registers a stream with a fresh ledger unless the session already has {@code max}; false when refused. */
     public boolean openStream(String streamId, int max) {
         Map<String, RequestLedger> streams = streams();
@@ -43,6 +47,7 @@ public final class SessionIdentity {
         }
     }
 
+    // 등록된 스트림의 요청 원장을 돌려준다
     /** The ledger of a registered stream; UNKNOWN_STREAM when this session never opened it. */
     public RequestLedger ledgerFor(String streamId) {
         RequestLedger ledger = streams().get(streamId);
@@ -52,22 +57,27 @@ public final class SessionIdentity {
         return ledger;
     }
 
+    // 이 세션이 해당 방에서 맡은 참가자 id를 찾는다
     public Optional<String> participantIn(String roomId) {
         return Optional.ofNullable(participants().get(roomId));
     }
 
+    // 세션을 방의 참가자에 묶는다
     public void bind(String roomId, String participantId) {
         participants().put(roomId, participantId);
     }
 
+    // 세션과 방의 참가자 연결을 해제한다
     public void unbind(String roomId) {
         participants().remove(roomId);
     }
 
+    // 방별 참가자 id 맵을 돌려준다
     private Map<String, String> participants() {
         return slot(PARTICIPANTS, ConcurrentHashMap::new);
     }
 
+    // 세션 속성을 읽고 없으면 만들어 저장한다
     @SuppressWarnings("unchecked")
     private <T> T slot(String name, Supplier<T> create) {
         synchronized (session) {

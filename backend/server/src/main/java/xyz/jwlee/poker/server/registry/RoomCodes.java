@@ -5,6 +5,7 @@ import java.util.Optional;
 import java.util.Random;
 import java.util.Set;
 
+// 헷갈리는 글자를 뺀 방 코드를 만들고 정규화한다
 /** Six-character room codes from an alphabet without look-alike characters (no 0 O 1 I L). */
 public final class RoomCodes {
 
@@ -21,6 +22,7 @@ public final class RoomCodes {
         this.random = random;
     }
 
+    // 이미 쓰인 코드와 겹치지 않는 새 방 코드를 뽑는다
     /** A code not in {@code taken}; draws again on a collision. */
     public String next(Set<String> taken) {
         while (true) {
@@ -35,6 +37,7 @@ public final class RoomCodes {
         }
     }
 
+    // 입력을 대문자 방 코드로 바꾸고 형식이 틀리면 비워 돌려준다
     /** The canonical upper-case form of user input, or empty when it cannot be a code. */
     public static Optional<String> normalize(String input) {
         if (input == null) {

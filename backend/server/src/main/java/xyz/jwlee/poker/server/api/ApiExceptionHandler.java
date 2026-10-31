@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import xyz.jwlee.poker.server.room.RoomException;
 
+// 도메인 거절과 프레임워크 오류를 오류 본문과 HTTP 상태로 바꾼다
 /** Maps domain rejections and framework errors to {@code {code, message}} with the HTTP status table. */
 @RestControllerAdvice
 class ApiExceptionHandler {
@@ -39,6 +40,7 @@ class ApiExceptionHandler {
             Map.entry("ROOM_FULL", 422),
             Map.entry("ROOM_LIMIT", 503));
 
+    // 방 도메인 예외를 코드에 맞는 HTTP 상태로 응답한다
     @ExceptionHandler(RoomException.class)
     ResponseEntity<ApiError> room(RoomException e) {
         // An unknown command type is a payload problem on the wire, so it reads INVALID_INPUT.
@@ -46,6 +48,7 @@ class ApiExceptionHandler {
         return respond(STATUS.getOrDefault(e.code(), 500), wire);
     }
 
+    // 기록된 거절 코드에 대응하는 HTTP 상태를 돌려준다
     /** Status of a rejection that was recorded in a ledger: 403 permission or not your turn, 409 stale or lost, else 422. */
     static int rejectionStatus(String code) {
         return switch (code) {
@@ -55,17 +58,20 @@ class ApiExceptionHandler {
         };
     }
 
+    // 읽을 수 없는 요청 본문을 400으로 응답한다
     @ExceptionHandler(HttpMessageNotReadableException.class)
     ResponseEntity<ApiError> unreadable(HttpMessageNotReadableException e) {
         return respond(400, "INVALID_INPUT");
     }
 
+    // 쿼리 파라미터 형식 오류를 400으로 응답한다
     /** A query parameter that is not the number it should be. */
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     ResponseEntity<ApiError> mistyped(MethodArgumentTypeMismatchException e) {
         return respond(400, "INVALID_INPUT");
     }
 
+    // 그 밖의 예외를 로그에 남기고 일반 오류로 응답한다
     @ExceptionHandler(Exception.class)
     ResponseEntity<ApiError> other(Exception e) {
         if (e instanceof ErrorResponse er) {
@@ -76,6 +82,7 @@ class ApiExceptionHandler {
         return respond(500, "INTERNAL_ERROR");
     }
 
+    // 캐시 금지 헤더와 함께 오류 본문 응답을 만든다
     private static ResponseEntity<ApiError> respond(int status, String code) {
         return ResponseEntity.status(status).header(HttpHeaders.CACHE_CONTROL, "no-store").body(ApiError.of(code));
     }

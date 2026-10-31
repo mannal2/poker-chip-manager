@@ -28,6 +28,7 @@ import xyz.jwlee.poker.server.room.RoomException;
 import xyz.jwlee.poker.server.room.SnapshotWriter;
 import xyz.jwlee.poker.server.support.Protocol;
 
+// 방 안에서 게임 명령과 조작권 인수 요청을 받아 처리하는 컨트롤러
 /**
  * Room commands. The pipeline runs under the room lock inside {@code RoomRegistry.withRoom}. When the last
  * person leaves, the room closes under that lock and is removed from the registry only after the room lock
@@ -47,6 +48,7 @@ class CommandController {
         this.pipeline = new CommandPipeline(clock);
     }
 
+    // 명령을 검증하고 방 잠금 안에서 파이프라인으로 실행해 결과를 응답한다
     @PostMapping("/api/rooms/{roomId}/commands")
     ResponseEntity<ObjectNode> command(
             @PathVariable String roomId, @RequestBody(required = false) JsonNode body, HttpServletRequest request) {
@@ -64,6 +66,7 @@ class CommandController {
         return done.response();
     }
 
+    // 이미 처리된 요청의 결과를 다시 조회한다
     @GetMapping("/api/rooms/{roomId}/requests/{requestId}")
     ResponseEntity<ObjectNode> request(
             @PathVariable String roomId, @PathVariable String requestId, HttpServletRequest request) {
@@ -76,6 +79,7 @@ class CommandController {
         });
     }
 
+    // 다른 화면에서 조작권을 가져오고, 재시도는 처음 결과를 그대로 돌려준다
     /**
      * Takes control on another screen. A takeover has no generation to belong to yet, so it is deduplicated by
      * the stream ledger of the screen asking: {@code synchronized (ledger) { check; do the work; record }}, with
@@ -128,6 +132,7 @@ class CommandController {
         }
     }
 
+    // 조작권 인수 결과와 최신 방 상태를 응답 본문으로 만든다
     /** The generation is the one this request was issued; {@code latestState} shows the current one. */
     private static ResponseEntity<ObjectNode> respondToControl(RequestOutcome outcome, Room room) {
         Participant me = room.participant(outcome.issuedTo()).orElseThrow(() -> new RoomException("ROOM_NOT_FOUND"));
@@ -141,6 +146,7 @@ class CommandController {
         return ResponseEntity.ok().header(HttpHeaders.CACHE_CONTROL, "no-store").body(o);
     }
 
+    // 세션에 묶인 이 방의 참가자 id를 찾는다
     private static String participantIn(String roomId, HttpServletRequest request) {
         HttpSession session = request.getSession(false);
         if (session == null) {
@@ -151,6 +157,7 @@ class CommandController {
                 .orElseThrow(() -> new RoomException("ROOM_NOT_FOUND"));
     }
 
+    // 명령 처리 결과와 최신 방 상태를 응답 본문으로 만든다
     private static ResponseEntity<ObjectNode> respond(RequestOutcome outcome, Room room, String participantId) {
         ObjectNode o = JsonNodeFactory.instance.objectNode();
         o.put("requestId", outcome.requestId());
@@ -170,6 +177,7 @@ class CommandController {
         return ResponseEntity.status(status).header(HttpHeaders.CACHE_CONTROL, "no-store").body(o);
     }
 
+    // 요청 본문의 공통 필드를 검증해 명령 요청 객체로 만든다
     /** The envelope, checked field by field for presence and type; the payload itself is left to the rules. */
     private static CommandRequest parse(JsonNode node) {
         int protocolVersion = requireObjectOfThisProtocol(node);
@@ -188,6 +196,7 @@ class CommandController {
                 protocolVersion, tournamentId, requestId, sequence, generation, expected, handId, type, payload);
     }
 
+    // 본문이 객체이고 프로토콜 버전이 맞는지 확인한다
     private static int requireObjectOfThisProtocol(JsonNode node) {
         if (node == null || !node.isObject()) {
             throw invalid();
@@ -202,6 +211,7 @@ class CommandController {
         return version.asInt();
     }
 
+    // 문자열 필드의 존재와 길이를 검증해 읽는다
     private static String text(JsonNode node, String field, int max, boolean required) {
         JsonNode v = node.get(field);
         if (v == null || v.isNull()) {
@@ -216,6 +226,7 @@ class CommandController {
         return v.asString();
     }
 
+    // 정수 필드의 형식과 최솟값을 검증해 읽는다
     private static long number(JsonNode node, String field, long min) {
         JsonNode v = node.get(field);
         if (v == null || !v.isIntegralNumber() || !v.canConvertToLong() || v.asLong() < min) {
@@ -224,6 +235,7 @@ class CommandController {
         return v.asLong();
     }
 
+    // 입력 형식 오류 예외를 만든다
     private static RoomException invalid() {
         return new RoomException("INVALID_INPUT");
     }

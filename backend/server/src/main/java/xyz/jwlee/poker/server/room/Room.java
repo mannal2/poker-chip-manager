@@ -11,6 +11,7 @@ import java.util.concurrent.locks.ReentrantLock;
 import xyz.jwlee.poker.game.event.GameEvent;
 import xyz.jwlee.poker.game.model.GameState;
 
+// 방 하나의 참가자, 설정, 게임, 요청 원장 등 모든 상태를 담는다
 /**
  * Everything about one room. Not thread-safe by itself: every read or write of the mutable state
  * happens while {@link #lock()} is held (see {@code RoomRegistry.withRoom}). The lock order is always
@@ -67,6 +68,7 @@ public final class Room {
     public Map<String, String> playerIds() { return playerIds; }
     public List<GameEvent> events() { return events; }
     public SettlementDraft settlementDraft() { return settlementDraft; }
+    // 참가자의 조작권 세대별 요청 원장을 돌려주고 없으면 만든다
     /**
      * The command ledger of one participant's control generation, created on first use. A new generation
      * starts a fresh ledger (sequence from 1), so a stale holder never shares a stream with the new one.
@@ -75,11 +77,13 @@ public final class Room {
         return ledgers.computeIfAbsent(participantId + "#" + controlGeneration, k -> new RequestLedger());
     }
 
+    // 이미 있는 원장만 조회하고 새로 만들지 않는다
     /** The ledger of a generation that has one. Read-only: a number from a request never creates a ledger. */
     public Optional<RequestLedger> existingLedger(String participantId, long controlGeneration) {
         return Optional.ofNullable(ledgers.get(participantId + "#" + controlGeneration));
     }
 
+    // 현재 또는 직전 조작권 세대의 원장에서 요청 결과를 찾는다
     /**
      * The stored result of a participant's request in the current generation or, failing that, the one before
      * it: only those two keep a ledger (see {@link #advanceControl}). Creates no ledger.
@@ -94,6 +98,7 @@ public final class Room {
     /** True once the room has been emptied; a closed room is treated as not found. Set under the room lock. */
     public boolean isClosed() { return closed; }
 
+    // id로 참가자를 찾는다
     public Optional<Participant> participant(String participantId) {
         return participants.stream().filter(p -> p.participantId().equals(participantId)).findFirst();
     }
@@ -106,6 +111,7 @@ public final class Room {
         return participantId.equals(hostId);
     }
 
+    // 대기실에 새 참가자를 앉히고 첫 참가자를 방장으로 정한다
     /**
      * Seats a new participant (the first one becomes the host). The name must already follow the name rule;
      * duplicates are compared case-insensitively.
@@ -134,6 +140,7 @@ public final class Room {
 
     void replaceSettings(RoomSettings next) { this.settings = next; }
 
+    // 방장을 바꾸고 정산 초안을 비운다
     /** A new host starts from a clean draft: the old host's pick is not theirs to apply. */
     void setHost(String participantId) {
         this.hostId = participantId;
@@ -142,6 +149,7 @@ public final class Room {
 
     // Game mutations. Like the waiting-room ones, they leave the version to the command pipeline.
 
+    // 새 토너먼트를 시작하며 이전 게임의 이벤트와 초안을 지운다
     /** Seats a fresh tournament: the previous tournament's events are dropped. */
     void beginGame(GameState state, Map<String, String> playerIdsByParticipant, RoomSettings startedWith) {
         this.game = state;
@@ -152,6 +160,7 @@ public final class Room {
         this.lastStartSettings = startedWith;
     }
 
+    // 결과 화면에서 대기실로 돌아가며 게임 관련 상태를 지우고 설정을 시작 때로 되돌린다
     /**
      * Leaves the result screen: the game, its events, player ids and settlement draft go, the settings return to
      * what the tournament started with and the dealer is unchosen. The draft counter keeps growing, and the
@@ -169,6 +178,7 @@ public final class Room {
         this.phase = RoomPhase.WAITING;
     }
 
+    // 게임 상태를 바꾸고 이벤트를 덧붙이며 게임 상태에 따라 방 단계를 정한다
     /** Replaces the game state and appends the engine's events in order; the phase follows the game status. */
     void updateGame(GameState state, List<GameEvent> appended) {
         this.game = state;
@@ -179,6 +189,7 @@ public final class Room {
         };
     }
 
+    // 방장의 정산 선택 초안을 새 버전으로 저장한다
     /** Stores the host's draft; its version only ever grows, also across clears. */
     void saveDraft(int potIndex, Map<String, List<String>> winners) {
         this.settlementDraft = new SettlementDraft(++draftVersion, potIndex, winners);
@@ -186,12 +197,14 @@ public final class Room {
 
     void clearDraft() { this.settlementDraft = null; }
 
+    // 딜러 버튼이 가리키는 참가자 id를 돌려준다
     /** The participant the dealer button points at, or null while none is chosen. */
     private String dealerId() {
         int b = settings.button();
         return b >= 0 && b < participants.size() ? participants.get(b).participantId() : null;
     }
 
+    // 참가자의 현재 좌석으로 딜러 버튼을 다시 맞춘다
     /** Points the button at {@code dealerId}'s current seat, or -1 when that person is gone or none was chosen. */
     private void pointDealerAt(String dealerId) {
         int seat = -1;
@@ -203,6 +216,7 @@ public final class Room {
         settings = new RoomSettings(settings.initial(), settings.sb(), settings.bb(), seat);
     }
 
+    // 참가자 좌석 순서를 바꾸되 딜러는 같은 사람을 유지한다
     /** Seats the participants in {@code order} (already checked to be exactly the current ones); the dealer keeps their person. */
     void reorder(List<String> order) {
         String dealer = dealerId();
@@ -217,6 +231,7 @@ public final class Room {
 
     void setDealer(String participantId) { pointDealerAt(participantId); }
 
+    // 참가자의 이름을 바꾼다
     void rename(String participantId, String name) {
         for (int i = 0; i < participants.size(); i++) {
             Participant p = participants.get(i);
@@ -226,6 +241,7 @@ public final class Room {
         }
     }
 
+    // 참가자의 조작권 세대를 올리고 오래된 원장을 정리한다
     /**
      * Moves a participant to the next control generation, in the same seat; the state version stays. Only the
      * new generation and the one before it keep a ledger, so repeated takeovers cannot grow the room: a screen
@@ -244,6 +260,7 @@ public final class Room {
         throw new RoomException("ROOM_NOT_FOUND");
     }
 
+    // 참가자를 내보내고 방장 승계와 방 닫기를 처리한다
     /**
      * Removes a participant. The dealer stays on the same person (-1 if that was the leaver); a leaving host
      * hands the room to the earliest joiner left; the last one out closes the room.

@@ -27,6 +27,7 @@ import xyz.jwlee.poker.server.room.RoomSnapshot;
 import xyz.jwlee.poker.server.room.SnapshotWriter;
 import xyz.jwlee.poker.server.support.Protocol;
 
+// 방 생성, 입장, 상태 조회를 처리하는 컨트롤러
 /**
  * Create, join and read a room. Create and join are deduplicated by the request ledger of the screen
  * stream they came from: {@code synchronized (ledger) { check; do the work; record }}.
@@ -44,6 +45,7 @@ class RoomController {
         this.registry = registry;
     }
 
+    // 새 방을 만들고 요청자를 방장으로 세션에 묶는다
     @PostMapping("/api/rooms")
     ResponseEntity<ObjectNode> create(@RequestBody(required = false) JsonNode body, HttpServletRequest request) {
         Fields f = Fields.parse(body);
@@ -52,6 +54,7 @@ class RoomController {
                 identity -> registry.create(normalized(name), identity::bind));
     }
 
+    // 방 코드로 기존 방에 입장하고 세션에 묶는다
     @PostMapping("/api/room-joins")
     ResponseEntity<ObjectNode> join(@RequestBody(required = false) JsonNode body, HttpServletRequest request) {
         Fields f = Fields.parse(body);
@@ -63,6 +66,7 @@ class RoomController {
         });
     }
 
+    // 요청자 시점의 방 상태 스냅샷을 돌려준다
     @GetMapping("/api/rooms/{roomId}/state")
     ResponseEntity<ObjectNode> state(@PathVariable String roomId, HttpServletRequest request) {
         HttpSession session = request.getSession(false);
@@ -77,6 +81,7 @@ class RoomController {
         return ResponseEntity.ok().header(HttpHeaders.CACHE_CONTROL, "no-store").body(snapshot.json());
     }
 
+    // 요청 원장으로 중복을 걸러내며 생성/입장 작업을 한 번만 실행한다
     private ResponseEntity<ObjectNode> bind(
             HttpServletRequest request, Fields f, String payload, int okStatus,
             Function<SessionIdentity, RoomRegistry.Entry> work) {
@@ -115,6 +120,7 @@ class RoomController {
         }
     }
 
+    // 방과 참가자 정보, 상태 스냅샷을 응답 본문으로 만든다
     private ResponseEntity<ObjectNode> respond(int status, String roomId, String participantId) {
         ObjectNode body = registry.withRoom(roomId, room -> {
             Participant me = member(room.participant(participantId));
@@ -130,14 +136,17 @@ class RoomController {
         return ResponseEntity.status(status).header(HttpHeaders.CACHE_CONTROL, "no-store").body(body);
     }
 
+    // 참가자가 없으면 방을 찾을 수 없다는 예외를 던진다
     private static Participant member(Optional<Participant> p) {
         return p.orElseThrow(() -> new RoomException("ROOM_NOT_FOUND"));
     }
 
+    // 이름을 정규화하고 규칙에 어긋나면 예외를 던진다
     private static String normalized(String name) {
         return SettingsValidator.normalizeName(name).orElseThrow(() -> new RoomException("INVALID_NAME"));
     }
 
+    // 생성/입장 요청의 공통 필드(스트림, 요청 id, 순번)를 검증해 담는다
     /** The envelope every create/join request carries, validated field by field (type and presence). */
     private static final class Fields {
 
@@ -153,6 +162,7 @@ class RoomController {
             this.sequence = sequence;
         }
 
+        // 본문과 프로토콜 버전, 공통 필드를 검증해 Fields를 만든다
         static Fields parse(JsonNode node) {
             if (node == null || !node.isObject()) {
                 throw invalid();
@@ -173,6 +183,7 @@ class RoomController {
             return new Fields(node, streamId, requestId, seq.asLong());
         }
 
+        // 문자열 필드를 읽고 형식이 틀리면 예외를 던진다
         String string(String field) {
             JsonNode v = node.get(field);
             if (v == null || !v.isString()) {
@@ -181,6 +192,7 @@ class RoomController {
             return v.asString();
         }
 
+        // 비어 있지 않고 길이 제한을 지키는 id 문자열을 읽는다
         private static String id(JsonNode node, String field) {
             JsonNode v = node.get(field);
             if (v == null || !v.isString() || v.asString().isEmpty() || v.asString().length() > MAX_ID_LENGTH) {
@@ -189,6 +201,7 @@ class RoomController {
             return v.asString();
         }
 
+        // 입력 형식 오류 예외를 만든다
         private static RoomException invalid() {
             return new RoomException("INVALID_INPUT");
         }

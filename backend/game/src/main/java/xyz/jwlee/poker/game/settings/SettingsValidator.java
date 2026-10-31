@@ -23,7 +23,7 @@ public final class SettingsValidator {
         return n > 0 && n <= MAX_CHIPS && n % 5 == 0;
     }
 
-    // 이름을 앞뒤 공백 제거 후 NFC로 정규화하고 이름 규칙을 만족하는지 검사한다
+    // 이름의 앞뒤 공백을 제거하고 NFC로 정규화한 뒤 이름 규칙을 만족하는지 검사한다
     /** A name trimmed and NFC-normalized, or empty when it breaks the name rule (1-10 Hangul, Latin, digit or space). */
     public static Optional<String> normalizeName(String raw) {
         if (raw == null) {

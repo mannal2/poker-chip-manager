@@ -45,7 +45,7 @@ class RoomController {
         this.registry = registry;
     }
 
-    // 새 방을 만들고 요청자를 방장으로 세션에 묶는다
+    // 새 방을 만들고, 방장으로 등록된 요청자의 참가자 ID를 세션에 저장한다
     @PostMapping("/api/rooms")
     ResponseEntity<ObjectNode> create(@RequestBody(required = false) JsonNode body, HttpServletRequest request) {
         Fields f = Fields.parse(body);
@@ -54,7 +54,7 @@ class RoomController {
                 identity -> registry.create(normalized(name), identity::bind));
     }
 
-    // 방 코드로 기존 방에 입장하고 세션에 묶는다
+    // 방 코드로 기존 방에 입장하고, 요청자의 방별 참가자 ID를 세션에 저장한다
     @PostMapping("/api/room-joins")
     ResponseEntity<ObjectNode> join(@RequestBody(required = false) JsonNode body, HttpServletRequest request) {
         Fields f = Fields.parse(body);

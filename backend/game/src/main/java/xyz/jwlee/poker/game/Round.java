@@ -38,7 +38,7 @@ public final class Round {
                 c.id() + ":" + events.size(), c.at(), s.tournamentId, s.hand == null ? 0 : s.hand.number, details));
     }
 
-    // 아무도 받지 않은 최고 베팅분을 해당 플레이어에게 돌려준다
+    // 현재 라운드의 최고 베팅액 중 두 번째로 높은 베팅액을 초과한 금액을 베팅한 플레이어에게 돌려준다
     /** Gives the unmatched part of the highest round bet back; null when nothing is uncalled. */
     public static EventDetails.UncalledReturned returnUncalled(GameState s) {
         List<Player> sorted = new ArrayList<>(s.players);
@@ -55,7 +55,7 @@ public final class Round {
         return new EventDetails.UncalledReturned(p.id, amount);
     }
 
-    // 주인 없는 상위 팟 구간의 칩을 기여자에게 환불한다(기권 처리용)
+    // 기권 처리 후 팟을 받을 자격이 있는 플레이어가 없는 납부 구간의 칩을 각 납부자에게 돌려준다
     /**
      * Server only (forfeits): contribution layers above the highest live contribution have nobody
      * left who could win them, because every player who reached them folded. Each contributor gets

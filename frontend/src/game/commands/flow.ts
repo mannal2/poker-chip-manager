@@ -3,7 +3,7 @@ import type { GameState } from '../types';
 import { requireRule, type CommandHandler } from '../rule';
 import { emit, settle } from '../round';
 
-// 진행 중(옵션으로 종료 직후 포함)인지 확인하고 현재 핸드를 돌려준다
+// 토너먼트가 진행 중인지 확인하고 현재 핸드를 반환한다. allowEnded가 참이면 종료 상태도 허용한다
 /** In-hand commands need a running tournament; UNDO also works right after it ends. */
 export function inPlay(s: GameState, allowEnded = false) {
   requireRule(s.status === 'playing' || (allowEnded && s.status === 'ended'));

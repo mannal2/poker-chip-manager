@@ -31,7 +31,7 @@ export function useSetupEditing({
 }) {
   const [renameId, setRenameId] = useState('');
   const finishName = useRef<{ key: string; finish: () => Promise<boolean> } | null>(null);
-  // 설정(과 좌석 순서)을 저장하는 명령을 실행한다
+  // 설정을 저장하는 명령을 실행하고, 좌석 순서가 전달되면 함께 저장한다
   function saveSettings(settings: GameSettings, order?: string[]) {
     if (busy) return notify('저장 완료를 기다려주세요.');
     void run(async () => {

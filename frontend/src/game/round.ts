@@ -29,7 +29,7 @@ export function emit(
     details,
   });
 }
-// 아무도 받지 않은 최고 베팅분을 해당 플레이어에게 돌려준다
+// 현재 라운드의 최고 베팅액 중 두 번째로 높은 베팅액을 초과한 금액을 베팅한 플레이어에게 돌려준다
 export function returnUncalled(s: GameState): { playerId: string; amount: number } | null {
   const sorted = [...s.players].sort((a, b) => b.B - a.B);
   if (sorted[0].B <= sorted[1].B) return null;

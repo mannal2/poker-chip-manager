@@ -1,4 +1,4 @@
-// 기준 좌석 다음의 조건을 만족하는 좌석을 순환하며 찾는다
+// 기준 좌석의 다음 자리부터 순환하며 참가 자격이 있는 첫 좌석을 찾는다
 export function nextSeat(from: number, eligible: boolean[]): number {
   for (let k = 1; k <= eligible.length; k++) {
     const i = (from + k) % eligible.length;

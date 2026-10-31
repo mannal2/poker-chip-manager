@@ -20,7 +20,7 @@ import xyz.jwlee.poker.game.model.Player;
 import xyz.jwlee.poker.game.model.TournamentStatus;
 import xyz.jwlee.poker.game.model.UndoSnapshot;
 
-// TS 이름의 JSON과 자바 게임 모델 사이를 서로 변환한다
+// TypeScript 게임 모델의 필드명을 사용하는 JSON과 Java 게임 모델을 상호 변환한다
 /**
  * Converts the TS-named JSON (shared fixtures, server protocol) to and from the Java game model.
  * Together with {@link EventJson} this is the only place that knows the TS-name to Java-name

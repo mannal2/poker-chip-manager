@@ -111,7 +111,7 @@ public final class Room {
         return participantId.equals(hostId);
     }
 
-    // 이 게임의 참가자 중 명단을 떠난 사람이 있는지 확인한다
+    // 현재 토너먼트에 등록된 참가자 중 방의 참가자 명단에서 빠진 사람이 있는지 확인한다
     boolean hasPlayerLeft() {
         return playerIds.keySet().stream().anyMatch(id -> !hasParticipant(id));
     }
@@ -165,7 +165,7 @@ public final class Room {
         this.lastStartSettings = startedWith;
     }
 
-    // 결과 화면에서 대기실로 돌아가며 게임 관련 상태를 지우고 설정을 시작 때로 되돌린다
+    // 대기실로 돌아가며 게임 관련 상태를 지우고, 시작 칩과 블라인드는 이번 토너먼트의 시작 설정으로 되돌리되 딜러는 미지정으로 바꾼다
     /**
      * Leaves the result screen: the game, its events, player ids and settlement draft go, the settings return to
      * what the tournament started with and the dealer is unchosen. The draft counter keeps growing, and the

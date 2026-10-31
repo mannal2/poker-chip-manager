@@ -27,7 +27,7 @@ export function useSettlementSelection(
   const currentPot = pots[potIndex];
   const preview = state && pots.length ? previewSettlement(state, winners) : null;
 
-  // 현재 팟의 승자 선택을 토글한다
+  // 현재 팟에서 해당 플레이어가 선택되어 있으면 해제하고, 선택되어 있지 않으면 승자로 선택한다
   function selectWinner(id: string) {
     if (busy || !currentPot) return notify('저장 완료를 기다려주세요.');
     if (!currentPot.eligible.includes(id)) return notify('이 팟의 승자 자격이 없습니다.');

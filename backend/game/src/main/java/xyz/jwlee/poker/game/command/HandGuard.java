@@ -16,7 +16,7 @@ final class HandGuard {
         return inPlay(s, false);
     }
 
-    // 진행 중(옵션으로 종료 직후 포함)인지 확인하고 현재 핸드를 돌려준다
+    // 토너먼트가 진행 중인지 확인하고 현재 핸드를 반환한다. allowEnded가 참이면 종료 상태도 허용한다
     /** UNDO also works right after the tournament ended. */
     static Hand inPlay(GameState s, boolean allowEnded) {
         Rules.require(s.status == TournamentStatus.PLAYING || (allowEnded && s.status == TournamentStatus.ENDED));

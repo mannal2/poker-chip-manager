@@ -7,7 +7,7 @@ import xyz.jwlee.poker.game.model.SeatPositions;
 public final class Positions {
     private Positions() {}
 
-    // 기준 좌석 다음의 조건을 만족하는 좌석을 순환하며 찾는다
+    // 기준 좌석의 다음 자리부터 순환하며 참가 자격이 있는 첫 좌석을 찾는다
     /** First eligible seat after {@code from}, wrapping around (possibly {@code from} itself). */
     public static int nextSeat(int from, boolean[] eligible) {
         for (int k = 1; k <= eligible.length; k++) {

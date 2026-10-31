@@ -1,4 +1,4 @@
-// 끌어 놓은 플레이어를 목표 좌석으로 옮기고 나머지를 원형으로 밀어 정렬한다
+// 플레이어를 목표 좌석으로 옮기고, 두 좌석 사이의 짧은 경로에 있는 플레이어들을 빈자리 쪽으로 한 칸씩 이동시킨다
 // Shift only the shorter arc into the vacancy left by the dragged card.
 export function moveCircularSeat(ids: string[], id: string, target: number): string[] {
   const next = [...ids],

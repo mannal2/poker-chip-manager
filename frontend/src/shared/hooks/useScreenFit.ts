@@ -5,7 +5,7 @@ type ViewportSize = { width: number; height: number };
 let lastViewport: ViewportSize | undefined;
 let editingViewport: ViewportSize | undefined;
 
-// 키보드 입력 중 화면 축소를 무시하고 레이아웃 기준 뷰포트를 정한다
+// 입력 중 가상 키보드로 줄어든 화면 높이 대신 기존 높이를 유지해 레이아웃 기준 뷰포트를 정한다
 // Shared by the screen and dialogs so they never write competing root dimensions.
 function designViewport(width: number, height: number): ViewportSize {
   const editing = document.activeElement?.matches('input,textarea,[contenteditable="true"]');

@@ -176,7 +176,7 @@ final class GameCommands {
         return false;
     }
 
-    // 엔진으로 명령을 실행해 게임을 갱신하고 필요하면 초안을 지운다
+    // 엔진으로 명령을 실행해 게임을 갱신하고, 블라인드 예약 명령이 아니라면 정산 초안을 지운다
     /** Applies the command; a settlement draft is dropped unless the command cannot change who may win. */
     private static void run(Room room, GameCommand command, Supplier<TransitionContext> contexts) {
         TransitionResult.Applied applied =
@@ -187,7 +187,7 @@ final class GameCommands {
         }
     }
 
-    // 전이 결과가 거절이면 예외로 바꾸고 성공이면 꺼내 쓴다
+    // 명령이 거절되었으면 오류 코드가 담긴 예외를 던지고, 적용되었으면 새 상태와 이벤트를 담은 결과를 반환한다
     private static TransitionResult.Applied applied(TransitionResult result) {
         return switch (result) {
             case TransitionResult.Applied a -> a;

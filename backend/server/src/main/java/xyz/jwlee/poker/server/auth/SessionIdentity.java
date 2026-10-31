@@ -10,7 +10,7 @@ import java.util.function.Supplier;
 import xyz.jwlee.poker.server.room.RequestLedger;
 import xyz.jwlee.poker.server.room.RoomException;
 
-// HttpSession에 저장된 스트림 원장과 방 참가자 정보를 읽고 쓰는 유일한 창구
+// HttpSession의 화면 스트림별 요청 원장과 방별 참가자 정보를 읽고 쓰는 역할을 전담한다
 /** The only reader and writer of the app's HttpSession attributes. */
 public final class SessionIdentity {
 
@@ -62,7 +62,7 @@ public final class SessionIdentity {
         return Optional.ofNullable(participants().get(roomId));
     }
 
-    // 세션을 방의 참가자에 묶는다
+    // 이 세션의 방별 참가자 정보에 방 ID와 참가자 ID의 연결을 저장한다
     public void bind(String roomId, String participantId) {
         participants().put(roomId, participantId);
     }

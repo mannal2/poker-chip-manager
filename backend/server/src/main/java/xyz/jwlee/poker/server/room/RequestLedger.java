@@ -78,7 +78,7 @@ public final class RequestLedger {
         return java.util.Optional.empty();
     }
 
-    // 결과를 원장에 기록하고 오래된 것을 버린다
+    // 요청 결과와 지문을 기록하고 최근 64건만 유지하며, 마지막으로 처리한 순번은 별도로 보관한다
     public synchronized void record(RequestOutcome outcome, String fingerprint) {
         results.addLast(new Entry(outcome, fingerprint));
         if (results.size() > RETAINED) {

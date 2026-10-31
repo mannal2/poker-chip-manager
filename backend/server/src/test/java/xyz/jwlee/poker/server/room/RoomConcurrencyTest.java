@@ -29,7 +29,7 @@ class RoomConcurrencyTest {
     private final CommandPipeline pipeline = new CommandPipeline();
     private final Map<String, Long> sequences = new HashMap<>();
 
-    // 장부가 다음 순번만 받으므로 10명이 먼저 겨루고 나머지 10개는 자기 첫 요청 뒤에 보낸다.
+    // 요청 원장은 다음 순번만 허용하므로 참가자 10명의 첫 요청을 동시에 보내고, 각 참가자의 두 번째 요청은 첫 요청이 끝난 뒤 같은 상태 버전으로 보낸다.
     @RepeatedTest(10)
     void twentyThreadsAtOneVersionApplyOnceAndKeepTheChips() throws Exception {
         List<String> ids = new ArrayList<>();

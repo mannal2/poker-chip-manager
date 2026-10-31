@@ -171,7 +171,7 @@ public final class CommandPipeline {
         return room.participant(participantId).orElseThrow(() -> new RoomException("ROOM_NOT_FOUND"));
     }
 
-    // 현재가 아닌 세대의 정확한 재시도는 저장된 결과로, 그 외는 조작권 상실로 처리한다
+    // 현재와 다른 조작권 세대의 요청은 해당 세대의 원장에 ID, 순번, 지문이 모두 일치하는 결과가 있을 때만 반환하고, 그렇지 않으면 조작권 상실로 거절한다
     /** The stored outcome of an exact retry under a generation that is not the current one, else CONTROL_LOST. */
     private static RequestOutcome replayOfAnotherGeneration(
             Room room, Participant actor, CommandRequest request, String fingerprint) {

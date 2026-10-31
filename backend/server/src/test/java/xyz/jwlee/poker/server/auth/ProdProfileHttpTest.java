@@ -42,7 +42,7 @@ class ProdProfileHttpTest {
         assertThat(post(cookie, csrf, "http://localhost:5173")).isEqualTo(403);
     }
 
-    // 세션 연장이 손으로 만든 쿠키를 운영 속성 그대로 다시 보내는지 확인한다.
+    // 세션 연장 응답에서 직접 생성한 쿠키에 운영 환경의 보안 속성과 유효 시간이 설정되는지 확인한다.
     @Test
     void refreshSendsTheHandBuiltCookieWithTheProdAttributes() throws Exception {
         HttpResponse<String> opened = client.send(

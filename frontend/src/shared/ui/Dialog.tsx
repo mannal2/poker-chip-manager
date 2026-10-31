@@ -1,6 +1,6 @@
 import { useScreenFit } from '../hooks/useScreenFit';
 import { useEffect, useRef, type ReactNode } from 'react';
-// 모달 대화상자로, 바깥 클릭/취소 키로 닫기를 처리한다
+// 모달 대화상자를 표시하고, 닫기가 허용된 경우 취소 이벤트나 설정에 따른 바깥 클릭으로 닫는다
 export function Dialog({
   title,
   onClose,

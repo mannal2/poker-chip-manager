@@ -4,7 +4,7 @@ import { messageFor } from '../model/errorMessages';
 import type { BetAction } from '../components/BetControls';
 import type { GameCommand, GameState, LegalActions } from '../../../game/types';
 
-// 칩으로 쌓는 베팅 금액 초안과 제출 가능 여부를 관리하는 훅
+// 칩 버튼으로 입력한 미확정 베팅 금액과 제출 가능 여부를 관리하는 훅
 /** Change scope for a new tournament or input session; undefined disables the draft. */
 export function useBettingDraft(
   state: GameState | null,

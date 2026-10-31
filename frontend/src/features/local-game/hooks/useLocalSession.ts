@@ -86,7 +86,7 @@ export function useLocalSession({
     restoreVersion.current++;
     c.cancelRefresh();
   }, [c]);
-  // 작업이 끝난 뒤 대기 중이던 복귀 복원을 실행한다
+  // 저장 작업 중 페이지가 다시 표시되어 복원이 보류되었다면, 작업이 끝난 뒤 저장소에 다시 연결해 최신 상태를 읽는다
   const afterRun = useCallback(() => {
     if (resumeRequested.current) {
       resumeRequested.current = false;
@@ -169,7 +169,7 @@ export function useLocalSession({
     announce('changed');
     return true;
   }
-  // 저장 작업을 한 번에 하나씩 실행하고 상태를 saving/오류로 표시한다
+  // 저장 작업을 한 번에 하나씩 실행하고, 시작 시 저장 중 상태로, 실패 시 저장 오류 상태로 전환한다
   async function run(action: () => Promise<void>) {
     await runner.run(action, {
       onBusy: () => notify('저장 완료를 기다려주세요.'),
@@ -189,7 +189,7 @@ export function useLocalSession({
     setApp({ game: c.state, status: 'ready', home: false, error: '' });
     announce('control');
   }
-  // 조작권을 잃은 화면에서 이 창으로 조작을 이어간다
+  // 조작권을 잃은 창에서 조작권을 다시 가져와 게임을 이어간다
   async function continueGame() {
     if (!runner.isLocked()) await run(activateLocal);
   }
@@ -198,7 +198,7 @@ export function useLocalSession({
     if (c.lease) return false;
     return tabs.otherWindowOwnsGame();
   }
-  // 홈에서 단일 기기 게임으로 들어가며 다른 창 소유 여부에 따라 분기한다
+  // 홈에서 게임에 진입할 때 다른 창이 조작 중이면 인수 안내를 표시하고, 그렇지 않으면 이 창이 조작권을 얻는다
   async function enterLocalGame() {
     await run(async () => {
       await c.refresh();

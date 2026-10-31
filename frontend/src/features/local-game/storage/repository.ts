@@ -53,7 +53,7 @@ export class LocalRepository {
     }
     return this.db;
   }
-  // 연결을 닫고 무효 표시를 풀어 다시 연결할 수 있게 한다
+  // 데이터베이스 연결을 닫고 연결 무효 상태를 해제해 다음 작업에서 다시 연결할 수 있게 한다
   reconnect() {
     this.close();
     this.invalid = false;
@@ -74,7 +74,7 @@ export class LocalRepository {
     if (count !== v.eventSequence) throw Error('저장 기록 경계가 손상되었습니다.');
     return v;
   }
-  // 시간 제한과 취소를 걸어 트랜잭션 작업을 실행하고 실패를 기록한다
+  // 트랜잭션 작업에 시간 제한과 취소 처리를 적용하고, 실패하면 오류를 기록한다
   private async transaction<T, M extends StoreMode>(
     phase: string,
     mode: M,

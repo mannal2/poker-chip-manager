@@ -37,7 +37,7 @@ public final class RoomCodes {
         }
     }
 
-    // 입력을 대문자 방 코드로 바꾸고 형식이 틀리면 비워 돌려준다
+    // 입력을 대문자 방 코드로 정규화하고, 형식이 유효하지 않으면 빈 Optional을 반환한다
     /** The canonical upper-case form of user input, or empty when it cannot be a code. */
     public static Optional<String> normalize(String input) {
         if (input == null) {

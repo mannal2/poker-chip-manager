@@ -10,7 +10,7 @@ import xyz.jwlee.poker.server.room.Room;
 import xyz.jwlee.poker.server.room.RoomException;
 import xyz.jwlee.poker.server.support.IdGenerator;
 
-// 1초마다 연결을 돌며 PING을 보내고 응답 없는 연결과 전송이 멈춘 연결을 닫는다
+// 1초마다 연결을 돌며 PING을 보내고 구독하지 않거나 응답이 없거나 전송이 멈춘 연결을 닫는다
 /** A PONG only moves the connection's deadline: nothing here changes a room or its state version. */
 @Component
 public final class HeartbeatTask {
@@ -19,6 +19,7 @@ public final class HeartbeatTask {
     private static final Duration PING_INTERVAL = Duration.ofSeconds(15);
     private static final Duration PONG_TIMEOUT = Duration.ofSeconds(45);
     private static final Duration SEND_STALL_LIMIT = Duration.ofSeconds(10);
+    private static final Duration SUBSCRIBE_DEADLINE = Duration.ofSeconds(10);
 
     private final ConnectionHub hub;
     private final RoomRegistry registry;
@@ -45,19 +46,18 @@ public final class HeartbeatTask {
         }
     }
 
-    // 응답 기한이 지났거나 전송이 멈췄는지 확인한다
+    // 구독 기한이나 응답 기한이 지났거나 전송이 멈췄는지 확인한다
     private static boolean expired(Connection connection, Instant now) {
         boolean silent = !now.isBefore(connection.lastPong().plus(PONG_TIMEOUT));
         boolean stalled = connection.sendingSince()
                 .filter(since -> !now.isBefore(since.plus(SEND_STALL_LIMIT))).isPresent();
-        return silent || stalled;
+        boolean neverSubscribed = connection.roomId() == null
+                && !now.isBefore(connection.openedAt().plus(SUBSCRIBE_DEADLINE));
+        return silent || stalled || neverSubscribed;
     }
 
-    // 구독한 방의 현재 상태 버전을 읽고 구독 전이거나 방이 없으면 null을 돌려준다
+    // 구독한 방의 현재 상태 버전을 읽고 방이 없으면 null을 돌려준다
     private Long stateVersion(String roomId) {
-        if (roomId == null) {
-            return null;
-        }
         try {
             return registry.withRoom(roomId, Room::version);
         } catch (RoomException gone) {

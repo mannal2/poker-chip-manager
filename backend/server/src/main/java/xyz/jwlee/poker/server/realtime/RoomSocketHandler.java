@@ -73,7 +73,7 @@ class RoomSocketHandler extends TextWebSocketHandler {
         this.env = new RoomEnv(clock, ids);
     }
 
-    // 새 connectionId로 연결을 만들고 서버 전체 한도를 넘으면 닫는다
+    // 새 connectionId로 연결을 만들고 서버 전체나 세션별 한도를 넘으면 닫는다
     @Override
     public void afterConnectionEstablished(WebSocketSession session) {
         session.setTextMessageSizeLimit(MAX_INBOUND_BYTES);

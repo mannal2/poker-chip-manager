@@ -268,7 +268,7 @@ class ConnectionTest {
         ConnectionHub hub = new ConnectionHub();
         List<Connection> all = new ArrayList<>();
         for (int i = 0; i < 500; i++) {
-            all.add(connected(hub, "c" + i, "s", new FakeSocket()));
+            all.add(connected(hub, "c" + i, "s" + i, new FakeSocket()));
         }
 
         Connection extra = Connection.open("extra", "s", new FakeSocket(), clock, c -> { });
@@ -290,5 +290,24 @@ class ConnectionTest {
         c.close();
 
         assertThat(seen).succeedsWithin(Duration.ofSeconds(5)).isEqualTo(true);
+    }
+
+    @Test
+    void theHubRefusesTheNinthConnectionOfASessionButNotAnotherSession() {
+        ConnectionHub hub = new ConnectionHub();
+        List<Connection> all = new ArrayList<>();
+        for (int i = 0; i < 8; i++) {
+            all.add(connected(hub, "c" + i, "busy", new FakeSocket()));
+        }
+
+        Connection ninth = Connection.open("ninth", "busy", new FakeSocket(), clock, c -> { });
+        assertThat(hub.register(ninth)).isFalse();
+        assertThat(hub.connections()).hasSize(8);
+        all.add(connected(hub, "other", "calm", new FakeSocket()));
+
+        hub.unregister(all.getFirst());
+        assertThat(hub.register(ninth)).isTrue();
+        ninth.close();
+        all.forEach(Connection::close);
     }
 }

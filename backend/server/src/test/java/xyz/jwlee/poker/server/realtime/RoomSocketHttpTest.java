@@ -649,7 +649,7 @@ class RoomSocketHttpTest {
         Browser host = host();
         List<Connection> filler = new ArrayList<>();
         for (int i = 0; i < 500; i++) {
-            Connection c = Connection.open("filler-" + i, "s", new FakeSocket(), clock, hub::unregister);
+            Connection c = Connection.open("filler-" + i, "s" + i, new FakeSocket(), clock, hub::unregister);
             assertThat(hub.register(c)).isTrue();
             filler.add(c);
         }
@@ -703,5 +703,25 @@ class RoomSocketHttpTest {
     void theHeartbeatIsScheduled() {
         assertThat(scheduled.getScheduledTasks()).extracting(Object::toString)
                 .anyMatch(task -> task.contains("HeartbeatTask.tick"));
+    }
+
+    @Test
+    void theNinthSocketOfASessionIsClosedAndTheOthersAndOtherSessionsAreFine() throws Exception {
+        Browser host = host();
+        List<Screen> eight = new ArrayList<>();
+        for (int i = 0; i < 8; i++) {
+            eight.add(host.open());
+        }
+        await().atMost(WAIT).until(() -> hub.connections().size() == 8);
+
+        Screen ninth = host.open();
+
+        assertThat(ninth.awaitClosed()).isEqualTo(1013);
+        await().atMost(WAIT).until(() -> hub.connections().size() == 8);
+        eight.getFirst().say(host.subscribeTo(host.roomId, 1));
+        eight.getFirst().next("SNAPSHOT");
+        eight.forEach(screen -> assertThat(screen.closed).isNotDone());
+        Browser bob = guest(host, "Bob");
+        bob.subscribed();
     }
 }

@@ -67,6 +67,7 @@ public final class Connection {
     private volatile Instant sendingSince;
     private volatile Instant lastPong;
     private volatile Instant lastPing;
+    private final Instant openedAt;
     private volatile String roomId;
 
     private Connection(String connectionId, String sessionId, Socket socket, Clock clock, Consumer<Connection> onClosed) {
@@ -75,7 +76,8 @@ public final class Connection {
         this.socket = socket;
         this.clock = clock;
         this.onClosed = onClosed;
-        this.lastPong = clock.instant();
+        this.openedAt = clock.instant();
+        this.lastPong = openedAt;
         this.lastPing = lastPong;
     }
 
@@ -102,6 +104,7 @@ public final class Connection {
 
     Instant lastPong() { return lastPong; }
     Instant lastPing() { return lastPing; }
+    Instant openedAt() { return openedAt; }
 
     // 진행 중인 전송의 시작 시각을 돌려준다
     public Optional<Instant> sendingSince() {
@@ -147,7 +150,7 @@ public final class Connection {
     }
 
     // PING을 보낼 칸에 넣고 이 nonce의 응답만 기다린다
-    /** {@code stateVersion} is null while there is no room to report. */
+    /** {@code stateVersion} is null when the room just went away. */
     void ping(String nonce, Long stateVersion) {
         ObjectNode message = JsonNodeFactory.instance.objectNode().put("type", "PING").put("nonce", nonce);
         message.put("stateVersion", stateVersion);

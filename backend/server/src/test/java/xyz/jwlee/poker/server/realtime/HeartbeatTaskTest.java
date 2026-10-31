@@ -5,6 +5,7 @@ import static org.awaitility.Awaitility.await;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -73,17 +74,18 @@ class HeartbeatTaskTest {
     }
 
     @Test
-    void anUnsubscribedConnectionIsPingedWithoutAVersion() throws Exception {
+    void anUnsubscribedConnectionLastsUntilTenSeconds() throws Exception {
         FakeSocket fresh = new FakeSocket();
         Connection unsubscribed = Connection.open("c2", "s2", fresh, clock, hub::unregister);
         hub.register(unsubscribed);
 
-        after(Duration.ofSeconds(15));
-        fresh.awaitSendStarted();
+        after(Duration.ofMillis(9_900));
+        assertThat(fresh.closedWith).isNotDone();
 
-        await().until(() -> fresh.sent.size() == 1);
-        assertThat(fresh.message(0).get("stateVersion").isNull()).isTrue();
-        unsubscribed.close();
+        after(Duration.ofMillis(100));
+        fresh.awaitClosed();
+        assertThat(socket.closedWith).isNotDone();
+        await().until(() -> hub.connections().equals(List.of(connection)));
     }
 
     @Test

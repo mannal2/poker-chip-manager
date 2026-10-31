@@ -19,6 +19,7 @@ import xyz.jwlee.poker.server.room.RoomPublisher;
 public final class ConnectionHub implements RoomPublisher {
 
     private static final int MAX_CONNECTIONS = 500;
+    private static final int MAX_CONNECTIONS_PER_SESSION = 8;
 
     private final Map<String, Connection> connections = new ConcurrentHashMap<>();
 
@@ -50,9 +51,11 @@ public final class ConnectionHub implements RoomPublisher {
         }
     }
 
-    // 연결을 등록하고 서버 전체 한도를 넘으면 false를 돌려준다
+    // 연결을 등록하고 서버 전체나 세션별 한도를 넘으면 false를 돌려준다
     synchronized boolean register(Connection connection) {
-        if (connections.size() >= MAX_CONNECTIONS) {
+        long sameSession = connections.values().stream()
+                .filter(other -> other.sessionId().equals(connection.sessionId())).count();
+        if (connections.size() >= MAX_CONNECTIONS || sameSession >= MAX_CONNECTIONS_PER_SESSION) {
             return false;
         }
         connections.put(connection.connectionId(), connection);

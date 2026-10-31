@@ -28,6 +28,7 @@
         "button" : 0
       },
       "hostId" : "00000000-0000-4000-8000-000000000004",
+      "hostTakeoverOpen" : false,
       "participants" : [ {
         "participantId" : "00000000-0000-4000-8000-000000000004",
         "name" : "Alice",
@@ -46,6 +47,7 @@
       "you" : {
         "participantId" : "00000000-0000-4000-8000-000000000005",
         "controlGeneration" : 2,
+        "canTakeHost" : false,
         "capabilities" : {
           "canAct" : false,
           "canUndo" : false,

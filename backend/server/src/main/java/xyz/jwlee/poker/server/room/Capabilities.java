@@ -25,4 +25,10 @@ public record Capabilities(boolean canAct, boolean canUndo, boolean canSettle, b
         boolean canEditBlinds = host && room.phase() == RoomPhase.PLAYING;
         return new Capabilities(canAct, canUndo, canSettle, canEditSetup, canEditBlinds);
     }
+
+    // 열린 방장 인수 요청을 이 참가자가 받을 수 있는지(접속 중, 진행 중이면 생존자) 확인한다
+    public static boolean canTakeHost(Room room, String participantId) {
+        return room.hostTakeoverOpen() && room.presence().isConnected(participantId)
+                && (room.phase() != RoomPhase.PLAYING || GameCommands.canHoldRoom(room, participantId));
+    }
 }

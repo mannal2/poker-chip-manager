@@ -225,7 +225,7 @@ WebSocket·연결 판정·방장 자동 이전·기기 복구·방 자동 삭제
 | ---- | ---------- |
 | `api/` | `RoomController`(생성·참가·상태), `CommandController`(명령·요청 결과·조작 인수), `HistoryController`, `HealthController`, 본문 크기 필터, `ApiExceptionHandler`·`ApiError`(코드·HTTP 상태·문구) |
 | `auth/` | `SecurityConfig`, `OriginFilter`, `SessionGuardFilter`, `SessionController`(세션·스트림), `SessionIdentity`(세션 속성·스트림 장부의 유일한 입구) |
-| `room/` | `Room`(방 상태·잠금), `CommandPipeline`(검사 순서와 명령 연결), `WaitingRoomCommands`·`GameCommands`·`ResultCommands`, `StartConditions`, `Capabilities`, `RequestLedger`·`RequestOutcome`, `SnapshotWriter` |
+| `room/` | `Room`(방 상태·잠금), `CommandPipeline`(검사 순서와 명령 연결), `WaitingRoomCommands`·`GameCommands`·`ResultCommands`, `RoomLifecycle`(연결 전환·시간 규칙), `StartConditions`, `Capabilities`, `RequestLedger`·`RequestOutcome`, `SnapshotWriter` |
 | `registry/` | `RoomRegistry`(방 표·한도·코드·잠금 진입), `RoomCodes` |
 | `support/` | `IdGenerator`, `Clock` 빈, `Protocol` |
 

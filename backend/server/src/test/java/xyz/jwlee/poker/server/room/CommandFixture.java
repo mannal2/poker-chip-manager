@@ -1,10 +1,12 @@
 package xyz.jwlee.poker.server.room;
 
+import java.time.Clock;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
+import xyz.jwlee.poker.server.support.IdGenerator;
 
 /** A waiting room with host "a" (Alice) and guests "b" (Bob), "c" (Carol), "d" (Dave), and a command sender. */
 final class CommandFixture {
@@ -12,10 +14,16 @@ final class CommandFixture {
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     final Room room = new Room("room1", "ABC234", Instant.EPOCH);
-    final CommandPipeline pipeline = new CommandPipeline();
+    final CommandPipeline pipeline;
     private final Map<String, Long> used = new HashMap<>();
 
     CommandFixture(int people) {
+        this(people, Clock.systemUTC());
+    }
+
+    // 주입한 시계로 명령을 처리하는 방을 만든다
+    CommandFixture(int people, Clock clock) {
+        pipeline = new CommandPipeline(clock, IdGenerator.random());
         String[] ids = {"a", "b", "c", "d"};
         String[] names = {"Alice", "Bob", "Carol", "Dave"};
         for (int i = 0; i < people; i++) {

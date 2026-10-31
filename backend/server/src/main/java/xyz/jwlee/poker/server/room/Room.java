@@ -2,6 +2,7 @@ package xyz.jwlee.poker.server.room;
 
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -42,6 +43,8 @@ public final class Room {
     private int nextJoinOrder;
     private boolean closed;
     private final Presence presence = new Presence();
+    private boolean hostTakeoverOpen;
+    private final List<String> pendingRevocations = new ArrayList<>();
 
     public Room(String roomId, String code, Instant createdAt) {
         this.roomId = roomId;
@@ -100,6 +103,20 @@ public final class Room {
     /** True once the room has been emptied; a closed room is treated as not found. Set under the room lock. */
     public boolean isClosed() { return closed; }
 
+    // 방을 닫는다. 표에서 빼는 일은 호출자가 방 잠금을 푼 뒤에 한다
+    void close() { this.closed = true; }
+
+    public boolean hostTakeoverOpen() { return hostTakeoverOpen; }
+    void openHostTakeover() { this.hostTakeoverOpen = true; }
+    void closeHostTakeover() { this.hostTakeoverOpen = false; }
+
+    // 명단에서 빠진 사람의 끊어야 할 연결 ID를 꺼내고 목록을 비운다
+    public List<String> drainPendingRevocations() {
+        List<String> drained = List.copyOf(pendingRevocations);
+        pendingRevocations.clear();
+        return drained;
+    }
+
     // id로 참가자를 찾는다
     public Optional<Participant> participant(String participantId) {
         return participants.stream().filter(p -> p.participantId().equals(participantId)).findFirst();
@@ -148,11 +165,12 @@ public final class Room {
 
     void replaceSettings(RoomSettings next) { this.settings = next; }
 
-    // 방장을 바꾸고 정산 초안을 비운다
+    // 방장을 바꾸고 정산 초안을 비우며 인수 요청을 닫는다
     /** A new host starts from a clean draft: the old host's pick is not theirs to apply. */
     void setHost(String participantId) {
         this.hostId = participantId;
         this.settlementDraft = null;
+        this.hostTakeoverOpen = false;
     }
 
     // Game mutations. Like the waiting-room ones, they leave the version to the command pipeline.
@@ -271,19 +289,29 @@ public final class Room {
     // 참가자를 내보내고 방장 승계와 방 닫기를 처리한다
     /**
      * Removes a participant. The dealer stays on the same person (-1 if that was the leaver); a leaving host
-     * hands the room to the earliest joiner left; the last one out closes the room.
+     * hands the room to the earliest connected joiner, or the earliest joiner left when nobody is connected; the
+     * last one out closes the room. Their connections wait in {@link #drainPendingRevocations} to be ended.
      */
     void removeParticipant(String participantId) {
         String dealer = dealerId();
         participants.removeIf(p -> p.participantId().equals(participantId));
         ledgers.keySet().removeIf(k -> k.startsWith(participantId + "#"));
+        pendingRevocations.addAll(presence.forget(participantId));
         pointDealerAt(dealer);
         if (participants.isEmpty()) {
             hostId = null;
+            hostTakeoverOpen = false;
             closed = true;
         } else if (participantId.equals(hostId)) {
-            hostId = participants.stream().min(java.util.Comparator.comparingInt(Participant::joinOrder))
-                    .orElseThrow().participantId();
+            setHost(nextHost());
         }
+    }
+
+    // 연결된 사람을 먼저, 그다음 입장 순서로 다음 방장을 고른다
+    private String nextHost() {
+        return participants.stream()
+                .min(Comparator.comparing((Participant p) -> !presence.isConnected(p.participantId()))
+                        .thenComparingInt(Participant::joinOrder))
+                .orElseThrow().participantId();
     }
 }

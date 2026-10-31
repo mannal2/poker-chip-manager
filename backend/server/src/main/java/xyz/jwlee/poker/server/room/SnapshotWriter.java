@@ -34,6 +34,7 @@ public final class SnapshotWriter {
         settings.put("bb", s.bb());
         settings.put("button", s.button());
         n.put("hostId", room.hostId());
+        n.put("hostTakeoverOpen", room.hostTakeoverOpen());
         ArrayNode people = n.putArray("participants");
         List<Participant> all = room.participants();
         for (int seat = 0; seat < all.size(); seat++) {
@@ -54,6 +55,7 @@ public final class SnapshotWriter {
         ObjectNode you = n.putObject("you");
         you.put("participantId", viewer.participantId());
         you.put("controlGeneration", viewer.controlGeneration());
+        you.put("canTakeHost", Capabilities.canTakeHost(room, viewer.participantId()));
         ObjectNode caps = you.putObject("capabilities");
         Capabilities c = Capabilities.of(room, viewer.participantId());
         caps.put("canAct", c.canAct());

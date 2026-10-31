@@ -13,7 +13,9 @@ import java.util.function.UnaryOperator;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import xyz.jwlee.poker.server.room.Room;
+import xyz.jwlee.poker.server.room.RoomEnv;
 import xyz.jwlee.poker.server.room.RoomException;
+import xyz.jwlee.poker.server.room.RoomLifecycle;
 import xyz.jwlee.poker.server.support.IdGenerator;
 
 // 활성 방을 보관하고 전역 잠금과 방 잠금으로 접근을 조율하는 저장소
@@ -25,7 +27,7 @@ import xyz.jwlee.poker.server.support.IdGenerator;
  * while its action runs, so that action must not call anything that takes the global lock.
  *
  * <p>Deleting a room: the decision is made under the room lock ({@code Room.removeParticipant} sets the closed
- * flag when the last person leaves), the room lock is released, and only then {@link #remove} takes the global lock.
+ * flag when the last person leaves, {@code RoomLifecycle.sweep} when a room is abandoned), the room lock is released, and only then {@link #remove} takes the global lock.
  * No thread ever holds a room lock while waiting for the global one, so the order stays global then room.
  * Between the close and the removal the room is still in the table but {@link #withRoom} and {@link #join}
  * see the closed flag under the room lock and answer ROOM_NOT_FOUND, so nobody can be seated in a room that
@@ -165,6 +167,32 @@ public class RoomRegistry {
             }
             return null;
         });
+    }
+
+    // 방마다 시간 규칙을 판정하고 닫힌 방을 표에서 뺀다
+    /**
+     * Sweeps each room under its lock. A room gone since {@link #roomIds} is skipped, and one the sweep closed
+     * leaves the table after its lock is released, in the same order as any other deletion.
+     */
+    public void sweepAll() {
+        RoomEnv env = new RoomEnv(clock, ids);
+        for (String roomId : roomIds()) {
+            if (sweepClosed(roomId, env)) {
+                remove(roomId);
+            }
+        }
+    }
+
+    // 방 하나를 점검하고 닫혔으면 true를, 이미 없는 방이면 false를 돌려준다
+    private boolean sweepClosed(String roomId, RoomEnv env) {
+        try {
+            return withRoom(roomId, room -> {
+                RoomLifecycle.sweep(room, env);
+                return room.isClosed();
+            });
+        } catch (RoomException e) {
+            return false;
+        }
     }
 
     // 활성 방의 개수를 돌려준다

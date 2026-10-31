@@ -160,6 +160,17 @@ class CommandControllerTest {
                 .andExpect(jsonPath("$.latestState.roomId").value(c[1].roomId));
     }
 
+    // 닫힌 방장 인수 요청이 409로 응답되는지 확인한다
+    @Test
+    void aClosedHostTakeoverIs409() throws Exception {
+        Client[] c = twoInARoom();
+
+        c[1].command("TAKE_HOST", "{}")
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.outcome").value("REJECTED"))
+                .andExpect(jsonPath("$.code").value("HOST_TAKEOVER_CLOSED"));
+    }
+
     @Test
     void aStaleVersionIs409() throws Exception {
         Client[] c = twoInARoom();

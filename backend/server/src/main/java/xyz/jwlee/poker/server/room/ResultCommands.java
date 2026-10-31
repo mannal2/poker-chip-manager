@@ -17,6 +17,8 @@ final class ResultCommands {
      * generations and request ledgers stay; the game and everything that belongs to it go. The settings
      * are the ones the tournament started with (blinds raised during the game do not carry over) and the
      * dealer button is cleared. A guest who forfeited stays on the roster: that flag lived in the game.
+     * Whoever is absent gets a fresh waiting-room grace from this moment (M21); this runs only on the phase
+     * change, so a refresh or a retry never extends it (M22). An open host takeover ends here.
      */
     static void reReady(Room room, Participant actor, CommandRequest request, RoomEnv env) {
         JsonNode payload = request.payload();
@@ -26,7 +28,11 @@ final class ResultCommands {
         switch (room.phase()) {
             case PLAYING -> throw new RoomException("ABORT_FIRST");
             case WAITING -> throw new RoomException("INVALID_ACTION");
-            case RESULT -> room.returnToWaiting();
+            case RESULT -> {
+                room.returnToWaiting();
+                room.presence().restartAbsence(env.now());
+                room.closeHostTakeover();
+            }
         }
     }
 }

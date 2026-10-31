@@ -10,7 +10,7 @@ import xyz.jwlee.poker.game.model.GameSettings;
 import xyz.jwlee.poker.game.settings.SettingsValidation;
 import xyz.jwlee.poker.game.settings.SettingsValidator;
 
-// 대기실 명령(설정, 좌석, 딜러, 이름, 강퇴, 퇴장, 방장 이전)의 규칙을 방에 적용한다
+// 대기실 명령(설정, 좌석, 딜러, 이름, 강퇴, 퇴장)과 방장 이전·인수의 규칙을 방에 적용한다
 /**
  * The waiting-room command rules. Each method validates everything first and changes the room only after
  * every check passed, so a rejected command leaves the room untouched. A rejection is a
@@ -120,6 +120,21 @@ final class WaitingRoomCommands {
             case RESULT -> { }
         }
         room.setHost(target);
+    }
+
+    // 열린 인수 요청을 받아 요청자 본인이 방장이 된다
+    /** The first valid acceptance wins: {@code setHost} closes the request, so a later one is HOST_TAKEOVER_CLOSED. */
+    static void takeHost(Room room, Participant actor, JsonNode payload) {
+        if (payload != null && !payload.isNull() && !(payload.isObject() && payload.isEmpty())) {
+            throw invalid();
+        }
+        if (!room.hostTakeoverOpen()) {
+            throw new RoomException("HOST_TAKEOVER_CLOSED");
+        }
+        if (!Capabilities.canTakeHost(room, actor.participantId())) {
+            throw new RoomException("FORBIDDEN");
+        }
+        room.setHost(actor.participantId());
     }
 
     // 방이 대기 단계인지 확인한다

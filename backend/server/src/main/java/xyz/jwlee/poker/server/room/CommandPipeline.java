@@ -73,6 +73,7 @@ public final class CommandPipeline {
             case "KICK" -> waiting(true, WaitingRoomCommands::kick);
             case "LEAVE" -> waiting(false, WaitingRoomCommands::leave);
             case "TRANSFER_HOST" -> waiting(true, WaitingRoomCommands::transferHost);
+            case "TAKE_HOST" -> waiting(false, WaitingRoomCommands::takeHost);
             case "START" -> plain(true, GameCommands::start);
             case "CHECK", "CALL", "FOLD", "ALL_IN", "BET", "RAISE" ->
                     new Handler(false, true, true, GameCommands::bet);

@@ -1,5 +1,6 @@
 package xyz.jwlee.poker.server.room;
 
+import java.time.Clock;
 import java.util.HashMap;
 import java.util.Map;
 import xyz.jwlee.poker.game.model.GameState;
@@ -17,7 +18,12 @@ final class GameFixture {
     private final Map<String, Long> sequences = new HashMap<>();
 
     GameFixture(int people, int dealerSeat) {
-        base = new CommandFixture(people);
+        this(people, dealerSeat, Clock.systemUTC());
+    }
+
+    // 주입한 시계로 명령을 처리하는 게임을 준비한다
+    GameFixture(int people, int dealerSeat, Clock clock) {
+        base = new CommandFixture(people, clock);
         room = base.room;
         String[] ids = {"a", "b", "c", "d"};
         check(send("a", "SET_SETTINGS", "{\"initial\":1000,\"sb\":5,\"bb\":10}"));
@@ -26,6 +32,13 @@ final class GameFixture {
 
     static GameFixture started(int people, int dealerSeat) {
         GameFixture f = new GameFixture(people, dealerSeat);
+        f.check(f.send("a", "START", "{}"));
+        return f;
+    }
+
+    // 주입한 시계로 처리하는 시작된 게임을 만든다
+    static GameFixture started(int people, int dealerSeat, Clock clock) {
+        GameFixture f = new GameFixture(people, dealerSeat, clock);
         f.check(f.send("a", "START", "{}"));
         return f;
     }
@@ -44,10 +57,14 @@ final class GameFixture {
     }
 
     CommandResult sendScoped(String who, String type, String payload, String tournamentId, String handId) {
+        return base.pipeline.execute(room, who, request(who, type, payload, tournamentId, handId));
+    }
+
+    // 다음 순번과 현재 버전으로 요청을 만들되 보내지는 않는다
+    CommandRequest request(String who, String type, String payload, String tournamentId, String handId) {
         long seq = sequences.merge(who, 1L, Long::sum);
-        CommandRequest request = new CommandRequest(1, tournamentId, "req-" + who + "-" + seq, seq, 1,
+        return new CommandRequest(1, tournamentId, "req-" + who + "-" + seq, seq, 1,
                 room.version(), handId, type, CommandFixture.json(payload));
-        return base.pipeline.execute(room, who, request);
     }
 
     void check(CommandResult r) {

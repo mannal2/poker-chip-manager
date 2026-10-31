@@ -16,6 +16,7 @@ record ApiError(String code, String message) {
             Map.entry("STALE_STATE", "방 상태가 바뀌었습니다. 최신 상태를 확인해 주세요."),
             Map.entry("CONTROL_LOST", "조작 권한을 잃었습니다."),
             Map.entry("TOURNAMENT_CHANGED", "진행 중인 게임이 바뀌었습니다."),
+            Map.entry("HOST_TAKEOVER_CLOSED", "방장 인수 요청이 이미 닫혔습니다."),
             Map.entry("NOT_YOUR_TURN", "지금은 내 차례가 아닙니다."),
             Map.entry("INVALID_ACTION", "지금은 할 수 없는 행동입니다."),
             Map.entry("ABORT_FIRST", "진행 중인 게임을 먼저 중단해 주세요."),

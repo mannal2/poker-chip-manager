@@ -28,6 +28,7 @@ class ApiExceptionHandler {
             Map.entry("UNKNOWN_TYPE", 422),
             Map.entry("STALE_STATE", 409),
             Map.entry("CONTROL_LOST", 409),
+            Map.entry("HOST_TAKEOVER_CLOSED", 409),
             Map.entry("TOURNAMENT_CHANGED", 409),
             Map.entry("PROTOCOL_INCOMPATIBLE", 409),
             Map.entry("REQUEST_CONFLICT", 409),
@@ -53,7 +54,7 @@ class ApiExceptionHandler {
     static int rejectionStatus(String code) {
         return switch (code) {
             case "FORBIDDEN", "NOT_YOUR_TURN" -> 403;
-            case "STALE_STATE", "CONTROL_LOST", "TOURNAMENT_CHANGED" -> 409;
+            case "STALE_STATE", "CONTROL_LOST", "TOURNAMENT_CHANGED", "HOST_TAKEOVER_CLOSED" -> 409;
             default -> 422;
         };
     }

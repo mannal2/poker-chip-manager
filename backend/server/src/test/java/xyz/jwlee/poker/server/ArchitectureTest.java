@@ -25,5 +25,22 @@ class ArchitectureTest {
     static final ArchRule supportDoesNotDependOnOtherServerPackages =
             noClasses().that().resideInAPackage("..server.support..")
                     .should().dependOnClassesThat().resideInAnyPackage(
-                            "..server.api..", "..server.auth..", "..server.room..", "..server.registry..");
+                            "..server.api..", "..server.auth..", "..server.room..", "..server.registry..",
+                            "..server.realtime..");
+
+    @ArchTest
+    static final ArchRule roomRegistryAndSupportDoNotDependOnRealtimeOrWebSocket =
+            noClasses().that().resideInAnyPackage("..server.room..", "..server.registry..", "..server.support..")
+                    .should().dependOnClassesThat().resideInAnyPackage(
+                            "..server.realtime..", "org.springframework.web.socket..");
+
+    @ArchTest
+    static final ArchRule realtimeDoesNotDependOnApi =
+            noClasses().that().resideInAPackage("..server.realtime..")
+                    .should().dependOnClassesThat().resideInAPackage("..server.api..");
+
+    @ArchTest
+    static final ArchRule apiAndAuthDoNotDependOnRealtime =
+            noClasses().that().resideInAnyPackage("..server.api..", "..server.auth..")
+                    .should().dependOnClassesThat().resideInAPackage("..server.realtime..");
 }

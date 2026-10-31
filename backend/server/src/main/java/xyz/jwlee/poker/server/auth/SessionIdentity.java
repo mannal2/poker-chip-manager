@@ -34,6 +34,11 @@ public final class SessionIdentity {
         return slot(STREAMS, () -> Collections.synchronizedMap(new LinkedHashMap<>()));
     }
 
+    // 세션의 id를 돌려준다
+    public String id() {
+        return session.getId();
+    }
+
     // 새 스트림과 요청 원장을 등록하고 한도 초과 시 거절한다
     /** Registers a stream with a fresh ledger unless the session already has {@code max}; false when refused. */
     public boolean openStream(String streamId, int max) {
@@ -45,6 +50,11 @@ public final class SessionIdentity {
             streams.put(streamId, new RequestLedger());
             return true;
         }
+    }
+
+    // 스트림과 그 요청 원장을 지운다. 없는 스트림이면 아무 일도 하지 않는다
+    public void closeStream(String streamId) {
+        streams().remove(streamId);
     }
 
     // 등록된 스트림의 요청 원장을 돌려준다

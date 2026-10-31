@@ -130,6 +130,15 @@ public final class Room {
         snapshotRequests.add(connectionId);
     }
 
+    // 참가자의 모든 구독 연결에 버전 변화 없이 현재 상태를 보내도록 표시한다
+    void requestSnapshotsOf(String participantId) {
+        presence.subscribers().forEach((connectionId, subscriber) -> {
+            if (subscriber.equals(participantId)) {
+                snapshotRequests.add(connectionId);
+            }
+        });
+    }
+
     // 스냅샷을 요청한 연결을 꺼내고 목록을 비운다
     Set<String> drainSnapshotRequests() {
         Set<String> drained = Set.copyOf(snapshotRequests);

@@ -142,7 +142,9 @@ public final class CommandPipeline {
         if (expectedGeneration != actor.controlGeneration()) {
             throw new RoomException("CONTROL_LOST");
         }
-        return room.advanceControl(participantId);
+        long issued = room.advanceControl(participantId);
+        room.requestSnapshotsOf(participantId);
+        return issued;
     }
 
     // 존재하지 않는 명령 종류를 미리 거절한다

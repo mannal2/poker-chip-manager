@@ -9,7 +9,9 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.web.csrf.CsrfToken;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RestController;
 import xyz.jwlee.poker.server.support.IdGenerator;
@@ -48,6 +50,13 @@ class SessionController {
         response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
         response.setHeader("Cache-Control", "no-store");
         return Map.of("csrfToken", csrf.getToken(), "protocolVersion", Protocol.VERSION);
+    }
+
+    // 화면 스트림과 그 요청 원장을 지운다. 없는 스트림도 204로 답한다
+    @DeleteMapping("/api/session/streams/{streamId}")
+    ResponseEntity<Void> closeStream(@PathVariable String streamId, HttpServletRequest request) {
+        SessionIdentity.from(request.getSession(false)).closeStream(streamId);
+        return ResponseEntity.noContent().build();
     }
 
     // 화면 스트림을 새로 등록하고 id를 돌려주며 한도를 넘으면 거절한다

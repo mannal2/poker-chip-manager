@@ -16,6 +16,7 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-webmvc")
     implementation("org.springframework.boot:spring-boot-starter-security")
     implementation("org.springframework.boot:spring-boot-starter-validation")
+    implementation("org.springframework.boot:spring-boot-starter-websocket")
 
     testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")
     testImplementation("org.springframework.boot:spring-boot-starter-security-test")
@@ -28,6 +29,8 @@ tasks.test {
     // API examples live outside the backend tree; declared as inputs so editing them re-runs the tests.
     val contractDir = rootDir.resolve("../shared/api-contract").canonicalFile
     systemProperty("contract.dir", contractDir.path)
+    // Tests move the clock themselves, so the background sweep must not race them.
+    systemProperty("poker.sweep.enabled", "false")
     inputs.dir(contractDir).withPropertyName("apiContract").withPathSensitivity(PathSensitivity.RELATIVE)
     testLogging {
         events("passed", "failed", "skipped")

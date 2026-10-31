@@ -89,21 +89,16 @@ class RoomController {
         SessionIdentity identity = SessionIdentity.from(session);
         RequestLedger ledger = identity.ledgerFor(f.streamId);
         synchronized (ledger) {
-            switch (ledger.check(f.requestId, f.sequence, fingerprint)) {
-                case RequestLedger.Check.Replay replay -> {
-                    RequestOutcome outcome = replay.outcome();
-                    if (outcome.outcome() == RequestOutcome.Outcome.REJECTED) {
-                        throw new RoomException(outcome.code());
-                    }
-                    String roomId = outcome.roomId();
-                    String participantId = identity.participantIn(roomId)
-                            .orElseThrow(() -> new RoomException("ROOM_NOT_FOUND"));
-                    return respond(okStatus, roomId, participantId);
+            Optional<RequestOutcome> replay = ledger.replayOf(f.requestId, f.sequence, fingerprint);
+            if (replay.isPresent()) {
+                RequestOutcome outcome = replay.get();
+                if (outcome.outcome() == RequestOutcome.Outcome.REJECTED) {
+                    throw new RoomException(outcome.code());
                 }
-                case RequestLedger.Check.Conflict c -> throw new RoomException("REQUEST_CONFLICT");
-                case RequestLedger.Check.Expired e -> throw new RoomException("RESULT_EXPIRED");
-                case RequestLedger.Check.Gap g -> throw new RoomException("SEQUENCE_GAP");
-                case RequestLedger.Check.New n -> { }
+                String roomId = outcome.roomId();
+                String participantId = identity.participantIn(roomId)
+                        .orElseThrow(() -> new RoomException("ROOM_NOT_FOUND"));
+                return respond(okStatus, roomId, participantId);
             }
             RoomRegistry.Entry entry;
             try {

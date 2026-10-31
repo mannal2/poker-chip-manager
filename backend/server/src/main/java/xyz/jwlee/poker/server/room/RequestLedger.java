@@ -43,6 +43,20 @@ public final class RequestLedger {
         return new Check.New();
     }
 
+    /**
+     * {@link #check} for a caller that goes on only with a new request: the stored outcome of a retry, empty
+     * for a new request, or REQUEST_CONFLICT / RESULT_EXPIRED / SEQUENCE_GAP.
+     */
+    public java.util.Optional<RequestOutcome> replayOf(String requestId, long sequence, String fingerprint) {
+        return switch (check(requestId, sequence, fingerprint)) {
+            case Check.Replay replay -> java.util.Optional.of(replay.outcome());
+            case Check.Conflict c -> throw new RoomException("REQUEST_CONFLICT");
+            case Check.Expired e -> throw new RoomException("RESULT_EXPIRED");
+            case Check.Gap g -> throw new RoomException("SEQUENCE_GAP");
+            case Check.New n -> java.util.Optional.empty();
+        };
+    }
+
     /** The retained result of {@code requestId}, if it is still among the last {@value #RETAINED}. */
     public synchronized java.util.Optional<RequestOutcome> find(String requestId) {
         for (Entry entry : results) {

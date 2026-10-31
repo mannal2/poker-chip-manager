@@ -2,6 +2,7 @@ package xyz.jwlee.poker.server.room;
 
 import java.time.Clock;
 import java.util.Objects;
+import java.util.Optional;
 import tools.jackson.databind.JsonNode;
 import xyz.jwlee.poker.game.model.GameState;
 
@@ -12,16 +13,20 @@ import xyz.jwlee.poker.game.model.GameState;
  *       does not exist (UNKNOWN_TYPE, wire code INVALID_INPUT). Nothing is recorded.</li>
  *   <li>room lookup: done by the caller ({@code RoomRegistry.withRoom}; a closed room is not found).</li>
  *   <li>session participant: the caller is on the roster, else ROOM_NOT_FOUND.</li>
- *   <li>duplicate: the ledger of the participant's current control generation answers a retry with the
- *       stored outcome, or REQUEST_CONFLICT / RESULT_EXPIRED / SEQUENCE_GAP.</li>
- *   <li>control generation: CONTROL_LOST. It does not use up the sequence, because a holder of an old
- *       generation must not burn numbers of the new holder's ledger.</li>
+ *   <li>control generation: the request's generation picks the ledger. Any generation other than the
+ *       participant's current one (old or never issued) gets only the exact retry of a request that
+ *       generation's ledger still holds; everything else is CONTROL_LOST. No ledger is created for it and
+ *       nothing is recorded, so a stale screen can neither grow the room's memory nor burn sequence numbers.</li>
+ *   <li>duplicate: the current generation's ledger answers a retry with the stored outcome, or
+ *       REQUEST_CONFLICT / RESULT_EXPIRED / SEQUENCE_GAP.</li>
  *   <li>permission: FORBIDDEN.</li>
  *   <li>tournament/hand scope: TOURNAMENT_CHANGED.</li>
  *   <li>room state version: STALE_STATE.</li>
  *   <li>rule and commit: the handler validates and changes the room, then the version goes up by one.</li>
  * </ol>
- * From the permission step on, a refusal is recorded as REJECTED and uses up the sequence.
+ * From the permission step on, a refusal is recorded as REJECTED and uses up the sequence. CONTROL_LOST is the
+ * one business refusal that does not (SYSTEM_SPEC: a refused command uses up its number, a dropped generation's
+ * new commands are refused for good): that stream has ended, so there is no later number to keep in order.
  * The caller holds the room lock for the whole call.
  */
 public final class CommandPipeline {
@@ -88,12 +93,14 @@ public final class CommandPipeline {
         Handler handler = requireKnownType(request);
         Participant actor = requireParticipant(room, participantId);
         String fingerprint = Fingerprint.of(request);
-        RequestLedger ledger = room.ledger(actor.participantId(), actor.controlGeneration());
-        RequestOutcome replay = duplicate(ledger, request, fingerprint);
-        if (replay != null) {
-            return new CommandResult(replay, room);
+        if (request.controlGeneration() != actor.controlGeneration()) {
+            return new CommandResult(replayOfAnotherGeneration(room, actor, request, fingerprint), room);
         }
-        checkControl(actor, request);
+        RequestLedger ledger = room.ledger(actor.participantId(), actor.controlGeneration());
+        Optional<RequestOutcome> replay = ledger.replayOf(request.requestId(), request.sequence(), fingerprint);
+        if (replay.isPresent()) {
+            return new CommandResult(replay.get(), room);
+        }
         RequestOutcome outcome;
         try {
             checkPermission(room, actor, handler);
@@ -109,6 +116,20 @@ public final class CommandPipeline {
         }
         ledger.record(outcome, fingerprint);
         return new CommandResult(outcome, room);
+    }
+
+    /**
+     * Issues the participant's next control generation when {@code expectedGeneration} is the current one, else
+     * CONTROL_LOST, so of two screens racing for the same generation one wins. The new generation's ledger starts
+     * at sequence 1. The state version stays: other participants' commands must not turn stale. Deduplication is
+     * the caller's, on the session stream, because a takeover does not belong to any generation's ledger.
+     */
+    public static long takeControl(Room room, String participantId, long expectedGeneration) {
+        Participant actor = requireParticipant(room, participantId);
+        if (expectedGeneration != actor.controlGeneration()) {
+            throw new RoomException("CONTROL_LOST");
+        }
+        return room.advanceControl(participantId);
     }
 
     /** Step 1, for a caller that wants to refuse before looking the room up. */
@@ -128,20 +149,13 @@ public final class CommandPipeline {
         return room.participant(participantId).orElseThrow(() -> new RoomException("ROOM_NOT_FOUND"));
     }
 
-    private static RequestOutcome duplicate(RequestLedger ledger, CommandRequest request, String fingerprint) {
-        return switch (ledger.check(request.requestId(), request.sequence(), fingerprint)) {
-            case RequestLedger.Check.Replay replay -> replay.outcome();
-            case RequestLedger.Check.Conflict c -> throw new RoomException("REQUEST_CONFLICT");
-            case RequestLedger.Check.Expired e -> throw new RoomException("RESULT_EXPIRED");
-            case RequestLedger.Check.Gap g -> throw new RoomException("SEQUENCE_GAP");
-            case RequestLedger.Check.New n -> null;
-        };
-    }
-
-    private static void checkControl(Participant actor, CommandRequest request) {
-        if (request.controlGeneration() != actor.controlGeneration()) {
-            throw new RoomException("CONTROL_LOST");
-        }
+    /** The stored outcome of an exact retry under a generation that is not the current one, else CONTROL_LOST. */
+    private static RequestOutcome replayOfAnotherGeneration(
+            Room room, Participant actor, CommandRequest request, String fingerprint) {
+        return room.existingLedger(actor.participantId(), request.controlGeneration())
+                .map(ledger -> ledger.check(request.requestId(), request.sequence(), fingerprint)
+                        instanceof RequestLedger.Check.Replay replay ? replay.outcome() : null)
+                .orElseThrow(() -> new RoomException("CONTROL_LOST"));
     }
 
     private static void checkPermission(Room room, Participant actor, Handler handler) {

@@ -75,6 +75,23 @@ public final class Room {
         return ledgers.computeIfAbsent(participantId + "#" + controlGeneration, k -> new RequestLedger());
     }
 
+    /** The ledger of a generation that has one. Read-only: a number from a request never creates a ledger. */
+    public Optional<RequestLedger> existingLedger(String participantId, long controlGeneration) {
+        return Optional.ofNullable(ledgers.get(participantId + "#" + controlGeneration));
+    }
+
+    /** The stored result of a participant's request, in the newest generation that has it. Creates no ledger. */
+    public Optional<RequestOutcome> findRequest(Participant participant, String requestId) {
+        for (long g = participant.controlGeneration(); g >= INITIAL_CONTROL_GENERATION; g--) {
+            Optional<RequestOutcome> found =
+                    existingLedger(participant.participantId(), g).flatMap(ledger -> ledger.find(requestId));
+            if (found.isPresent()) {
+                return found;
+            }
+        }
+        return Optional.empty();
+    }
+
     /** True once the room has been emptied; a closed room is treated as not found. Set under the room lock. */
     public boolean isClosed() { return closed; }
 
@@ -208,6 +225,19 @@ public final class Room {
                 participants.set(i, new Participant(p.participantId(), name, p.joinOrder(), p.controlGeneration()));
             }
         }
+    }
+
+    /** Moves a participant to the next control generation, in the same seat; the state version stays. */
+    long advanceControl(String participantId) {
+        for (int i = 0; i < participants.size(); i++) {
+            Participant p = participants.get(i);
+            if (p.participantId().equals(participantId)) {
+                long next = p.controlGeneration() + 1;
+                participants.set(i, new Participant(p.participantId(), p.name(), p.joinOrder(), next));
+                return next;
+            }
+        }
+        throw new RoomException("ROOM_NOT_FOUND");
     }
 
     /**

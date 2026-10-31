@@ -95,14 +95,36 @@ class CommandPipelineTest {
     }
 
     @Test
-    void aRetryOfAnAnsweredRequestReplaysEvenWithAnotherGeneration() {
+    void aRetryUnderAnotherGenerationLooksInThatGenerationsLedger() {
         CommandRequest first = CommandFixture.request("r1", 1, 1, f.room.version(), "SET_DEALER", DEALER_A);
-        CommandResult applied = f.pipeline.execute(f.room, "a", first);
+        f.pipeline.execute(f.room, "a", first);
         CommandRequest again = CommandFixture.request("r1", 1, 2, first.expectedStateVersion(), "SET_DEALER",
                 DEALER_A);
 
-        // Generation is not part of the fingerprint; the duplicate check answers before the generation check.
-        assertThat(f.pipeline.execute(f.room, "a", again).outcome()).isEqualTo(applied.outcome());
+        // The request's generation picks the ledger, and generation 2 has none: it is not the same request.
+        assertThatThrownBy(() -> f.pipeline.execute(f.room, "a", again))
+                .isInstanceOfSatisfying(RoomException.class, e -> rejectedWith(e, "CONTROL_LOST"));
+        assertThat(f.room.existingLedger("a", 2)).isEmpty();
+    }
+
+    @Test
+    void takingControlMovesTheGenerationOnlyFromTheExpectedOne() {
+        assertThat(CommandPipeline.takeControl(f.room, "a", 1)).isEqualTo(2);
+
+        assertThatThrownBy(() -> CommandPipeline.takeControl(f.room, "a", 1))
+                .isInstanceOfSatisfying(RoomException.class, e -> rejectedWith(e, "CONTROL_LOST"));
+        assertThatThrownBy(() -> CommandPipeline.takeControl(f.room, "ghost", 1))
+                .isInstanceOfSatisfying(RoomException.class, e -> rejectedWith(e, "ROOM_NOT_FOUND"));
+        assertThat(f.room.participant("a").orElseThrow().controlGeneration()).isEqualTo(2);
+    }
+
+    @Test
+    void aRenameKeepsTheTakenGeneration() {
+        CommandPipeline.takeControl(f.room, "a", 1);
+
+        f.room.rename("a", "Alicia");
+
+        assertThat(f.room.participant("a").orElseThrow().controlGeneration()).isEqualTo(2);
     }
 
     @Test

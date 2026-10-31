@@ -19,7 +19,9 @@ import xyz.jwlee.poker.server.registry.RoomRegistry;
 import xyz.jwlee.poker.server.room.CommandPipeline;
 import xyz.jwlee.poker.server.room.CommandRequest;
 import xyz.jwlee.poker.server.room.CommandResult;
+import xyz.jwlee.poker.server.room.Fingerprint;
 import xyz.jwlee.poker.server.room.Participant;
+import xyz.jwlee.poker.server.room.RequestLedger;
 import xyz.jwlee.poker.server.room.RequestOutcome;
 import xyz.jwlee.poker.server.room.Room;
 import xyz.jwlee.poker.server.room.RoomException;
@@ -68,10 +70,71 @@ class CommandController {
         String participantId = participantIn(roomId, request);
         return registry.withRoom(roomId, room -> {
             Participant me = room.participant(participantId).orElseThrow(() -> new RoomException("ROOM_NOT_FOUND"));
-            RequestOutcome outcome = room.ledger(me.participantId(), me.controlGeneration()).find(requestId)
+            RequestOutcome outcome = room.findRequest(me, requestId)
                     .orElseThrow(() -> new RoomException("REQUEST_NOT_FOUND"));
             return respond(outcome, room, participantId);
         });
+    }
+
+    /**
+     * Takes control on another screen. A takeover has no generation to belong to yet, so it is deduplicated by
+     * the stream ledger of the screen asking: {@code synchronized (ledger) { check; do the work; record }}, with
+     * the lock order of {@code RoomController}. A refusal is recorded (it uses up the sequence) and a retry
+     * answers what the first attempt got, whatever has happened to the generation since.
+     */
+    @PostMapping("/api/rooms/{roomId}/control")
+    ResponseEntity<ObjectNode> control(
+            @PathVariable String roomId, @RequestBody(required = false) JsonNode body, HttpServletRequest request) {
+        requireObjectOfThisProtocol(body);
+        String streamId = text(body, "streamId", MAX_ID_LENGTH, true);
+        String requestId = text(body, "requestId", MAX_ID_LENGTH, true);
+        long sequence = number(body, "sequence", 1);
+        long expected = number(body, "expectedControlGeneration", 1);
+        String fingerprint = Fingerprint.sha256("control\n" + roomId + "\n" + expected);
+        HttpSession session = request.getSession(false);
+        if (session == null) {
+            throw new RoomException("NO_SESSION");
+        }
+        RequestLedger ledger = SessionIdentity.from(session).ledgerFor(streamId);
+        synchronized (ledger) {
+            Optional<RequestOutcome> replay = ledger.replayOf(requestId, sequence, fingerprint);
+            if (replay.isPresent()) {
+                RequestOutcome first = replay.get();
+                if (first.outcome() == RequestOutcome.Outcome.REJECTED) {
+                    throw new RoomException(first.code());
+                }
+                String participantId = participantIn(roomId, request);
+                return registry.withRoom(roomId, room -> respondToControl(first, room, participantId));
+            }
+            try {
+                String participantId = participantIn(roomId, request);
+                return registry.withRoom(roomId, room -> {
+                    long issued = CommandPipeline.takeControl(room, participantId, expected);
+                    RequestOutcome outcome = new RequestOutcome(requestId, sequence, RequestOutcome.Outcome.APPLIED,
+                            "OK", room.version(), null, issued);
+                    // Record first: the work is done, so a failure while building the body must not lose it.
+                    ledger.record(outcome, fingerprint);
+                    return respondToControl(outcome, room, participantId);
+                });
+            } catch (RoomException e) {
+                ledger.record(new RequestOutcome(
+                        requestId, sequence, RequestOutcome.Outcome.REJECTED, e.code(), 0, null), fingerprint);
+                throw e;
+            }
+        }
+    }
+
+    /** The generation is the one this request was issued; {@code latestState} shows the current one. */
+    private static ResponseEntity<ObjectNode> respondToControl(RequestOutcome outcome, Room room, String participantId) {
+        Participant me = room.participant(participantId).orElseThrow(() -> new RoomException("ROOM_NOT_FOUND"));
+        ObjectNode o = JsonNodeFactory.instance.objectNode();
+        o.put("requestId", outcome.requestId());
+        o.put("sequence", outcome.sequence());
+        o.put("outcome", outcome.outcome().name());
+        o.put("code", outcome.code());
+        o.put("controlGeneration", outcome.issuedGeneration());
+        o.set("latestState", SnapshotWriter.snapshot(room, me).json());
+        return ResponseEntity.ok().header(HttpHeaders.CACHE_CONTROL, "no-store").body(o);
     }
 
     private static String participantIn(String roomId, HttpServletRequest request) {
@@ -105,16 +168,7 @@ class CommandController {
 
     /** The envelope, checked field by field for presence and type; the payload itself is left to the rules. */
     private static CommandRequest parse(JsonNode node) {
-        if (node == null || !node.isObject()) {
-            throw invalid();
-        }
-        JsonNode version = node.get("protocolVersion");
-        if (version == null || !version.isIntegralNumber() || !version.canConvertToInt()) {
-            throw invalid();
-        }
-        if (version.asInt() != Protocol.VERSION) {
-            throw new RoomException("PROTOCOL_INCOMPATIBLE");
-        }
+        int protocolVersion = requireObjectOfThisProtocol(node);
         String requestId = text(node, "requestId", MAX_ID_LENGTH, true);
         String type = text(node, "type", MAX_TYPE_LENGTH, true);
         long sequence = number(node, "sequence", 1);
@@ -127,7 +181,21 @@ class CommandController {
             payload = null;
         }
         return new CommandRequest(
-                version.asInt(), tournamentId, requestId, sequence, generation, expected, handId, type, payload);
+                protocolVersion, tournamentId, requestId, sequence, generation, expected, handId, type, payload);
+    }
+
+    private static int requireObjectOfThisProtocol(JsonNode node) {
+        if (node == null || !node.isObject()) {
+            throw invalid();
+        }
+        JsonNode version = node.get("protocolVersion");
+        if (version == null || !version.isIntegralNumber() || !version.canConvertToInt()) {
+            throw invalid();
+        }
+        if (version.asInt() != Protocol.VERSION) {
+            throw new RoomException("PROTOCOL_INCOMPATIBLE");
+        }
+        return version.asInt();
     }
 
     private static String text(JsonNode node, String field, int max, boolean required) {

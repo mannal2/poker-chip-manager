@@ -128,6 +128,25 @@ final class GameCommands {
         run(room, new GameCommand.Forfeit(playerId, false), env);
     }
 
+    // 방장이 끊겨 있는 다른 참가자를 대신 기권시킨다
+    /** The host gives up a seat whose person has no connection; a reconnected target is TARGET_CONNECTED. */
+    static void forfeitDisconnected(Room room, Participant actor, CommandRequest request, RoomEnv env) {
+        requirePlaying(room);
+        JsonNode target = requiredField(object(request.payload()), "participantId");
+        if (!target.isString()) {
+            throw invalid();
+        }
+        String targetId = target.asString();
+        String playerId = room.playerIds().get(targetId);
+        if (playerId == null || room.isHost(targetId)) {
+            throw invalid();
+        }
+        if (room.presence().isConnected(targetId)) {
+            throw new RoomException("TARGET_CONNECTED");
+        }
+        run(room, new GameCommand.Forfeit(playerId, true), env);
+    }
+
     // 정산 중인 팟의 승자 선택 초안을 자격만 확인해 저장한다
     /**
      * The host's pick for the pot being settled. Only the eligibility is checked here; the payout rules run

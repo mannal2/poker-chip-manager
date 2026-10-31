@@ -418,6 +418,42 @@ class GameCommandsTest {
         assertThat(f.room.game().players.get(0).forfeited).isTrue();
     }
 
+    // 끊긴 참가자를 방장이 기권시키면 성공하고 이벤트에 방장 표시가 남는지 확인한다.
+    @Test
+    void theHostForfeitsADisconnectedParticipant() {
+        GameFixture f = GameFixture.started(3, 0);
+        f.room.presence().detach("conn-c", java.time.Instant.EPOCH);
+
+        f.check(f.send("a", "FORFEIT_DISCONNECTED", "{\"participantId\":\"c\"}"));
+
+        assertThat(f.room.game().players.get(2).forfeited).isTrue();
+        assertThat(f.room.events()).anySatisfy(e -> assertThat(e.details())
+                .isEqualTo(new xyz.jwlee.poker.game.event.EventDetails.PlayerForfeited("p2", true)));
+    }
+
+    // 접속 중이거나 게임에 없는 대상, 방장 본인은 기권시킬 수 없고 방장이 아니면 거절되는지 확인한다.
+    @Test
+    void forfeitingADisconnectedParticipantIsRefusedOutsideItsRules() {
+        GameFixture f = GameFixture.started(3, 0);
+
+        assertRejected(f, f.send("a", "FORFEIT_DISCONNECTED", "{\"participantId\":\"c\"}"), "TARGET_CONNECTED");
+        assertRejected(f, f.send("a", "FORFEIT_DISCONNECTED", "{\"participantId\":\"zzz\"}"), "INVALID_INPUT");
+        assertRejected(f, f.send("a", "FORFEIT_DISCONNECTED", "{\"participantId\":\"a\"}"), "INVALID_INPUT");
+        f.room.presence().detach("conn-c", java.time.Instant.EPOCH);
+        assertRejected(f, f.send("b", "FORFEIT_DISCONNECTED", "{\"participantId\":\"c\"}"), "FORBIDDEN");
+    }
+
+    // 방장 기권 처리 뒤에는 취소가 잠기는지 확인한다.
+    @Test
+    void undoIsLockedAfterTheHostForfeitsSomeone() {
+        GameFixture f = GameFixture.started(3, 0);
+        f.check(f.send("a", "CALL", null));
+        f.room.presence().detach("conn-c", java.time.Instant.EPOCH);
+        f.check(f.send("a", "FORFEIT_DISCONNECTED", "{\"participantId\":\"c\"}"));
+
+        assertRejected(f, f.send("a", "UNDO", "{}"), "UNDO_LOCKED");
+    }
+
     @Test
     void forfeitNeedsARunningGame() {
         GameFixture f = new GameFixture(3, 0);

@@ -81,6 +81,7 @@ public final class CommandPipeline {
             case "SETTLE_HAND" -> new Handler(true, true, true, GameCommands::settleHand);
             case "SETTLEMENT_DRAFT" -> new Handler(true, true, false, GameCommands::settlementDraft);
             case "FORFEIT" -> plain(false, GameCommands::forfeit);
+            case "FORFEIT_DISCONNECTED" -> plain(true, GameCommands::forfeitDisconnected);
             case "ABORT" -> plain(true, GameCommands::abort);
             case "RE_READY" -> plain(true, ResultCommands::reReady);
             default -> null;
@@ -117,6 +118,7 @@ public final class CommandPipeline {
             checkVersion(room, request);
             handler.applier().apply(room, actor, request, env);
             if (handler.bumpsVersion()) {
+                AutoPlay.run(room, env);
                 room.bumpVersion();
             }
             outcome = outcome(request, RequestOutcome.Outcome.APPLIED, "OK", room);

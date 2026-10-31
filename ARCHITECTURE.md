@@ -58,8 +58,8 @@ flowchart TD
 | 위치        | 역할 한 줄                              | 핵심 파일·심볼                                                                                                      |
 | ----------- | --------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
 | `frontend/` | 브라우저 앱·테스트·정적 이미지 빌드     | [package.json](frontend/package.json), [vite.config.ts](frontend/vite.config.ts), [Dockerfile](frontend/Dockerfile) |
-| `backend/`  | 서버 Gradle 프로젝트(현재 `game` 규칙 모듈만) | [settings.gradle.kts](backend/settings.gradle.kts), `backend/game/` |
-| `shared/`   | 언어에 독립적인 규칙 테스트 입력·기대값 | `shared/game-fixtures/`, [schema.json](shared/game-fixtures/schema.json)                                            |
+| `backend/`  | 서버 Gradle 프로젝트: 규칙 `game`, JSON 변환 `game-json`, 앱 `server` | [settings.gradle.kts](backend/settings.gradle.kts), `backend/game/`, `backend/game-json/`, `backend/server/` |
+| `shared/`   | 언어에 독립적인 규칙 테스트 입력·기대값과 API 예시 | `shared/game-fixtures/`, [schema.json](shared/game-fixtures/schema.json), [shared/api-contract/](shared/api-contract/README.md) |
 | `deploy/`   | 프런트엔드 교체·복구와 edge 구성        | [deploy-frontend.sh](deploy/deploy-frontend.sh), [README.md](deploy/README.md)                                      |
 | `.github/`  | 검사·이미지 발행·배포·연결 확인 자동화  | [ci-images.yml](.github/workflows/ci-images.yml), [backend-ci.yml](.github/workflows/backend-ci.yml), [check-server.yml](.github/workflows/check-server.yml) |
 | `docs/`     | 책임별 리팩터링 계획과 검증 기록        | `docs/superpowers/plans/`                                                                                           |
@@ -161,7 +161,7 @@ PWA 등록은 로컬 게임에서 호출하는 `useLocalPWA`가 담당한다.
 ## 백엔드 규칙 모듈 (`backend/game`)
 
 서버의 순수 게임 규칙이다. 프런트 `frontend/src/game/`을 Java 25로 옮긴 것이며 같은 공통 사례를 통과해야 한다.
-방·API·인증·실시간 코드는 아직 없고 이 모듈만 있다(후속 계획 2~4).
+방·API·인증은 `backend/server`가 이 모듈을 호출한다(아래 서버 앱 절).
 패키지 `xyz.jwlee.poker.game` 아래 구조는 다음과 같다.
 
 | 위치 | 역할 한 줄 |
@@ -213,6 +213,55 @@ PWA 등록은 로컬 게임에서 호출하는 `useLocalPWA`가 담당한다.
 
 ```powershell
 backend/gradlew -p backend :game:test
+```
+
+## 백엔드 서버 앱 (`backend/server`)
+
+Spring Boot 4·Spring MVC·가상 스레드 앱이다. 방은 서버 메모리에만 있고 HTTP만으로 대기방부터 결과·다시 준비하기까지 진행한다(계획 2A).
+WebSocket·연결 판정·방장 자동 이전·기기 복구·방 자동 삭제는 없고(2B), 프런트엔드 온라인 화면은 이 서버에 아직 연결되지 않았다(계획 3). 배포도 아직 없다(계획 4).
+패키지 `xyz.jwlee.poker.server` 아래 구조는 다음과 같다.
+
+| 위치 | 역할 한 줄 |
+| ---- | ---------- |
+| `api/` | `RoomController`(생성·참가·상태), `CommandController`(명령·요청 결과·조작 인수), `HistoryController`, `HealthController`, 본문 크기 필터, `ApiExceptionHandler`·`ApiError`(코드·HTTP 상태·문구) |
+| `auth/` | `SecurityConfig`, `OriginFilter`, `SessionGuardFilter`, `SessionController`(세션·스트림), `SessionIdentity`(세션 속성·스트림 장부의 유일한 입구) |
+| `room/` | `Room`(방 상태·잠금), `CommandPipeline`(검사 순서와 명령 연결), `WaitingRoomCommands`·`GameCommands`·`ResultCommands`, `StartConditions`, `Capabilities`, `RequestLedger`·`RequestOutcome`, `SnapshotWriter` |
+| `registry/` | `RoomRegistry`(방 표·한도·코드·잠금 진입), `RoomCodes` |
+| `support/` | `IdGenerator`, `Clock` 빈, `Protocol` |
+
+### 의존 방향과 잠금
+
+- `api`·`auth` → `room`·`registry` → `game`·`game-json`. `room`·`registry`는 `api`·`auth`·Spring Web·Servlet을 쓰지 않고 `support`는 다른 서버 패키지를 쓰지 않는다. [ArchitectureTest](backend/server/src/test/java/xyz/jwlee/poker/server/ArchitectureTest.java)가 검사한다.
+- 잠금 순서는 스트림 장부 → 공용 잠금 → 방 잠금 → 세션 모니터다. 역순으로 잡지 않는다. `RoomRegistry.withRoom`의 작업 안에서 공용 잠금을 부르지 않는다. 방 삭제는 방 잠금 안에서 닫고, 푼 뒤에 표에서 뺀다.
+- 명령 검사 순서는 `CommandPipeline` 주석이 기준이다: 형식 → 방 → 참가자 → 조작 세대 → 중복 → 권한 → 토너먼트·핸드 → 상태 버전 → 규칙.
+- 생성·참가·인수는 세션 스트림 장부, 게임 명령은 참가자·조작 세대별 장부를 쓴다. 세대 장부는 현재와 직전만 보관한다.
+- CONTROL_LOST는 순번을 소진하지 않는 유일한 비즈니스 거절이다. 인수는 room version을 올리지 않는다. 승자 초안도 room version 대신 자기 `draftVersion`을 쓴다.
+- 세션 스트림을 닫는 서버 경로는 없고 클라이언트의 streamId 재사용에 의존한다(서버 경로는 2B). `StartConditions`의 전원 연결은 항상 참이며 2B에서 교체한다.
+
+### 경로
+
+| 경로 | 처리 |
+| ---- | ---- |
+| `GET /api/health` | 상태·프로토콜·빌드 버전 |
+| `GET /api/session`, `POST /api/session/refresh`, `POST /api/session/streams` | 세션·CSRF 토큰, 쿠키 연장, 화면 스트림 |
+| `POST /api/rooms`, `POST /api/room-joins` | 방 생성, 코드로 참가 |
+| `GET /api/rooms/{roomId}/state` | 요청자별 스냅샷 |
+| `POST /api/rooms/{roomId}/commands` | 대기방·게임·결과 명령 |
+| `GET /api/rooms/{roomId}/requests/{requestId}` | 저장된 요청 결과 |
+| `POST /api/rooms/{roomId}/control` | 같은 참가자의 다른 화면으로 조작 인수 |
+| `GET /api/rooms/{roomId}/history` | 현재 토너먼트 기록 |
+
+요청·응답의 실제 예시는 [shared/api-contract/](shared/api-contract/README.md)에 있고 [ApiContractTest](backend/server/src/test/java/xyz/jwlee/poker/server/api/ApiContractTest.java)가 실제 응답과 비교한다. 명세와 다른 곳은 [SYSTEM_SPEC.md](SYSTEM_SPEC.md) 6·14절의 2A 항목에 표시했다.
+
+### 실행과 테스트
+
+- `FullTournamentHttpTest`: 실제 포트·쿠키·CSRF·Origin, 세션 3개로 토너먼트 전체와 재시작.
+- `RoomConcurrencyTest`: 같은 상태 버전 스레드 20개에서 적용 1개, 나머지 `STALE_STATE`, 칩 총량 보존.
+- 그 밖의 API 테스트는 MockMvc, 쿠키·본문 크기 경계는 `RoomHttpTest`·`SessionSecurityHttpTest`의 실제 HTTP.
+
+```powershell
+backend/gradlew -p backend test
+backend/gradlew -p backend :server:bootRun
 ```
 
 ## 기능 → 코드 위치 표
@@ -303,10 +352,14 @@ backend/gradlew -p backend :game:test
 | 테이블·카드·보드 배치나 글자 크기 변경  | [Table.tsx](frontend/src/features/gameplay/components/Table.tsx), [table.css](frontend/src/features/gameplay/styles/table.css)                                                                                                                | `seatCoordinates`, `useScreenFit`, `useFitText`, DOM 선택자                                        |
 | 칩 이동 금액 또는 효과 변경             | [eventTransfers.ts](frontend/src/features/gameplay/model/eventTransfers.ts), [localChipTransfers.ts](frontend/src/features/local-game/model/localChipTransfers.ts), [useChipMotion.ts](frontend/src/features/gameplay/hooks/useChipMotion.ts) | 계산과 재생을 구분하고 저장 성공·재시도·정리 확인                                                  |
 | 설치 제안·업데이트 노출 시점 변경       | [usePwaPresentation.ts](frontend/src/features/pwa/usePwaPresentation.ts), [register.ts](frontend/src/features/pwa/register.ts)                                                                                                                | 홈 여부·저장 잠금·미확정 요청·업데이트 적용                                                        |
-| 멀티플레이 연결 시작                    | [main.online.tsx](frontend/src/main.online.tsx), [session.ts](frontend/src/features/gameplay/session.ts)                                                                                                                                      | `GameSession` 계약, 공통 UI의 props 경계와 [SYSTEM_SPEC.md](SYSTEM_SPEC.md); 현재 서버 구현은 없음 |
+| 멀티플레이 연결 시작                    | [main.online.tsx](frontend/src/main.online.tsx), [session.ts](frontend/src/features/gameplay/session.ts)                                                                                                                                      | `GameSession` 계약, 공통 UI의 props 경계와 [SYSTEM_SPEC.md](SYSTEM_SPEC.md); 서버 REST는 있고 WebSocket은 없음, 예시는 `shared/api-contract/` |
 | 서버 규칙(베팅·팟·정산·무르기) 변경 | `backend/game/.../game/`의 `command/BettingCommands`, `Legal`, `Settlement`, `Round`, `command/FlowCommands` | 같은 TS 파일(위 대응표)과 `shared/game-fixtures/` 기대값. 두 엔진이 모두 통과해야 한다 |
 | 서버 전용 기권 규칙 변경 | [ForfeitCommand.java](backend/game/src/main/java/xyz/jwlee/poker/game/command/ForfeitCommand.java), 주인 없는 층 반환은 `Round.returnOwnerless` | `shared/game-fixtures/forfeit.json`(Java 전용), MULTIPLAYER_MODE.md 10절 |
 | 서버 불변식·무작위 검사 변경 | [Invariants.java](backend/game/src/main/java/xyz/jwlee/poker/game/Invariants.java), `RandomTournamentTest` | 프런트 `invariants.ts`와 같은 코드 이름 |
+| 서버 명령 추가·검사 순서 변경 | [CommandPipeline.java](backend/server/src/main/java/xyz/jwlee/poker/server/room/CommandPipeline.java), `room/`의 명령 처리 클래스 | `handlerFor` 한 곳, HTTP 상태는 `ApiExceptionHandler`, SYSTEM_SPEC 7절 |
+| 서버 응답 모양 변경 | [SnapshotWriter.java](backend/server/src/main/java/xyz/jwlee/poker/server/room/SnapshotWriter.java), `api/`의 컨트롤러 | `shared/api-contract/` 예시를 다시 만들고 diff 검토, 프런트 타입과의 일치 |
+| 방 한도·잠금·방 삭제 변경 | [RoomRegistry.java](backend/server/src/main/java/xyz/jwlee/poker/server/registry/RoomRegistry.java) | 공용 → 방 잠금 순서, `Room.close`, `RoomDeletionRaceTest` |
+| 세션·CSRF·Origin 변경 | [SecurityConfig.java](backend/server/src/main/java/xyz/jwlee/poker/server/auth/SecurityConfig.java), `OriginFilter`, `SessionIdentity` | `SessionSecurityHttpTest`, SYSTEM_SPEC 15절 |
 | CI·정적 자산 보존·배포 복구 변경        | [ci-images.yml](.github/workflows/ci-images.yml), [deploy-frontend.sh](deploy/deploy-frontend.sh)                                                                                                                                             | 이미지 digest·revision, 과거 자산 보존, 복구 마커                                                  |
 
 ## 불변 조건과 경계
@@ -455,7 +508,7 @@ PWA 테스트는 생성된 서비스 워커 파일을 일시 변경하고 원복
 전체 E2E 명령과 CI에서 선택한 일부 파일은 같은 범위가 아니다.
 이미지 안의 실제 자산 복사와 컨테이너 응답도 검사한다.
 main 경로에서는 검사 후 이미지 발행과 배포 작업이 이어진다.
-[backend-ci.yml](.github/workflows/backend-ci.yml)은 `backend/**`·`shared/game-fixtures/**` 변경 때 Temurin 25로 `./gradlew :game:test`를 실행한다.
+[backend-ci.yml](.github/workflows/backend-ci.yml)은 `backend/**`·`shared/game-fixtures/**`·`shared/api-contract/**` 변경 때 Temurin 25로 `./gradlew test`를 실행한다.
 이 워크플로는 아직 GitHub에서 한 번도 실행되지 않았다. 로컬 결과로만 확인했다.
 [check-server.yml](.github/workflows/check-server.yml)은 별도 수동 SSH 연결 확인 작업이다.
 

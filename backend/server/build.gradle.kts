@@ -25,6 +25,10 @@ dependencies {
 
 tasks.test {
     useJUnitPlatform()
+    // API examples live outside the backend tree; declared as inputs so editing them re-runs the tests.
+    val contractDir = rootDir.resolve("../shared/api-contract").canonicalFile
+    systemProperty("contract.dir", contractDir.path)
+    inputs.dir(contractDir).withPropertyName("apiContract").withPathSensitivity(PathSensitivity.RELATIVE)
     testLogging {
         events("passed", "failed", "skipped")
         showStandardStreams = false

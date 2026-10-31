@@ -1,0 +1,10 @@
+{
+  "method" : "GET",
+  "path" : "/api/session",
+  "status" : 200,
+  "request" : null,
+  "response" : {
+    "csrfToken" : "csrf-token-example",
+    "protocolVersion" : 1
+  }
+}

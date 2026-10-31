@@ -1,0 +1,9 @@
+{
+  "method" : "POST",
+  "path" : "/api/session/streams",
+  "status" : 200,
+  "request" : null,
+  "response" : {
+    "streamId" : "00000000-0000-4000-8000-000000000001"
+  }
+}

@@ -1,0 +1,169 @@
+{
+  "method" : "POST",
+  "path" : "/api/rooms/{roomId}/commands",
+  "status" : 200,
+  "request" : {
+    "protocolVersion" : 1,
+    "requestId" : "command-04-5",
+    "sequence" : 5,
+    "controlGeneration" : 1,
+    "expectedStateVersion" : 5,
+    "type" : "ALL_IN",
+    "tournamentId" : "command-04-3",
+    "handId" : "command-04-3:hand:1"
+  },
+  "response" : {
+    "requestId" : "command-04-5",
+    "sequence" : 5,
+    "outcome" : "APPLIED",
+    "code" : "OK",
+    "resultStateVersion" : 6,
+    "latestState" : {
+      "roomId" : "00000000-0000-4000-8000-000000000003",
+      "code" : "ABC234",
+      "roomPhase" : "PLAYING",
+      "stateVersion" : 6,
+      "tournamentId" : "command-04-3",
+      "settings" : {
+        "initial" : 1000,
+        "sb" : 5,
+        "bb" : 10,
+        "button" : 0
+      },
+      "hostId" : "00000000-0000-4000-8000-000000000004",
+      "participants" : [ {
+        "participantId" : "00000000-0000-4000-8000-000000000004",
+        "name" : "Alice",
+        "seat" : 0,
+        "playerId" : "p0",
+        "isHost" : true
+      }, {
+        "participantId" : "00000000-0000-4000-8000-000000000005",
+        "name" : "Bob",
+        "seat" : 1,
+        "playerId" : "p1",
+        "isHost" : false
+      } ],
+      "you" : {
+        "participantId" : "00000000-0000-4000-8000-000000000004",
+        "controlGeneration" : 1,
+        "capabilities" : {
+          "canAct" : false,
+          "canUndo" : true,
+          "canSettle" : false,
+          "canEditSetup" : false,
+          "canEditBlinds" : true
+        }
+      },
+      "game" : {
+        "tournamentId" : "command-04-3",
+        "version" : 2,
+        "status" : "playing",
+        "settings" : {
+          "names" : [ "Alice", "Bob" ],
+          "initial" : 1000,
+          "sb" : 5,
+          "bb" : 10,
+          "button" : 0
+        },
+        "initialTotal" : 2000,
+        "setupOrder" : [ "p0", "p1" ],
+        "players" : [ {
+          "id" : "p0",
+          "name" : "Alice",
+          "stack" : 0,
+          "eliminated" : false,
+          "folded" : false,
+          "B" : 1000,
+          "H" : 1000,
+          "actedAt" : 1000,
+          "reopenAt" : 1990
+        }, {
+          "id" : "p1",
+          "name" : "Bob",
+          "stack" : 990,
+          "eliminated" : false,
+          "folded" : false,
+          "B" : 10,
+          "H" : 10,
+          "actedAt" : null,
+          "reopenAt" : 0
+        } ],
+        "hand" : {
+          "id" : "command-04-3:hand:1",
+          "number" : 1,
+          "street" : 0,
+          "phase" : "betting",
+          "buttonSeat" : 0,
+          "sbSeat" : 0,
+          "bbSeat" : 1,
+          "sb" : 5,
+          "bb" : 10,
+          "actorId" : "p1",
+          "W" : 1000,
+          "R" : 990,
+          "pending" : [ "p1" ],
+          "showdown" : false
+        },
+        "pot" : 1010,
+        "pendingBlinds" : null,
+        "undo" : {
+          "tournamentId" : "command-04-3",
+          "version" : 1,
+          "status" : "playing",
+          "settings" : {
+            "names" : [ "Alice", "Bob" ],
+            "initial" : 1000,
+            "sb" : 5,
+            "bb" : 10,
+            "button" : 0
+          },
+          "initialTotal" : 2000,
+          "setupOrder" : [ "p0", "p1" ],
+          "players" : [ {
+            "id" : "p0",
+            "name" : "Alice",
+            "stack" : 995,
+            "eliminated" : false,
+            "folded" : false,
+            "B" : 5,
+            "H" : 5,
+            "actedAt" : null,
+            "reopenAt" : 0
+          }, {
+            "id" : "p1",
+            "name" : "Bob",
+            "stack" : 990,
+            "eliminated" : false,
+            "folded" : false,
+            "B" : 10,
+            "H" : 10,
+            "actedAt" : null,
+            "reopenAt" : 0
+          } ],
+          "hand" : {
+            "id" : "command-04-3:hand:1",
+            "number" : 1,
+            "street" : 0,
+            "phase" : "betting",
+            "buttonSeat" : 0,
+            "sbSeat" : 0,
+            "bbSeat" : 1,
+            "sb" : 5,
+            "bb" : 10,
+            "actorId" : "p0",
+            "W" : 10,
+            "R" : 10,
+            "pending" : [ "p0", "p1" ],
+            "showdown" : false
+          },
+          "pot" : 15,
+          "pendingBlinds" : null,
+          "eventIds" : [ "command-04-5:0" ]
+        }
+      },
+      "legal" : null,
+      "settlementDraft" : null
+    }
+  }
+}

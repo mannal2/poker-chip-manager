@@ -1,0 +1,10 @@
+{
+  "method" : "GET",
+  "path" : "/api/rooms/{roomId}/state",
+  "status" : 404,
+  "request" : null,
+  "response" : {
+    "code" : "ROOM_NOT_FOUND",
+    "message" : "방을 찾을 수 없습니다."
+  }
+}

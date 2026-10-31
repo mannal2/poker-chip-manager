@@ -152,6 +152,16 @@ payload 예: 베팅의 추가 금액, 팟별 승자 ID 목록, 다음 블라인�
 
 HTTP 상태 코드와 구체적인 메시지·순번·저장 계약은 14절을 따른다. 검증 오류와 서버 내부 오류를 모두 성공200으로 감싸지 않는다.
 
+### 2A 구현과 이 절의 차이 (2026-10-31)
+
+실제 요청·응답 예시는 [shared/api-contract/](shared/api-contract/README.md)에 있다. 위 표는 초안이고 현재 서버는 다음과 같다.
+
+- 구현된 경로: 표의 방 생성·코드 참가·현재 상태·명령·요청 결과·기록, 그리고 표에 없는 `GET /api/session`, `POST /api/session/refresh`, `POST /api/session/streams`, `GET /api/health`.
+- 화면 인수는 `commands`의 명령이 아니라 별도 경로 `POST /api/rooms/{roomId}/control`이다.
+- `POST /api/rooms/{roomId}/recovery-requests`와 `/ws`는 아직 없다(계획 2B). 오류 코드 `ROOM_GONE`·`TEMPORARY_FAILURE`도 서버가 아직 내지 않는다. 방이 없으면 404 `ROOM_NOT_FOUND`다.
+- 기록 조회는 `tournamentId`·`after`·`limit`만 받는다. 핸드별 조회는 없다.
+- LEAVE·KICK으로 자기 자리가 사라진 뒤의 재전송은 404다. 처음 응답을 잃은 클라이언트는 이 404를 나감으로 취급한다(계획 3 메모).
+
 ## 7. 서버 원자적 변경과 중복 방지
 
 ### 방 잠금 안의 순서
@@ -376,6 +386,24 @@ C1~C3은 승인되어 본문에 반영했다. 위 상세화 항목은 아래 14~
 화면 인수는 기존 소유 세대의 게임 명령으로 보내지 않는다. 세션 화면 스트림으로 expectedControlGeneration을 보내며 해당 방 잠금 안에서 인수 자격·기대 세대를 확인해 새 세대를 발급한다. 동시 인수 둘 중 하나만 성공한다. 응답 유실 시 같은 인수 요청으로 결과를 조회한다.
 
 스트림별 최근64개 결과를 초기안으로 보관하고 highWatermark는 스트림 수명 전체 유지한다. 폐기된 스트림은 다시 등록·실행할 수 없다. 새로고침 후 미확정 명령을 자동 재생하지 않고 최신 상태와 인수 결과를 확인한다. 로컬도 권한 세대·highWatermark·최근 결과를 상태와 같은 트랜잭션에 저장한다. 새 게임 교체 시 이전 세대를 폐기한다.
+
+### 2A 서버 확정 사항 (2026-10-31)
+
+- CONTROL_LOST는 순번을 소진하지 않는 유일한 비즈니스 거절이다. 옛 세대가 새 세대 번호를 태우면 안 되기 때문이다. 장부에 기록하지 않으므로 명령의 CONTROL_LOST 응답은 `outcome`·`latestState` 없이 `{code, message}`다.
+- 세대별 요청 장부는 현재와 직전 세대만 보관한다. 두 번 이상 뒤처진 화면의 재시도는 CONTROL_LOST, `GET requests/{requestId}`는 404 REQUEST_NOT_FOUND이며 화면은 최신 상태로 재동기화한다. 이 경우 highWatermark도 세대 장부와 함께 사라지지만, 그 세대의 신규 명령은 세대 검사에서 계속 거절된다.
+- 인수는 room version을 올리지 않는다. 올리면 다른 참가자의 명령이 STALE_STATE가 된다.
+- 인수 경로 `POST /api/rooms/{roomId}/control`의 거절과 그 재전송은 `{code, message}`다. 성공 응답은 `{requestId, sequence, outcome, code, controlGeneration, latestState}`이고 `resultStateVersion`은 없다.
+- 세션 스트림은 세션당 8개까지이고 닫는 서버 경로가 없다. 정리는 클라이언트가 streamId를 재사용하는 데 의존한다(서버 경로는 2B).
+
+코드와 이 절이 다른 곳:
+
+- 변경 요청 필드에 `roomId`·`screenId`가 없다. roomId는 경로, 화면 구분은 조작 세대가 맡는다. 생성·참가·인수는 `streamId`를 쓴다.
+- 현재 상태에 접속 상태와 미처리 알림이 없다(2B).
+- 허용 행동 `legal`은 현재 행동자에게만 주고 다른 사람에게는 `null`이다.
+- 201 응답에 Location 헤더가 없다.
+- 기록 조회의 `TOURNAMENT_CHANGED`는 409가 아니라 410이다.
+- `SEQUENCE_GAP`·`REQUEST_CONFLICT`·`RESULT_EXPIRED` 응답도 장부 결과가 아니므로 `{code, message}`다.
+- `UNKNOWN_STREAM`·`TOO_MANY_STREAMS`도 409다. 필터가 거절한 요청과 `TOO_MANY_STREAMS`의 본문은 `{code}`뿐이다.
 
 ### 저장 스키마 초안
 

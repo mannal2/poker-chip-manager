@@ -7,7 +7,12 @@ import xyz.jwlee.poker.server.support.IdGenerator;
 
 // 처리기가 쓰는 주입된 시계와 ID 생성기를 묶는다
 /** The injected clock and id source a handler may use; handlers never read the system clock themselves. */
-public record RoomEnv(Clock clock, IdGenerator ids) {
+public record RoomEnv(Clock clock, IdGenerator ids, StartGate gate) {
+
+    // 테스트가 쓰는 열린 게이트 환경을 만든다
+    public RoomEnv(Clock clock, IdGenerator ids) {
+        this(clock, ids, new StartGate());
+    }
 
     // 서버가 만든 ID와 현재 시각으로 엔진 문맥을 만든다
     public TransitionContext transition() {

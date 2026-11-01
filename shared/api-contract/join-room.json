@@ -21,6 +21,7 @@
       "roomPhase" : "WAITING",
       "stateVersion" : 2,
       "draftVersion" : 0,
+      "deployPending" : false,
       "tournamentId" : null,
       "settings" : {
         "initial" : 1000,

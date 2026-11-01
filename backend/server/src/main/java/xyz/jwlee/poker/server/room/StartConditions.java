@@ -14,9 +14,12 @@ public final class StartConditions {
     private StartConditions() {}
 
     // 시작을 막는 이유 코드를 돌려주고 시작 가능하면 빈 값을 돌려준다
-    public static Optional<String> blockReason(Room room) {
+    public static Optional<String> blockReason(Room room, StartGate gate) {
         if (room.phase() != RoomPhase.WAITING) {
             return Optional.of("NOT_WAITING");
+        }
+        if (gate.isClosed()) {
+            return Optional.of("DEPLOY_PENDING");
         }
         int count = room.participants().size();
         if (count < 2 || count > Room.MAX_PARTICIPANTS) {

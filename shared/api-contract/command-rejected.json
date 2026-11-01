@@ -24,6 +24,7 @@
       "roomPhase" : "PLAYING",
       "stateVersion" : 7,
       "draftVersion" : 0,
+      "deployPending" : false,
       "tournamentId" : "00000000-0000-4000-8000-000000000010",
       "settings" : {
         "initial" : 1000,

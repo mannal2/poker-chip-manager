@@ -18,7 +18,7 @@ import xyz.jwlee.poker.server.registry.RoomRegistry;
  * One browser session playing through the HTTP API. Before every command it reads the room state, so it sends
  * the current version, tournament id and hand id, like a screen that is up to date.
  */
-final class GameClient {
+public final class GameClient {
 
     static final String ORIGIN = "http://localhost:5173";
     static final ObjectMapper MAPPER = new ObjectMapper();
@@ -31,10 +31,10 @@ final class GameClient {
     private final AtomicLong commandSequence = new AtomicLong();
     private String lastCommand;
 
-    String roomId;
-    String code;
-    String participantId;
-    JsonNode state;
+    public String roomId;
+    public String code;
+    public String participantId;
+    public JsonNode state;
 
     GameClient(MockMvc mvc) throws Exception {
         this.mvc = mvc;
@@ -48,7 +48,7 @@ final class GameClient {
 
     // 첫 사람이 방장인 방을 만들고 참가자별 클라이언트를 돌려준다
     /** A room of {@code names.length} people, the first being the host. */
-    static GameClient[] room(MockMvc mvc, RoomRegistry registry, String... names) throws Exception {
+    public static GameClient[] room(MockMvc mvc, RoomRegistry registry, String... names) throws Exception {
         GameClient[] clients = new GameClient[names.length];
         for (int i = 0; i < names.length; i++) {
             clients[i] = new GameClient(mvc);
@@ -91,13 +91,13 @@ final class GameClient {
     }
 
     /** Reads the state this participant sees now. */
-    JsonNode refresh() throws Exception {
+    public JsonNode refresh() throws Exception {
         state = MAPPER.readTree(mvc.perform(get("/api/rooms/" + roomId + "/state").session(session)).andReturn()
                 .getResponse().getContentAsString());
         return state;
     }
 
-    String playerId() {
+    public String playerId() {
         for (JsonNode p : state.get("participants")) {
             if (p.get("participantId").asString().equals(participantId)) {
                 return p.get("playerId").isNull() ? null : p.get("playerId").asString();
@@ -116,7 +116,7 @@ final class GameClient {
     }
 
     /** The next in-sequence command at the latest state; the answer's state is kept as the new view. */
-    ResultActions send(String type, String payload) throws Exception {
+    public ResultActions send(String type, String payload) throws Exception {
         refresh();
         return sendAt(type, payload, state.get("stateVersion").asLong(), tournamentId(), handId());
     }

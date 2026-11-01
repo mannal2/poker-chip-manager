@@ -27,6 +27,7 @@ import xyz.jwlee.poker.server.room.Room;
 import xyz.jwlee.poker.server.room.RoomException;
 import xyz.jwlee.poker.server.room.SeatBinding;
 import xyz.jwlee.poker.server.room.SnapshotWriter;
+import xyz.jwlee.poker.server.room.StartGate;
 import xyz.jwlee.poker.server.support.IdGenerator;
 import xyz.jwlee.poker.server.support.Protocol;
 
@@ -44,9 +45,9 @@ class CommandController {
     private final RoomRegistry registry;
     private final CommandPipeline pipeline;
 
-    CommandController(RoomRegistry registry, Clock clock, IdGenerator ids) {
+    CommandController(RoomRegistry registry, Clock clock, IdGenerator ids, StartGate gate) {
         this.registry = registry;
-        this.pipeline = new CommandPipeline(clock, ids);
+        this.pipeline = new CommandPipeline(clock, ids, gate);
     }
 
     // 명령을 검증하고 방 잠금 안에서 파이프라인으로 실행해 결과를 응답한다

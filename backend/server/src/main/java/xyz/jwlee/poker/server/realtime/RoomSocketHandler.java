@@ -22,6 +22,7 @@ import xyz.jwlee.poker.server.room.RoomEnv;
 import xyz.jwlee.poker.server.room.RoomException;
 import xyz.jwlee.poker.server.room.RoomLifecycle;
 import xyz.jwlee.poker.server.room.SeatBinding;
+import xyz.jwlee.poker.server.room.StartGate;
 import xyz.jwlee.poker.server.support.IdGenerator;
 import xyz.jwlee.poker.server.support.Protocol;
 
@@ -71,12 +72,12 @@ class RoomSocketHandler extends TextWebSocketHandler {
     private final RoomEnv env;
 
     // 소켓 핸들러에 필요한 협력 객체를 주입받는다
-    RoomSocketHandler(ConnectionHub hub, RoomRegistry registry, Clock clock, IdGenerator ids) {
+    RoomSocketHandler(ConnectionHub hub, RoomRegistry registry, Clock clock, IdGenerator ids, StartGate gate) {
         this.hub = hub;
         this.registry = registry;
         this.clock = clock;
         this.ids = ids;
-        this.env = new RoomEnv(clock, ids);
+        this.env = new RoomEnv(clock, ids, gate);
     }
 
     // 새 connectionId로 연결을 만들고 서버 전체나 세션별 한도를 넘으면 닫는다

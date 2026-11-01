@@ -34,6 +34,19 @@ class ArchitectureTest {
                     .should().dependOnClassesThat().resideInAnyPackage(
                             "..server.realtime..", "org.springframework.web.socket..");
 
+    // ops는 room과 registry만 쓰고 다른 웹 계층을 쓰지 않는다
+    @ArchTest
+    static final ArchRule opsDoesNotDependOnApiAuthOrRealtime =
+            noClasses().that().resideInAPackage("..server.ops..")
+                    .should().dependOnClassesThat().resideInAnyPackage(
+                            "..server.api..", "..server.auth..", "..server.realtime..");
+
+    // 어떤 패키지도 ops를 쓰지 않는다
+    @ArchTest
+    static final ArchRule nothingDependsOnOps =
+            noClasses().that().resideOutsideOfPackage("..server.ops..")
+                    .should().dependOnClassesThat().resideInAPackage("..server.ops..");
+
     @ArchTest
     static final ArchRule realtimeDoesNotDependOnApi =
             noClasses().that().resideInAPackage("..server.realtime..")

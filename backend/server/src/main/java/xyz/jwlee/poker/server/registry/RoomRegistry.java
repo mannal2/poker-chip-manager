@@ -22,8 +22,10 @@ import xyz.jwlee.poker.server.room.Room;
 import xyz.jwlee.poker.server.room.RoomEnv;
 import xyz.jwlee.poker.server.room.RoomException;
 import xyz.jwlee.poker.server.room.RoomLifecycle;
+import xyz.jwlee.poker.server.room.RoomPhase;
 import xyz.jwlee.poker.server.room.RoomPublisher;
 import xyz.jwlee.poker.server.room.SeatBinding;
+import xyz.jwlee.poker.server.room.StartGate;
 import xyz.jwlee.poker.server.support.IdGenerator;
 
 // 활성 방을 보관하고 전역 잠금과 방 잠금으로 접근을 조율하는 저장소
@@ -57,6 +59,12 @@ public class RoomRegistry {
     /** Where a participant ended up after create or join. */
     public record Entry(String roomId, String code, String participantId, long stateVersion) { }
 
+    // 배포 준비 결과(교체 가능 여부와 진행 중인 토너먼트 수)
+    public record PrepareResult(boolean ready, int activeTournaments) { }
+
+    // 배포 상태 조회 결과(게이트를 닫은 배포, 진행 중인 토너먼트 수, 방 수)
+    public record DeploymentStatus(Optional<String> deploymentId, int activeTournaments, int rooms) { }
+
     // 방 생성 결과와 공용 잠금을 푼 뒤 넘길 알림
     private record Created(Entry entry, Publication publication) { }
 
@@ -68,6 +76,7 @@ public class RoomRegistry {
     private final RoomPublisher publisher;
     private final RoomCodes codes;
     private final int maxRooms;
+    private final StartGate gate;
 
     // 방 레지스트리를 만든다
     public RoomRegistry(IdGenerator ids, Clock clock, RoomPublisher publisher) {
@@ -75,10 +84,16 @@ public class RoomRegistry {
     }
 
     // 설정한 최대 방 수로 레지스트리를 만든다
+    public RoomRegistry(IdGenerator ids, Clock clock, RoomPublisher publisher, int maxRooms) {
+        this(ids, clock, publisher, maxRooms, new StartGate());
+    }
+
+    // 서버 전체 시작 게이트를 함께 받아 레지스트리를 만든다
     @Autowired
     public RoomRegistry(IdGenerator ids, Clock clock, RoomPublisher publisher,
-            @Value("${poker.max-rooms:10}") int maxRooms) {
+            @Value("${poker.max-rooms:10}") int maxRooms, StartGate gate) {
         this.maxRooms = maxRooms;
+        this.gate = gate;
         this.ids = ids;
         this.clock = clock;
         this.publisher = publisher;
@@ -116,6 +131,7 @@ public class RoomRegistry {
             String credential = ids.next();
             room.lock().lock();
             try {
+                room.showDeployPending(gate.isClosed());
                 room.addParticipant(participantId, hostName, credential, clock.instant());
                 rooms.put(room.roomId(), room);
                 byCode.put(room.code(), room);
@@ -253,7 +269,7 @@ public class RoomRegistry {
     // 방마다 시간 규칙을 판정한다
     /** Each room is swept through {@link #update}; one room's failure is logged and the others still run. */
     public void sweepAll() {
-        RoomEnv env = new RoomEnv(clock, ids);
+        RoomEnv env = new RoomEnv(clock, ids, gate);
         for (String roomId : roomIds()) {
             sweep(roomId, env);
         }
@@ -278,6 +294,91 @@ public class RoomRegistry {
             LOG.debug("Room {} is gone, nothing to sweep", roomId);
         } catch (RuntimeException e) {
             LOG.error("Room sweep failed for {}", roomId, e);
+        }
+    }
+
+    // 공용 잠금 안에서 게이트를 닫고 방마다 진행 여부를 확인해 교체 가능 여부를 정한다
+    /**
+     * Ordering, which is what keeps a late deployment from erasing a game that has just started:
+     * <ol>
+     *   <li>The gate closes first; then each room's lock is taken in turn and its phase is read.</li>
+     *   <li>START and a result-screen UNDO read the gate while holding their room lock, and they make the room
+     *       PLAYING before releasing it.</li>
+     *   <li>So take any room and look at who gets its lock first. If the command does, it either read the gate
+     *       closed and refused, or read it open and left the room PLAYING, and the check below, which comes later,
+     *       sees PLAYING and answers HELD. If the check does, the gate was already closed, so the command that
+     *       follows reads it closed and refuses. A command never reads the gate open after the check has passed
+     *       its room, and that is the one interleaving that could put a game under a READY.</li>
+     * </ol>
+     * The global lock serialises prepare and release, and keeps the table fixed for the scan: a room created later
+     * sees the closed gate, starts in WAITING and cannot start a game. Global then room is the normal lock order,
+     * and no room lock holder waits for the global lock. HELD reopens inside the same section, so the attempt
+     * never shows up on a screen. The rooms are told by {@link #announceGate} only after the global lock is
+     * released, because {@link #update} publishes and removes rooms on its way out.
+     */
+    public PrepareResult prepareDeployment(String id) {
+        PrepareResult result = withGlobal(() -> {
+            if (!gate.close(id)) {
+                throw new RoomException("DEPLOY_IN_PROGRESS");
+            }
+            int active = activeTournaments();
+            if (active > 0) {
+                gate.open(id);
+            }
+            return new PrepareResult(active == 0, active);
+        });
+        announceGate();
+        return result;
+    }
+
+    // 닫은 배포가 맞으면 게이트를 열고 방에 알린다
+    public boolean releaseDeployment(String id) {
+        boolean released = withGlobal(() -> gate.open(id));
+        if (released) {
+            announceGate();
+        }
+        return released;
+    }
+
+    // 게이트와 방 수를 한 시점으로 돌려준다
+    public DeploymentStatus deploymentStatus() {
+        return withGlobal(() -> new DeploymentStatus(gate.deploymentId(), activeTournaments(), rooms.size()));
+    }
+
+    // 게임이 진행 중인 방을 방 잠금으로 하나씩 확인해 센다. 호출자가 공용 잠금을 잡고 있다
+    private int activeTournaments() {
+        int active = 0;
+        for (Room room : rooms.values()) {
+            room.lock().lock();
+            try {
+                if (!room.isClosed() && room.phase() == RoomPhase.PLAYING) {
+                    active++;
+                }
+            } finally {
+                room.lock().unlock();
+            }
+        }
+        return active;
+    }
+
+    // 방마다 안내를 게이트에 맞추고, 바뀐 방의 버전을 올려 스냅샷을 발행한다
+    /**
+     * The gate is read again under each room lock, so overlapping announcements converge on the last gate state.
+     * A running game shows no notice: that room is cleared too, since a START can win the race with this very
+     * announcement after a release. One room's failure is logged and the others are still told.
+     */
+    private void announceGate() {
+        for (String roomId : roomIds()) {
+            try {
+                update(roomId, room -> {
+                    room.showDeployPending(gate.isClosed() && room.phase() != RoomPhase.PLAYING);
+                    return null;
+                });
+            } catch (RoomException gone) {
+                LOG.debug("Room {} is gone, nothing to announce", roomId);
+            } catch (RuntimeException e) {
+                LOG.error("Announcing the deployment gate failed for {}", roomId, e);
+            }
         }
     }
 

@@ -36,7 +36,7 @@ final class GameCommands {
     // 시작 조건을 확인하고 참가자 순서대로 토너먼트를 만들어 게임을 시작한다
     static void start(Room room, Participant actor, CommandRequest request, RoomEnv env) {
         emptyPayload(request.payload());
-        StartConditions.blockReason(room).ifPresent(reason -> {
+        StartConditions.blockReason(room, env.gate()).ifPresent(reason -> {
             throw new RoomException(reason);
         });
         List<String> names = new ArrayList<>();
@@ -85,9 +85,13 @@ final class GameCommands {
 
     // 직전 행동을 되돌린다
     static void undo(Room room, Participant actor, CommandRequest request, RoomEnv env) {
-        requireGame(room);
+        GameState game = requireGame(room);
         if (room.hasPlayerLeft()) {
             throw new RoomException("UNDO_LOCKED");
+        }
+        // Undoing the end of a tournament brings a game back to life, so it is a start in all but name.
+        if (game.status == TournamentStatus.ENDED && env.gate().isClosed()) {
+            throw new RoomException("UNDO_DEPLOY_PENDING");
         }
         run(room, new GameCommand.Undo(), env);
     }

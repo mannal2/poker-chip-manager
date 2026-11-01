@@ -36,6 +36,8 @@ class ApiExceptionHandler {
             Map.entry("RESULT_EXPIRED", 409),
             Map.entry("SEQUENCE_GAP", 409),
             Map.entry("UNKNOWN_STREAM", 409),
+            Map.entry("DEPLOY_IN_PROGRESS", 409),
+            Map.entry("DEPLOY_MISMATCH", 409),
             Map.entry("INVALID_NAME", 422),
             Map.entry("DUPLICATE_NAME", 422),
             Map.entry("NOT_WAITING", 422),

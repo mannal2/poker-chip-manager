@@ -258,14 +258,16 @@ Spring Boot 4·Spring MVC·가상 스레드 앱이다. 방은 서버 메모리�
 | `api/` | `RoomController`(생성·참가·상태), `CommandController`(명령·요청 결과·조작 인수), `RecoveryController`(복구 신청·결과 조회), `HistoryController`, `HealthController`, 본문 크기 필터, `ApiExceptionHandler`·`ApiError`(코드·HTTP 상태·문구) |
 | `auth/` | `SecurityConfig`, `OriginFilter`, `SessionGuardFilter`, `SessionController`(세션·스트림), `SessionIdentity`(세션 속성·스트림 장부의 유일한 입구, 방별 `SeatBinding` 보관), `WebSocketHandshakeGuard`(핸드셰이크의 Origin·세션 검사) |
 | `realtime/` | `RealtimeConfig`(`/ws` 등록), `RoomSocketHandler`(소켓 열림·닫힘, SUBSCRIBE·PONG·RESYNC), `ConnectionHub`(열린 연결 표, `RoomPublisher` 구현), `Connection`(소켓 하나의 전송 대기열), `HeartbeatTask`(1초 주기 PING·무응답·전송 정체·미구독 정리), `SweepTask`(1초 주기 방 점검), `SessionExpiryListener`(세션이 끝나면 연결 회수) |
-| `room/` | `Room`(방 상태·잠금), `CommandPipeline`(검사 순서와 명령 연결), `WaitingRoomCommands`·`GameCommands`·`ResultCommands`·`RecoveryCommands`, `RoomLifecycle`(연결 전환·시간 규칙), `Presence`(참가자별 구독 연결·끊김 시각), `AutoPlay`(끊긴 사람의 자동 체크·폴드), `RecoveryRequests`, `SeatBinding`(자리와 자격의 묶음), `StartConditions`, `Capabilities`, `RequestLedger`·`RequestOutcome`, `SnapshotWriter`, `PublicationBuilder`·`Publication`·`RoomPublisher`(방 변경을 수신자별 메시지로 모으는 경계) |
-| `registry/` | `RoomRegistry`(방 표·한도·코드·잠금 진입), `RoomCodes` |
+| `room/` | `Room`(방 상태·잠금), `CommandPipeline`(검사 순서와 명령 연결), `WaitingRoomCommands`·`GameCommands`·`ResultCommands`·`RecoveryCommands`, `RoomLifecycle`(연결 전환·시간 규칙), `Presence`(참가자별 구독 연결·끊김 시각), `AutoPlay`(끊긴 사람의 자동 체크·폴드), `RecoveryRequests`, `SeatBinding`(자리와 자격의 묶음), `StartConditions`, `StartGate`(배포 중 새 게임 차단), `Capabilities`, `RequestLedger`·`RequestOutcome`, `SnapshotWriter`, `PublicationBuilder`·`Publication`·`RoomPublisher`(방 변경을 수신자별 메시지로 모으는 경계) |
+| `registry/` | `RoomRegistry`(방 표·한도·코드·잠금 진입, 배포 준비), `RoomCodes` |
+| `ops/` | `DeployController`(내부 배포 경로), `LoopbackOnlyFilter`(내부 경로의 loopback 제한), `GateFile`(기동 때 시작 차단 파일 판정) |
 | `support/` | `IdGenerator`, `Clock` 빈, `Protocol` |
 
 ### 의존 방향과 잠금
 
-- `api`·`auth`·`realtime` → `room`·`registry` → `game`·`game-json`. `realtime`은 `auth`를 쓸 수 있고 `realtime`과 `api`는 서로 쓰지 않는다. `auth`도 `realtime`을 모르므로 `SessionExpiryListener`는 `realtime`에 있다. `room`·`registry`는 `api`·`auth`·`realtime`·Spring Web·Spring WebSocket·Servlet을 쓰지 않고 `support`는 다른 서버 패키지를 쓰지 않는다. [ArchitectureTest](backend/server/src/test/java/xyz/jwlee/poker/server/ArchitectureTest.java)가 검사한다.
+- `api`·`auth`·`realtime`·`ops` → `room`·`registry` → `game`·`game-json`. `ops`는 `room`·`registry`만 쓰고 어떤 패키지도 `ops`를 쓰지 않는다. `realtime`은 `auth`를 쓸 수 있고 `realtime`과 `api`는 서로 쓰지 않는다. `auth`도 `realtime`을 모르므로 `SessionExpiryListener`는 `realtime`에 있다. `room`·`registry`는 `api`·`auth`·`realtime`·Spring Web·Spring WebSocket·Servlet을 쓰지 않고 `support`는 다른 서버 패키지를 쓰지 않는다. [ArchitectureTest](backend/server/src/test/java/xyz/jwlee/poker/server/ArchitectureTest.java)가 검사한다.
 - 잠금 순서는 스트림 장부 → 공용 잠금 → 방 잠금 → 세션 모니터다. 역순으로 잡지 않는다. `RoomRegistry.withRoom`의 작업 안에서 공용 잠금을 부르지 않는다. 방 삭제는 방 잠금 안에서 닫고, 푼 뒤에 표에서 뺀다.
+- 배포 준비는 공용 잠금 안에서 게이트를 먼저 닫고 방 잠금으로 진행 여부를 확인한다. START와 결과 화면 UNDO는 방 잠금 안에서 게이트를 읽는다. 근거는 `RoomRegistry.prepareDeployment` 주석이 기준이다. 스냅샷의 `deployPending`은 방 필드이고 공용 잠금을 푼 뒤 `update`로 바뀌어 버전과 함께 움직인다.
 - 명령 검사 순서는 `CommandPipeline` 주석이 기준이다: 형식 → 방 → 참가자 → 조작 세대 → 중복 → 권한 → 토너먼트·핸드 → 상태 버전 → 규칙.
 - 생성·참가·인수는 세션 스트림 장부, 게임 명령은 참가자·조작 세대별 장부를 쓴다. 세대 장부는 현재와 직전만 보관한다.
 - 명령의 CONTROL_LOST(세대 장부)는 순번을 소진하지 않는 유일한 비즈니스 거절이다. `/control`의 CONTROL_LOST는 세션 스트림 장부에 기록되어 순번을 소진한다. 인수는 room version을 올리지 않는다. 승자 초안도 room version 대신 자기 `draftVersion`을 쓰므로 상태 버전 검사를 건너뛴다. 핸드 범위 검사는 받는다.
@@ -285,6 +287,7 @@ Spring Boot 4·Spring MVC·가상 스레드 앱이다. 방은 서버 메모리�
 | 경로 | 처리 |
 | ---- | ---- |
 | `GET /api/health` | 상태·프로토콜·빌드 버전 |
+| `POST /internal/deploy/prepare`, `GET /internal/deploy/status`, `POST /internal/deploy/release` | 배포 준비·상태·해제. loopback 전용이고 비loopback은 404, CSRF·Origin·세션 검사 없음 |
 | `GET /api/session`, `POST /api/session/refresh`, `POST /api/session/streams`, `DELETE /api/session/streams/{streamId}` | 세션·CSRF 토큰, 쿠키 연장, 화면 스트림 |
 | `POST /api/rooms`, `POST /api/room-joins` | 방 생성, 코드로 참가 |
 | `GET /api/rooms/{roomId}/state` | 요청자별 스냅샷 |

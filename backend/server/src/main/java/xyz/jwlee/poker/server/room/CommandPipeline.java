@@ -99,7 +99,12 @@ public final class CommandPipeline {
     private final RoomEnv env;
 
     public CommandPipeline(Clock clock, IdGenerator ids) {
-        this.env = new RoomEnv(clock, ids);
+        this(clock, ids, new StartGate());
+    }
+
+    // 서버 전체 시작 게이트를 읽는 파이프라인을 만든다
+    public CommandPipeline(Clock clock, IdGenerator ids, StartGate gate) {
+        this.env = new RoomEnv(clock, ids, gate);
     }
 
     public CommandPipeline() {

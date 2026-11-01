@@ -27,6 +27,7 @@ import xyz.jwlee.poker.server.room.Room;
 import xyz.jwlee.poker.server.room.RoomEnv;
 import xyz.jwlee.poker.server.room.RoomException;
 import xyz.jwlee.poker.server.room.SeatBinding;
+import xyz.jwlee.poker.server.room.StartGate;
 import xyz.jwlee.poker.server.support.IdGenerator;
 
 // 새 기기의 복구 신청과 신청 결과 조회를 처리하는 컨트롤러
@@ -43,9 +44,9 @@ class RecoveryController {
     private final RoomEnv env;
 
     // 복구 요청 API에 필요한 협력 객체를 주입받는다
-    RecoveryController(RoomRegistry registry, Clock clock, IdGenerator ids) {
+    RecoveryController(RoomRegistry registry, Clock clock, IdGenerator ids, StartGate gate) {
         this.registry = registry;
-        this.env = new RoomEnv(clock, ids);
+        this.env = new RoomEnv(clock, ids, gate);
     }
 
     // 방 코드와 이름으로 복구를 신청한다

@@ -47,6 +47,7 @@ public final class Room {
     private final Presence presence = new Presence();
     private final RecoveryRequests recoveryRequests = new RecoveryRequests();
     private boolean hostTakeoverOpen;
+    private boolean deployPending;
     private final List<String> pendingRevocations = new ArrayList<>();
     private final Set<String> snapshotRequests = new HashSet<>();
     private long collectedVersion;
@@ -127,6 +128,18 @@ public final class Room {
     void openHostTakeover() { this.hostTakeoverOpen = true; }
     // 방장 인계를 닫는다
     void closeHostTakeover() { this.hostTakeoverOpen = false; }
+
+    // 배포 안내가 켜져 있는지 돌려준다
+    public boolean deployPending() { return deployPending; }
+
+    // 배포 안내를 바꾸고 값이 달라졌을 때만 상태 버전을 올린다
+    /** The flag moves with the version, so a screen never holds an old value at the newest version. */
+    public void showDeployPending(boolean pending) {
+        if (deployPending != pending) {
+            deployPending = pending;
+            bumpVersion();
+        }
+    }
 
     // 명단에서 빠진 사람의 끊어야 할 연결 ID를 꺼내고 목록을 비운다
     public List<String> drainPendingRevocations() {

@@ -1,6 +1,8 @@
 poker:
   max-rooms: 10
   client-ip-header: ""
+  deploy:
+    gate-file: ""
   rate-limit:
     session-per-second: 5
     session-burst: 10
@@ -21,6 +23,8 @@ spring:
       enabled: true
 
 server:
+  # The internal deployment paths trust the socket address, so no proxy header may rewrite it.
+  forward-headers-strategy: none
   servlet:
     session:
       timeout: 7d
@@ -39,6 +43,8 @@ spring:
 
 poker:
   client-ip-header: X-Real-IP
+  deploy:
+    gate-file: /run/poker-gate/start-gate.json
   allowed-origins:
     - https://pcm.jwlee.xyz
 

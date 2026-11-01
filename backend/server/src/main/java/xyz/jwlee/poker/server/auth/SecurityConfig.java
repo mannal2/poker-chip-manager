@@ -4,7 +4,9 @@ import java.util.Set;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.annotation.Order;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
@@ -21,6 +23,22 @@ import org.springframework.security.web.csrf.HttpSessionCsrfTokenRepository;
 @Configuration(proxyBeanMethods = false)
 @EnableConfigurationProperties(AuthProperties.class)
 class SecurityConfig {
+
+    // 내부 경로에는 브라우저용 검사를 걸지 않는 체인을 먼저 맞춘다
+    /** Browser checks mean nothing to a local script; {@code LoopbackOnlyFilter} has already run before this chain. */
+    @Bean
+    @Order(1)
+    SecurityFilterChain internalFilterChain(HttpSecurity http) {
+        http.securityMatcher("/internal/**")
+                .authorizeHttpRequests(a -> a.anyRequest().permitAll())
+                .formLogin(f -> f.disable())
+                .httpBasic(b -> b.disable())
+                .logout(l -> l.disable())
+                .requestCache(c -> c.disable())
+                .csrf(c -> c.disable())
+                .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
+        return http.build();
+    }
 
     // CSRF, Origin, 세션 필터와 JSON 오류 응답을 갖춘 보안 필터 체인을 만든다
     @Bean

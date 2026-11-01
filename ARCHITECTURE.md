@@ -61,14 +61,14 @@ flowchart TD
 | 위치        | 역할 한 줄                              | 핵심 파일·심볼                                                                                                      |
 | ----------- | --------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
 | `frontend/` | 브라우저 앱·테스트·정적 이미지 빌드     | [package.json](frontend/package.json), [vite.config.ts](frontend/vite.config.ts), [Dockerfile](frontend/Dockerfile) |
-| `backend/`  | 서버 Gradle 프로젝트: 규칙 `game`, JSON 변환 `game-json`, 앱 `server` | [settings.gradle.kts](backend/settings.gradle.kts), `backend/game/`, `backend/game-json/`, `backend/server/` |
+| `backend/`  | 서버 Gradle 프로젝트: 규칙 `game`, JSON 변환 `game-json`, 앱 `server`, 이미지 빌드 | [settings.gradle.kts](backend/settings.gradle.kts), [Dockerfile](backend/Dockerfile), `backend/game/`, `backend/game-json/`, `backend/server/` |
 | `shared/`   | 언어에 독립적인 규칙 테스트 입력·기대값과 API 예시 | `shared/game-fixtures/`, [schema.json](shared/game-fixtures/schema.json), [shared/api-contract/](shared/api-contract/README.md) |
 | `deploy/`   | 프런트엔드 교체·복구와 edge 구성        | [deploy-frontend.sh](deploy/deploy-frontend.sh), [README.md](deploy/README.md)                                      |
 | `.github/`  | 검사·이미지 발행·배포·연결 확인 자동화  | [ci-images.yml](.github/workflows/ci-images.yml), [backend-ci.yml](.github/workflows/backend-ci.yml), [check-server.yml](.github/workflows/check-server.yml) |
 | `docs/`     | 책임별 리팩터링 계획과 검증 기록        | `docs/superpowers/plans/`                                                                                           |
 
 루트 `shared/`는 프런트엔드와 향후 서버가 함께 쓰는 규칙 사례이고, `frontend/src/shared/`는 프런트엔드 범용 코드다. 이름은 같지만 다른 것이다.
-루트의 [compose.yaml](compose.yaml)은 프런트엔드 컨테이너와 외부 네트워크·자산 볼륨을 연결한다.
+루트의 [compose.yaml](compose.yaml)은 프런트엔드·백엔드 컨테이너와 외부 네트워크·자산 볼륨·배포 게이트 디렉터리를 연결한다.
 edge 구성은 [deploy/edge/compose.yaml](deploy/edge/compose.yaml)로 별도 관리한다.
 애플리케이션 명세의 입구는 [SPEC_INDEX.md](SPEC_INDEX.md), 작업 지침은 [AGENTS.md](AGENTS.md)다.
 기술 선택의 이유는 [TECH_DECISIONS.md](TECH_DECISIONS.md), 실제 작업 이력은 [IMPLEMENTATION_PROGRESS.md](IMPLEMENTATION_PROGRESS.md)에 있다.
@@ -573,6 +573,7 @@ bash deploy/test-deploy-frontend.sh
 ```
 
 [test-deploy-frontend.sh](deploy/test-deploy-frontend.sh)는 Docker·HTTPS·시간·잠금 거절을 모의한다.
+[test-backend-image.sh](deploy/test-backend-image.sh)는 실제 Docker로 백엔드 이미지·Compose 값·edge 라우팅을 확인한다.
 [test-copy-frontend-assets.sh](deploy/test-copy-frontend-assets.sh)는 CI의 제품 이미지 안에서 실제 복사 명령을 검사한다.
 이 테스트 결과를 실제 서버·인증서·네트워크 상태 확인으로 간주하지 않는다.
 배포 절차와 복구 판단은 [deploy/README.md](deploy/README.md), 요구사항은 [DEPLOYMENT_SPEC.md](DEPLOYMENT_SPEC.md)를 따른다.

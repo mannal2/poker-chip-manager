@@ -1,6 +1,9 @@
 poker:
   max-rooms: 10
   client-ip-header: ""
+  build:
+    # The image sets POKER_BUILD_REVISION; a build outside the image reports the Gradle version.
+    revision: ""
   deploy:
     gate-file: ""
   rate-limit:

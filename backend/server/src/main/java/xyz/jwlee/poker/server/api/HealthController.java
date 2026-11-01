@@ -1,6 +1,7 @@
 package xyz.jwlee.poker.server.api;
 
 import java.util.Map;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.info.BuildProperties;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -12,8 +13,8 @@ class HealthController {
 
     private final String version;
 
-    HealthController(BuildProperties build) {
-        this.version = build.getVersion();
+    HealthController(BuildProperties build, @Value("${poker.build.revision:}") String revision) {
+        this.version = revision.isBlank() ? build.getVersion() : revision;
     }
 
     // 서버 정상 여부와 버전 정보를 돌려준다

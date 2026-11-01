@@ -24,6 +24,8 @@ test('shares side-pot navigation and automatically selects the sole eligible win
   page,
   browser,
 }) => {
+  // 세 화면에서 두 핸드를 순차 진행하므로 전체 시나리오의 실행 시간을 확보한다.
+  test.slow();
   await page.goto('/online/');
   await page.getByLabel('이름', { exact: true }).fill('Alice');
   await page.getByRole('button', { name: '방 만들기', exact: true }).click();

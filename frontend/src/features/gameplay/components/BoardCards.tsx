@@ -15,6 +15,7 @@ export function BoardCards({
 }) {
   const boardRef = useRef<HTMLDivElement>(null);
   const previousBoard = useRef<{ hand?: string; count: number; version?: number } | null>(null);
+  const animations = useRef<Animation[]>([]);
   const version = boardReveal?.version;
   const from = boardReveal?.from;
   const count =
@@ -23,6 +24,14 @@ export function BoardCards({
       : phase === 'settlement'
         ? 5
         : ({ PREFLOP: 0, FLOP: 3, TURN: 4, RIVER: 5 }[street] ?? 0);
+  // 카드 구성이 바뀌거나 화면이 닫힐 때에만 이전 보드의 효과를 정리한다.
+  useLayoutEffect(
+    () => () => {
+      animations.current.forEach((animation) => animation.cancel());
+      animations.current = [];
+    },
+    [count, handKey],
+  );
   useLayoutEffect(() => {
     const previous = previousBoard.current;
     previousBoard.current = { hand: handKey, count, version };
@@ -35,7 +44,7 @@ export function BoardCards({
     )
       return;
     const cards = [...(boardRef.current?.querySelectorAll('.board-card') ?? [])];
-    const animations = cards.slice(previous.count).map((card) =>
+    animations.current = cards.slice(previous.count).map((card) =>
       card.animate(
         [
           { opacity: 0.4, transform: 'scale(0.92)' },
@@ -45,7 +54,6 @@ export function BoardCards({
         { duration: 520, easing: 'ease-out' },
       ),
     );
-    return () => animations.forEach((animation) => animation.cancel());
   }, [count, handKey, from, version]);
   return (
     <div

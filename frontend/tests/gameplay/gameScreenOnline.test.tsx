@@ -158,6 +158,39 @@ it('animates board cards only from the displayed continuous version', async () =
     else Reflect.deleteProperty(Element.prototype, 'animate');
   }
 });
+// 같은 보드의 HTTP 확정과 후속 버전 갱신은 진행 중인 플랍 효과를 취소하지 않는다.
+it('preserves a continuous reveal when HTTP confirms the unchanged board', async () => {
+  const original = Object.getOwnPropertyDescriptor(Element.prototype, 'animate');
+  const cancel = vi.fn();
+  // 각 카드에 시작한 효과와 취소 시점을 기록한다.
+  const animate = vi.fn(() => ({ cancel }));
+  Object.defineProperty(Element.prototype, 'animate', { configurable: true, value: animate });
+  try {
+    const state = fixtureState(3);
+    // 원래 화면과 같은 핸드에 대해 확정 버전과 카드 수를 바꾼다.
+    const board = (street: number, version: number, from: number | null) =>
+      render(
+        session({
+          state: { ...state, hand: { ...state.hand!, street } },
+          boardReveal: { version, from },
+        }),
+      );
+    await board(0, 1, null);
+    await board(1, 2, 1);
+    expect(animate).toHaveBeenCalledTimes(3);
+    expect(cancel).not.toHaveBeenCalled();
+    await board(1, 2, null);
+    await board(1, 3, null);
+    expect(animate).toHaveBeenCalledTimes(3);
+    expect(cancel).not.toHaveBeenCalled();
+    await board(2, 4, 3);
+    expect(animate).toHaveBeenCalledTimes(4);
+    expect(cancel).toHaveBeenCalledTimes(3);
+  } finally {
+    if (original) Object.defineProperty(Element.prototype, 'animate', original);
+    else Reflect.deleteProperty(Element.prototype, 'animate');
+  }
+});
 // 상태 버전이 그대로여도 외부 취소 핸들은 입력한 베팅 초안을 폐기한다.
 it('discards a betting input through the external undo reset handle', async () => {
   const ref = createRef<GameScreenHandle>();

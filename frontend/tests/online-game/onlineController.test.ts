@@ -56,6 +56,81 @@ it.each(['START', 'RE_READY'] as const)(
   },
 );
 
+// 관전 중 인수가 토너먼트 전환과 겹쳐도 이 탭이 받은 세대를 서버가 확인하면 명령을 허용한다.
+it.each(['START', 'RE_READY'])(
+  'recognizes its granted generation after a concurrent %s publication',
+  async (type) => {
+    const x = setup();
+    const playingState = structuredClone(playing.response) as RoomSnapshot;
+    const before = type === 'START' ? x.entry.state : playingState;
+    const after = type === 'START' ? playingState : x.entry.state;
+    // 같은 자리에 대해 전환 전후의 조작 세대를 발행한다.
+    const withGeneration = (state: RoomSnapshot, generation: number) => ({
+      ...state,
+      you: { ...state.you, controlGeneration: generation },
+    });
+    // 전환 및 인수를 알리는 전체 상태를 현재 소켓으로 수신한다.
+    const publish = (state: RoomSnapshot) =>
+      x.h.onSnapshot({ type: 'SNAPSHOT', state, previousVersion: null, events: [] });
+    localStorage.setItem(
+      'online.lastRoom',
+      JSON.stringify({ roomId: before.roomId, code: before.code }),
+    );
+    x.api.get.mockResolvedValueOnce({ ok: true, body: withGeneration(before, 2) });
+    expect(await x.c.resume()).toBe(true);
+    publish(withGeneration(before, 2));
+    expect(x.c.getView().hasControl).toBe(false);
+
+    let deliver!: (reply: unknown) => void;
+    // 기존 세대에서 보낸 인수의 HTTP 응답을 전환 발행 뒤로 늦춘다.
+    x.api.post.mockReturnValueOnce(
+      new Promise((resolve) => {
+        deliver = resolve;
+      }),
+    );
+    const takeover = x.c.takeControl();
+    const request = x.api.post.mock.lastCall![1] as object;
+    publish(withGeneration(after, 2));
+    const displayed = x.c.getView().snapshot!;
+    const granted = withGeneration(structuredClone(after), 3);
+    deliver({
+      ok: true,
+      body: { ...request, outcome: 'APPLIED', controlGeneration: 3, latestState: granted },
+    });
+    expect(await takeover).toBe(true);
+    expect(x.c.getView().snapshot?.tournamentId).toBe(after.tournamentId);
+    expect(x.c.getView().snapshot?.participants).toBe(displayed.participants);
+    expect(x.c.getView().snapshot?.game).toBe(displayed.game);
+    expect(x.c.getView()).toMatchObject({
+      hasControl: true,
+      snapshot: { you: { controlGeneration: 3 } },
+    });
+    publish(granted);
+    expect(x.c.getView()).toMatchObject({
+      hasControl: true,
+      pending: false,
+      snapshot: { you: { controlGeneration: 3 } },
+    });
+
+    // 첫 게임 명령은 이 탭이 새로 받은 세대와 독립 순번을 사용한다.
+    x.api.post.mockImplementationOnce(async (_path, body) => ({
+      ok: true,
+      body: {
+        ...(body as object),
+        outcome: 'APPLIED',
+        code: 'OK',
+        resultStateVersion: granted.stateVersion,
+        latestState: granted,
+      },
+    }));
+    expect(
+      await x.c.send([{ type: type === 'START' ? 'CALL' : 'START', handScoped: type === 'START' }]),
+    ).toBe(true);
+    expect(x.api.post.mock.lastCall![1]).toMatchObject({ controlGeneration: 3, sequence: 1 });
+    publish(withGeneration(after, 4));
+    expect(x.c.getView().hasControl).toBe(false);
+  },
+);
 // 늦게 온 인수 성공 응답이 다른 탭에서 이미 얻은 더 높은 세대를 되돌리지 않는다.
 it('retains observed generation three after a delayed generation two takeover', async () => {
   const x = setup();

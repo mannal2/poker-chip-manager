@@ -56,7 +56,7 @@ export class OnlineController {
   private observed = new Set<(events: GameEvent[]) => void>();
   private knownEvents = new Map<string, KnownEvent>();
   private socket: SocketPort | null = null;
-  private generation = 0;
+  private grantedGeneration: number | null = null;
   private sequence = 0;
   private streamSequence = 0;
   private epoch = 0;
@@ -241,7 +241,7 @@ export class OnlineController {
       });
       return false;
     }
-    this.generation = result.body.you.controlGeneration;
+    this.grantedGeneration = null;
     this.apply(result.body);
     this.update({ phase: 'room', pending: false, hasControl: false });
     this.connect();
@@ -251,7 +251,7 @@ export class OnlineController {
   // 입장 응답의 세대와 저장 가능한 방 정보만 보관한다.
   private joined(body: unknown): boolean {
     if (!isJoinResponse(body)) return false;
-    this.generation = body.controlGeneration;
+    this.grantedGeneration = body.controlGeneration;
     this.sequence = 0;
     localStorage.setItem(LAST, JSON.stringify({ roomId: body.roomId, code: body.code }));
     sessionStorage.setItem(TAB, body.roomId);
@@ -259,7 +259,6 @@ export class OnlineController {
     this.update({
       phase: 'room',
       pending: false,
-      hasControl: body.state.you.controlGeneration === this.generation,
       recovery: null,
     });
     this.connect();
@@ -321,7 +320,7 @@ export class OnlineController {
       )
         return false;
     }
-    if (next.you.controlGeneration > this.generation) this.queuedDraft = null;
+    if (next.you.controlGeneration !== this.grantedGeneration) this.queuedDraft = null;
     if (!same) {
       ++this.scopeRevision;
       this.knownEvents.clear();
@@ -364,7 +363,7 @@ export class OnlineController {
           continuous && !fresh.some((event) => event.type === 'UNDO')
             ? previous.stateVersion
             : null,
-        ...(next.you.controlGeneration > this.generation ? { hasControl: false } : {}),
+        hasControl: next.you.controlGeneration === this.grantedGeneration,
       });
     }
     return true;
@@ -438,7 +437,7 @@ export class OnlineController {
         protocolVersion: 1,
         requestId: crypto.randomUUID(),
         sequence: ++this.sequence,
-        controlGeneration: this.generation,
+        controlGeneration: this.grantedGeneration,
         expectedStateVersion: state.stateVersion,
         tournamentId: state.tournamentId,
         ...(command.handScoped ? { handId: state.game?.hand?.id ?? null } : {}),
@@ -589,16 +588,25 @@ export class OnlineController {
       'controlGeneration' in body &&
       typeof body.controlGeneration === 'number' &&
       'latestState' in body &&
-      isRoomSnapshot(body.latestState)
+      isRoomSnapshot(body.latestState) &&
+      body.latestState.roomId === this.view.snapshot?.roomId &&
+      body.latestState.you.participantId === this.view.snapshot.you.participantId
     ) {
       this.request = null;
-      this.generation = body.controlGeneration;
+      this.grantedGeneration = body.controlGeneration;
       this.sequence = 0;
-      if (request.scopeRevision === this.scopeRevision) this.apply(body.latestState);
-      sessionStorage.setItem(TAB, body.latestState.roomId);
+      const sameScope = request.scopeRevision === this.scopeRevision;
+      if (sameScope) this.apply(body.latestState);
+      let snapshot = this.view.snapshot;
+      const observed = body.latestState.you.controlGeneration;
+      // 토너먼트가 바뀐 뒤의 응답에서는 같은 자리의 더 높은 조작 세대만 반영한다.
+      if (!sameScope && observed > snapshot.you.controlGeneration)
+        snapshot = { ...snapshot, you: { ...snapshot.you, controlGeneration: observed } };
+      sessionStorage.setItem(TAB, snapshot.roomId);
       this.update({
+        snapshot,
         pending: false,
-        hasControl: this.generation === this.view.snapshot!.you.controlGeneration,
+        hasControl: this.grantedGeneration === snapshot.you.controlGeneration,
         error: null,
       });
       return true;
@@ -608,6 +616,7 @@ export class OnlineController {
   // 권한 상실과 순번 오류를 서버 동기화로 복구한다.
   private async reject(code: string | undefined): Promise<void> {
     if (code === 'CONTROL_LOST') {
+      this.grantedGeneration = null;
       this.queuedDraft = null;
       this.update({ hasControl: false });
     }
@@ -615,6 +624,7 @@ export class OnlineController {
       ['SEQUENCE_GAP', 'REQUEST_CONFLICT', 'RESULT_EXPIRED'].includes(code ?? '') &&
       this.view.snapshot
     ) {
+      this.grantedGeneration = null;
       this.update({ connection: 'syncing', pending: false, hasControl: false });
       this.socket?.resync();
       await this.takeControl();
@@ -688,6 +698,7 @@ export class OnlineController {
     ++this.epoch;
     this.active = false;
     this.opened = false;
+    this.grantedGeneration = null;
     clearTimeout(this.polling);
     clearInterval(this.refreshTimer);
     document.removeEventListener('visibilitychange', this.onVisible);

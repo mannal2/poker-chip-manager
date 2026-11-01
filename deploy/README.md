@@ -68,8 +68,9 @@ deciding to complete or roll back. Do not remove this marker merely to retry.
 ## Checking the host and adding swap
 
 Before the backend rollout, run the read-only host check on the server and keep
-its output. It prints architecture, memory, swap, disk, Docker versions,
-container memory and the HTTP status of the service address, and no secrets:
+its output. It prints `key=value` lines for architecture, memory, swap, disk,
+Docker access and versions, container memory and the HTTP status of the service
+address (`unknown` when unavailable), and no secrets:
 
 ```bash
 cd /home/ubuntu/poker-chip-manager
@@ -82,24 +83,34 @@ file on the server; this is a manual server step and is not run by any script
 here:
 
 ```bash
-sudo fallocate -l 2G /swapfile
-sudo chmod 600 /swapfile
-sudo mkswap /swapfile
-sudo swapon /swapfile
-echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+set -e
+if ! swapon --show | grep -q '^/swapfile'; then
+  sudo fallocate -l 2G /swapfile
+  sudo chmod 600 /swapfile
+  sudo mkswap /swapfile
+  sudo swapon /swapfile
+fi
+grep -q '^/swapfile ' /etc/fstab || echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
 echo 'vm.swappiness=10' | sudo tee /etc/sysctl.d/99-poker-swap.conf
 sudo sysctl --system
 ```
+
+The block is safe to repeat: it skips creation while `/swapfile` is active and
+adds the `/etc/fstab` line only once. Run it in a fresh shell, since `set -e`
+would end an interactive session on failure.
 
 Verify:
 
 ```bash
 swapon --show
 free -m
+grep swapfile /etc/fstab
+sysctl vm.swappiness
 ```
 
-`swapon --show` should list `/swapfile` at 2G and `free -m` should show 2047
-or so in the Swap row. Run `bash deploy/check-host.sh` again to record it.
+`swapon --show` should list `/swapfile` at 2G, `free -m` should show about 2047
+in the Swap row, the fstab grep should print one line, and `sysctl` should print
+`vm.swappiness = 10`. Run `bash deploy/check-host.sh` again to record it.
 
 ## Local verification and remaining work
 

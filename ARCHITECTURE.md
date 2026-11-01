@@ -126,7 +126,8 @@ HTML마다 자기 진입점을 로드한다. `local/index.html`은 [main.local.t
 |---|---|
 | `features/online-game/OnlineApp.tsx`, `RoomPage.tsx` | 입장·복구·종료 단계와 공통 게임 화면·관리 메뉴 조합 |
 | `hooks/useOnlineController.ts` | React 구독, 자동 복귀, 문서 종료와 BFCache 수명 |
-| `session/onlineController.ts` | 서버 스냅샷, 조작 세대·순번·결과 불명 요청 한 건, 복구 조회와 세션 갱신 |
+| `session/onlineController.ts` | 서버 스냅샷, 조작 세대·순번·결과 불명 요청 한 건, 재연결 실패 시 방·세션 확인, 세션 갱신 |
+| `session/roomMemory.ts`, `eventMemory.ts`, `recoveryPoller.ts` | 탭·브라우저 저장값, 알림용 최근 이벤트, 복구 결과 조회 |
 | `api/client.ts`, `api/types.ts` | 메모리 CSRF 토큰·화면 스트림·REST와 수신 계약 검사 |
 | `realtime/roomSocket.ts` | 구독·PING/PONG·RESYNC·지터 재연결·오프라인 잠금·화면 복귀 |
 | `hooks/useOnlineGameSession.ts`, `model/` | 서버 상태와 허용 행동을 GameSession으로 변환, 명령·기록 문구 매핑 |

@@ -1,6 +1,8 @@
 package xyz.jwlee.poker.server.api;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.head;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -18,6 +20,7 @@ import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
+import org.springframework.mock.web.MockHttpSession;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import xyz.jwlee.poker.server.registry.RoomRegistry;
@@ -70,6 +73,56 @@ class RateLimitFilterTest {
             r.setRemoteAddr(ip);
             return r;
         }));
+    }
+
+    // 쿠키 없이 세션을 조회한다
+    private ResultActions newSessionFrom(String ip) throws Exception {
+        return mvc.perform(get("/api/session").with(r -> {
+            r.setRemoteAddr(ip);
+            return r;
+        }));
+    }
+
+    // 한 주소의 21번째 새 세션은 429이고 다른 주소와 기존 세션은 영향을 받지 않는다
+    @Test
+    void theTwentyFirstNewSessionOfAnAddressIsRefused() throws Exception {
+        MockHttpSession existing = null;
+        for (int i = 0; i < 20; i++) {
+            existing = (MockHttpSession) newSessionFrom("198.51.100.6").andExpect(status().isOk()).andReturn()
+                    .getRequest().getSession(false);
+        }
+        MockHttpSession session = existing;
+
+        newSessionFrom("198.51.100.6").andExpect(status().isTooManyRequests())
+                .andExpect(header().string("Retry-After", "2"))
+                .andExpect(jsonPath("$.code").value("RATE_LIMITED"));
+
+        newSessionFrom("198.51.100.7").andExpect(status().isOk());
+        mvc.perform(get("/api/session").session(session).with(r -> {
+            r.setRemoteAddr("198.51.100.6");
+            return r;
+        })).andExpect(status().isOk());
+    }
+
+    // 같은 주소의 새 세션 9개는 모두 통과한다
+    @Test
+    void nineFreshSessionsFromOneAddressPass() throws Exception {
+        for (int i = 0; i < 9; i++) {
+            newSessionFrom("198.51.100.8").andExpect(status().isOk());
+        }
+    }
+
+    // HEAD도 새 세션을 만들 수 있으므로 같은 버킷을 쓴다
+    @Test
+    void headCannotSkipTheNewSessionBucket() throws Exception {
+        for (int i = 0; i < 20; i++) {
+            mvc.perform(head("/api/session").with(r -> {
+                r.setRemoteAddr("198.51.100.9");
+                return r;
+            })).andExpect(status().isOk());
+        }
+
+        newSessionFrom("198.51.100.9").andExpect(status().isTooManyRequests());
     }
 
     // 순간 한도를 넘은 명령은 429이고 장부를 건드리지 않아 회복 뒤 같은 요청이 적용된다

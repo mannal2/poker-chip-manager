@@ -8,6 +8,8 @@ poker:
     ip-burst: 20
     room-per-minute: 5
     room-burst: 5
+    new-session-per-minute: 30
+    new-session-burst: 20
     max-sessions: 2000
   allowed-origins:
     - http://localhost:5173
@@ -61,5 +63,7 @@ poker:
     ip-burst: 2000
     room-per-minute: 60000
     room-burst: 2000
+    new-session-per-minute: 60000
+    new-session-burst: 2000
   allowed-origins:
     - http://127.0.0.1:4174

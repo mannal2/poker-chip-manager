@@ -770,8 +770,58 @@ it('keeps a rate limited entry until the person retries', async () => {
 
   expect(await x.c.retry()).toBe(true);
   expect(x.api.post.mock.lastCall![1]).toEqual(first);
-  expect(x.c.getView().phase).toBe('room');
+  expect(x.c.getView()).toMatchObject({ phase: 'room', error: null });
 });
+
+// 복구 신청을 제한 뒤 재시도해 접수되면 제한 안내를 지운다
+it('clears the limit notice when a retried recovery request is accepted', async () => {
+  const x = setup();
+  x.api.post.mockResolvedValueOnce(rateLimited);
+  expect(await x.c.requestRecovery('ABC123', 'Alice')).toBe(false);
+  x.api.post.mockResolvedValueOnce({
+    ok: true,
+    status: 200,
+    body: { recoveryRequestId: 'recovery', status: 'PENDING', expiresAt: 'later' },
+  });
+  x.api.get.mockReturnValue(new Promise(() => {}));
+  expect(await x.c.retry()).toBe(true);
+  expect(x.c.getView()).toMatchObject({ pending: false, error: null });
+});
+
+// 입장에서 세션 만료를 받으면 입장 화면에 남고 다음 시도는 새 세션으로 성공한다
+it.each(['create', 'recovery'] as const)(
+  'reopens a fresh session after NO_SESSION on %s',
+  async (kind) => {
+    const x = setup();
+    localStorage.setItem('online.lastRoom', JSON.stringify({ roomId: 'r', code: 'c' }));
+    // 입장 종류에 맞는 요청을 보낸다
+    const attempt = () =>
+      kind === 'create' ? x.c.create('Alice') : x.c.requestRecovery('ABC123', 'Alice');
+    x.api.post.mockResolvedValueOnce({ ok: false, status: 401, code: 'NO_SESSION' });
+    expect(await attempt()).toBe(false);
+    expect(x.c.getView()).toMatchObject({
+      phase: 'entry',
+      pending: false,
+      error: '세션이 만료되었습니다. 다시 시도해 주세요.',
+    });
+    expect(x.api.closeStream).toHaveBeenCalledTimes(1);
+    expect(x.c.canRetry()).toBe(false);
+    expect(localStorage.getItem('online.lastRoom')).not.toBeNull();
+
+    x.api.post.mockImplementationOnce(async () => ({
+      ok: true,
+      status: 200,
+      body:
+        kind === 'create'
+          ? x.entry
+          : { recoveryRequestId: 'recovery', status: 'PENDING', expiresAt: 'later' },
+    }));
+    x.api.get.mockReturnValue(new Promise(() => {}));
+    expect(await attempt()).toBe(true);
+    expect(x.api.open).toHaveBeenCalledTimes(2);
+    expect(x.c.getView().error).toBeNull();
+  },
+);
 
 // 세션 한도로 시작하지 못하면 입장 화면에서 원인을 안내하고 요청을 남기지 않는다
 it('shows the session limit when the session cannot be opened', async () => {

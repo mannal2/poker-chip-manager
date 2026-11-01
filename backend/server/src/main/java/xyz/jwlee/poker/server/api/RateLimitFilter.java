@@ -14,7 +14,7 @@ import java.util.regex.Pattern;
 import org.springframework.web.filter.OncePerRequestFilter;
 import xyz.jwlee.poker.server.support.TokenBuckets;
 
-// 명령과 입장 시도의 빈도를 세어 한도를 넘으면 429로 거절하는 필터
+// 명령과 입장 시도와 새 세션의 빈도를 세어 한도를 넘으면 429로 거절하는 필터
 /**
  * Runs before the security chain and every request ledger, so a refused request leaves no trace and can be sent
  * again with the same sequence. Paths come from the servlet API because the raw URI may be percent-encoded.
@@ -29,6 +29,7 @@ final class RateLimitFilter extends OncePerRequestFilter {
     private final Limit sessions;
     private final Limit addresses;
     private final Limit rooms;
+    private final Limit newSessions;
     private final String clientIpHeader;
 
     // 설정값으로 세션·IP·방 생성 버킷을 만든다
@@ -36,13 +37,8 @@ final class RateLimitFilter extends OncePerRequestFilter {
         sessions = Limit.of(limits.sessionPerSecond(), limits.sessionBurst(), MAX_SESSION_KEYS, clock);
         addresses = Limit.of(limits.ipPerMinute() / 60, limits.ipBurst(), MAX_ADDRESS_KEYS, clock);
         rooms = Limit.of(limits.roomPerMinute() / 60, limits.roomBurst(), MAX_ADDRESS_KEYS, clock);
+        newSessions = Limit.of(limits.newSessionPerMinute() / 60, limits.newSessionBurst(), MAX_ADDRESS_KEYS, clock);
         this.clientIpHeader = clientIpHeader;
-    }
-
-    // POST 외의 요청은 세지 않는다
-    @Override
-    protected boolean shouldNotFilter(HttpServletRequest request) {
-        return !request.getMethod().equals("POST");
     }
 
     // 경로에 맞는 버킷의 토큰을 쓰고 통과시키거나 429로 거절한다
@@ -60,6 +56,15 @@ final class RateLimitFilter extends OncePerRequestFilter {
     // 요청을 거절한 한도를 돌려주고 통과면 null을 돌려준다
     private Limit refusedBy(HttpServletRequest request) {
         String path = request.getServletPath() + Objects.toString(request.getPathInfo(), "");
+        String method = request.getMethod();
+        // HEAD runs the GET handler, so it can open a session as well.
+        if (method.equals("GET") || method.equals("HEAD")) {
+            boolean opensSession = path.equals("/api/session") && request.getSession(false) == null;
+            return !opensSession || newSessions.buckets().tryTake(clientIp(request)) ? null : newSessions;
+        }
+        if (!method.equals("POST")) {
+            return null;
+        }
         if (SESSION_PATH.matcher(path).matches()) {
             HttpSession session = request.getSession(false);
             return session == null || sessions.buckets().tryTake(session.getId()) ? null : sessions;

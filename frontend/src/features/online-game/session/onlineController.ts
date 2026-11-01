@@ -278,6 +278,7 @@ export class OnlineController {
       phase: 'room',
       pending: false,
       recovery: null,
+      error: null,
     });
     this.connect();
     return true;
@@ -598,6 +599,8 @@ export class OnlineController {
       return true;
     }
     if (!result.ok) {
+      if (result.code === 'NO_SESSION' && (request.kind === 'entry' || request.kind === 'recovery'))
+        return this.sessionExpired();
       this.request = null;
       this.update({
         pending: this.sending,
@@ -623,6 +626,7 @@ export class OnlineController {
       rememberRecovery(body.recoveryRequestId);
       this.update({
         pending: false,
+        error: null,
         recovery: {
           recoveryRequestId: body.recoveryRequestId,
           status: body.status === 'APPROVED' ? 'PENDING' : body.status,
@@ -657,6 +661,12 @@ export class OnlineController {
       return true;
     }
     return this.unknownResult(request);
+  }
+  // 만료된 세션의 준비 상태를 버려 다음 입장이 새 세션을 열게 한다
+  private sessionExpired(): false {
+    this.stop();
+    this.update({ phase: 'entry', pending: false, error: messageFor('NO_SESSION') });
+    return false;
   }
   // 권한 상실과 순번 오류를 서버 동기화로 복구한다
   private async reject(code: string | undefined): Promise<void> {

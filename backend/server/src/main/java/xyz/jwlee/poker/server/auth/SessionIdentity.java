@@ -18,6 +18,7 @@ public final class SessionIdentity {
     private static final String STREAMS = "pcm.streams";
     private static final String PARTICIPANTS = "pcm.participants";
     private static final String RECOVERIES = "pcm.recoveries";
+    private static final int UNBOUND_IDLE_SECONDS = 30 * 60;
 
     private final HttpSession session;
 
@@ -75,9 +76,15 @@ public final class SessionIdentity {
         return Optional.ofNullable(participants().get(roomId));
     }
 
-    // 이 세션의 방별 자리 자격을 저장한다
+    // 자리를 받기 전의 세션은 짧은 유휴 시간으로 시작한다
+    void startUnbound() {
+        session.setMaxInactiveInterval(UNBOUND_IDLE_SECONDS);
+    }
+
+    // 이 세션의 방별 자리 자격을 저장하고 세션 수명을 설정값으로 되돌린다
     public void bind(String roomId, SeatBinding binding) {
         participants().put(roomId, binding);
+        session.setMaxInactiveInterval(session.getServletContext().getSessionTimeout() * 60);
     }
 
     // 세션과 방의 참가자 연결을 해제한다

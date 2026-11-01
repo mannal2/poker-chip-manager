@@ -19,10 +19,11 @@ class SessionLimitListener implements HttpSessionListener {
         this.maxSessions = maxSessions;
     }
 
-    // 만들어진 세션을 센다
+    // 만들어진 세션을 세고 자리 없는 세션의 유휴 시간을 건다
     @Override
     public void sessionCreated(HttpSessionEvent event) {
         active.incrementAndGet();
+        SessionIdentity.from(event.getSession()).startUnbound();
     }
 
     // 끝난 세션을 뺀다

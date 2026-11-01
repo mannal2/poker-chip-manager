@@ -17,25 +17,41 @@ meminfo_mib() {
   return 0
 }
 
+# 시간 제한(15초)을 걸어 명령을 실행한다 timeout이 없으면 그대로 실행한다
+bounded() { if command -v timeout > /dev/null 2>&1; then timeout 15 "$@"; else "$@"; fi; }
+
+# 디스크 용량을 MiB로 읽는다 도커 데이터 경로가 없으면 현재 경로를 쓴다
+disk_mib() {
+  local line pattern='^[0-9]+ [0-9]+$'
+  line=$(df -Pk /var/lib/docker 2>/dev/null | awk 'END {print $2, $4}' || true)
+  [[ "$line" =~ $pattern ]] || line=$(df -Pk . 2>/dev/null | awk 'END {print $2, $4}' || true)
+  [[ "$line" =~ $pattern ]] || return 0
+  if [[ "$1" == total ]]; then printf '%s' "$((${line% *} / 1024))"; else printf '%s' "$((${line#* } / 1024))"; fi
+}
+
 emit arch "$(uname -m 2>/dev/null || true)"
 emit memory_total_mib "$(meminfo_mib MemTotal)"
 emit memory_available_mib "$(meminfo_mib MemAvailable)"
 emit swap_total_mib "$(meminfo_mib SwapTotal)"
 emit swap_free_mib "$(meminfo_mib SwapFree)"
+emit disk_total_mib "$(disk_mib total)"
+emit disk_available_mib "$(disk_mib available)"
 
-disk=$(df -Pk . 2>/dev/null | awk 'END {print $2, $4}' || true)
-emit disk_total_mib "$([[ -n "$disk" ]] && echo $((${disk% *} / 1024)))"
-emit disk_available_mib "$([[ -n "$disk" ]] && echo $((${disk#* } / 1024)))"
-
-if command -v docker > /dev/null 2>&1; then
-  emit docker_version "$(docker version --format '{{.Server.Version}}' 2>/dev/null || true)"
-  emit compose_version "$(docker compose version --short 2>/dev/null || true)"
-  # 실행 중 컨테이너의 이름과 메모리 사용량만 출력한다
-  stats=$(docker stats --no-stream --format '{{.Name}} {{.MemUsage}}' 2>/dev/null || true)
-else
+stats=''
+if ! command -v docker > /dev/null 2>&1; then
+  emit docker_access missing
   emit docker_version ''
   emit compose_version ''
-  stats=''
+elif bounded docker info > /dev/null 2>&1; then
+  emit docker_access ok
+  emit docker_version "$(bounded docker version --format '{{.Server.Version}}' 2>/dev/null || true)"
+  emit compose_version "$(bounded docker compose version --short 2>/dev/null || true)"
+  # 실행 중 컨테이너의 이름과 메모리 사용량만 출력한다
+  stats=$(bounded docker stats --no-stream --format '{{.Name}} {{.MemUsage}}' 2>/dev/null || true)
+else
+  emit docker_access denied
+  emit docker_version ''
+  emit compose_version ''
 fi
 if [[ -n "$stats" ]]; then
   while read -r name usage; do
@@ -46,7 +62,7 @@ else
 fi
 
 if command -v curl > /dev/null 2>&1; then
-  code=$(curl -s -o /dev/null -m 10 -w '%{http_code}' "$url" 2>/dev/null || true)
+  code=$(curl -q --noproxy '*' -s -o /dev/null -m 10 -w '%{http_code}' "$url" 2>/dev/null || true)
   [[ "$code" == 000 ]] && code=''
 else
   code=''

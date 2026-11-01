@@ -1,4 +1,4 @@
-// 결과 화면에서 방장에게 재준비 확인 동작을 제공한다.
+// 결과 화면에서 방장에게 재준비 확인 동작을 제공한다
 export function ResultActions({
   host,
   busy,

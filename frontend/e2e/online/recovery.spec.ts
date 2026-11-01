@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { createRoom, joinRoom, startRoom } from './managementSupport';
 
-// 새 기기의 신청을 승인하면 자리와 칩을 보존하고 기존 연결 권한을 회수한다.
+// 새 기기의 신청을 승인하면 자리와 칩을 보존하고 기존 연결 권한을 회수한다
 test('approves recovery with seat and chips preserved and revokes the old screen', async ({
   page,
   browser,
@@ -37,7 +37,7 @@ test('approves recovery with seat and chips preserved and revokes the old screen
   }
 });
 
-// 거절한 복구 신청은 새 기기에 결과를 안내하고 기존 자리를 유지한다.
+// 거절한 복구 신청은 새 기기에 결과를 안내하고 기존 자리를 유지한다
 test('rejects a recovery request', async ({ page, browser }) => {
   const code = await createRoom(page);
   const context = await browser.newContext();

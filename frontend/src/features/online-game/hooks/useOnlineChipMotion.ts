@@ -4,7 +4,7 @@ import { eventsToTransfers } from '../../gameplay/model/eventTransfers';
 import type { OnlineController } from '../session/onlineController';
 import type { RoomSnapshot } from '../api/types';
 
-// 확정 이벤트의 이전 DOM 좌표를 준비하고 새 상태가 렌더링된 뒤 칩을 이동한다.
+// 확정 이벤트의 이전 DOM 좌표를 준비하고 새 상태가 렌더링된 뒤 칩을 이동한다
 export function useOnlineChipMotion(
   screen: RefObject<HTMLElement | null>,
   controller: OnlineController,

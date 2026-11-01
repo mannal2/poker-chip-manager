@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-// 실제 서버에서 방을 만들고 다른 기기가 소문자 코드로 참가하는지 확인한다.
+// 실제 서버에서 방을 만들고 다른 기기가 소문자 코드로 참가하는지 확인한다
 test('creates a room and joins with a lowercase invite code', async ({ page, browser }) => {
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
@@ -22,7 +22,7 @@ test('creates a room and joins with a lowercase invite code', async ({ page, bro
     await context.close();
   }
 });
-// 없는 방의 오류가 입력 화면에 남는지 확인한다.
+// 없는 방의 오류가 입력 화면에 남는지 확인한다
 test('shows a missing room rejection', async ({ page }) => {
   await page.goto('/online/');
   await page.getByLabel('이름', { exact: true }).fill('Alice');
@@ -31,7 +31,7 @@ test('shows a missing room rejection', async ({ page }) => {
   await expect(page.getByRole('alert')).toHaveText('방을 찾을 수 없습니다.');
   await expect(page.getByRole('button', { name: '방 참가', exact: true })).toBeEnabled();
 });
-// 홈 이동이 새 문서 탐색으로 온라인 경로를 여는지 확인한다.
+// 홈 이동이 새 문서 탐색으로 온라인 경로를 여는지 확인한다
 test('navigates from app home using a document request', async ({ page }) => {
   await page.goto('/local/');
   const navigation = page.waitForRequest(

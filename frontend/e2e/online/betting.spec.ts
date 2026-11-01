@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-// 실제 서버에서 행동 권한과 잔액 동기화 및 무료 체크 상태를 확인한다.
+// 실제 서버에서 행동 권한과 잔액 동기화 및 무료 체크 상태를 확인한다
 test('only the actor bets and every participant receives confirmed balances', async ({
   page,
   browser,

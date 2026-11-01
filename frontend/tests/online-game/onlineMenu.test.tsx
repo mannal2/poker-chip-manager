@@ -3,7 +3,7 @@ import { menuItems } from '../../src/features/online-game/components/OnlineMenu'
 import { isRoomSnapshot } from '../../src/features/online-game/api/types';
 import { fixture } from './fixtures';
 
-// 실제 계약 스냅샷으로 역할과 단계별 관리 메뉴를 확인한다.
+// 실제 계약 스냅샷으로 역할과 단계별 관리 메뉴를 확인한다
 it.each([
   ['WAITING', true, ['앱 홈', '방 나가기', '방장 넘기기', '참가자 내보내기']],
   ['WAITING', false, ['앱 홈', '방 나가기']],
@@ -25,7 +25,7 @@ it.each([
   ).toEqual(expected);
 });
 
-// 끊긴 생존자만 방장의 기권 처리 대상으로 제공한다.
+// 끊긴 생존자만 방장의 기권 처리 대상으로 제공한다
 it('only offers disconnected active players for host forfeiture', () => {
   const snapshot = fixture('snapshot-playing');
   if (!isRoomSnapshot(snapshot) || !snapshot.game) throw Error('fixture');
@@ -45,7 +45,7 @@ it('only offers disconnected active players for host forfeiture', () => {
   ).toEqual([]);
 });
 
-// 탈락 또는 기권한 본인에게는 진행 중 기권 메뉴를 제공하지 않는다.
+// 탈락 또는 기권한 본인에게는 진행 중 기권 메뉴를 제공하지 않는다
 it.each(['eliminated', 'forfeited'] as const)('hides self forfeit for %s players', (flag) => {
   const snapshot = fixture('snapshot-playing');
   if (!isRoomSnapshot(snapshot) || !snapshot.game) throw Error('fixture');

@@ -108,7 +108,7 @@ it.each([
   expect(view.pot).toBe(15);
 });
 
-// 기권했지만 아직 스택을 보유한 참가자는 탈락 카드로 표시한다.
+// 기권했지만 아직 스택을 보유한 참가자는 탈락 카드로 표시한다
 it('marks forfeited cards as eliminated before their stack distribution', () => {
   const state = fixtureState(3);
   state.players[1].forfeited = true;

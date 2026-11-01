@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-// 독 안내가 로컬 테이블과 버튼 배치의 높이나 위치를 바꾸지 않는지 확인한다.
+// 독 안내가 로컬 테이블과 버튼 배치의 높이나 위치를 바꾸지 않는지 확인한다
 test('독 안내는 테이블과 베팅 독 배치를 유지한다', async ({ page }) => {
   for (const width of [320, 390, 430]) {
     await page.setViewportSize({ width, height: 844 });

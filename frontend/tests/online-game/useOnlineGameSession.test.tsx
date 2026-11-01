@@ -14,7 +14,7 @@ import type { RoomSnapshot } from '../../src/features/online-game/api/types';
 import { validateSettings } from '../../src/game/settings';
 import playing from '../../../shared/api-contract/snapshot-playing.json';
 
-// 원래 서버 값과 같은 마지막 선택도 새 버전의 확인이 올 때까지 유지한다.
+// 원래 서버 값과 같은 마지막 선택도 새 버전의 확인이 올 때까지 유지한다
 it('retains a cleared pick through the initial draft and delayed first echo until a newer clear acknowledgement', async () => {
   vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
   const root = createRoot(document.createElement('div'));
@@ -32,11 +32,12 @@ it('retains a cleared pick through the initial draft and delayed first echo unti
     error: null,
   };
   const controller = {
-    // 온라인 세션 Hook에 현재 테스트 상태를 제공한다.
-    getView: () => view, sendDraft: vi.fn(),
+    // 온라인 세션 Hook에 현재 테스트 상태를 제공한다
+    getView: () => view,
+    sendDraft: vi.fn(),
   } as unknown as OnlineController;
   let result!: ReturnType<typeof useOnlineGameSession>;
-  // 서버 초안의 확정 순서를 실제 훅에 전달한다.
+  // 서버 초안의 확정 순서를 실제 훅에 전달한다
   function Harness() {
     result = useOnlineGameSession(view, controller);
     return null;
@@ -77,7 +78,7 @@ it('retains a cleared pick through the initial draft and delayed first echo unti
   }
 });
 
-// 연속 선택 중 오래된 서버 초안은 무시하고 마지막 응답과 관찰자 상태는 반영한다.
+// 연속 선택 중 오래된 서버 초안은 무시하고 마지막 응답과 관찰자 상태는 반영한다
 it('keeps the latest host pick through delayed echoes and restores server picks for observers', async () => {
   vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
   const root = createRoot(document.createElement('div'));
@@ -95,11 +96,12 @@ it('keeps the latest host pick through delayed echoes and restores server picks 
   };
   const sendDraft = vi.fn();
   const controller = {
-    // 온라인 세션 Hook에 현재 테스트 상태를 제공한다.
-    getView: () => view, sendDraft,
+    // 온라인 세션 Hook에 현재 테스트 상태를 제공한다
+    getView: () => view,
+    sendDraft,
   } as unknown as OnlineController;
   let result!: ReturnType<typeof useOnlineGameSession>;
-  // 실제 훅의 공유 선택을 렌더링한다.
+  // 실제 훅의 공유 선택을 렌더링한다
   function Harness() {
     result = useOnlineGameSession(view, controller);
     return null;
@@ -166,7 +168,7 @@ it('keeps the latest host pick through delayed echoes and restores server picks 
   }
 });
 
-// 단독 대기방의 유효한 금액을 허용하고 로컬 인원 검증 및 금액 규칙은 유지한다.
+// 단독 대기방의 유효한 금액을 허용하고 로컬 인원 검증 및 금액 규칙은 유지한다
 it('validates solo settings numerically while keeping local validation unchanged', () => {
   const settings = { names: ['Alice'], initial: 1000, sb: 5, bb: 10, button: -1 };
   expect(validateOnlineSettings(settings).ok).toBe(true);
@@ -181,7 +183,7 @@ it('validates solo settings numerically while keeping local validation unchanged
     expect(validateOnlineSettings({ ...settings, ...change }).ok).toBe(false);
 });
 
-// 실제 훅의 서버 권한과 조작 잠금 및 본인 직접 이름 변경을 확인한다.
+// 실제 훅의 서버 권한과 조작 잠금 및 본인 직접 이름 변경을 확인한다
 it('adapts authoritative permissions, live guards and own rename without granting host rights', async () => {
   vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
   const host = document.createElement('div');
@@ -202,13 +204,13 @@ it('adapts authoritative permissions, live guards and own rename without grantin
   };
   const send = vi.fn(async () => true);
   const controller = {
-    // 온라인 세션 Hook에 현재 테스트 상태를 제공한다.
+    // 온라인 세션 Hook에 현재 테스트 상태를 제공한다
     getView: () => view,
     send,
     loadEvents: vi.fn(),
   } as unknown as OnlineController;
   let result!: ReturnType<typeof useOnlineGameSession>;
-  // 훅 결과를 테스트가 접근할 수 있도록 실제 React 렌더링으로 만든다.
+  // 훅 결과를 테스트가 접근할 수 있도록 실제 React 렌더링으로 만든다
   function Harness() {
     result = useOnlineGameSession(view, controller);
     return null;

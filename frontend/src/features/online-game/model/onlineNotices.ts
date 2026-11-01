@@ -1,7 +1,7 @@
 import { buildPots } from '../../../game/settlement';
 import type { RoomSnapshot } from '../api/types';
 
-// 서버 단계와 보는 사람에 맞는 하단 안내를 반환한다.
+// 서버 단계와 보는 사람에 맞는 하단 안내를 반환한다
 export function dockNoticeFor(snapshot: RoomSnapshot, viewerId: string): string | null {
   const guest = viewerId !== snapshot.hostId;
   if (snapshot.roomPhase === 'RESULT') return guest ? '방장이 다음 게임을 준비하고 있습니다' : null;

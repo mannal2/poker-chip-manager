@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { createRoom, joinRoom, startRoom, menu, confirm } from './managementSupport';
 
-// 중단 결과를 공통 요약에 표시하고 재준비 때 이름·좌석·시작 설정과 빈 딜러를 확인한다.
+// 중단 결과를 공통 요약에 표시하고 재준비 때 이름·좌석·시작 설정과 빈 딜러를 확인한다
 test('aborts and resets while keeping names and seats and restoring initial settings', async ({
   page,
   browser,
@@ -44,7 +44,7 @@ test('aborts and resets while keeping names and seats and restoring initial sett
   }
 });
 
-// 정상 종료 직후 방장의 취소가 두 화면을 진행 상태로 되돌린다.
+// 정상 종료 직후 방장의 취소가 두 화면을 진행 상태로 되돌린다
 test('shows a normal winner and permits host undo from the result', async ({ page, browser }) => {
   const code = await createRoom(page);
   const context = await browser.newContext();

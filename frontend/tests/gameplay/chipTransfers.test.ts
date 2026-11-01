@@ -5,7 +5,7 @@ import { historyRows } from '../../src/features/gameplay/model/history';
 import type { GameCommand, GameEvent } from '../../src/game/types';
 import { chipTransfers } from '../../src/features/local-game/model/localChipTransfers';
 import { eventsToTransfers } from '../../src/features/gameplay/model/eventTransfers';
-// 사람의 베팅 뒤 자동 폴드가 이어져도 최초 명령의 이동 순서를 유지한다.
+// 사람의 베팅 뒤 자동 폴드가 이어져도 최초 명령의 이동 순서를 유지한다
 it('베팅 뒤 자동 폴드는 베팅과 반환 및 지급을 동시에 합치지 않는다', () => {
   const events: GameEvent[] = [
     { id: 'b', type: 'BET', details: { playerId: 'p0', additional: 20 } },
@@ -15,7 +15,7 @@ it('베팅 뒤 자동 폴드는 베팅과 반환 및 지급을 동시에 합치�
   ].map((event) => ({ ...event, at: '', tournamentId: 't', hand: 1 }));
   expect(eventsToTransfers(events).map((move) => move.delay)).toEqual([0, 720, 1440]);
 });
-// 명령 종류가 없는 서버 이벤트에서도 마지막 폴드의 지급을 합친다.
+// 명령 종류가 없는 서버 이벤트에서도 마지막 폴드의 지급을 합친다
 it('이벤트만으로 마지막 폴드의 반환과 지급을 동시에 재생한다', () => {
   const events: GameEvent[] = [
     { id: 'f', type: 'FOLD', details: { playerId: 'p0', auto: true } },
@@ -70,7 +70,7 @@ it('반환 없는 마지막 폴드는 단일 지급, 일반 폴드는 이동 없
 });
 
 it('확정 이벤트만으로도 같은 이동을 만든다 (온라인 서버 이벤트 경로)', () => {
-  // 칩 이동 테스트에서 사용하는 이벤트를 구성한다.
+  // 칩 이동 테스트에서 사용하는 이벤트를 구성한다
   const event = (type: string, details: GameEvent['details']) => ({
     id: type,
     at: '',

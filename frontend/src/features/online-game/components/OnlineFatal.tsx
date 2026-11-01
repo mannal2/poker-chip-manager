@@ -1,6 +1,6 @@
 import type { OnlineView } from '../session/onlineController';
 
-// 방 소실과 권한 회수 및 프로토콜 변경의 종료 안내를 표시한다.
+// 방 소실과 권한 회수 및 프로토콜 변경의 종료 안내를 표시한다
 export function OnlineFatal({ phase, code }: { phase: OnlineView['phase']; code?: string }) {
   return (
     <>

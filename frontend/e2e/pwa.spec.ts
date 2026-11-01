@@ -1,6 +1,6 @@
 import { openLocal } from './helpers';
 import { test, expect, type Page } from '@playwright/test';
-// 설치 범위만 넓히고 실행 주소와 서비스 워커 범위는 유지하는지 확인한다.
+// 설치 범위만 넓히고 실행 주소와 서비스 워커 범위는 유지하는지 확인한다
 test('온라인 경로까지 설치 범위를 넓히되 온라인 자산을 캐시하지 않는다', async ({ page }) => {
   await page.goto('/local/');
   await offlineReady(page);

@@ -11,19 +11,19 @@ import type {
 import playing from '../../../shared/api-contract/snapshot-playing.json';
 import type { GameEvent } from '../../src/game/types';
 
-// 화면 치수와 애니메이션 대신 관리 조작의 실제 페이지 연결만 검사한다.
+// 화면 치수와 애니메이션 대신 관리 조작의 실제 페이지 연결만 검사한다
 vi.mock('../../src/shared/hooks/useScreenFit', () => ({
-  // 관리 테스트에서 화면 치수 효과를 대신한다.
+  // 관리 테스트에서 화면 치수 효과를 대신한다
   useScreenFit: () => {},
 }));
-// 서버 관리 명령과 관계없는 칩 애니메이션 구독을 생략한다.
+// 서버 관리 명령과 관계없는 칩 애니메이션 구독을 생략한다
 vi.mock('../../src/features/online-game/hooks/useOnlineChipMotion', () => ({
-  // 관리 테스트에서 칩 효과 구독을 대신한다.
+  // 관리 테스트에서 칩 효과 구독을 대신한다
   useOnlineChipMotion: () => {},
 }));
-// 공통 화면 슬롯의 입출력을 유지하고 복잡한 테이블 렌더링을 생략한다.
+// 공통 화면 슬롯의 입출력을 유지하고 복잡한 테이블 렌더링을 생략한다
 vi.mock('../../src/features/gameplay/GameScreen', () => ({
-  // 실제 페이지가 제공하는 메뉴와 결과 조작을 DOM에 연결한다.
+  // 실제 페이지가 제공하는 메뉴와 결과 조작을 DOM에 연결한다
   GameScreen: ({
     menu,
     dialog,
@@ -43,14 +43,14 @@ vi.mock('../../src/features/gameplay/GameScreen', () => ({
   ),
 }));
 
-// 하나의 서버 발행에서 확인한 모든 행동을 같은 토스트에 순서대로 표시한다.
+// 하나의 서버 발행에서 확인한 모든 행동을 같은 토스트에 순서대로 표시한다
 it.each([
   ['CHECK', '체크(자동)'],
   ['UNDO', '방장이 직전 행동을 취소했습니다'],
 ])('displays %s and the following automatic fold together', async (type, first) => {
   const x = await mountRoom();
   try {
-    // 화면에 전달할 확정 행동을 만든다.
+    // 화면에 전달할 확정 행동을 만든다
     const event = (id: string, action: string): GameEvent => ({
       type: action,
       id,
@@ -69,7 +69,7 @@ it.each([
   }
 });
 
-// 확정 거절에는 사유만 남기고 원장 확인이 필요한 경우에만 재시도를 표시한다.
+// 확정 거절에는 사유만 남기고 원장 확인이 필요한 경우에만 재시도를 표시한다
 it.each([false, true])(
   'shows a retry button only for unresolved requests (%s)',
   async (unresolved) => {
@@ -82,7 +82,7 @@ it.each([false, true])(
     }
   },
 );
-// 최신 조작 상태가 잠기면 열려 있던 메뉴에서도 요청하지 않고 이유를 안내한다.
+// 최신 조작 상태가 잠기면 열려 있던 메뉴에서도 요청하지 않고 이유를 안내한다
 it.each([
   [{ pending: true }, '서버 응답을 기다려주세요.'],
   [{ connection: 'offline' as const }, '연결이 끊겼습니다'],
@@ -100,7 +100,7 @@ it.each([
   }
 });
 
-// 확인창이 열린 뒤 대상이 재연결되면 기권 명령을 전송하지 않는다.
+// 확인창이 열린 뒤 대상이 재연결되면 기권 명령을 전송하지 않는다
 it('rejects a reconnected target at confirmation time', async () => {
   const x = await mountRoom();
   try {
@@ -117,7 +117,7 @@ it('rejects a reconnected target at confirmation time', async () => {
   }
 });
 
-// 비활성 재준비 버튼을 누르면 현재 조작권 부족을 안내한다.
+// 비활성 재준비 버튼을 누르면 현재 조작권 부족을 안내한다
 it('explains why a result reset is unavailable', async () => {
   const x = await mountRoom('RESULT');
   try {
@@ -130,8 +130,12 @@ it('explains why a result reset is unavailable', async () => {
   }
 });
 
-// 실제 세션 훅과 페이지에 필요한 최소 컨트롤러 경계를 제공한다.
-async function mountRoom(phase: 'PLAYING' | 'RESULT' = 'PLAYING', error: string | null = null, unresolved = false) {
+// 실제 세션 훅과 페이지에 필요한 최소 컨트롤러 경계를 제공한다
+async function mountRoom(
+  phase: 'PLAYING' | 'RESULT' = 'PLAYING',
+  error: string | null = null,
+  unresolved = false,
+) {
   vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
   const snapshot = structuredClone(playing.response);
   if (!isRoomSnapshot(snapshot)) throw Error('fixture');
@@ -150,17 +154,17 @@ async function mountRoom(phase: 'PLAYING' | 'RESULT' = 'PLAYING', error: string 
   const send = vi.fn(async () => true);
   let observe!: (events: GameEvent[]) => void;
   const controller = {
-    // 처리 결과를 아직 확인할 수 없는 요청만 재시도를 제공한다.
+    // 처리 결과를 아직 확인할 수 없는 요청만 재시도를 제공한다
     canRetry: () => unresolved,
-    // 관리 화면에 최신 테스트 상태를 제공한다.
+    // 관리 화면에 최신 테스트 상태를 제공한다
     getView: () => view,
     send,
-    // 관리 테스트에서 확정 이벤트 알림 구독을 대신한다.
+    // 관리 테스트에서 확정 이벤트 알림 구독을 대신한다
     onObserved: (listener: (events: GameEvent[]) => void) => {
       observe = listener;
       return () => {};
     },
-    // 기록이 없는 관찰자에게 기본 알림 문구를 적용한다.
+    // 기록이 없는 관찰자에게 기본 알림 문구를 적용한다
     getKnownEvents: () => new Map(),
   } as unknown as OnlineController;
   const host = document.createElement('div');
@@ -171,11 +175,11 @@ async function mountRoom(phase: 'PLAYING' | 'RESULT' = 'PLAYING', error: string 
     host,
     view,
     send,
-    // 관찰한 한 묶음의 이벤트를 같은 렌더 주기에 전달한다.
+    // 관찰한 한 묶음의 이벤트를 같은 렌더 주기에 전달한다
     publish: async (events: GameEvent[]) => act(() => observe(events)),
-    // 컨트롤러가 받은 최신 상태를 페이지의 오래된 이벤트에서도 읽도록 교체한다.
+    // 컨트롤러가 받은 최신 상태를 페이지의 오래된 이벤트에서도 읽도록 교체한다
     update: (patch: Partial<OnlineView>) => Object.assign(view, patch),
-    // 표시 문구가 일치하는 실제 버튼을 누른다.
+    // 표시 문구가 일치하는 실제 버튼을 누른다
     click: async (label: string) => {
       const button = [...host.querySelectorAll('button')].find((b) => b.textContent === label);
       if (!button) throw Error(label);
@@ -183,7 +187,7 @@ async function mountRoom(phase: 'PLAYING' | 'RESULT' = 'PLAYING', error: string 
         button.click();
       });
     },
-    // 테스트 화면과 브라우저 전역을 정리한다.
+    // 테스트 화면과 브라우저 전역을 정리한다
     close: async () => {
       await act(() => root.unmount());
       host.remove();
@@ -192,7 +196,7 @@ async function mountRoom(phase: 'PLAYING' | 'RESULT' = 'PLAYING', error: string 
   };
 }
 
-// 서버가 명령을 거절하면 메뉴를 닫아 오류 안내를 확인할 수 있게 한다.
+// 서버가 명령을 거절하면 메뉴를 닫아 오류 안내를 확인할 수 있게 한다
 it('closes a menu after a server rejection and shows its reason', async () => {
   const x = await mountRoom();
   try {
@@ -208,7 +212,7 @@ it('closes a menu after a server rejection and shows its reason', async () => {
   }
 });
 
-// 확인창이 열린 사이 방장이 바뀌면 이전 방장의 중단 요청을 막는다.
+// 확인창이 열린 사이 방장이 바뀌면 이전 방장의 중단 요청을 막는다
 it('rechecks host authority before confirming abort', async () => {
   const x = await mountRoom();
   try {

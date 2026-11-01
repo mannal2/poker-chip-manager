@@ -11,7 +11,7 @@ import {
 
 let host: HTMLDivElement;
 let root: Root;
-// 입장 화면에 필요한 브라우저 환경을 준비한다.
+// 입장 화면에 필요한 브라우저 환경을 준비한다
 beforeEach(() => {
   vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
   localStorage.clear();
@@ -33,26 +33,26 @@ beforeEach(() => {
   document.body.append(host);
   root = createRoot(host);
 });
-// 화면과 대체한 브라우저 환경을 정리한다.
+// 화면과 대체한 브라우저 환경을 정리한다
 afterEach(async () => {
   await act(() => root.unmount());
   host.remove();
   vi.unstubAllGlobals();
 });
-// 초대 코드 입력과 세션의 지연 시작을 확인한다.
+// 초대 코드 입력과 세션의 지연 시작을 확인한다
 it('prefills the invite code without contacting the server', async () => {
   await act(() => root.render(<OnlineApp />));
   expect(host.querySelector<HTMLInputElement>('[name="code"]')?.value).toBe('abc234');
   expect(fetch).not.toHaveBeenCalled();
 });
-// 이름 거절이 입장 화면으로 돌아와도 유지되는지 확인한다.
+// 이름 거절이 입장 화면으로 돌아와도 유지되는지 확인한다
 it('keeps an invalid name rejection visible on the entry form', async () => {
   await act(() => root.render(<OnlineApp />));
   await act(() => host.querySelector<HTMLButtonElement>('button')!.click());
   expect(host.textContent).toContain('이름은 한글, 영문, 숫자, 공백으로 1~10자여야 합니다.');
   expect(host.querySelector('input')).not.toBeNull();
 });
-// 승인 대기 중에 중복 복구 신청이나 새 입장을 제공하지 않는지 확인한다.
+// 승인 대기 중에 중복 복구 신청이나 새 입장을 제공하지 않는지 확인한다
 it('shows only approval guidance while recovery is pending', async () => {
   const view: OnlineView = {
     phase: 'recovering',
@@ -68,7 +68,7 @@ it('shows only approval guidance while recovery is pending', async () => {
   expect(host.textContent).toContain('방장의 승인을 기다리고 있습니다');
   expect(host.querySelector('button')).toBeNull();
 });
-// 브라우저가 오프라인을 알렸을 때 변경 조작을 숨기는지 확인한다.
+// 브라우저가 오프라인을 알렸을 때 변경 조작을 숨기는지 확인한다
 it('offers guidance without mutation controls while offline', async () => {
   vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false);
   await act(() => root.render(<OnlineApp />));
@@ -77,7 +77,7 @@ it('offers guidance without mutation controls while offline', async () => {
   expect(fetch).not.toHaveBeenCalled();
   vi.restoreAllMocks();
 });
-// 오프라인에서 시작한 화면도 연결이 돌아오면 저장된 방에 먼저 복귀하는지 확인한다.
+// 오프라인에서 시작한 화면도 연결이 돌아오면 저장된 방에 먼저 복귀하는지 확인한다
 it('resumes the saved room when an initially offline screen reconnects', async () => {
   const online = vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false);
   localStorage.setItem('online.lastRoom', JSON.stringify({ roomId: 'missing' }));
@@ -90,7 +90,7 @@ it('resumes the saved room when an initially offline screen reconnects', async (
   ).toBe(true);
   vi.restoreAllMocks();
 });
-// 복구 종료 사유를 실제 컨트롤러를 거쳐 입장 화면에 계속 표시하는지 확인한다.
+// 복구 종료 사유를 실제 컨트롤러를 거쳐 입장 화면에 계속 표시하는지 확인한다
 it.each([
   ['REJECTED', '방장이 복구 신청을 거절했습니다.'],
   ['EXPIRED', '복구 신청이 만료되었습니다.'],
@@ -118,7 +118,7 @@ it.each([
   expect(host.querySelector<HTMLInputElement>('[name="code"]')).not.toBeNull();
   expect(host.querySelector<HTMLButtonElement>('button')?.disabled).toBe(false);
 });
-// 효과 재실행은 복귀 요청을 중복하지 않고 해제 시 스트림을 닫는지 확인한다.
+// 효과 재실행은 복귀 요청을 중복하지 않고 해제 시 스트림을 닫는지 확인한다
 it('resumes once under effect replay and closes the stream on unmount', async () => {
   localStorage.setItem('online.lastRoom', JSON.stringify({ roomId: 'missing' }));
   vi.stubGlobal(

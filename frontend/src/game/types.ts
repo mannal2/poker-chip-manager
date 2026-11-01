@@ -73,7 +73,7 @@ export interface GameEvent {
   details: GameEventDetails;
   sequence?: number;
 }
-// 이벤트별 추가 정보와 서버의 자동 처리 및 방장 처리 표시를 담는다.
+// 이벤트별 추가 정보와 서버의 자동 처리 및 방장 처리 표시를 담는다
 export interface GameEventDetails {
   [key: string]: unknown;
   auto?: boolean;

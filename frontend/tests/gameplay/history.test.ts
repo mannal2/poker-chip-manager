@@ -1,7 +1,7 @@
 import { it, expect } from 'vitest';
 import { historyRows } from '../../src/features/gameplay/model/history';
 import type { GameEvent } from '../../src/game/types';
-// 자동 행동과 기권 및 기권 스택 분배의 서버 문구를 검증한다.
+// 자동 행동과 기권 및 기권 스택 분배의 서버 문구를 검증한다
 it('자동 행동과 기권 기록을 정확히 표시한다', () => {
   const rows = historyRows(
     [
@@ -24,7 +24,7 @@ it('자동 행동과 기권 기록을 정확히 표시한다', () => {
     'P2 - 기권 칩 25칩 획득',
   ]);
 });
-// 서버 취소 묶음에 포함된 자동 행동도 함께 제거한다.
+// 서버 취소 묶음에 포함된 자동 행동도 함께 제거한다
 it('취소된 자동 행동을 기록에서 숨긴다', () => {
   const fold = event('FOLD', { playerId: 'a', auto: true });
   const check = event('CHECK', { playerId: 'b', auto: true });
@@ -32,7 +32,7 @@ it('취소된 자동 행동을 기록에서 숨긴다', () => {
     [],
   );
 });
-// 기록 표시 테스트에 필요한 이벤트를 구성한다.
+// 기록 표시 테스트에 필요한 이벤트를 구성한다
 const event = (type: string, details: GameEvent['details'] = {}, hand = 1): GameEvent => ({
   id: Math.random().toString(),
   at: '',

@@ -1,7 +1,7 @@
 import type { GameCommand } from '../../../game/types';
 import type { RoomSnapshot, ServerCommand } from '../api/types';
 
-// 서버가 현재 핸드 식별자를 요구하는 명령인지 확인한다.
+// 서버가 현재 핸드 식별자를 요구하는 명령인지 확인한다
 export function isHandScoped(type: string): boolean {
   return [
     'CHECK',
@@ -15,7 +15,7 @@ export function isHandScoped(type: string): boolean {
   ].includes(type);
 }
 
-// 공통 화면 명령을 서버 payload와 순서가 명확한 요청 목록으로 바꾼다.
+// 공통 화면 명령을 서버 payload와 순서가 명확한 요청 목록으로 바꾼다
 export function toServerCommands(command: GameCommand, snapshot: RoomSnapshot): ServerCommand[] {
   if (command.type === 'SETUP_UPDATE') {
     const result: ServerCommand[] = [];

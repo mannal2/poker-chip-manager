@@ -1,6 +1,6 @@
 import type { OnlineView, OnlineController } from '../session/onlineController';
 
-// 연결 동기화와 조작권 복구에 필요한 현재 상태 및 조작을 표시한다.
+// 연결 동기화와 조작권 복구에 필요한 현재 상태 및 조작을 표시한다
 export function ConnectionBanner({
   view,
   controller,

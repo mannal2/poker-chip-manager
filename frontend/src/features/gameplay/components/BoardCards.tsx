@@ -24,7 +24,7 @@ export function BoardCards({
       : phase === 'settlement'
         ? 5
         : ({ PREFLOP: 0, FLOP: 3, TURN: 4, RIVER: 5 }[street] ?? 0);
-  // 카드 구성이 바뀌거나 화면이 닫힐 때에만 이전 보드의 효과를 정리한다.
+  // 카드 구성이 바뀌거나 화면이 닫힐 때에만 이전 보드의 효과를 정리한다
   useLayoutEffect(
     () => () => {
       animations.current.forEach((animation) => animation.cancel());

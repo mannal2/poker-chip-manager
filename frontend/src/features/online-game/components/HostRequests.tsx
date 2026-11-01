@@ -1,6 +1,6 @@
 import type { RoomSnapshot, ServerCommand } from '../api/types';
 
-// 복구 신청과 방장 인수 요청을 스냅샷에서 지속적으로 표시한다.
+// 복구 신청과 방장 인수 요청을 스냅샷에서 지속적으로 표시한다
 export function HostRequests({
   snapshot,
   busy,

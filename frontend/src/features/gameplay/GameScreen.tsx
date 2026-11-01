@@ -10,7 +10,7 @@ import { SetupPanel } from './components/SetupPanel';
 import { Table } from './components/Table';
 import { useBettingDraft } from './hooks/useBettingDraft';
 import { useSettlementSelection } from './hooks/useSettlementSelection';
-import { permits, type GameCapabilities } from './model/capabilities';
+import { permits, requiredCapability, type GameCapabilities } from './model/capabilities';
 import { messageFor } from './model/errorMessages';
 import { buildTableView } from './model/tableView';
 import type { GameCommand } from '../../game/types';
@@ -36,7 +36,7 @@ export function GameScreen({
   ref?: Ref<GameScreenHandle>;
 }) {
   const { state: s, busy, scope, notify, run, capabilities: can } = session;
-  // 필요한 권한에 맞는 모드별 거절 문구를 알린다.
+  // 필요한 권한에 맞는 모드별 거절 문구를 알린다
   function deny(need: keyof GameCapabilities) {
     notify(session.denied?.(need) ?? '조작 권한이 없습니다.');
   }
@@ -44,17 +44,7 @@ export function GameScreen({
   /** Capability check shared by every command the screen issues itself. */
   async function dispatch(command: GameCommand) {
     if (!permits(can, command.type)) {
-      deny(
-        command.type === 'UNDO'
-          ? 'canUndo'
-          : command.type === 'SETTLE_HAND'
-            ? 'canSettle'
-            : command.type === 'SCHEDULE_BLINDS'
-              ? 'canEditBlinds'
-              : command.type === 'SETUP_UPDATE' || command.type === 'START_TOURNAMENT'
-                ? 'canEditSetup'
-                : 'canAct',
-      );
+      deny(requiredCapability(command.type)!);
       return false;
     }
     return session.dispatch(command);
@@ -64,7 +54,7 @@ export function GameScreen({
   const initialBlinds = s.pendingBlinds ?? s.hand;
   const blindScope = s.tournamentId + '/' + s.status + '/' + s.hand?.id + '/' + s.hand?.phase;
   const previousBlindScope = useRef(blindScope);
-  // 열린 블라인드 폼을 다른 핸드나 단계에 재사용하지 않도록 화면 전환 전에 닫는다.
+  // 열린 블라인드 폼을 다른 핸드나 단계에 재사용하지 않도록 화면 전환 전에 닫는다
   useLayoutEffect(() => {
     if (
       dialog === 'blinds' &&
@@ -91,7 +81,7 @@ export function GameScreen({
       can.canSettle ? session.onSelectionChange : undefined,
     );
   useImperativeHandle(ref, () => ({
-    // 외부 취소가 확정되면 정산 선택과 베팅 초안을 함께 폐기한다.
+    // 외부 취소가 확정되면 정산 선택과 베팅 초안을 함께 폐기한다
     resetSelection: () => {
       resetWinners();
       resetDraft();
@@ -167,7 +157,7 @@ export function GameScreen({
       />
       <section
         className="dock"
-        // 전체 설정 권한이 없는 시작 버튼 입력을 차단하고 이유를 알린다.
+        // 전체 설정 권한이 없는 시작 버튼 입력을 차단하고 이유를 알린다
         onClickCapture={(event) => {
           if (
             s.status === 'setup' &&
@@ -280,7 +270,7 @@ export function GameScreen({
       {dialog === 'blinds' && s.status === 'playing' && initialBlinds && (
         <Dialog dismissOutside title="다음 핸드 블라인드" onClose={close}>
           <div
-            // 예약 폼의 자체 잠금 처리 전에 권한 거절 이유를 알린다.
+            // 예약 폼의 자체 잠금 처리 전에 권한 거절 이유를 알린다
             onSubmitCapture={(event) => {
               if (!can.canEditBlinds) {
                 event.preventDefault();

@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { createRoom, joinRoom, startRoom, menu, confirm } from './managementSupport';
 
-// 대기방 내보내기와 직접 방장 이전을 실제 두 세션에서 검증한다.
+// 대기방 내보내기와 직접 방장 이전을 실제 두 세션에서 검증한다
 test('kicks a waiting participant and transfers the host', async ({ page, browser }, testInfo) => {
   const code = await createRoom(page);
   const context = await browser.newContext();
@@ -9,7 +9,7 @@ test('kicks a waiting participant and transfers the host', async ({ page, browse
   let guest;
   try {
     guest = await context.newPage();
-    // 신규 참가 실패 시 자동 복귀와 참가 요청의 실제 응답을 함께 보관한다.
+    // 신규 참가 실패 시 자동 복귀와 참가 요청의 실제 응답을 함께 보관한다
     guest.on('response', async (response) => {
       if (response.url().includes('/api/'))
         diagnostics.push({
@@ -53,7 +53,7 @@ test('kicks a waiting participant and transfers the host', async ({ page, browse
   }
 });
 
-// 본인 기권은 방장 이전 안내를 거치며 마지막 생존자에게 칩이 지급된다.
+// 본인 기권은 방장 이전 안내를 거치며 마지막 생존자에게 칩이 지급된다
 test('forfeits self after host transfer and distributes chips at hand end', async ({
   page,
   browser,
@@ -85,7 +85,7 @@ test('forfeits self after host transfer and distributes chips at hand end', asyn
   }
 });
 
-// 끊긴 참가자만 방장이 대신 기권 처리할 수 있다.
+// 끊긴 참가자만 방장이 대신 기권 처리할 수 있다
 test('forfeits a disconnected participant', async ({ page, browser }) => {
   const code = await createRoom(page);
   const context = await browser.newContext();
@@ -102,7 +102,7 @@ test('forfeits a disconnected participant', async ({ page, browser }) => {
   );
 });
 
-// 명시적으로 끊긴 방장의 실제 60초 경과 뒤 인수 요청이 새로고침에도 유지된다.
+// 명시적으로 끊긴 방장의 실제 60초 경과 뒤 인수 요청이 새로고침에도 유지된다
 test('takes host after a real 60 second disconnection', async ({ browser }) => {
   test.slow();
   const hostContext = await browser.newContext();
@@ -128,7 +128,7 @@ test('takes host after a real 60 second disconnection', async ({ browser }) => {
   }
 });
 
-// 핸드 도중 기권자의 스택을 유지하고 핸드 종료 뒤에만 생존자에게 분배한다.
+// 핸드 도중 기권자의 스택을 유지하고 핸드 종료 뒤에만 생존자에게 분배한다
 test('defers forfeited stack distribution until the current hand ends', async ({
   page,
   browser,
@@ -168,7 +168,7 @@ test('defers forfeited stack distribution until the current hand ends', async ({
   }
 });
 
-// 내보내진 동일 브라우저에서 자동 복귀가 끝난 뒤 신규 참가가 가능한지 확인한다.
+// 내보내진 동일 브라우저에서 자동 복귀가 끝난 뒤 신규 참가가 가능한지 확인한다
 test('rejoins from the same kicked browser screen', async ({ page, browser }, testInfo) => {
   const code = await createRoom(page);
   const context = await browser.newContext();

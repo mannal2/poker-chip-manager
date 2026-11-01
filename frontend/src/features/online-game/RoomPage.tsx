@@ -17,7 +17,7 @@ import '../gameplay/styles/header.css';
 import '../gameplay/styles/table.css';
 import '../gameplay/styles/controls.css';
 
-// 온라인 방의 연결 안내와 공통 게임 화면 및 토스트를 조립한다.
+// 온라인 방의 연결 안내와 공통 게임 화면 및 토스트를 조립한다
 export function RoomPage({ view, controller }: { view: OnlineView; controller: OnlineController }) {
   const screen = useRef<HTMLElement>(null);
   useScreenFit(screen);
@@ -29,7 +29,7 @@ export function RoomPage({ view, controller }: { view: OnlineView; controller: O
   const game = useRef<GameScreenHandle>(null);
   const { session, setup, toast, resetSelection } = useOnlineGameSession(view, controller);
   const notify = toast.show;
-  // 최신 연결 상태와 조작권을 확인하고 서버 관리 명령을 보낸다.
+  // 최신 연결 상태와 조작권을 확인하고 서버 관리 명령을 보낸다
   async function send(command: ServerCommand) {
     const blocked = session.guard();
     if (blocked) {
@@ -56,7 +56,7 @@ export function RoomPage({ view, controller }: { view: OnlineView; controller: O
       notify(controller.getView().error ?? '명령을 처리하지 못했습니다. 최신 상태를 확인하세요.');
     return ok;
   }
-  // 메뉴를 연 뒤 대상 상태가 바뀌어도 최신 서버 스냅샷으로 확인한다.
+  // 메뉴를 연 뒤 대상 상태가 바뀌어도 최신 서버 스냅샷으로 확인한다
   async function choose(item: MenuItem, target?: RoomParticipant, confirmed = false) {
     const blocked = session.guard();
     if (blocked) return notify(blocked);
@@ -88,7 +88,7 @@ export function RoomPage({ view, controller }: { view: OnlineView; controller: O
     await send(command);
     setDialog('');
   }
-  // 참가 자격은 보존하고 화면 자원을 해제한 뒤 앱 홈으로 문서 이동한다.
+  // 참가 자격은 보존하고 화면 자원을 해제한 뒤 앱 홈으로 문서 이동한다
   function home() {
     controller.leaveRoomScreen();
     window.location.assign('/local/');

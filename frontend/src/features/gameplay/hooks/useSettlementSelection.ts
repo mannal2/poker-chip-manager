@@ -47,7 +47,7 @@ export function useSettlementSelection(
   const currentPot = pots[potIndex];
   const preview = state && pots.length ? previewSettlement(state, winners) : null;
 
-  // 외부 선택이 있으면 변경 요청만 전달하고 로컬에서는 초안을 저장한다.
+  // 외부 선택이 있으면 변경 요청만 전달하고 로컬에서는 초안을 저장한다
   function changeSelection(winners: WinnerSelection, index: number) {
     if (sharedSelection) {
       if (!busy) onSelectionChange?.({ winners, potIndex: index });

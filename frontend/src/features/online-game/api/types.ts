@@ -1,6 +1,7 @@
 import type { GameEvent, GameState, LegalActions, WinnerSelection } from '../../../game/types';
 import type { GameCapabilities } from '../../gameplay/model/capabilities';
 
+// 방 명단의 참가자 한 명
 export interface RoomParticipant {
   participantId: string;
   name: string;
@@ -10,6 +11,7 @@ export interface RoomParticipant {
   connected: boolean;
 }
 
+// 요청자 시점의 방 전체 상태
 export interface RoomSnapshot {
   roomId: string;
   code: string;
@@ -39,6 +41,7 @@ export interface RoomSnapshot {
   }[];
 }
 
+// 방 변경을 알리는 소켓 메시지
 export interface SnapshotMessage {
   type: 'SNAPSHOT';
   previousVersion: number | null;
@@ -46,6 +49,7 @@ export interface SnapshotMessage {
   state: RoomSnapshot;
 }
 
+// 장부에 기록된 명령 결과 응답
 export interface CommandResponse {
   requestId: string;
   sequence: number;
@@ -55,6 +59,7 @@ export interface CommandResponse {
   latestState: RoomSnapshot | null;
 }
 
+// 방 생성과 참가의 성공 응답
 export interface JoinResponse {
   roomId: string;
   code: string;
@@ -63,6 +68,7 @@ export interface JoinResponse {
   state: RoomSnapshot;
 }
 
+// 복구 신청 결과 조회 응답
 export type RecoveryStatus =
   | ({ recoveryRequestId: string; status: 'APPROVED' } & JoinResponse)
   | {
@@ -71,34 +77,68 @@ export type RecoveryStatus =
       expiresAt?: string;
     };
 
+// 복구 신청 접수 응답
 export interface RecoveryRequestResponse {
   recoveryRequestId: string;
   status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'EXPIRED' | 'SUPERSEDED';
   expiresAt: string;
 }
 
+// 서버로 보낼 명령 하나
 export interface ServerCommand {
   type: string;
   payload?: object;
   handScoped: boolean;
 }
 
-// null과 배열을 제외한 JSON 객체인지 확인한다.
+// 조작권 인수 성공 응답
+export interface ControlResponse {
+  requestId: string;
+  sequence: number;
+  outcome: 'APPLIED';
+  controlGeneration: number;
+  latestState: RoomSnapshot;
+}
+
+// 스냅샷이 화면보다 낮은 (상태 버전, 초안 버전) 쌍인지 확인한다
+export function isOlderSnapshot(next: RoomSnapshot, shown: RoomSnapshot): boolean {
+  return (
+    next.stateVersion < shown.stateVersion ||
+    (next.stateVersion === shown.stateVersion && next.draftVersion < shown.draftVersion)
+  );
+}
+
+// 보낸 요청에 대한 조작권 인수 성공 응답인지 확인한다
+export function isControlResponse(
+  body: unknown,
+  request: Record<string, unknown>,
+): body is ControlResponse {
+  return (
+    object(body) &&
+    body.requestId === request.requestId &&
+    body.sequence === request.sequence &&
+    body.outcome === 'APPLIED' &&
+    integer(body.controlGeneration) &&
+    isRoomSnapshot(body.latestState)
+  );
+}
+
+// null과 배열을 제외한 JSON 객체인지 확인한다
 function object(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-// JSON 정수 필드에 안전한 정수가 들어 있는지 확인한다.
+// JSON 정수 필드에 안전한 정수가 들어 있는지 확인한다
 function integer(value: unknown): value is number {
   return typeof value === 'number' && Number.isSafeInteger(value);
 }
 
-// 문자열 배열의 모든 원소를 확인한다.
+// 문자열 배열의 모든 원소를 확인한다
 function strings(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((item) => typeof item === 'string');
 }
 
-// 서버의 플레이어 상태에 필요한 필드와 선택적 기권 표시를 확인한다.
+// 서버의 플레이어 상태에 필요한 필드와 선택적 기권 표시를 확인한다
 function player(value: unknown): boolean {
   return (
     object(value) &&
@@ -112,7 +152,7 @@ function player(value: unknown): boolean {
   );
 }
 
-// 게임과 취소 스냅샷에서 공유하는 필드의 실제 JSON 형식을 확인한다.
+// 게임과 취소 스냅샷에서 공유하는 필드의 실제 JSON 형식을 확인한다
 function game(value: unknown, undo = false): boolean {
   if (
     !object(value) ||
@@ -160,12 +200,12 @@ function game(value: unknown, undo = false): boolean {
     : value.undo === null || game(value.undo, true);
 }
 
-// 정산 초안의 팟별 승자 목록을 확인한다.
+// 정산 초안의 팟별 승자 목록을 확인한다
 function winners(value: unknown): boolean {
   return object(value) && Object.values(value).every(strings);
 }
 
-// 권한과 명단 및 중첩 게임을 포함한 방 응답 구조를 확인한다.
+// 권한과 명단 및 중첩 게임을 포함한 방 응답 구조를 확인한다
 export function isRoomSnapshot(value: unknown): value is RoomSnapshot {
   if (
     !object(value) ||
@@ -241,7 +281,7 @@ export function isRoomSnapshot(value: unknown): value is RoomSnapshot {
   );
 }
 
-// 서버 효과 메시지의 이벤트 필드와 상태를 확인한다.
+// 서버 효과 메시지의 이벤트 필드와 상태를 확인한다
 export function isSnapshotMessage(value: unknown): value is SnapshotMessage {
   return (
     object(value) &&
@@ -260,7 +300,7 @@ export function isSnapshotMessage(value: unknown): value is SnapshotMessage {
   );
 }
 
-// 이벤트의 추가 정보와 선택적 처리 주체 표시를 확인한다.
+// 이벤트의 추가 정보와 선택적 처리 주체 표시를 확인한다
 function eventDetails(value: unknown): boolean {
   return (
     object(value) &&
@@ -268,7 +308,7 @@ function eventDetails(value: unknown): boolean {
   );
 }
 
-// 적용 또는 거절된 명령 응답과 최신 상태를 확인한다.
+// 적용 또는 거절된 명령 응답과 최신 상태를 확인한다
 export function isCommandResponse(value: unknown): value is CommandResponse {
   return (
     object(value) &&
@@ -282,7 +322,7 @@ export function isCommandResponse(value: unknown): value is CommandResponse {
   );
 }
 
-// 방 생성과 참가 및 복구 승인에 쓰는 자리 응답을 확인한다.
+// 방 생성과 참가 및 복구 승인에 쓰는 자리 응답을 확인한다
 export function isJoinResponse(value: unknown): value is JoinResponse {
   return (
     object(value) &&
@@ -292,7 +332,7 @@ export function isJoinResponse(value: unknown): value is JoinResponse {
   );
 }
 
-// 승인된 복구에만 자리 정보가 포함되는 상태 응답을 확인한다.
+// 승인된 복구에만 자리 정보가 포함되는 상태 응답을 확인한다
 export function isRecoveryStatus(value: unknown): value is RecoveryStatus {
   return (
     object(value) &&
@@ -305,7 +345,7 @@ export function isRecoveryStatus(value: unknown): value is RecoveryStatus {
   );
 }
 
-// 복구 신청 POST의 최초 응답과 재전송 응답에 포함되는 상태 및 만료 시각을 확인한다.
+// 복구 신청 POST의 최초 응답과 재전송 응답에 포함되는 상태 및 만료 시각을 확인한다
 export function isRecoveryRequestResponse(value: unknown): value is RecoveryRequestResponse {
   return (
     object(value) &&

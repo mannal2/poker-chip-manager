@@ -4,7 +4,7 @@ import snapshot from '../../../shared/api-contract/ws-snapshot.json';
 import create from '../../../shared/api-contract/create-room.json';
 import { OnlineController } from '../../src/features/online-game/session/onlineController';
 
-// 브라우저 소켓의 외부 이벤트를 수동으로 전달한다.
+// 브라우저 소켓의 외부 이벤트를 수동으로 전달한다
 class FakeSocket {
   static instances: FakeSocket[] = [];
   readyState = 0;
@@ -12,32 +12,32 @@ class FakeSocket {
   onclose: ((event: { code: number }) => void) | null = null;
   onmessage: ((event: { data: string }) => void) | null = null;
   sent: unknown[] = [];
-  // 생성한 연결을 기록한다.
+  // 생성한 연결을 기록한다
   constructor(public readonly url: string) {
     FakeSocket.instances.push(this);
   }
-  // 전송한 프로토콜 메시지를 기록한다.
+  // 전송한 프로토콜 메시지를 기록한다
   send(value: string) {
     this.sent.push(JSON.parse(value));
   }
-  // 연결 종료 이벤트를 전달한다.
+  // 연결 종료 이벤트를 전달한다
   close(code = 1000) {
     this.readyState = 3;
     this.onclose?.({ code });
   }
-  // 연결 완료 이벤트를 전달한다.
+  // 연결 완료 이벤트를 전달한다
   open() {
     this.readyState = 1;
     this.onopen?.();
   }
-  // 서버 메시지를 전달한다.
+  // 서버 메시지를 전달한다
   message(value: unknown) {
     this.onmessage?.({ data: JSON.stringify(value) });
   }
 }
 let visibility: EventTarget & { visibilityState: string };
 let room: RoomSocket;
-// 실제 컨트롤러와 소켓을 함께 사용하여 PING 하나에 RESYNC 한 번만 전송하는지 확인한다.
+// 실제 컨트롤러와 소켓을 함께 사용하여 PING 하나에 RESYNC 한 번만 전송하는지 확인한다
 it('sends exactly one RESYNC for a newer PING through the real controller', async () => {
   const storage = { setItem: vi.fn(), removeItem: vi.fn() };
   vi.stubGlobal('localStorage', storage);
@@ -68,7 +68,7 @@ it('sends exactly one RESYNC for a newer PING through the real controller', asyn
     controller.dispose();
   }
 });
-// 연결마다 가짜 시간과 브라우저 경계를 초기화한다.
+// 연결마다 가짜 시간과 브라우저 경계를 초기화한다
 beforeEach(() => {
   vi.useFakeTimers();
   vi.spyOn(Math, 'random').mockReturnValue(0.5);
@@ -78,14 +78,14 @@ beforeEach(() => {
   vi.stubGlobal('window', new EventTarget());
   vi.stubGlobal('WebSocket', FakeSocket);
 });
-// 연결이 소유한 자원과 가짜 브라우저 환경을 정리한다.
+// 연결이 소유한 자원과 가짜 브라우저 환경을 정리한다
 afterEach(() => {
   room?.close();
   vi.useRealTimers();
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
 });
-// 기본 핸들러와 함께 연결을 준비한다.
+// 기본 핸들러와 함께 연결을 준비한다
 function setup() {
   const handlers = { onSnapshot: vi.fn(), onFinal: vi.fn(), onPing: vi.fn(), onState: vi.fn() };
   room = new RoomSocket('ws://test', handlers);
@@ -93,7 +93,7 @@ function setup() {
   return handlers;
 }
 
-// 브라우저의 오프라인 알림으로 즉시 잠그고 연결 복귀 시 소켓을 교체한다.
+// 브라우저의 오프라인 알림으로 즉시 잠그고 연결 복귀 시 소켓을 교체한다
 it('closes immediately on offline and reconnects immediately on online', () => {
   const handlers = setup();
   FakeSocket.instances[0].open();
@@ -112,7 +112,7 @@ it('closes immediately on offline and reconnects immediately on online', () => {
   expect(FakeSocket.instances).toHaveLength(2);
 });
 
-// 외부 상태 콜백에서 종료하면 이후 소켓과 타이머를 만들지 않는다.
+// 외부 상태 콜백에서 종료하면 이후 소켓과 타이머를 만들지 않는다
 it.each(['connecting', 'open', 'waiting'])(
   'stops all work when closed from %s callback',
   (state) => {
@@ -136,7 +136,7 @@ it.each(['connecting', 'open', 'waiting'])(
   },
 );
 
-// 구독 및 PING 응답과 전달한 스냅샷 이후의 버전 추적을 확인한다.
+// 구독 및 PING 응답과 전달한 스냅샷 이후의 버전 추적을 확인한다
 it('subscribes, validates snapshots, echoes nonce and reports advertised versions', () => {
   const handlers = setup();
   const ws = FakeSocket.instances[0];
@@ -158,7 +158,7 @@ it('subscribes, validates snapshots, echoes nonce and reports advertised version
   expect(handlers.onPing).toHaveBeenLastCalledWith(snapshot.state.stateVersion + 1);
 });
 
-// 마지막 메시지가 없는 정상 종료도 재연결하고 성공하면 지연을 초기화한다.
+// 마지막 메시지가 없는 정상 종료도 재연결하고 성공하면 지연을 초기화한다
 it('reconnects and resubscribes after every nonfinal close and resets backoff on open', () => {
   setup();
   const first = FakeSocket.instances[0];
@@ -181,7 +181,7 @@ it('reconnects and resubscribes after every nonfinal close and resets backoff on
   expect(FakeSocket.instances).toHaveLength(4);
 });
 
-// 모든 마지막 메시지는 닫힘 코드와 무관하게 재연결을 중단한다.
+// 모든 마지막 메시지는 닫힘 코드와 무관하게 재연결을 중단한다
 it.each(['ACCESS_REVOKED', 'ROOM_GONE', 'PROTOCOL_INCOMPATIBLE'])('stops after %s', (type) => {
   const handlers = setup();
   const ws = FakeSocket.instances[0];
@@ -193,7 +193,7 @@ it.each(['ACCESS_REVOKED', 'ROOM_GONE', 'PROTOCOL_INCOMPATIBLE'])('stops after %
   expect(FakeSocket.instances).toHaveLength(1);
 });
 
-// PING 감시와 화면 복귀는 재연결하며 오래된 콜백과 종료 후 이벤트를 무시한다.
+// PING 감시와 화면 복귀는 재연결하며 오래된 콜백과 종료 후 이벤트를 무시한다
 it('watches ping silence, reconnects immediately on return and disposes stale callbacks', () => {
   const handlers = setup();
   const first = FakeSocket.instances[0];
@@ -219,7 +219,7 @@ it('watches ping silence, reconnects immediately on return and disposes stale ca
   expect(vi.getTimerCount()).toBe(0);
 });
 
-// 유효한 PING은 감시 시간을 갱신하고 끊긴 동안 보낸 RESYNC는 재생하지 않는다.
+// 유효한 PING은 감시 시간을 갱신하고 끊긴 동안 보낸 RESYNC는 재생하지 않는다
 it('renews the watchdog for each ping and never queues disconnected messages', () => {
   setup();
   const first = FakeSocket.instances[0];
@@ -240,7 +240,7 @@ it('renews the watchdog for each ping and never queues disconnected messages', (
   ]);
 });
 
-// 상태 발행이 계속되어도 PING이 끊긴 연결은 사십오 초 뒤에 교체한다.
+// 상태 발행이 계속되어도 PING이 끊긴 연결은 사십오 초 뒤에 교체한다
 it('detects missing PING even while snapshots keep arriving', () => {
   setup();
   const first = FakeSocket.instances[0];
@@ -253,7 +253,7 @@ it('detects missing PING even while snapshots keep arriving', () => {
   expect(room.state).toBe('waiting');
 });
 
-// 재연결 간격의 지터 범위와 최대 기준 시간을 확인한다.
+// 재연결 간격의 지터 범위와 최대 기준 시간을 확인한다
 it('bounds jitter across all backoff steps', () => {
   expect([0, 1, 2, 3, 4, 8].map((n) => reconnectDelay(n, () => 0))).toEqual([
     800, 1600, 3200, 6400, 12000, 12000,
@@ -261,7 +261,7 @@ it('bounds jitter across all backoff steps', () => {
   expect(reconnectDelay(4, () => 1)).toBeCloseTo(18000);
 });
 
-// 화면 복귀 시 겉으로 열린 소켓도 즉시 교체하여 정지했던 연결을 복구한다.
+// 화면 복귀 시 겉으로 열린 소켓도 즉시 교체하여 정지했던 연결을 복구한다
 it.each([false, true])('replaces a connecting or open connection on return (open=%s)', (opened) => {
   setup();
   const first = FakeSocket.instances[0];
@@ -280,7 +280,7 @@ it.each([false, true])('replaces a connecting or open connection on return (open
   expect(first.readyState).toBe(3);
 });
 
-// 추가 구독 한도에 걸리면 기존 소켓의 전체 상태를 요청하고 무응답 시간도 제한한다.
+// 추가 구독 한도에 걸리면 기존 소켓의 전체 상태를 요청하고 무응답 시간도 제한한다
 it('probes retained presence after replacement refusal and bounds a stalled handshake', () => {
   const h = setup();
   const first = FakeSocket.instances[0];
@@ -300,30 +300,33 @@ it('probes retained presence after replacement refusal and bounds a stalled hand
   expect(room.state).toBe('waiting');
 });
 
-// 구독 교체 중 복귀가 반복되어도 연결을 늘리지 않고 종료 경로마다 양쪽 소켓을 정리한다.
-it.each(['offline', 'close', 'retained final', 'replacement final'])('releases both sockets on %s during replacement', reason => {
-  const h = setup();
-  const first = FakeSocket.instances[0];
-  first.open();
-  first.message(snapshot);
-  room.reconnect();
-  const second = FakeSocket.instances[1];
-  second.open();
-  room.reconnect();
-  expect(FakeSocket.instances).toHaveLength(2);
-  expect(first.readyState).toBe(1);
-  if (reason === 'offline') window.dispatchEvent(new Event('offline'));
-  else if (reason === 'close') room.close();
-  else (reason === 'retained final' ? first : second).message({ type: 'ACCESS_REVOKED' });
-  expect([first.readyState, second.readyState]).toEqual([3, 3]);
-  first.message(snapshot);
-  second.message(snapshot);
-  expect(h.onSnapshot).toHaveBeenCalledTimes(1);
-  vi.advanceTimersByTime(60000);
-  expect(FakeSocket.instances).toHaveLength(2);
-});
+// 구독 교체 중 복귀가 반복되어도 연결을 늘리지 않고 종료 경로마다 양쪽 소켓을 정리한다
+it.each(['offline', 'close', 'retained final', 'replacement final'])(
+  'releases both sockets on %s during replacement',
+  (reason) => {
+    const h = setup();
+    const first = FakeSocket.instances[0];
+    first.open();
+    first.message(snapshot);
+    room.reconnect();
+    const second = FakeSocket.instances[1];
+    second.open();
+    room.reconnect();
+    expect(FakeSocket.instances).toHaveLength(2);
+    expect(first.readyState).toBe(1);
+    if (reason === 'offline') window.dispatchEvent(new Event('offline'));
+    else if (reason === 'close') room.close();
+    else (reason === 'retained final' ? first : second).message({ type: 'ACCESS_REVOKED' });
+    expect([first.readyState, second.readyState]).toEqual([3, 3]);
+    first.message(snapshot);
+    second.message(snapshot);
+    expect(h.onSnapshot).toHaveBeenCalledTimes(1);
+    vi.advanceTimersByTime(60000);
+    expect(FakeSocket.instances).toHaveLength(2);
+  },
+);
 
-// 같은 토너먼트의 지연 상태는 기준을 낮추지 않고 새 토너먼트는 낮은 버전을 허용한다.
+// 같은 토너먼트의 지연 상태는 기준을 낮추지 않고 새 토너먼트는 낮은 버전을 허용한다
 it('tracks delivered versions within each tournament without retaining an old tournament maximum', () => {
   setup();
   const ws = FakeSocket.instances[0];
@@ -336,17 +339,29 @@ it('tracks delivered versions within each tournament without retaining an old to
   room.reconnect();
   const second = FakeSocket.instances[1];
   second.open();
-  expect(second.sent[0]).toMatchObject({ type: 'SUBSCRIBE', lastSeenVersion: snapshot.state.stateVersion });
-  second.message({ ...snapshot, state: { ...snapshot.state, tournamentId: 'new', stateVersion: 1 } });
+  expect(second.sent[0]).toMatchObject({
+    type: 'SUBSCRIBE',
+    lastSeenVersion: snapshot.state.stateVersion,
+  });
+  second.message({
+    ...snapshot,
+    state: { ...snapshot.state, tournamentId: 'new', stateVersion: 1 },
+  });
   room.reconnect();
   FakeSocket.instances[2].open();
   expect(FakeSocket.instances[2].sent[0]).toMatchObject({ type: 'SUBSCRIBE', lastSeenVersion: 1 });
 });
 
-// 서버의 연결 한도 거절을 일반 끊김과 구분해 알리고 재연결은 계속한다.
+// 서버의 연결 한도 거절을 일반 끊김과 구분해 알리고 재연결은 계속한다
 it('reports a full server close and keeps retrying', () => {
   const onTooManyScreens = vi.fn();
-  const handlers = { onSnapshot: vi.fn(), onFinal: vi.fn(), onPing: vi.fn(), onState: vi.fn(), onTooManyScreens };
+  const handlers = {
+    onSnapshot: vi.fn(),
+    onFinal: vi.fn(),
+    onPing: vi.fn(),
+    onState: vi.fn(),
+    onTooManyScreens,
+  };
   const socket = new RoomSocket('ws://test', handlers);
   socket.subscribe('room', 1);
   const first = FakeSocket.instances.at(-1)!;

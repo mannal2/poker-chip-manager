@@ -15,7 +15,7 @@ export type ErrorCode =
   | SessionRejectionCode
   | ServerErrorCode;
 
-// 서버가 온라인 참가와 방 운영에서 반환하는 거절 사유 코드다.
+// 서버가 온라인 참가와 방 운영에서 반환하는 거절 사유 코드다
 export type ServerErrorCode =
   | 'NOT_YOUR_TURN'
   | 'NOT_WAITING'

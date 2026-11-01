@@ -1,22 +1,23 @@
+// 성공, 서버 거절, 결과 불명을 구분한 요청 결과
 export type ApiResult<T> =
   | { ok: true; status: number; body: T }
   | { ok: false; status: number; code: string | undefined; body: unknown }
   | { ok: false; unknown: true };
 
-// 초기 연결 실패의 HTTP 결과를 호출자에게 전달한다.
+// 초기 연결 실패의 HTTP 결과를 호출자에게 전달한다
 export class ApiOpenError extends Error {
-  // 초기화가 실패한 단계와 결과를 보관한다.
+  // 초기화가 실패한 단계와 결과를 보관한다
   constructor(public readonly result: ApiResult<unknown>) {
     super('온라인 세션 또는 스트림을 준비하지 못했습니다.');
   }
 }
 
-// 세션 토큰을 메모리에 보관하고 REST 요청과 화면 스트림 수명을 관리한다.
+// 세션 토큰을 메모리에 보관하고 REST 요청과 화면 스트림 수명을 관리한다
 export class ApiClient {
   private csrfToken = '';
   streamId: string | null = null;
 
-  // 세션 토큰을 받은 뒤 화면 스트림을 등록한다.
+  // 세션 토큰을 받은 뒤 화면 스트림을 등록한다
   async open(): Promise<void> {
     const session = await this.loadSession();
     if (!session.ok) throw new ApiOpenError(session);
@@ -27,7 +28,7 @@ export class ApiClient {
     this.streamId = stream.body.streamId;
   }
 
-  // 세션 유지 응답으로 메모리 토큰을 갱신한다.
+  // 세션 유지 응답으로 메모리 토큰을 갱신한다
   async refresh(): Promise<ApiResult<{ csrfToken: string; protocolVersion: number }>> {
     const result = await this.post<{ csrfToken: string; protocolVersion: number }>(
       '/api/session/refresh',
@@ -36,7 +37,7 @@ export class ApiClient {
     return this.acceptSession(result);
   }
 
-  // 문서 종료 중에도 스트림 삭제 요청을 전달한다.
+  // 문서 종료 중에도 스트림 삭제 요청을 전달한다
   async closeStream(): Promise<ApiResult<void>> {
     if (this.streamId === null) return { ok: true, status: 204, body: undefined };
     const result = await this.request<void>(
@@ -49,7 +50,7 @@ export class ApiClient {
     return result;
   }
 
-  // 변경 요청에 CSRF 토큰을 붙여 전송한다.
+  // 변경 요청에 CSRF 토큰을 붙여 전송한다
   async post<T = unknown>(path: string, body: unknown): Promise<ApiResult<T>> {
     try {
       return this.request<T>(path, 'POST', JSON.stringify(body));
@@ -58,19 +59,19 @@ export class ApiClient {
     }
   }
 
-  // 조회 요청을 쿠키 인증과 함께 전송한다.
+  // 조회 요청을 쿠키 인증과 함께 전송한다
   get<T = unknown>(path: string): Promise<ApiResult<T>> {
     return this.request<T>(path, 'GET');
   }
 
-  // 세션 조회로 CSRF 토큰을 다시 받는다.
+  // 세션 조회로 CSRF 토큰을 다시 받는다
   private async loadSession() {
     return this.acceptSession(
       await this.get<{ csrfToken: string; protocolVersion: number }>('/api/session'),
     );
   }
 
-  // 유효한 세션 응답의 토큰만 보관한다.
+  // 유효한 세션 응답의 토큰만 보관한다
   private acceptSession(
     result: ApiResult<{ csrfToken: string; protocolVersion: number }>,
   ): ApiResult<{ csrfToken: string; protocolVersion: number }> {
@@ -89,7 +90,7 @@ export class ApiClient {
     return result;
   }
 
-  // 결과 불명 요청은 재전송하지 않고 CSRF 거절만 최대 한 번 재시도한다.
+  // 결과 불명 요청은 재전송하지 않고 CSRF 거절만 최대 한 번 재시도한다
   private async request<T>(
     path: string,
     method: string,
@@ -99,7 +100,7 @@ export class ApiClient {
   ): Promise<ApiResult<T>> {
     const abort = new AbortController();
     let timer: ReturnType<typeof setTimeout>;
-    // 응답 헤더와 본문을 합쳐 한 번의 전송에 십오 초만 기다린다.
+    // 응답 헤더와 본문을 합쳐 한 번의 전송에 십오 초만 기다린다
     const deadline = new Promise<never>((_, reject) => {
       timer = setTimeout(() => {
         abort.abort();

@@ -34,6 +34,11 @@ const required: Partial<Record<GameCommand['type'], keyof GameCapabilities>> = {
   SCHEDULE_BLINDS: 'canEditBlinds',
 };
 
+// 명령 실행에 필요한 권한을 돌려준다
+export function requiredCapability(command: GameCommand['type']) {
+  return required[command];
+}
+
 // 해당 명령을 실행할 권한이 있는지 확인한다
 /** Flow commands the mode issues itself (abort) need no capability. */
 export function permits(capabilities: GameCapabilities, command: GameCommand['type']) {

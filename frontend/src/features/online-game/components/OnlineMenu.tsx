@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { RoomParticipant, RoomSnapshot, ServerCommand } from '../api/types';
 
+// 관리 메뉴 항목 하나
 export interface MenuItem {
   label: string;
   command?: ServerCommand;
@@ -13,10 +14,10 @@ export const forfeitWarning =
 export const resetWarning =
   '이전 결과와 기록이 삭제됩니다. 이름과 좌석은 유지하고 다시 준비하시겠습니까?';
 
-// 역할과 단계 및 서버 명단의 생존 여부로 관리 메뉴와 대상을 구성한다.
+// 역할과 단계 및 서버 명단의 생존 여부로 관리 메뉴와 대상을 구성한다
 export function menuItems(snapshot: RoomSnapshot, connectedIds: ReadonlySet<string>): MenuItem[] {
   const host = snapshot.you.participantId === snapshot.hostId;
-  // 서버 게임의 기권과 탈락 상태를 모두 확인한다.
+  // 서버 게임의 기권과 탈락 상태를 모두 확인한다
   const active = (participant: RoomParticipant) =>
     snapshot.game?.players.some(
       (p) => p.id === participant.playerId && !p.eliminated && !p.forfeited,
@@ -74,7 +75,7 @@ export function menuItems(snapshot: RoomSnapshot, connectedIds: ReadonlySet<stri
   return items;
 }
 
-// 공통 관리 대화상자 안에서 메뉴와 대상 선택만 표시한다.
+// 공통 관리 대화상자 안에서 메뉴와 대상 선택만 표시한다
 export function OnlineMenu({
   snapshot,
   choose,

@@ -1,5 +1,6 @@
 import type { GameEvent } from '../../../game/types';
 
+// 알림 문구에 쓰는 이벤트와 행동자 이름
 export interface KnownEvent {
   event: GameEvent;
   actorName?: string;
@@ -13,7 +14,7 @@ const actions: Record<string, string> = {
   FOLD: '폴드',
 };
 
-// 확정 이벤트와 이름을 보관한 최근 기록에서 화면 알림을 만든다.
+// 확정 이벤트와 이름을 보관한 최근 기록에서 화면 알림을 만든다
 export function noticesFor(events: GameEvent[], known: ReadonlyMap<string, KnownEvent>): string[] {
   const notices: string[] = [];
   for (const event of events) {

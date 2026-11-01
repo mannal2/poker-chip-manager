@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-// 혼자 설정한 방에 세 명이 모여 본인 이름과 방장 좌석 변경을 공유한다.
+// 혼자 설정한 방에 세 명이 모여 본인 이름과 방장 좌석 변경을 공유한다
 test('shares waiting settings, own names, seats and dealer across three participants', async ({
   page,
   browser,

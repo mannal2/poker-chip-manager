@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { OnlineController, OnlineView } from '../session/onlineController';
 
-// 방 생성과 참가 및 기존 자리 복구 입력을 제공한다.
+// 방 생성과 참가 및 기존 자리 복구 입력을 제공한다
 export function OnlineEntry({
   view,
   controller,

@@ -20,13 +20,21 @@ export type SessionRejectionCode =
 // 게임 화면이 모드별로 받는 상태와 명령 채널
 /** Mode-provided state and command channel that the shared game screen is assembled from. */
 export interface GameSession {
+  // 보드 등장 효과를 재생할 화면 버전
   boardReveal?: { version: number; from: number | null };
+  // 해당 카드의 이름을 편집할 수 있는지 판단한다
   canRename?: (id: string) => boolean;
+  // 끊김 표시를 붙일 플레이어
   disconnectedIds?: ReadonlySet<string>;
+  // 하단 조작부 위의 안내 문구
   dockNotice?: string | null;
+  // 부족한 권한에 맞는 거절 문구를 만든다
   denied?: (need: keyof GameCapabilities) => string;
+  // 모드가 공유하는 승자 선택
   sharedSelection?: { winners: WinnerSelection; potIndex: number } | null;
+  // 승자 선택 변경을 모드에 알린다
   onSelectionChange?: (selection: { winners: WinnerSelection; potIndex: number }) => void;
+  // 결과 화면 하단에 넣는 조작
   resultActions?: ReactNode;
   state: GameState;
   busy: boolean;

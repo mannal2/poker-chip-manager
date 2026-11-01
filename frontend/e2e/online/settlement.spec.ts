@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
 
-// 서버가 해당 이름의 차례를 확정한 뒤 버튼을 누른다.
+// 서버가 해당 이름의 차례를 확정한 뒤 버튼을 누른다
 async function action(page: Page, name: string, button: string) {
   await expect(page.locator('.seat.active .name')).toHaveText(name);
   await expect(page.getByRole('button', { name: button, exact: true })).toHaveAttribute(
@@ -11,7 +11,7 @@ async function action(page: Page, name: string, button: string) {
   await page.getByRole('button', { name: button, exact: true }).click();
 }
 
-// 미확정 금액을 실제 칩 버튼으로 입력하여 서버에 제출한다.
+// 미확정 금액을 실제 칩 버튼으로 입력하여 서버에 제출한다
 async function bet(page: Page, name: string, chips: number[]) {
   await expect(page.locator('.seat.active .name')).toHaveText(name);
   for (const chip of chips)
@@ -19,12 +19,12 @@ async function bet(page: Page, name: string, chips: number[]) {
   await action(page, name, 'BET');
 }
 
-// 세 명의 실제 칩 차이로 사이드 팟을 만들고 단독 자격 팟과 공유 탐색을 확인한다.
+// 세 명의 실제 칩 차이로 사이드 팟을 만들고 단독 자격 팟과 공유 탐색을 확인한다
 test('shares side-pot navigation and automatically selects the sole eligible winner', async ({
   page,
   browser,
 }) => {
-  // 세 화면에서 두 핸드를 순차 진행하므로 전체 시나리오의 실행 시간을 확보한다.
+  // 세 화면에서 두 핸드를 순차 진행하므로 전체 시나리오의 실행 시간을 확보한다
   test.slow();
   await page.goto('/online/');
   await page.getByLabel('이름', { exact: true }).fill('Alice');
@@ -95,7 +95,7 @@ test('shares side-pot navigation and automatically selects the sole eligible win
   }
 });
 
-// 실제 두 브라우저 화면에서 정산 선택과 새로고침 및 취소 알림을 확인한다.
+// 실제 두 브라우저 화면에서 정산 선택과 새로고침 및 취소 알림을 확인한다
 test('shares winners, restores host picks, confirms WIN and clears picks on undo', async ({
   page,
   browser,
@@ -115,7 +115,7 @@ test('shares winners, restores host picks, confirms WIN and clears picks on undo
     await page.locator('.seat .card-values').first().click();
     await page.getByRole('button', { name: '게임 시작', exact: true }).click();
     await expect(page.locator('.seat.active .name')).toHaveText('Alice');
-    // 원격 칩 이동은 실제 DOM 생성 이력을 관찰하여 짧은 애니메이션도 놓치지 않는다.
+    // 원격 칩 이동은 실제 DOM 생성 이력을 관찰하여 짧은 애니메이션도 놓치지 않는다
     await guest.evaluate(() => {
       document.body.dataset.flights = '0';
       new MutationObserver((records) => {

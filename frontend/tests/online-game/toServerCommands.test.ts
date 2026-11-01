@@ -7,14 +7,14 @@ import {
 } from '../../src/features/online-game/model/toServerCommands';
 import { fixture } from './fixtures';
 
-// 대기방의 검증된 상태와 편집 설정을 준비한다.
+// 대기방의 검증된 상태와 편집 설정을 준비한다
 function waiting() {
   const snapshot = fixture('snapshot-waiting');
   if (!isRoomSnapshot(snapshot)) throw Error('Invalid fixture');
   return { snapshot, settings: toGameState(snapshot).settings };
 }
 
-// 드래그 저장에서 딜러의 신원을 유지하고 좌석 명령만 만든다.
+// 드래그 저장에서 딜러의 신원을 유지하고 좌석 명령만 만든다
 it('emits only seat order for a drag that retains the dealer', () => {
   const { snapshot, settings } = waiting();
   const order = snapshot.participants.map((p) => p.participantId).reverse();
@@ -30,7 +30,7 @@ it('emits only seat order for a drag that retains the dealer', () => {
   ).toEqual([{ type: 'SET_SEAT_ORDER', payload: { participantIds: order }, handScoped: false }]);
 });
 
-// 금액과 이름이 각각 전용 서버 명령으로 변환되는지 확인한다.
+// 금액과 이름이 각각 전용 서버 명령으로 변환되는지 확인한다
 it('maps amount, own name and unchanged settings separately', () => {
   const { snapshot, settings } = waiting();
   expect(
@@ -53,7 +53,7 @@ it('maps amount, own name and unchanged settings separately', () => {
   ).toEqual([]);
 });
 
-// 여러 설정을 변경하면 순서와 참가자 식별자를 서버 계약에 맞춘다.
+// 여러 설정을 변경하면 순서와 참가자 식별자를 서버 계약에 맞춘다
 it('orders seat, dealer, amounts and own rename when all change', () => {
   const { snapshot, settings } = waiting();
   const [alice, bob] = snapshot.participants.map((p) => p.participantId);
@@ -74,7 +74,7 @@ it('orders seat, dealer, amounts and own rename when all change', () => {
   ]);
 });
 
-// 베팅 명령에서 클라이언트 플레이어 ID를 제외하고 핸드 범위를 지정한다.
+// 베팅 명령에서 클라이언트 플레이어 ID를 제외하고 핸드 범위를 지정한다
 it('sends betting amounts without a playerId and maps flow payloads', () => {
   const { snapshot } = waiting();
   expect(
@@ -91,7 +91,7 @@ it('sends betting amounts without a playerId and maps flow payloads', () => {
   ]);
 });
 
-// 핸드 범위가 필요한 명령 집합과 방 범위 명령을 구분한다.
+// 핸드 범위가 필요한 명령 집합과 방 범위 명령을 구분한다
 it.each(['CHECK', 'CALL', 'BET', 'RAISE', 'FOLD', 'ALL_IN', 'SETTLE_HAND', 'SETTLEMENT_DRAFT'])(
   'marks %s as hand scoped',
   (type) => {
@@ -99,7 +99,7 @@ it.each(['CHECK', 'CALL', 'BET', 'RAISE', 'FOLD', 'ALL_IN', 'SETTLE_HAND', 'SETT
   },
 );
 
-// 취소와 중단은 핸드 ID를 요구하지 않는다.
+// 취소와 중단은 핸드 ID를 요구하지 않는다
 it.each(['UNDO', 'ABORT'] as const)('maps %s without a payload or hand scope', (type) => {
   const { snapshot } = waiting();
   expect(toServerCommands({ type }, snapshot)).toEqual([{ type, handScoped: false }]);

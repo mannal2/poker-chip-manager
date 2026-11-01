@@ -7,7 +7,7 @@ import {
 import { toGameState, viewSeatOf } from '../../src/features/online-game/model/toGameState';
 import { fixture } from './fixtures';
 
-// 딜러가 없는 대기방을 참가자 ID가 유지되는 준비 상태로 표시한다.
+// 딜러가 없는 대기방을 참가자 ID가 유지되는 준비 상태로 표시한다
 it('maps a waiting roster and preserves an unselected dealer', () => {
   const joined = fixture('join-room');
   if (!isJoinResponse(joined)) throw Error('Invalid fixture');
@@ -22,7 +22,7 @@ it('maps a waiting roster and preserves an unselected dealer', () => {
   expect(viewSeatOf(joined.state)).toBe(1);
 });
 
-// 진행 중인 서버 게임과 취소 기록 및 대기 차례를 그대로 유지한다.
+// 진행 중인 서버 게임과 취소 기록 및 대기 차례를 그대로 유지한다
 it('preserves game, undo and pending without recomputing rules', () => {
   const response = fixture('command-applied');
   if (!isCommandResponse(response) || !response.latestState) throw Error('Invalid fixture');
@@ -33,7 +33,7 @@ it('preserves game, undo and pending without recomputing rules', () => {
   expect(state.undo?.pot).toBe(15);
 });
 
-// 명단 좌석 대신 게임에서 본인 playerId의 위치를 찾는다.
+// 명단 좌석 대신 게임에서 본인 playerId의 위치를 찾는다
 it('finds the viewer by player identity in a running game', () => {
   const snapshot = fixture('snapshot-playing');
   if (!isRoomSnapshot(snapshot) || !snapshot.game) throw Error('Invalid fixture');

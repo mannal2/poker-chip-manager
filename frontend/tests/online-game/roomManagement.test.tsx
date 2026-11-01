@@ -11,9 +11,13 @@ import type {
 import playing from '../../../shared/api-contract/snapshot-playing.json';
 
 // 화면 치수와 애니메이션 대신 관리 조작의 실제 페이지 연결만 검사한다.
-vi.mock('../../src/shared/hooks/useScreenFit', () => ({ useScreenFit: () => {} }));
+vi.mock('../../src/shared/hooks/useScreenFit', () => ({
+  // 관리 테스트에서 화면 치수 효과를 대신한다.
+  useScreenFit: () => {},
+}));
 // 서버 관리 명령과 관계없는 칩 애니메이션 구독을 생략한다.
 vi.mock('../../src/features/online-game/hooks/useOnlineChipMotion', () => ({
+  // 관리 테스트에서 칩 효과 구독을 대신한다.
   useOnlineChipMotion: () => {},
 }));
 // 공통 화면 슬롯의 입출력을 유지하고 복잡한 테이블 렌더링을 생략한다.
@@ -105,9 +109,11 @@ async function mountRoom(phase: 'PLAYING' | 'RESULT' = 'PLAYING') {
   };
   const send = vi.fn(async () => true);
   const controller = {
+    // 관리 화면에 최신 테스트 상태를 제공한다.
     getView: () => view,
     send,
-    onConfirmed: () => () => {},
+    // 관리 테스트에서 확정 이벤트 알림 구독을 대신한다.
+    onObserved: () => () => {},
   } as unknown as OnlineController;
   const host = document.createElement('div');
   document.body.append(host);

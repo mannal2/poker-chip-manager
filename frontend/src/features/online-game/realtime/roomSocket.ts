@@ -23,6 +23,7 @@ export class RoomSocket {
   state: SocketState = 'connecting';
   private socket: WebSocket | null = null;
   private stopped = false;
+  private offline = false;
   private attempt = 0;
   private reconnectTimer: ReturnType<typeof setTimeout> | undefined;
   private watchdog: ReturnType<typeof setTimeout> | undefined;
@@ -35,6 +36,8 @@ export class RoomSocket {
     private readonly handlers: RoomSocketHandlers,
   ) {
     document.addEventListener('visibilitychange', this.onVisibility);
+    window.addEventListener('offline', this.onOffline);
+    window.addEventListener('online', this.onOnline);
     this.connect();
   }
 
@@ -56,6 +59,8 @@ export class RoomSocket {
     clearTimeout(this.reconnectTimer);
     clearTimeout(this.watchdog);
     document.removeEventListener('visibilitychange', this.onVisibility);
+    window.removeEventListener('offline', this.onOffline);
+    window.removeEventListener('online', this.onOnline);
     const socket = this.socket;
     this.socket = null;
     socket?.close();
@@ -73,6 +78,24 @@ export class RoomSocket {
     }
   };
 
+  // 브라우저의 연결 끊김 알림으로 소켓 종료를 기다리지 않고 조작을 잠근다.
+  private onOffline = (): void => {
+    this.offline = true;
+    if (!this.stopped) this.wait();
+  };
+
+  // 네트워크 복귀 시 예약된 지연을 해제하고 최신 상태를 다시 구독한다.
+  private onOnline = (): void => {
+    if (this.stopped) return;
+    this.offline = false;
+    clearTimeout(this.reconnectTimer);
+    clearTimeout(this.watchdog);
+    const socket = this.socket;
+    this.socket = null;
+    socket?.close();
+    this.connect();
+  };
+
   // 현재 연결 상태를 구독자에게 전달한다.
   private setState(state: SocketState): void {
     this.state = state;
@@ -81,7 +104,7 @@ export class RoomSocket {
 
   // 새 소켓의 이벤트만 허용하고 이전 소켓의 콜백을 무시한다.
   private connect(): void {
-    if (this.stopped) return;
+    if (this.stopped || this.offline) return;
     const previous = this.socket;
     this.setState('connecting');
     if (this.stopped || this.socket !== previous) return;

@@ -4,7 +4,7 @@
 
 실물 카드 게임의 칩·베팅 순서·팟·수동 정산을 관리하는 React/TypeScript 앱이다.
 현재 단일 기기 모드는 브라우저 IndexedDB에 게임과 기록을 보관하며 오프라인 PWA로 실행된다.
-온라인 경로는 준비 중 안내만 제공하고, 공통 게임 UI와 로컬 운영 코드는 분리되어 있다.
+온라인 모드는 실제 서버의 REST·WebSocket으로 방과 게임을 공유한다. 공통 게임 UI와 로컬·온라인 운영 코드는 분리되어 있다.
 이 문서는 현재 코드의 지도이며, 제품 요구와 규칙 상세는 [SPEC_INDEX.md](SPEC_INDEX.md)에서 찾는다.
 
 ## 전체 구조도
@@ -16,7 +16,10 @@
 flowchart TD
   Main["main.local.tsx / 로컬 진입점"] --> Page["LocalGamePage / 로컬 화면 조합"]
   Main --> Shared["shared / 범용 UI·브라우저 도구"]
-  Other["main.home.tsx · main.online.tsx / 이동·준비 중 안내"] --> Shared
+  Other["main.home.tsx / 로컬 앱 홈으로 이동"] --> Shared
+  Online["main.online.tsx / OnlineApp"] --> OnlineRoom["online-game / RoomPage·OnlineController"]
+  OnlineRoom --> UI
+  OnlineRoom --> API["REST·WebSocket / 서버 확정 상태"]
   Page --> UI["gameplay / 공통 화면·입력 Hook·표시 모델"]
   Page --> Local["local-game Hook / 세션·설정·기록·효과 연결"]
   Page --> PWA["pwa / 설치·업데이트"]
@@ -75,14 +78,14 @@ edge 구성은 [deploy/edge/compose.yaml](deploy/edge/compose.yaml)로 별도 �
 | 위치                     | 역할 한 줄                                  | 핵심 파일·심볼                                                                                                                     |
 | ------------------------ | ------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
 | `frontend/src/`          | 진입점별 React 시작과 기능 모듈의 루트      | [main.local.tsx](frontend/src/main.local.tsx), `main.online.tsx`, `main.home.tsx`, [README.md](frontend/src/README.md)             |
-| `frontend/src/app/`      | 공통 시작 처리와 루트 이동·온라인 안내 화면 | [mount.tsx](frontend/src/app/mount.tsx): `mount`; `HomeRedirect`, `OnlinePlaceholder`                                              |
+| `frontend/src/app/`      | 공통 시작 처리와 앱 홈 | [mount.tsx](frontend/src/app/mount.tsx): `mount`; `HomeRedirect`                                              |
 | `frontend/src/game/`     | UI·저장소와 독립적인 게임 상태·규칙         | [types.ts](frontend/src/game/types.ts): `GameState`, `GameCommand`; [transition.ts](frontend/src/game/transition.ts): `transition` |
 | `frontend/src/features/` | 공통 게임 기능과 모드별 운영의 경계         | `frontend/src/features/gameplay/`, `frontend/src/features/local-game/`, `frontend/src/features/pwa/`                               |
 
 HTML마다 자기 진입점을 로드한다. `local/index.html`은 [main.local.tsx](frontend/src/main.local.tsx), `online/index.html`은 `main.online.tsx`, 루트 `index.html`은 `main.home.tsx`다.
 세 진입점 모두 [mount.tsx](frontend/src/app/mount.tsx)의 `mount`로 `installZoomPolicy`를 설치하고 React 루트를 만든다.
-`/local/`은 `LocalGamePage`, `/online/`은 준비 중 안내, `/`는 `/local/`로 문서 이동한다.
-진입점이 나뉘어 온라인·루트 번들에는 로컬 저장소·게임 화면·PWA 등록 코드가 들어가지 않는다. 라우터 라이브러리나 서버 연결은 없다.
+`/local/`은 앱 홈과 단일 기기 게임을 조합하는 `LocalGamePage`, `/online/`은 `OnlineApp`이며 `/`는 `/local/`로 문서 이동한다. 모드를 고르는 앱 홈은 `/local/`에 있다.
+진입점이 나뉘어 온라인 번들에는 로컬 저장소·PWA 등록 코드가 들어가지 않는다. 온라인은 공통 게임 화면을 사용하고 라우터 라이브러리 없이 방 수명을 관리한다.
 
 게임 설정은 [settings.ts](frontend/src/game/settings.ts)의 `GameSettings`와 `validateSettings`에서 시작한다.
 턴과 딜러 위치는 [positions.ts](frontend/src/game/positions.ts)의 `nextSeat`, `nextPositions`가 계산한다.
@@ -116,6 +119,32 @@ HTML마다 자기 진입점을 로드한다. `local/index.html`은 [main.local.t
 [InlineName.tsx](frontend/src/features/gameplay/components/InlineName.tsx)는 이름 문자열·IME·저장 완료 순서를 다룬다.
 [BlindSettings.tsx](frontend/src/features/gameplay/components/BlindSettings.tsx)는 초기 SB·BB와 저장 콜백만 받는다.
 표시용 좌석 좌표는 [seatLayout.ts](frontend/src/features/gameplay/model/seatLayout.ts)의 `seatCoordinates`를 함께 사용한다.
+
+### 온라인 운영과 서버 연결
+
+| 위치 | 책임과 핵심 파일 |
+|---|---|
+| `features/online-game/OnlineApp.tsx`, `RoomPage.tsx` | 입장·복구·종료 단계와 공통 게임 화면·관리 메뉴 조합 |
+| `hooks/useOnlineController.ts` | React 구독, 자동 복귀, 문서 종료와 BFCache 수명 |
+| `session/onlineController.ts` | 서버 스냅샷, 조작 세대·순번·결과 불명 요청 한 건, 복구 조회와 세션 갱신 |
+| `api/client.ts`, `api/types.ts` | 메모리 CSRF 토큰·화면 스트림·REST와 수신 계약 검사 |
+| `realtime/roomSocket.ts` | 구독·PING/PONG·RESYNC·지터 재연결·오프라인 잠금·화면 복귀 |
+| `hooks/useOnlineGameSession.ts`, `model/` | 서버 상태와 허용 행동을 GameSession으로 변환, 명령·기록 문구 매핑 |
+| `hooks/useOnlineChipMotion.ts`, `components/` | 연속 확정 이벤트 효과, 대기방·연결 안내·관리·결과 UI |
+
+명령은 `GameScreen → GameSession.dispatch → toServerCommands → OnlineController → ApiClient → 서버 CommandPipeline` 순서다. 서버 응답이나 SNAPSHOT을 받은 뒤에만 잔액과 팟을 적용한다. 결과 불명 요청은 메모리에서 같은 식별자·순번·본문을 유지하고, 재연결 후 원장을 먼저 조회한다. 요청과 인증값·순번은 브라우저 저장소에 영속화하지 않는다.
+
+`onObserved`는 서버 이벤트 ID를 중복 제거하여 자동 행동·취소 알림과 취소 입력 초기화를 전달한다. HTTP가 먼저 같은 버전을 적용했어도 같은 tuple의 WebSocket 이벤트 알림은 한 번 전달하되 상태를 다시 적용하지 않는다. 낮은 tuple은 이벤트까지 무시한다. `onConfirmed`는 연속 버전의 칩 효과만 전달하며, 버전이 건너뛰면 알림은 가능해도 칩 효과를 재생하지 않는다.
+
+| 상태 | 소유자 |
+|---|---|
+| 잔액·팟·차례·권한·명단·정산 확정 | 서버 방과 게임 엔진 |
+| 화면 버전·연결·조작 세대·미확정 요청·최근 이벤트 | OnlineController |
+| CSRF·스트림 ID | ApiClient 메모리 |
+| 베팅 입력·승자 선택 표시·대화상자·효과 | 공통 Hook과 온라인 화면 |
+| 마지막 방 ID·코드 / 이 탭의 자동 인수 표시 | localStorage / sessionStorage (인증 정보 아님) |
+
+실제 문서 종료는 `pagehide`에서 keepalive 스트림 삭제를 요청한다. BFCache 진입은 스트림과 결과 불명 요청을 보존하고 소켓만 닫으며, 복귀는 세션 갱신·재구독·원장 조회를 이어간다. 새 탭은 관전으로 시작하고 이 탭의 표시가 있는 새로고침만 자동 인수한다.
 
 ### 로컬 운영과 저장
 
@@ -218,7 +247,7 @@ backend/gradlew -p backend :game:test
 ## 백엔드 서버 앱 (`backend/server`)
 
 Spring Boot 4·Spring MVC·가상 스레드 앱이다. 방은 서버 메모리에만 있다. 게임 변경은 REST로 받고(계획 2A), 상태 전달·연결 판정·방 수명·기기 복구는 WebSocket과 예약 작업이 맡는다(계획 2B).
-프런트엔드 온라인 화면은 이 서버에 아직 연결되지 않았다(계획 3). 배포도 아직 없다(계획 4).
+프런트엔드 온라인 화면은 이 서버에 연결되어 있다(계획 3). 서버 배포·운영 설정은 아직 없다(계획 4).
 패키지 `xyz.jwlee.poker.server` 아래 구조는 다음과 같다.
 
 | 위치 | 역할 한 줄 |
@@ -366,7 +395,7 @@ backend/gradlew -p backend :server:bootRun
 | 테이블·카드·보드 배치나 글자 크기 변경  | [Table.tsx](frontend/src/features/gameplay/components/Table.tsx), [table.css](frontend/src/features/gameplay/styles/table.css)                                                                                                                | `seatCoordinates`, `useScreenFit`, `useFitText`, DOM 선택자                                        |
 | 칩 이동 금액 또는 효과 변경             | [eventTransfers.ts](frontend/src/features/gameplay/model/eventTransfers.ts), [localChipTransfers.ts](frontend/src/features/local-game/model/localChipTransfers.ts), [useChipMotion.ts](frontend/src/features/gameplay/hooks/useChipMotion.ts) | 계산과 재생을 구분하고 저장 성공·재시도·정리 확인                                                  |
 | 설치 제안·업데이트 노출 시점 변경       | [usePwaPresentation.ts](frontend/src/features/pwa/usePwaPresentation.ts), [register.ts](frontend/src/features/pwa/register.ts)                                                                                                                | 홈 여부·저장 잠금·미확정 요청·업데이트 적용                                                        |
-| 멀티플레이 연결 시작                    | [main.online.tsx](frontend/src/main.online.tsx), [session.ts](frontend/src/features/gameplay/session.ts)                                                                                                                                      | `GameSession` 계약, 공통 UI의 props 경계와 [SYSTEM_SPEC.md](SYSTEM_SPEC.md); 서버 REST와 WebSocket은 있고 화면 연결은 계획 3, 예시는 `shared/api-contract/` |
+| 멀티플레이 연결 시작                    | [main.online.tsx](frontend/src/main.online.tsx), [session.ts](frontend/src/features/gameplay/session.ts)                                                                                                                                      | `GameSession` 계약, 공통 UI의 props 경계와 [SYSTEM_SPEC.md](SYSTEM_SPEC.md); REST·WebSocket 연결과 요청 원장 복구, 예시는 `shared/api-contract/` |
 | 서버 규칙(베팅·팟·정산·무르기) 변경 | `backend/game/.../game/`의 `command/BettingCommands`, `Legal`, `Settlement`, `Round`, `command/FlowCommands` | 같은 TS 파일(위 대응표)과 `shared/game-fixtures/` 기대값. 두 엔진이 모두 통과해야 한다 |
 | 서버 전용 기권 규칙 변경 | [ForfeitCommand.java](backend/game/src/main/java/xyz/jwlee/poker/game/command/ForfeitCommand.java), 주인 없는 층 반환은 `Round.returnOwnerless` | `shared/game-fixtures/forfeit.json`(Java 전용), MULTIPLAYER_MODE.md 10절 |
 | 서버 불변식·무작위 검사 변경 | [Invariants.java](backend/game/src/main/java/xyz/jwlee/poker/game/Invariants.java), `RandomTournamentTest` | 프런트 `invariants.ts`와 같은 코드 이름 |
@@ -386,7 +415,7 @@ backend/gradlew -p backend :server:bootRun
 ### 의존 방향
 
 아래 경계는 [eslint.config.js](frontend/eslint.config.js)의 `no-restricted-imports`로 lint에서 검사한다.
-`features/online-game/`이 생기면 로컬과 서로 import하지 않는 규칙도 이미 적용된다.
+`features/online-game/`과 `features/local-game/`은 서로 import하지 않는다.
 
 - `frontend/src/game/`의 import는 같은 규칙 디렉터리 안의 모듈로 한정된다.
   React·IndexedDB·로컬 세션·게임 UI를 import하지 않는다.
@@ -446,15 +475,14 @@ backend/gradlew -p backend :server:bootRun
 - 서비스 워커 scope와 캐시 목록은 별개다.
   빌드 파일 이름은 진입점 이름으로 시작하고(`local-`, `online-`, `home-`), 공통 파일은 `react-`·`start-`다. `features/online-game/` 모듈로만 이뤄진 청크도 `online-`으로 시작한다.
   캐시 목록은 `home-*`·`online-*`를 제외하며, [entry-routes.spec.ts](frontend/e2e/entry-routes.spec.ts)가 로컬 HTML에서 실제로 닿는 파일과 캐시 목록이 정확히 같은지 검사한다.
-- manifest 범위를 사이트 전체로 넓히는 결정(TECH_DECISIONS T53, 2026-10-27)은 멀티플레이 화면 구현 시 적용한다. 서비스 워커 범위·캐시는 그때도 `/local/`만이다.
+- manifest `scope`는 `/`이며 `start_url`·`id`는 `/local/`이다. 서비스 워커 범위·캐시는 `/local/`만이다.
 - 설치·업데이트 UI는 로컬 화면이 제어하며 공통 게임 컴포넌트가 등록을 시작하지 않는다.
   업데이트 적용 전에는 저장 중·미확정 요청 여부와 저장 상태 읽기를 확인한다.
 - 배포는 이미지 digest와 revision을 확인하고 새 자산을 기존 자산 볼륨에 덮어쓰지 않고 추가한다.
   열린 클라이언트의 이전 해시 URL을 유지하며 교체 실패 시 이전 이미지 복구를 시도한다.
 - 실패한 복구의 마커는 다음 배포를 막는다.
   [배포 안내](deploy/README.md)를 확인하지 않고 마커를 지워 재시작하는 방식으로 우회하지 않는다.
-- 온라인 경로는 현재 안내 화면이다.
-  향후 온라인 결과 확정과 권한 검증을 로컬 저장 Hook 또는 클라이언트 예측으로 대신하지 않는다.
+- 온라인 결과 확정과 권한 검증은 서버가 담당한다. 로컬 저장 Hook이나 클라이언트 규칙 예측으로 대신하지 않는다.
 
 ## 테스트·검증 위치
 
@@ -542,3 +570,9 @@ bash deploy/test-deploy-frontend.sh
 [test-copy-frontend-assets.sh](deploy/test-copy-frontend-assets.sh)는 CI의 제품 이미지 안에서 실제 복사 명령을 검사한다.
 이 테스트 결과를 실제 서버·인증서·네트워크 상태 확인으로 간주하지 않는다.
 배포 절차와 복구 판단은 [deploy/README.md](deploy/README.md), 요구사항은 [DEPLOYMENT_SPEC.md](DEPLOYMENT_SPEC.md)를 따른다.
+
+### 온라인 실제 서버 E2E
+
+`npm --prefix frontend run test:e2e:online`은 `playwright.online.config.ts`로 Spring Boot e2e 프로필(8080)과 별도 preview(4174)를 시작하고 Chromium·WebKit에서 실행한다. 로컬 E2E와 별개이며 CI에는 아직 추가하지 않았다. JDK 25가 필요하다. `frontend/tests/online-game/`은 계약·변환·HTTP·소켓·컨트롤러·화면 단위 검사를 담당한다.
+
+온라인 E2E는 입장·준비·베팅·정산·관리·복구·종료에 더해 실제 5초 유예, 응답 유실 후 원장 확인, 오프라인과 화면 복귀, 다중 탭 인수, 반복 새로고침, 세 명의 종료·재준비·두 번째 시작을 검사한다. 빌드 산출물 `dist/`를 공유하므로 로컬 E2E·빌드와 동시에 실행하지 않는다. 실제 iPhone과 설치 앱 동작은 DEVICE_CHECKS.md의 미검증 목록으로 관리한다.

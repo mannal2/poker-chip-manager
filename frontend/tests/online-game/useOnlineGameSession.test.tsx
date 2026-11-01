@@ -31,7 +31,10 @@ it('retains a cleared pick through the initial draft and delayed first echo unti
     recovery: null,
     error: null,
   };
-  const controller = { getView: () => view, sendDraft: vi.fn() } as unknown as OnlineController;
+  const controller = {
+    // 온라인 세션 Hook에 현재 테스트 상태를 제공한다.
+    getView: () => view, sendDraft: vi.fn(),
+  } as unknown as OnlineController;
   let result!: ReturnType<typeof useOnlineGameSession>;
   // 서버 초안의 확정 순서를 실제 훅에 전달한다.
   function Harness() {
@@ -91,7 +94,10 @@ it('keeps the latest host pick through delayed echoes and restores server picks 
     error: null,
   };
   const sendDraft = vi.fn();
-  const controller = { getView: () => view, sendDraft } as unknown as OnlineController;
+  const controller = {
+    // 온라인 세션 Hook에 현재 테스트 상태를 제공한다.
+    getView: () => view, sendDraft,
+  } as unknown as OnlineController;
   let result!: ReturnType<typeof useOnlineGameSession>;
   // 실제 훅의 공유 선택을 렌더링한다.
   function Harness() {
@@ -196,6 +202,7 @@ it('adapts authoritative permissions, live guards and own rename without grantin
   };
   const send = vi.fn(async () => true);
   const controller = {
+    // 온라인 세션 Hook에 현재 테스트 상태를 제공한다.
     getView: () => view,
     send,
     loadEvents: vi.fn(),

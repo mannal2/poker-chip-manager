@@ -113,7 +113,9 @@ export function useOnlineGameSession(view: OnlineView, controller: OnlineControl
     viewSeat: viewSeatOf(snapshot),
     busy,
     notify,
+    // 현재 연결과 조작권으로 준비 입력의 잠금 여부를 확인한다.
     isLocked: () => guard() !== null,
+    // 서버에서 확정한 현재 준비 설정을 제공한다.
     getSettings: () => state.settings,
     run,
     dispatch,
@@ -138,17 +140,20 @@ export function useOnlineGameSession(view: OnlineView, controller: OnlineControl
     run,
     dispatch,
     notify,
+    // 대기방의 본인 이름만 편집하도록 허용한다.
     canRename: (id) => snapshot.roomPhase === 'WAITING' && id === snapshot.you.participantId,
     disconnectedIds: new Set(
       snapshot.participants.filter((p) => !p.connected).map((p) => p.playerId ?? p.participantId),
     ),
     dockNotice: dockNoticeFor(snapshot, snapshot.you.participantId),
+    // 부족한 권한에 맞는 화면 안내를 반환한다.
     denied: (need) =>
       need === 'canAct'
         ? '내 차례가 아닙니다'
         : need === 'canUndo'
           ? '방장만 취소할 수 있습니다'
           : '방장만 조작할 수 있습니다',
+    // 현재 방의 서버 기록을 공통 기록 화면에 제공한다.
     loadEvents: (tournamentId, after, limit) => controller.loadEvents(tournamentId, after, limit),
   };
   const setup: SetupControls = { ...editing, rename, validateSettings: validateOnlineSettings };

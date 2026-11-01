@@ -106,7 +106,7 @@ export function RoomPage({ view, controller }: { view: OnlineView; controller: O
   useOnlineChipMotion(screen, controller, view.snapshot!);
   useEffect(
     () =>
-      controller.onConfirmed(({ events }) => {
+      controller.onObserved((events) => {
         if (events.some((event) => event.type === 'UNDO')) {
           resetSelection();
           game.current?.resetSelection();

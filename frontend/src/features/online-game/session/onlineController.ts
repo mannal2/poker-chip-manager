@@ -48,6 +48,7 @@ export class OnlineController {
   };
   private listeners = new Set<() => void>();
   private confirmed = new Set<(value: Confirmed) => void>();
+  private observed = new Set<(events: GameEvent[]) => void>();
   private knownEvents = new Map<string, KnownEvent>();
   private socket: SocketPort | null = null;
   private generation = 0;
@@ -106,6 +107,11 @@ export class OnlineController {
   onConfirmed(listener: (value: Confirmed) => void): () => void {
     this.confirmed.add(listener);
     return () => this.confirmed.delete(listener);
+  }
+  // 서버 확정 이벤트의 알림을 상태 적용과 칩 효과 수명에서 분리하여 구독한다.
+  onObserved(listener: (events: GameEvent[]) => void): () => void {
+    this.observed.add(listener);
+    return () => this.observed.delete(listener);
   }
   // 새 화면 값을 저장하고 모든 구독자에게 알린다.
   private update(patch: Partial<OnlineView>): void {
@@ -287,13 +293,6 @@ export class OnlineController {
         (next.stateVersion === previous.stateVersion && next.draftVersion < previous.draftVersion)
       )
         return;
-      if (
-        message &&
-        next.stateVersion === previous.stateVersion &&
-        next.draftVersion === previous.draftVersion &&
-        message.previousVersion !== null
-      )
-        return;
     }
     if (next.you.controlGeneration > this.generation) this.queuedDraft = null;
     if (!same) this.knownEvents.clear();
@@ -309,6 +308,16 @@ export class OnlineController {
     }
     while (this.knownEvents.size > 200)
       this.knownEvents.delete(this.knownEvents.keys().next().value!);
+    if (fresh.length) this.observed.forEach((listener) => listener(fresh));
+    if (
+      previous &&
+      same &&
+      message &&
+      next.stateVersion === previous.stateVersion &&
+      next.draftVersion === previous.draftVersion &&
+      message.previousVersion !== null
+    )
+      return;
     try {
       if (
         previous &&
@@ -642,10 +651,29 @@ export class OnlineController {
       error: null,
     });
   }
+  // BFCache에서는 요청 원장을 유지하고 실제 문서 종료에서만 서버 스트림을 반환한다.
+  suspend(persisted: boolean): void {
+    if (persisted) {
+      this.socket?.close();
+      this.socket = null;
+      this.update({ connection: 'offline' });
+      return;
+    }
+    this.stop();
+    this.update({ phase: 'entry', connection: 'offline', hasControl: false, pending: false });
+  }
+  // BFCache 복귀 시 기존 스트림과 결과 불명 요청으로 연결 및 원장 확인을 이어간다.
+  restore(): void {
+    if (!this.active) return;
+    void this.api.refresh();
+    if (this.view.phase === 'room') this.connect();
+    else if (this.request) void this.retry();
+  }
   // 컨트롤러의 외부 구독과 브라우저 자원을 모두 정리한다.
   dispose(): void {
     this.stop();
     this.listeners.clear();
     this.confirmed.clear();
+    this.observed.clear();
   }
 }

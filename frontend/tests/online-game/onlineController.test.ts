@@ -6,6 +6,87 @@ import type { RoomSocketHandlers } from '../../src/features/online-game/realtime
 import type { JoinResponse, RoomSnapshot } from '../../src/features/online-game/api/types';
 
 const controllers: OnlineController[] = [];
+// HTTP 응답이 먼저 적용되어도 같은 버전의 확정 알림을 한 번 전달하고 효과와 상태는 건드리지 않는다.
+it.each(['CHECK', 'UNDO'])('observes HTTP-first %s once without replaying effects or replacing state', async (type) => {
+  const x = setup();
+  await x.enter();
+  const next = { ...x.entry.state, stateVersion: x.entry.state.stateVersion + 1, draftVersion: 2 };
+  const observed = vi.fn();
+  const effect = vi.fn();
+  x.c.onObserved(observed);
+  x.c.onConfirmed(effect);
+  x.api.post.mockImplementationOnce(async (_path, raw) => ({ ok: true, body: { ...(raw as object), outcome: 'APPLIED', code: 'OK', resultStateVersion: next.stateVersion, latestState: next } }));
+  await x.c.send([{ type: 'CHECK', handScoped: true }]);
+  const event = { id: type, type, at: '', tournamentId: next.tournamentId!, hand: 1, details: { playerId: 'p0', auto: type === 'CHECK' } };
+  const message = { type: 'SNAPSHOT' as const, previousVersion: x.entry.state.stateVersion, events: [event], state: next };
+  x.h.onSnapshot({ ...message, state: { ...next, draftVersion: 1 } });
+  x.h.onSnapshot({ ...message, state: { ...next, stateVersion: next.stateVersion - 1 } });
+  expect(observed).not.toHaveBeenCalled();
+  expect(x.c.getKnownEvents().size).toBe(0);
+  const confirmedState = x.c.getView().snapshot;
+  x.h.onSnapshot({ ...message, state: structuredClone(next) });
+  x.h.onSnapshot(message);
+  expect(observed).toHaveBeenCalledExactlyOnceWith([event]);
+  expect(x.c.getKnownEvents().has(type)).toBe(true);
+  expect(x.c.getView().snapshot).toBe(confirmedState);
+  expect(effect).not.toHaveBeenCalled();
+});
+
+// HTTP를 보내지 않는 관찰자는 같은 이벤트의 알림과 연속 효과를 각각 한 번 받는다.
+it('observes fresh and gap events independently from consecutive chip effects', async () => {
+  const x = setup();
+  await x.enter();
+  const observed = vi.fn();
+  const effect = vi.fn();
+  x.c.onObserved(observed);
+  x.c.onConfirmed(effect);
+  const before = x.c.getView().snapshot!;
+  const event = { id: 'check', type: 'CHECK', at: '', tournamentId: before.tournamentId!, hand: 1, details: { playerId: 'p0', auto: true } };
+  const next = { ...before, stateVersion: before.stateVersion + 1 };
+  x.h.onSnapshot({ type: 'SNAPSHOT', previousVersion: before.stateVersion, events: [event], state: next });
+  expect(observed).toHaveBeenCalledExactlyOnceWith([event]);
+  expect(effect).toHaveBeenCalledOnce();
+  x.h.onSnapshot({ type: 'SNAPSHOT', previousVersion: next.stateVersion + 1, events: [{ ...event, id: 'gap' }], state: { ...next, stateVersion: next.stateVersion + 2 } });
+  expect(observed).toHaveBeenCalledTimes(2);
+  expect(effect).toHaveBeenCalledOnce();
+});
+// 결과 불명 요청이 없어도 수동 연결 버튼의 동작이 새 구독을 시작하는지 확인한다.
+it('reconnects an idle room without requiring a pending request', async () => {
+  const x = setup();
+  await x.enter();
+  expect(x.c.getView().pending).toBe(false);
+  x.c.reconnect();
+  expect(x.socket.subscribe).toHaveBeenCalledTimes(2);
+  expect(x.c.getView().connection).toBe('syncing');
+  x.h.onSnapshot({ type: 'SNAPSHOT', previousVersion: null, events: [], state: x.entry.state });
+  expect(x.c.getView().connection).toBe('online');
+  expect(x.api.get).not.toHaveBeenCalled();
+});
+// BFCache 수명 동안 원장과 구독을 유지하고 같은 결과 불명 명령을 조회한다.
+it('preserves an unknown command across BFCache and releases the stream on document exit', async () => {
+  const x = setup();
+  await x.enter();
+  x.api.post.mockResolvedValueOnce({ ok: false, unknown: true });
+  await x.c.send([{ type: 'CHECK', handScoped: true }]);
+  const body = x.api.post.mock.lastCall![1] as { requestId: string; sequence: number };
+  const listener = vi.fn();
+  x.c.subscribe(listener);
+  x.c.suspend(true);
+  expect(x.api.closeStream).not.toHaveBeenCalled();
+  expect(x.c.getView().pending).toBe(true);
+  expect(sessionStorage.getItem('online.controlRoom')).toBe(x.entry.roomId);
+  x.api.get.mockResolvedValueOnce({ ok: true, body: { ...body, outcome: 'APPLIED', code: 'OK', resultStateVersion: 1, latestState: x.entry.state } });
+  x.c.restore();
+  x.h.onState('open');
+  await vi.waitFor(() => expect(x.c.getView().pending).toBe(false));
+  expect(x.api.get).toHaveBeenCalledWith(expect.stringContaining(`/requests/${body.requestId}`));
+  expect(x.api.post).toHaveBeenCalledTimes(2);
+  expect(x.api.refresh).toHaveBeenCalledOnce();
+  expect(listener).toHaveBeenCalled();
+  x.c.suspend(false);
+  expect(x.api.closeStream).toHaveBeenCalledOnce();
+  expect(sessionStorage.getItem('online.controlRoom')).toBe(x.entry.roomId);
+});
 // 같은 발행 묶음과 후속 발행에 중복된 이벤트 ID의 효과를 한 번만 전달한다.
 it('deduplicates confirmed event ids within and across publications', async () => {
   const x = setup();
@@ -199,6 +280,7 @@ function setup() {
     socket,
     entry,
     enter,
+    // 현재 연결에 등록된 소켓 핸들러를 제공한다.
     get h() {
       return handlers;
     },

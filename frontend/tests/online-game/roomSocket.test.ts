@@ -42,6 +42,7 @@ beforeEach(() => {
   FakeSocket.instances = [];
   visibility = Object.assign(new EventTarget(), { visibilityState: 'visible' });
   vi.stubGlobal('document', visibility);
+  vi.stubGlobal('window', new EventTarget());
   vi.stubGlobal('WebSocket', FakeSocket);
 });
 // 연결이 소유한 자원과 가짜 브라우저 환경을 정리한다.
@@ -58,6 +59,25 @@ function setup() {
   room.subscribe(snapshot.state.roomId, 9);
   return handlers;
 }
+
+// 브라우저의 오프라인 알림으로 즉시 잠그고 연결 복귀 시 소켓을 교체한다.
+it('closes immediately on offline and reconnects immediately on online', () => {
+  const handlers = setup();
+  FakeSocket.instances[0].open();
+  window.dispatchEvent(new Event('offline'));
+  expect(handlers.onState).toHaveBeenLastCalledWith('waiting');
+  expect(FakeSocket.instances[0].readyState).toBe(3);
+  vi.advanceTimersByTime(15000);
+  visibility.dispatchEvent(new Event('visibilitychange'));
+  expect(FakeSocket.instances).toHaveLength(1);
+  window.dispatchEvent(new Event('online'));
+  expect(FakeSocket.instances).toHaveLength(2);
+  FakeSocket.instances[1].open();
+  expect(FakeSocket.instances[1].sent[0]).toMatchObject({ type: 'SUBSCRIBE' });
+  room.close();
+  window.dispatchEvent(new Event('online'));
+  expect(FakeSocket.instances).toHaveLength(2);
+});
 
 // 외부 상태 콜백에서 종료하면 이후 소켓과 타이머를 만들지 않는다.
 it.each(['connecting', 'open', 'waiting'])(

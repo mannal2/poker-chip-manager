@@ -39,12 +39,15 @@ function session(overrides: Partial<GameSession> = {}): GameSession {
     legal: null,
     viewSeat: 0,
     scope: 1,
+    // 테스트 세션의 조작 차단 사유를 제공한다.
     guard: () => null,
+    // 테스트 화면의 명령 실행을 연결한다.
     run: async (action) => {
       await action();
     },
     dispatch: vi.fn(async () => true),
     notify: vi.fn(),
+    // 테스트 화면에 빈 기록을 제공한다.
     loadEvents: async () => [],
     ...overrides,
   };
@@ -58,6 +61,7 @@ async function render(s: GameSession, dialog = '', ref?: React.Ref<GameScreenHan
       pressed: null,
       ready: null,
       order: s.state.players.map((p) => p.id),
+      // 테스트 칩 효과의 좌표 준비 콜백을 제공한다.
       handlers: () => ({
         onPointerDown: ignoreDrag,
         onPointerMove: ignoreDrag,
@@ -131,6 +135,7 @@ it('canRename overrides setup permission only for the permitted name', async () 
   const s = session({
     state: createTournament(defaultSettings, ctx),
     capabilities: { ...fullCapabilities, canEditSetup: false },
+    // 본인 카드에만 이름 편집을 허용한다.
     canRename: (id) => id === 'p0',
   });
   const setup = await render(s);
@@ -202,6 +207,7 @@ it('uses controlled winners and pot index without optimistic edits', async () =>
 it('uses capability-specific denial and the default fallback', async () => {
   const s = session({
     capabilities: { ...fullCapabilities, canAct: false, canUndo: false },
+    // 권한 거절 안내를 테스트 화면에 제공한다.
     denied: (need) => `denied:${need}`,
   });
   await render(s);

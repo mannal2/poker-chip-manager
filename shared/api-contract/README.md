@@ -1,6 +1,6 @@
 # API 예시 계약
 
-서버(`backend/server`)와 앞으로 만들 TS 온라인 클라이언트가 함께 기준으로 삼는 HTTP·WebSocket 예시다. 손으로 쓰지 않는다. `ApiContractTest`가 대본대로 실제 서버 스택을 호출해 얻은 요청·응답·소켓 메시지를 저장한 것이다.
+서버(`backend/server`)와 TS 온라인 클라이언트가 함께 기준으로 삼는 HTTP·WebSocket 예시다. 손으로 쓰지 않는다. `ApiContractTest`가 대본대로 실제 서버 스택을 호출해 얻은 요청·응답·소켓 메시지를 저장한 것이다.
 
 ## 형식
 
@@ -50,10 +50,12 @@
 
 ## 검사와 갱신
 
-`ApiContractTest`는 예시 파일 목록과 실제 교환 목록이 같은지, 필드 이름·타입·값이 같은지 검사한다. 서버에 응답 DTO가 없어 DTO 왕복 대신 이 비교를 쓴다. TS 쪽 검사는 계획 3에서 추가한다.
+`ApiContractTest`는 예시 파일 목록과 실제 교환 목록이 같은지, 필드 이름·타입·값이 같은지 검사한다. 서버에 응답 DTO가 없어 DTO 왕복 대신 이 비교를 쓴다. `frontend/tests/online-game/contract.test.ts`가 TS 수신 타입과 예시를 검사한다. `client.test.ts`·`roomSocket.test.ts`·`onlineController.test.ts`는 통신·버전 병합·동일 요청 복구를 검사하고 실제 서버 연결은 `npm --prefix frontend run test:e2e:online`으로 별도 실행한다.
 
 응답을 의도적으로 바꿨을 때만 저장소 루트에서 다시 만든다. 값이 정확히 `1`일 때만 동작하고 `CI` 환경 변수가 있으면 거절한다. 다시 만든 실행은 일부러 실패하므로, diff를 검토한 뒤 변수 없이 다시 실행해 통과를 확인한다.
 
 ```bash
 UPDATE_API_CONTRACT=1 backend/gradlew -p backend :server:cleanTest :server:test --tests '*ApiContractTest*'
 ```
+
+인증 쿠키·CSRF·요청 원장은 브라우저 저장소에 복제하지 않는다. 마지막 방 메타데이터와 탭 자동 인수 표시만 저장하며, 결과 불명 요청은 같은 화면 메모리에 보관한다. BFCache 복귀는 같은 스트림·요청으로 이어가고 실제 문서 종료는 keepalive로 화면 스트림을 삭제한다.

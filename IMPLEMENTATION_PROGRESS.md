@@ -591,3 +591,19 @@ A00~A11 단일 기기 구현과 자동 검증을 마쳤다. 멀티플레이·실
 - 검증(2026-10-31): `backend/gradlew -p backend test --rerun-tasks` 627개 PASS(실패·건너뜀 0), 컴파일 경고 없음(-Werror). `DisconnectedTournamentHttpTest`는 `poker.sweep.enabled=true`로 시계만 진행시켜 실제 `SweepTask`·`HeartbeatTask`가 도는 것을 확인했다(PING 수신과 응답, 무응답 소켓 닫힘, 방장 인수 요청 열림). 관련 소켓 테스트는 고정 대기 없이 제한 시간 있는 메시지 대기만 쓴다. 프런트 코드를 바꾸지 않아 프런트 검증은 생략했다.
 - 범위 밖: 온라인 화면, 자동·기권 기록 문구와 TS 이벤트 타입, 취소 알림 문구, 재연결 간격, 세션 6시간 갱신, 복구 결과 조회 주기, TS 계약 검사, REST의 410 `ROOM_GONE`(계획 3). 요청 빈도 제한, 운영 쿠키, 서버 배포(계획 4). C04·C05 전체 완료가 아니라 서버 부분만 끝났다.
 - 한계: 실기기 검증과 부하 시험(10방, 서버 전체 500연결 실사용, 장시간 메모리)은 하지 않았다. 500연결 한도는 가짜 소켓으로 채워 시험했고, 실제 Tomcat 소켓의 전송 정체(10초)는 재현하지 않았다. GitHub CI는 이번에도 실행하지 않았다. 시간 값은 측정 전 초기안이다.
+
+## 2026-11-01: 계획 3: 온라인 화면 (C06·C07의 화면 범위)
+
+- 구현: `features/online-game`의 API 계약·REST·WebSocket·세션 컨트롤러·입장·기기 복구·대기방·베팅·정산 공유·확정 이벤트 효과·관리 메뉴·결과와 재준비를 공통 GameSession에 연결했다. `/online/`은 서비스 워커가 제어하지 않고 manifest scope는 `/`, start_url·id는 `/local/`을 유지한다.
+- Task 10: 실제 서버 재연결·두 탭·세 명의 전체 토너먼트 E2E를 추가했다. 오프라인 잠금·접속 끊김 카드·자동 체크, 실제 대기방 5초 유예 안팎, 확정 후 응답 유실 원장 확인(명령 POST 한 번), 차례 직후 새로고침·초안 폐기, 무응답 소켓의 화면 복귀, 조작권 인수·남은 탭의 연결, 열 번 새로고침, 정상 종료·재준비·두 번째 시작과 모든 화면의 총 칩을 검사한다.
+- 수정 근거: pagehide 정리가 없어 새로고침 여덟 번 뒤 스트림 한도에 도달하는 실패를 두 브라우저에서 재현했다. 실제 문서 종료에서는 keepalive 스트림 삭제를 요청한다. BFCache에서는 스트림과 메모리의 결과 불명 요청을 유지하고 소켓만 닫으며 복귀에서 같은 원장을 확인한다. 브라우저 offline 알림으로 조작을 즉시 잠그고 online 이전에는 재연결 시도를 열지 않는다. WebKit에서 offline 중에도 소켓이 재개되어 유예가 끝나지 않는 실패를 이 방식으로 고쳤다.
+- 검증: JDK 25로 `backend/gradlew.bat -p backend test` PASS(exit 0, 마지막 실행 52초). XML 합계 638개(game 176·game-json 7·server 455), 실패·오류·건너뜀 0. game·game-json 검사는 현재 소스의 UP-TO-DATE 결과를 사용했고 server 검사는 다시 실행했다. 프런트 lint·typecheck PASS, 전체 Vitest 39파일 353개 PASS(exit 0), 제품 build PASS.
+- 로컬 전체: `npm --prefix frontend run test:e2e`는 447개 PASS·기존 조건부 제외 3개, 실패 0(exit 0, 4.9분). 일반 단계 → chromium-serial → webkit-serial을 그대로 실행했다. 이 실행의 빌드는 마지막 주석 보완 전이며 주석만 보완한 뒤의 제품 JavaScript·CSS 해시는 같았다. 이후 온라인 알림 결함 수정과 최종 검증 범위는 아래에 별도로 기록한다.
+- 온라인 집중: `npm --prefix frontend run test:e2e:online -- two-tabs.spec.ts reconnect.spec.ts full-tournament.spec.ts --workers=1`은 두 브라우저 16개 PASS(exit 0, 55.8초). 기본 전체 온라인 최종 실행은 54개 PASS(exit 0, 2.0분, 기본 9 workers)였다. 전체 첫 실행의 실패와 수정은 아래에 기록한다.
+- 주석 검사: 계획 3 전 소스(b1d387c)를 기준으로 추가한 이름 있는 함수·컴포넌트·클래스·메서드·객체 콜백·getter와 테스트 308개를 TypeScript AST로 검사했다. 한글 역할 주석 누락 19곳을 보완한 뒤 누락 0개를 확인했다. 기존 코드의 무관한 주석은 수정하지 않았다.
+- 한계: 실기기 iPhone/Android, 설치 앱 안의 온라인 창·공유 시트·실제 OS BFCache와 강제 종료는 미검증이다. BFCache 자동 검사는 persisted pagehide/pageshow 이벤트와 단위 원장 보존 검사이며 실제 iPhone 탐색 기록 검증을 대신하지 않는다. Task 9의 앞선 WebKit 동일 화면 재참가 두 번 실패의 원인은 미확정이며 이후 진단 통과를 원인 해결로 간주하지 않는다. 서버 배포·운영 쿠키·요청 빈도 제한·온라인 CI·부하 검사는 계획 4로 남긴다. 로컬 커밋만 수행한다.
+
+- 전체 온라인 첫 실행은 53개 PASS·Chromium 자동 행동 알림 1개 FAIL(exit 1, 1.8분)이었다. HTTP가 먼저 상태를 확정하면 같은 tuple의 WebSocket 이벤트까지 버려 요청자 알림이 누락되는 실제 결함을 확인했다. onObserved로 이벤트 알림과 취소 입력 초기화를 칩 효과(onConfirmed)에서 분리했고, 낮은 tuple 무시·같은 tuple 상태 객체 유지·효과 미재생·중복 알림 방지와 gap 알림을 회귀 검사했다. HTTP 응답이 먼저 적용되도록 WebSocket을 보류한 실제 서버 검사에서 요청자와 관찰자 모두 자동·취소 문구를 확인했다.
+- 이 마지막 변경은 온라인 전용 controller·RoomPage 및 관련 검사에 한정된다. 앞선 로컬 전체 447개 통과 뒤 로컬·공통 UI 동작은 바꾸지 않았다. 최종 소스의 정산·재연결 14개는 PASS(exit 0, 1.1분), lint·typecheck·전체 단위 353개·제품 build도 다시 PASS했다. 제품 온라인 청크는 online-DjydbWNv.js이며 로컬·공통 청크 해시는 그대로다.
+
+- 최종 기본 `npm --prefix frontend run test:e2e:online`은 54개 전부 PASS(exit 0, 2.0분). Chromium·WebKit의 실제 60초 방장 인수와 Task 9의 결합·분리 동일 화면 재참가 검사를 모두 포함하며 skip·retry는 없다.

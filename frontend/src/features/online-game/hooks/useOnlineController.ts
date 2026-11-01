@@ -30,9 +30,19 @@ export function useOnlineController() {
     // 효과 재실행에서 폐기된 복귀를 시작하지 않는다.
     queueMicrotask(resume);
     window.addEventListener('online', resume);
+    // 문서 종료에서는 스트림을 반환하고 BFCache 진입에서는 요청 메모리를 보존한다.
+    const hide = (event: PageTransitionEvent) => controller.suspend(event.persisted);
+    // BFCache에서 복원된 화면은 같은 구독자와 스트림으로 소켓 연결을 복구한다.
+    const show = (event: PageTransitionEvent) => {
+      if (event.persisted) controller.restore();
+    };
+    window.addEventListener('pagehide', hide);
+    window.addEventListener('pageshow', show);
     return () => {
       active = false;
       window.removeEventListener('online', resume);
+      window.removeEventListener('pagehide', hide);
+      window.removeEventListener('pageshow', show);
       controller.dispose();
     };
   }, [controller]);

@@ -24,6 +24,7 @@ test('websocket rejects a participant without a session', async ({ browser }) =>
     // 실제 업그레이드를 시도하여 연결이 열리지 않는지 확인한다.
     const opened = await page.evaluate(
       () =>
+        // 웹소켓 업그레이드 결과를 이벤트로 확인한다.
         new Promise<boolean>((resolve) => {
           const socket = new WebSocket(`${location.origin.replace('http', 'ws')}/ws`);
           // 잘못 열린 연결을 닫고 실패 결과를 전달한다.

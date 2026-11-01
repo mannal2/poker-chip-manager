@@ -170,7 +170,7 @@
 
 **Interfaces:**
 - Produces: 이미지는 `bootJar`를 담은 `eclipse-temurin:25-jre` 기반이고 `curl`을 포함하며 비루트 사용자로 실행한다. `SPRING_PROFILES_ACTIVE=prod`, `JAVA_TOOL_OPTIONS`로 힙을 받는다. 라벨 `org.opencontainers.image.revision`을 빌드 인자로 받는다.
-- Compose `backend`: `image: ${BACKEND_IMAGE:?}`, `mem_limit: ${BACKEND_MEM_LIMIT:?}`, alias `poker-backend`, `poker-edge` 네트워크, publish 없음, `restart: unless-stopped`, `.local/deploy/gate:/run/poker-gate:ro`, 로그 10MiB × 3개, `stop_grace_period: 30s`.
+- Compose `backend`: `image: ${BACKEND_IMAGE:?}`, `mem_limit: ${BACKEND_MEM_LIMIT:?}`, `memswap_limit: ${BACKEND_MEM_LIMIT:?}`(JVM이 스왑을 쓰지 않게 한다), alias `poker-backend`, `poker-edge` 네트워크, publish 없음, `restart: unless-stopped`, `.local/deploy/gate:/run/poker-gate:ro`, 로그 10MiB × 3개, `stop_grace_period: 30s`.
 - `pcm.conf`: `map $http_upgrade $connection_upgrade`, `location /api/`와 `location = /ws`가 `$poker_backend`(`poker-backend:8080`, 변수로 Docker DNS 재조회)로 전달한다. `/ws`는 Upgrade를 전달하고 `proxy_read_timeout 75s`다. 전달 헤더는 값을 덮어쓴다. `/internal/`은 프런트로 가지 않고 404다.
 - 건강 응답 `version`에 커밋 SHA를 담는다.
 

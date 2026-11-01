@@ -453,12 +453,52 @@ test_broken_mount() {
   export SCENARIO=broken-mount
   run_deploy
   check 'exit' [ "$result" = 1 ]
-  check 'word' grep -q 'RECOVERY_REQUIRED.*ROLLBACK_FAILED' "$fixture/output"
+  check 'word' grep -q 'RECOVERY_REQUIRED.*GATE_MOUNT_BROKEN' "$fixture/output"
+  check 'proof voided' grep -q phase=releasing "$state/backend-pending"
   check 'one up only' [ "$(grep -c 'up -d' "$fixture/calls")" = 1 ]
   check 'fails before edge checks' [ ! -e "$fixture/edge-calls" ]
   check 'does not wait' [ ! -e "$fixture/sleeps" ]
   check 'no release' lacks /release "$fixture/internal"
   echo 'PASS broken mount'
+  echo 2 > "$fixture/active"
+  : > "$fixture/calls"
+  export SCENARIO=status-down
+  run_script recover-backend.sh
+  check 'blind exit' [ "$result" = 1 ]
+  check 'blind no replacement' lacks 'up -d' "$fixture/calls"
+  check 'blind running new' grep -q new "$fixture/running"
+  check 'blind pending' [ -e "$state/backend-pending" ]
+  echo 'PASS broken mount then unknown status never replaces'
+}
+# 표시와 달리 열린 서버는 성공으로 기록하지 않고 마운트를 고친 뒤에야 끝낸다
+test_recover_mount_warning() {
+  local scenario
+  for scenario in broken-mount kill-after-up; do
+    reset
+    export SCENARIO=$scenario
+    run_deploy
+    # The kill variant reaches recovery with phase replacing and a server that reads open.
+    [[ $scenario == broken-mount ]] || : > "$fixture/holder"
+    export SCENARIO=''
+    : > "$fixture/calls"
+    run_script recover-backend.sh
+    check "$scenario exit" [ "$result" = 1 ]
+    check "$scenario word" grep -q GATE_MOUNT_BROKEN "$fixture/output"
+    check "$scenario current untouched" [ ! -e "$state/backend-current" ]
+    check "$scenario lastHealthy untouched" grep -q "revision=$old_revision" "$state/backend-lastHealthy"
+    check "$scenario no replacement" lacks 'up -d' "$fixture/calls"
+    check "$scenario gate file closed" lacks COMPLETE "$gate_file"
+    check "$scenario proof voided" grep -q phase=releasing "$state/backend-pending"
+    echo "PASS mount warning after $scenario"
+  done
+  # 고친 마운트로 다시 띄우면 닫힌 채 기동한다
+  echo deploy-1 > "$fixture/holder"
+  run_script recover-backend.sh
+  check 'fixed exit' [ "$result" = 0 ]
+  check 'fixed word' grep -q 'RECOVERED completed' "$fixture/output"
+  check 'fixed recorded' grep -q "image=$target" "$state/backend-current"
+  check 'fixed gate' gate_open
+  echo 'PASS mount fixed then recovery completes'
 }
 # 재부팅된 이전 서버는 새 프로세스 식별로 해제한다
 test_rollback_uses_new_process() {
@@ -731,11 +771,49 @@ test_recover_unknown_running() {
   reset
   export SCENARIO=kill-after-up
   run_deploy
+  echo 2 > "$fixture/active"
   : > "$fixture/calls"
   export SCENARIO=status-down
   run_script recover-backend.sh
-  check 'proved closed allows rollback' grep -q 'up -d' "$fixture/calls"
-  echo 'PASS proved closed state allows a blind rollback'
+  check 'running new exit' [ "$result" = 1 ]
+  check 'running new word' grep -q RECOVERY_REQUIRED "$fixture/output"
+  check 'running new no replacement' lacks 'up -d' "$fixture/calls"
+  check 'running new stays' grep -q new "$fixture/running"
+  check 'running new pending' [ -e "$state/backend-pending" ]
+  echo 'PASS running new image with unknown status is not replaced'
+  reset
+  export SCENARIO=kill-after-up
+  run_deploy
+  echo none > "$fixture/running"
+  : > "$fixture/calls"
+  export SCENARIO=''
+  run_script recover-backend.sh
+  check 'dead new exit' [ "$result" = 0 ]
+  check 'dead new rolled back' grep -q 'up -d' "$fixture/calls"
+  check 'dead new word' grep -q 'RECOVERED rolled-back' "$fixture/output"
+  check 'dead new running old' grep -q old "$fixture/running"
+  echo 'PASS dead new container rolls back'
+  reset none
+  export SCENARIO=kill-after-up
+  run_deploy
+  echo 2 > "$fixture/active"
+  : > "$fixture/calls"
+  export SCENARIO=status-down
+  run_script recover-backend.sh
+  check 'first running exit' [ "$result" = 1 ]
+  check 'first running not stopped' lacks ' stop ' "$fixture/calls"
+  check 'first running stays' grep -q new "$fixture/running"
+  check 'first running pending' [ -e "$state/backend-pending" ]
+  echo 'PASS first deployment with unknown status is not stopped'
+  reset none
+  export SCENARIO=kill-after-up
+  run_deploy
+  echo none > "$fixture/running"
+  export SCENARIO=''
+  run_script recover-backend.sh
+  check 'first dead reports' grep -q NO_PREVIOUS_IMAGE "$fixture/output"
+  check 'first dead clears' [ ! -e "$state/backend-pending" ]
+  echo 'PASS dead first deployment clears'
 }
 # 기록까지 끝난 배포를 되돌리면 상태 파일도 이전 값으로 돌아간다
 test_recover_restores_records() {
@@ -833,6 +911,7 @@ test_unowned_gate
 test_frontend_pending
 test_releasing_never_replaces_blind
 test_recover_unknown_running
+test_recover_mount_warning
 test_recover_restores_records
 test_deploy_locked
 test_prune

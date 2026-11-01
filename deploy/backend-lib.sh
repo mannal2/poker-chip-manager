@@ -59,9 +59,15 @@ replace_is_safe() {
       && "$(plain_field "$response" activeTournaments)" == 0 ]]
     return
   fi
-  # These phases are written only after the old process proved closed with no
-  # games, and the file keeps its successor closed. From releasing on, that proof is void.
-  [[ "$phase" == replacing || "$phase" == rolling-back ]] && gate_is_mine
+  # The old process proved closed with no games before these phases, but that says
+  # nothing about a new backend that is running: its mount may have booted it open.
+  # So with no status, only the proved process itself may go. Releasing voids even that.
+  [[ "$phase" == replacing || "$phase" == rolling-back ]] && gate_is_mine \
+    && [[ -n "$previous_id" && "$(docker inspect --format '{{.Image}}' "$active")" == "$previous_id" ]]
+}
+# 게이트 파일은 닫혔는데 서버가 열렸다고 읽히면 참이다
+mount_is_broken() {
+  [[ "$(plain_field "$1" startsClosed)" == false ]] && gate_is_mine
 }
 # .env의 BACKEND_IMAGE 줄만 바꾼다
 set_image() {

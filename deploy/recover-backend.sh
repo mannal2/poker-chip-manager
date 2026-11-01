@@ -100,8 +100,19 @@ previous_revision=$(pending_field previous_revision)
 running=$(running_image) || still_required 'The running backend could not be determined.'
 
 # The target only ran if the replacement phase was reached.
-if [[ ( "$phase" == replacing || "$phase" == releasing ) && -n "$running" && "$running" == "$target_id" ]] \
-  && healthy "$target_id" "$revision" no; then
+target_ran=no
+if [[ ( "$phase" == replacing || "$phase" == releasing ) && -n "$running" && "$running" == "$target_id" ]]; then
+  target_ran=yes
+  response=$(read_status) || response=''
+  if mount_is_broken "$response"; then
+    set_phase releasing
+    echo "GATE_MOUNT_BROKEN: the new backend reads open while $gate_file is closed." >&2
+    echo 'It may hold games, so it was neither recorded nor replaced. Fix the gate mount and rerun.' >&2
+    exit 1
+  fi
+fi
+if [[ "$target_ran" == yes ]] && healthy "$target_id" "$revision" no; then
+  read_status > /dev/null || still_required 'The new backend is healthy but its status cannot be read.'
   replace_file "$state/backend-current" "image=$target
 revision=$revision
 "

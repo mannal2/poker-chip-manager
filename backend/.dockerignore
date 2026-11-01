@@ -4,3 +4,9 @@
 .gitignore
 Dockerfile
 **/build
+.env*
+*.pem
+*.key
+**/.env*
+**/*.pem
+**/*.key

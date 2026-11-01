@@ -61,7 +61,7 @@ check_compose() {
   [[ -n "$backend" ]] || fail 'compose.yaml has no backend service'
   for piece in 'image: backend:test' 'platform: linux/amd64' 'restart: unless-stopped' 'poker-edge:' \
     '- poker-backend' 'max-size: 10m' 'max-file: "3"' 'stop_grace_period: 30s' 'target: /run/poker-gate' \
-    'read_only: true' 'JAVA_TOOL_OPTIONS: -Xmx384m'; do
+    'read_only: true' 'create_host_path: false' 'JAVA_TOOL_OPTIONS: -Xmx384m'; do
     expect_contains 'compose backend' "$backend" "$piece"
   done
   expect_absent 'compose backend' "$backend" 'ports:'
@@ -141,6 +141,8 @@ check_image() {
 check_gate() {
   local open=$1 closed=$2 unfinished=$3 status
   status=$(deploy_status "$open")
+  # An empty mounted directory means no deployment ever wrote a gate file, so it is open.
+  # That is why Compose must not create a missing mount: the new directory would hide the lost state and open starts.
   expect_contains 'empty gate mount' "$status" '"startsClosed":false'
   pass 'starts are open with the gate directory mounted and empty'
 
@@ -257,8 +259,16 @@ check_edge_backend() {
   [[ "$code" == 401 ]] || fail "/ws without a session answered $code"
   pass '/ws reaches the backend, which answers 401 without a session'
 
-  code=$(edge_request -o /dev/null -w '%{http_code}' "https://$host/internal/deploy/status")
-  [[ "$code" == 404 ]] || fail "/internal/deploy/status answered $code through edge"
+  # The semicolon forms pass the /api/ location, so the backend must refuse them itself.
+  for path in /internal/deploy/status '/api/..;/internal/deploy/status' '/api/..%3b/internal/deploy/status'; do
+    body=$(edge_request -w '%{http_code}' "https://$host$path")
+    code=${body: -3}
+    # The firewall may refuse the encoded semicolon before the loopback filter's 404 (ruling R11).
+    [[ "$code" == 404 || ("$code" == 400 && "$path" == *%3b*) ]] || fail "$path answered $code through edge"
+    for field in processId startsClosed deploymentId; do
+      expect_absent "$path" "$body" "$field"
+    done
+  done
   pass '/internal/deploy/status is 404 through edge with the real backend behind it'
 }
 

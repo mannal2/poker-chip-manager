@@ -28,7 +28,13 @@ services:
     environment:
       JAVA_TOOL_OPTIONS: "-Xmx${BACKEND_HEAP:?BACKEND_HEAP is required}"
     volumes:
-      - ./.local/deploy/gate:/run/poker-gate:ro
+      # An empty directory reads as an open gate, so Compose must never create a missing one.
+      - type: bind
+        source: ./.local/deploy/gate
+        target: /run/poker-gate
+        read_only: true
+        bind:
+          create_host_path: false
     stop_grace_period: 30s
     networks:
       poker-edge:

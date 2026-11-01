@@ -18,7 +18,7 @@ export function emit(
   c: TransitionContext,
   events: GameEvent[],
   type: string,
-  details: unknown,
+  details: GameEvent['details'],
 ) {
   events.push({
     id: `${c.id}:${events.length}`,

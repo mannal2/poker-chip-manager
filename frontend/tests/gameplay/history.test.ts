@@ -1,7 +1,8 @@
 import { it, expect } from 'vitest';
 import { historyRows } from '../../src/features/gameplay/model/history';
 import type { GameEvent } from '../../src/game/types';
-const event = (type: string, details: unknown = {}, hand = 1): GameEvent => ({
+// 기록 표시 테스트에 필요한 이벤트를 구성한다.
+const event = (type: string, details: GameEvent['details'] = {}, hand = 1): GameEvent => ({
   id: Math.random().toString(),
   at: '',
   tournamentId: 't',

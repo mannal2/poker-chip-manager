@@ -6,6 +6,7 @@ export interface Player {
   name: string;
   stack: number;
   eliminated: boolean;
+  forfeited?: boolean;
   folded: boolean;
   B: number;
   H: number;
@@ -69,8 +70,14 @@ export interface GameEvent {
   tournamentId: string;
   hand: number;
   type: string;
-  details: unknown;
+  details: GameEventDetails;
   sequence?: number;
+}
+// 이벤트별 추가 정보와 서버의 자동 처리 및 방장 처리 표시를 담는다.
+export interface GameEventDetails {
+  [key: string]: unknown;
+  auto?: boolean;
+  byHost?: boolean;
 }
 // 전이 결과(성공한 상태와 이벤트 또는 거절 코드)
 export type TransitionResult =

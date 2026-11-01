@@ -9,7 +9,7 @@ mkdir -p .local
 fixture=$(mktemp -d "$PWD/.local/deploy-backend-test.XXXXXX")
 trap 'rm -rf -- "$fixture"' EXIT
 mkdir -p "$fixture/deploy" "$fixture/bin"
-cp deploy/deploy-backend.sh deploy/recover-backend.sh deploy/prune-images.sh "$fixture/deploy/"
+cp deploy/deploy-backend.sh deploy/recover-backend.sh deploy/backend-lib.sh deploy/prune-images.sh "$fixture/deploy/"
 touch "$fixture/compose.yaml"
 export MOCK_DIR="$fixture" PATH="$fixture/bin:$PATH"
 state="$fixture/.local/deploy"
@@ -61,6 +61,7 @@ internal() {
         prepare-held)
           printf '{"result":"HELD","processId":"process-%s","activeTournaments":2}\n' "$(cat "$MOCK_DIR/proc")"
           return ;;
+        kill-before-prepare) die_now ;;
         prepare-conflict) echo other-deployment > "$MOCK_DIR/holder"; exit 22 ;;
         prepare-lost) echo "$id" > "$MOCK_DIR/holder"; exit 22 ;;
       esac
@@ -68,8 +69,11 @@ internal() {
       [[ ${SCENARIO:-} != kill-after-prepare ]] || die_now
       printf '{"result":"READY","processId":"process-%s","activeTournaments":0}\n' "$(cat "$MOCK_DIR/proc")" ;;
     */status)
-      [[ ${SCENARIO:-} != kill-after-gate ]] || die_now
-      [[ ${SCENARIO:-} != status-failure ]] || exit 7
+      [[ ${SCENARIO:-} != status-down ]] || exit 7
+      if [[ -n $(cat "$MOCK_DIR/holder") ]]; then
+        [[ ${SCENARIO:-} != kill-after-gate ]] || die_now
+        [[ ${SCENARIO:-} != status-failure ]] || exit 7
+      fi
       status ;;
     */release)
       [[ ${SCENARIO:-} != release-failure ]] || exit 22
@@ -79,6 +83,7 @@ internal() {
         [[ $holder == "$id" && $body == *"\"processId\":\"process-$(cat "$MOCK_DIR/proc")\""* ]] || exit 22
       fi
       [[ ${SCENARIO:-} == release-lies ]] || : > "$MOCK_DIR/holder"
+      [[ ${SCENARIO:-} != kill-after-release ]] || die_now
       echo '{"result":"RELEASED"}' ;;
   esac
 }
@@ -116,6 +121,7 @@ case "$1" in
     shift 3
     case "$1" in
       ps)
+        [[ ${SCENARIO:-} != ps-failure ]] || exit 1
         [[ $(cat "$MOCK_DIR/running") == none ]] || echo container-id ;;
       exec) internal "$@" ;;
       stop) echo none > "$MOCK_DIR/running" ;;
@@ -137,11 +143,12 @@ cat > "$fixture/bin/curl" <<'MOCK'
 set -eu
 running=$(cat "$MOCK_DIR/running")
 url=${*: -1}
+echo "$url" >> "$MOCK_DIR/edge-calls"
 version=$OLD_REVISION
 [[ $running != new ]] || version=$NEW_REVISION
 [[ $running != none ]] || exit 7
 if [[ $running == new ]]; then
-  case "${SCENARIO:-}" in health-failure|rollback-start-failure|rollback-health-failure) exit 22 ;; esac
+  case "${SCENARIO:-}" in health-failure|status-down|rollback-start-failure|rollback-health-failure) exit 22 ;; esac
 fi
 [[ $running != old || ${SCENARIO:-} != rollback-health-failure ]] || exit 22
 [[ $running != old || ${SCENARIO:-} != old-unhealthy ]] || exit 22
@@ -167,6 +174,8 @@ MOCK
 cat > "$fixture/bin/mv" <<'MOCK'
 #!/usr/bin/env bash
 if [[ ${SCENARIO:-} == gate-write-failure && ${*: -1} == */start-gate.json ]]; then exit 1; fi
+if [[ ${SCENARIO:-} == prepared-write-failure && ${*: -1} == */start-gate.json ]] && grep -q PREPARED "$1"; then exit 1; fi
+if [[ ${SCENARIO:-} == pending-write-failure && ${*: -1} == */backend-pending ]] && grep -q phase=replacing "$1"; then exit 1; fi
 if [[ ${SCENARIO:-} == complete-write-failure && ${*: -1} == */start-gate.json ]]; then
   grep -q COMPLETE "$(printf '%s\n' "$@" | grep gate/ | head -n 1)" && exit 1
 fi
@@ -180,16 +189,18 @@ MOCK
 cat > "$fixture/bin/date" <<'MOCK'
 #!/usr/bin/env bash
 n=0; [[ ! -f "$MOCK_DIR/clock" ]] || n=$(cat "$MOCK_DIR/clock")
-echo $((n+121)) > "$MOCK_DIR/clock"; echo "$n"
+step=121
+[[ ${SCENARIO:-} != broken-mount ]] || step=1
+echo $((n+step)) > "$MOCK_DIR/clock"; echo "$n"
 MOCK
-printf '#!/usr/bin/env bash\n' > "$fixture/bin/sleep"
+printf '#!/usr/bin/env bash\necho slept >> "$MOCK_DIR/sleeps"\n' > "$fixture/bin/sleep"
 chmod +x "$fixture/bin/"*
 
 # 다음 사례를 위해 서버 모의 상태를 처음으로 되돌린다
 reset() {
   export SCENARIO=''
   rm -rf -- "$fixture/.local"
-  rm -f "$fixture/clock" "$fixture/images" "$fixture/removed"
+  rm -f "$fixture/clock" "$fixture/images" "$fixture/removed" "$fixture/edge-calls" "$fixture/sleeps"
   printf 'BACKEND_IMAGE=%s\nBACKEND_MEM_LIMIT=768m\nBACKEND_HEAP=384m\nFRONTEND_IMAGE=front:keep\nOTHER_SETTING=keep\n' \
     "$old_image" > "$fixture/.env"
   echo "${1:-old}" > "$fixture/running"
@@ -254,6 +265,20 @@ test_already_running() {
   check 'no prepare' lacks prepare "$fixture/calls"
   check 'no up' lacks 'up -d' "$fixture/calls"
   echo 'PASS already running'
+  reset new
+  printf 'image=%s\nrevision=%s\n' "$target" "$revision" > "$state/backend-current"
+  echo someone > "$fixture/holder"
+  run_deploy
+  check 'closed gate is no success' [ "$result" = 1 ]
+  check 'closed gate word' lacks DEPLOYED "$fixture/output"
+  echo 'PASS already running with closed gate is refused'
+  reset none
+  printf 'image=%s\nrevision=%s\n' "$target" "$revision" > "$state/backend-current"
+  printf 'image=%s\nrevision=%s\n' "$target" "$revision" > "$state/backend-lastHealthy"
+  run_deploy
+  check 'stopped backend exit' [ "$result" = 0 ]
+  check 'stopped backend started' grep -q 'up -d' "$fixture/calls"
+  echo 'PASS stopped backend is no shortcut'
 }
 # 첫 배포는 prepare 없이 닫힌 게이트 파일부터 쓰고 기동한다
 test_first_deploy() {
@@ -263,6 +288,7 @@ test_first_deploy() {
   check 'first exit' [ "$result" = 0 ]
   check 'no prepare' lacks /prepare "$fixture/internal"
   check 'release used' grep -q /release "$fixture/internal"
+  check 'created gate mode' [ "$(stat -c %a "$state/gate")" = 755 ]
   check 'gate open' gate_open
   echo 'PASS first deployment'
 }
@@ -296,7 +322,8 @@ test_held() {
   check 'held word' grep -q '^HELD' "$fixture/output"
   check 'not replaced' not_replaced
   check 'no pending' [ ! -e "$state/backend-pending" ]
-  check 'no closed file' [ ! -e "$gate_file" ]
+  check 'file restored' grep -q '"phase":"COMPLETE"' "$gate_file"
+  check 'server open' [ -z "$(cat "$fixture/holder")" ]
   echo 'PASS held'
 }
 # 게이트 파일 기록 실패면 교체하지 않고 현재 서버 차단을 푼다
@@ -306,10 +333,26 @@ test_gate_write_failure() {
   run_deploy
   check 'write failure exit' [ "$result" = 1 ]
   check 'not replaced' not_replaced
-  check 'released' [ -z "$(cat "$fixture/holder")" ]
+  check 'never prepared' lacks /prepare "$fixture/internal"
   check 'no pending' [ ! -e "$state/backend-pending" ]
   check 'no gate temp left' [ -z "$(ls -A "$state/gate")" ]
   echo 'PASS gate write failure'
+  reset
+  export SCENARIO=prepared-write-failure
+  run_deploy
+  check 'second write exit' [ "$result" = 1 ]
+  check 'second not replaced' not_replaced
+  check 'second released' [ -z "$(cat "$fixture/holder")" ]
+  check 'second restored' grep -q '"phase":"COMPLETE"' "$gate_file"
+  check 'second no pending' [ ! -e "$state/backend-pending" ]
+  echo 'PASS gate write failure after prepare'
+  reset
+  export SCENARIO=pending-write-failure
+  run_deploy
+  check 'phase write exit' [ "$result" = 1 ]
+  check 'phase write word' grep -q RECOVERY_REQUIRED "$fixture/output"
+  check 'phase write not replaced' not_replaced
+  echo 'PASS replacing phase write failure'
 }
 # 재확인 불일치면 교체하지 않고 복구가 필요하다고 남긴다
 test_recheck_mismatch() {
@@ -372,6 +415,8 @@ test_input() {
   reset
   run_script deploy-backend.sh "$repository:main" "$revision" "$origin" deploy-1
   check 'tag refused' [ "$result" = 2 ]
+  run_script deploy-backend.sh "$repository@sha256:bad@sha256:${target##*@sha256:}" "$revision" "$origin" deploy-1
+  check 'embedded image refused' [ "$result" = 2 ]
   run_script deploy-backend.sh "$target" short "$origin" deploy-1
   check 'revision refused' [ "$result" = 2 ]
   run_script deploy-backend.sh "$target" "$revision" http://x deploy-1
@@ -387,7 +432,7 @@ test_input() {
 # 정상 확인 실패는 어떤 항목이든 롤백하고 결과는 실패다
 test_rollback_success() {
   local scenario
-  for scenario in replace-failure health-failure stale-version frontend-down ws-html broken-mount; do
+  for scenario in replace-failure health-failure stale-version frontend-down ws-html; do
     reset
     export SCENARIO=$scenario
     run_deploy
@@ -401,6 +446,19 @@ test_rollback_success() {
     check "$scenario current" [ ! -e "$state/backend-current" ]
     echo "PASS rollback after $scenario"
   done
+}
+# 새 서버가 열린 채 기동하면 기다리지 않고 멈추며 교체하지 않는다
+test_broken_mount() {
+  reset
+  export SCENARIO=broken-mount
+  run_deploy
+  check 'exit' [ "$result" = 1 ]
+  check 'word' grep -q 'RECOVERY_REQUIRED.*ROLLBACK_FAILED' "$fixture/output"
+  check 'one up only' [ "$(grep -c 'up -d' "$fixture/calls")" = 1 ]
+  check 'fails before edge checks' [ ! -e "$fixture/edge-calls" ]
+  check 'does not wait' [ ! -e "$fixture/sleeps" ]
+  check 'no release' lacks /release "$fixture/internal"
+  echo 'PASS broken mount'
 }
 # 재부팅된 이전 서버는 새 프로세스 식별로 해제한다
 test_rollback_uses_new_process() {
@@ -440,20 +498,20 @@ test_release_not_proved() {
 # 강제 종료 뒤에는 시간이 지나도 거절되고 복구 뒤에만 열린다(O04)
 test_killed_after_prepare() {
   local scenario
-  for scenario in kill-after-prepare kill-after-gate; do
+  for scenario in kill-before-prepare kill-after-prepare kill-after-gate; do
     reset
     export SCENARIO=$scenario
     run_deploy
     check "$scenario killed" [ "$result" -ge 128 ]
     check "$scenario pending" [ -e "$state/backend-pending" ]
-    check "$scenario server closed" [ -n "$(cat "$fixture/holder")" ]
-    if [[ $scenario == kill-after-gate ]]; then check 'gate file left' gate_closed; fi
+    check "$scenario file closed" lacks COMPLETE "$gate_file"
+    if [[ $scenario != kill-before-prepare ]]; then check "$scenario server closed" gate_closed; fi
     export SCENARIO=''
     echo 100000000 > "$fixture/clock"
     run_deploy other-deployment
     check "$scenario refused later" [ "$result" = 1 ]
     check "$scenario refusal word" grep -q RECOVERY_REQUIRED "$fixture/output"
-    check "$scenario stays closed" [ -n "$(cat "$fixture/holder")" ]
+    check "$scenario stays closed" lacks COMPLETE "$gate_file"
     check "$scenario not replaced" not_replaced
     run_script recover-backend.sh
     check "$scenario recovered" [ "$result" = 0 ]
@@ -570,8 +628,129 @@ test_recover_nothing() {
   run_script recover-backend.sh
   check 'exit' [ "$result" = 0 ]
   check 'word' grep -q NOTHING_TO_RECOVER "$fixture/output"
-  check 'no docker' [ ! -s "$fixture/calls" ]
+  check 'no replacement' lacks 'up -d' "$fixture/calls"
   echo 'PASS nothing to recover'
+}
+# 표시 없이 닫힌 게이트는 성공으로 보고하지 않고 명시할 때만 연다
+test_unowned_gate() {
+  reset
+  echo someone > "$fixture/holder"
+  printf '{"deploymentId":"someone","phase":"PREPARED"}\n' > "$gate_file"
+  run_deploy
+  check 'deploy refuses' [ "$result" = 1 ]
+  check 'deploy leaves the file' grep -q someone "$gate_file"
+  check 'deploy did not pull' lacks pull "$fixture/calls"
+  run_script recover-backend.sh
+  check 'reported' [ "$result" = 1 ]
+  check 'report word' grep -q UNOWNED_GATE_CLOSED "$fixture/output"
+  check 'still closed' [ -n "$(cat "$fixture/holder")" ]
+  run_script recover-backend.sh --open-unowned-gate
+  check 'origin required' [ "$result" = 2 ]
+  echo 1 > "$fixture/active"
+  run_script recover-backend.sh --open-unowned-gate "$origin"
+  check 'active refused' [ "$result" = 1 ]
+  check 'active still closed' [ -n "$(cat "$fixture/holder")" ]
+  echo 0 > "$fixture/active"
+  export SCENARIO=old-unhealthy
+  run_script recover-backend.sh --open-unowned-gate "$origin"
+  check 'unhealthy refused' [ "$result" = 1 ]
+  check 'unhealthy still closed' [ -n "$(cat "$fixture/holder")" ]
+  export SCENARIO=status-down
+  run_script recover-backend.sh --open-unowned-gate "$origin"
+  check 'unreadable refused' [ "$result" = 1 ]
+  export SCENARIO=''
+  run_script recover-backend.sh --open-unowned-gate "$origin"
+  check 'opened' [ "$result" = 0 ]
+  check 'open word' grep -q 'RECOVERED opened-unowned-gate someone' "$fixture/output"
+  check 'gate open' gate_open
+  check 'released with holder' grep -q 'release.*"deploymentId":"someone".*process-1' "$fixture/internal"
+  echo 'PASS unowned gate'
+  reset
+  export SCENARIO=kill-after-gate
+  run_deploy
+  export SCENARIO=''
+  run_script recover-backend.sh --open-unowned-gate "$origin"
+  check 'pending refuses the mode' [ "$result" = 1 ]
+  check 'pending keeps gate' gate_closed
+  echo 'PASS unowned gate mode refuses a pending record'
+}
+# 프런트 미완료 표시가 있으면 백엔드 배포도 멈춘다
+test_frontend_pending() {
+  reset
+  echo interrupted > "$state/pending"
+  run_deploy
+  check 'exit' [ "$result" = 1 ]
+  check 'no docker' [ ! -s "$fixture/calls" ]
+  echo 'PASS frontend pending refuses'
+}
+# 게이트를 푼 뒤 상태를 못 읽으면 진행 게임이 있을 수 있으므로 교체하지 않는다
+test_releasing_never_replaces_blind() {
+  reset
+  export SCENARIO=kill-after-release
+  run_deploy
+  check 'killed' [ "$result" -ge 128 ]
+  check 'phase' grep -q phase=releasing "$state/backend-pending"
+  echo 2 > "$fixture/active"
+  : > "$fixture/calls"
+  export SCENARIO=status-down
+  run_script recover-backend.sh
+  check 'refused' [ "$result" = 1 ]
+  check 'word' grep -q RECOVERY_REQUIRED "$fixture/output"
+  check 'no replacement' lacks 'up -d' "$fixture/calls"
+  check 'no stop' lacks ' stop ' "$fixture/calls"
+  check 'running new' grep -q new "$fixture/running"
+  check 'pending' [ -e "$state/backend-pending" ]
+  echo 'PASS releasing with unknown status never replaces'
+  export SCENARIO=''
+  run_script recover-backend.sh
+  check 'healthy target completes' grep -q 'RECOVERED completed' "$fixture/output"
+  check 'completed exit' [ "$result" = 0 ]
+  echo 'PASS releasing completes once healthy'
+}
+# 실행 중인 이미지를 알 수 없으면 복구가 멈춘다
+test_recover_unknown_running() {
+  reset
+  export SCENARIO=kill-after-gate
+  run_deploy
+  : > "$fixture/calls"
+  export SCENARIO=ps-failure
+  run_script recover-backend.sh
+  check 'exit' [ "$result" = 1 ]
+  check 'no replacement' lacks 'up -d' "$fixture/calls"
+  check 'pending' [ -e "$state/backend-pending" ]
+  echo 'PASS unknown running image stops recovery'
+  reset
+  export SCENARIO=kill-after-gate
+  run_deploy
+  : > "$fixture/calls"
+  export SCENARIO=status-down
+  run_script recover-backend.sh
+  check 'preparing exit' [ "$result" = 1 ]
+  check 'preparing no replacement' lacks 'up -d' "$fixture/calls"
+  echo 'PASS unknown status before replacement stops recovery'
+  reset
+  export SCENARIO=kill-after-up
+  run_deploy
+  : > "$fixture/calls"
+  export SCENARIO=status-down
+  run_script recover-backend.sh
+  check 'proved closed allows rollback' grep -q 'up -d' "$fixture/calls"
+  echo 'PASS proved closed state allows a blind rollback'
+}
+# 기록까지 끝난 배포를 되돌리면 상태 파일도 이전 값으로 돌아간다
+test_recover_restores_records() {
+  reset
+  printf 'image=%s\nrevision=%s\n' "$old_image" "$old_revision" > "$state/backend-current"
+  export SCENARIO=release-failure
+  run_deploy
+  check 'recorded' grep -q "revision=$revision" "$state/backend-current"
+  export SCENARIO=health-failure
+  run_script recover-backend.sh
+  check 'recovered' [ "$result" = 0 ]
+  check 'current restored' grep -q "revision=$old_revision" "$state/backend-current"
+  check 'lastHealthy restored' grep -q "revision=$old_revision" "$state/backend-lastHealthy"
+  check 'gate open' gate_open
+  echo 'PASS rollback restores records'
 }
 # 배포 잠금이 잡혀 있으면 아무것도 하지 않는다
 test_deploy_locked() {
@@ -639,6 +818,7 @@ test_prepare_failures
 test_checks_before_prepare
 test_input
 test_rollback_success
+test_broken_mount
 test_rollback_uses_new_process
 test_rollback_failure
 test_release_not_proved
@@ -649,5 +829,10 @@ test_recover_failure
 test_recover_protects_games
 test_recover_locked
 test_recover_nothing
+test_unowned_gate
+test_frontend_pending
+test_releasing_never_replaces_blind
+test_recover_unknown_running
+test_recover_restores_records
 test_deploy_locked
 test_prune

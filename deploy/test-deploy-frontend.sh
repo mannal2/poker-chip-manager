@@ -115,3 +115,9 @@ run_case() {
 for scenario in success locked pending backend-pending pull-failure wrong-revision replace-failure health-failure corrupt-response rollback-failure; do
   run_case "$scenario"
 done
+export SCENARIO=success
+: > "$fixture/calls"
+result=0
+bash "$fixture/deploy/deploy-frontend.sh" "${target%%@*}@sha256:bad@sha256:${target##*@sha256:}" "$revision" https://pcm.jwlee.xyz > "$fixture/output" 2>&1 || result=$?
+[[ $result == 2 && ! -s "$fixture/calls" ]] || { echo 'FAIL embedded image'; exit 1; }
+echo 'PASS embedded image refused'

@@ -150,7 +150,7 @@ sudo journalctl -u "$unit" --no-pager -n 100
 | 3 | `HELD` | A tournament is in progress; nothing changed. Run it again later |
 | 1 | `ROLLED_BACK` | The new image failed; the previous one runs and starts are open |
 | 1 | `RECOVERY_REQUIRED` | Starts stay closed; run the recovery script |
-| 1 | other messages | Stopped before replacing; starts are open |
+| 1 | other messages | Stopped before replacing; nothing was changed |
 | 2 | | Invalid input or missing `.env` values |
 
 `RECOVERY_REQUIRED` names the case: `NO_PREVIOUS_IMAGE` for a first deployment
@@ -166,8 +166,13 @@ reads `startsClosed:false`. Health means the target commit in `/api/health`,
 HTML from `/online/`, and 401 from `/ws` for an upgrade request with no session.
 
 `.local/deploy/backend-pending` exists from before prepare until the end of the
-deployment. While it exists, `deploy-backend.sh` and `deploy-frontend.sh` refuse
-to run. Do not delete it to retry.
+deployment, and a closed gate file is written before prepare too. `HELD` or an
+abandoned attempt restores `COMPLETE` before removing the marker. While the marker
+exists, `deploy-backend.sh` and `deploy-frontend.sh` refuse to run; the frontend's
+`pending` file stops `deploy-backend.sh` the same way. Do not delete either to retry.
+
+The script needs `backend-lib.sh` beside it. It also refuses a running backend that
+does not answer, or one whose starts are closed with no marker.
 
 ### Recovery
 
@@ -182,13 +187,44 @@ alone. It then reads the running image and `backend-pending`:
   the deployment (`RECOVERED completed`).
 - The previous image is running and passes health: it reopens starts without
   restarting that server (`RECOVERED rolled-back`).
-- Otherwise it restores the previous image and rechecks it. It never replaces a
-  backend that reports a tournament in progress.
+- Otherwise it restores the previous image and rechecks it, along with
+  `backend-current` and `backend-lastHealthy`. It replaces a backend only when it
+  is proved free of games: status reads closed with 0 tournaments, or status is
+  unreadable but the deployment was proved closed and has not reached the
+  `releasing` phase. From `releasing` on, unreadable status stops recovery. If
+  Docker cannot say what is running, recovery stops too.
 - A first deployment has nothing to restore. The failed backend is stopped, starts
   stay closed, and the next deployment may run.
 
-Any exit other than 0 with `RECOVERY_REQUIRED` leaves the gate closed and the
-marker in place. Inspect the logs, fix the cause and run it again.
+| Exit | Output | Meaning |
+|---|---|---|
+| 0 | `NOTHING_TO_RECOVER` | No marker, and starts are open or no backend runs |
+| 0 | `RECOVERED ...` | Completed, rolled back, or the gate was opened |
+| 1 | `UNOWNED_GATE_CLOSED` | No marker, but this backend's starts are closed |
+| 1 | `RECOVERY_REQUIRED` | Unresolved; the marker and gate stay. Fix the cause and rerun |
+| 1 | `NO_PREVIOUS_IMAGE` | Failed first deployment stopped; starts stay closed |
+| 2 | | Invalid arguments |
+
+**Closed starts with no marker.** Find out why before opening them, then:
+
+```bash
+sudo bash deploy/recover-backend.sh --open-unowned-gate https://pcm.jwlee.xyz
+```
+
+It takes the lock and refuses a marker. It needs readable status showing closed
+starts with 0 tournaments and a passing health check. It then writes `COMPLETE`,
+releases with the holder and process id from status, and re-reads status.
+
+**A previous server that stays unhealthy.** Recovery never replaces it, because it
+may hold games. If you accept losing whatever it holds, read the status once:
+
+```bash
+sudo docker compose exec -T backend curl -fsS http://127.0.0.1:8080/internal/deploy/status
+```
+
+Then stop it with `sudo docker compose stop backend` and rerun recovery. With no
+container running, recovery starts the previous image and rechecks it. This is a
+manual decision; no script makes it.
 
 ### Pruning images
 
@@ -214,8 +250,8 @@ bash deploy/test-deploy-backend.sh
 
 `test-deploy-backend.sh` simulates Docker, HTTPS, time and the internal API. Where
 `flock` is missing, as on Git Bash, it prints a `SKIP` for the one real-lock check
-and stubs lock refusal instead. It does not prove a real replacement; that needs a
-trial on the server.
+and stubs lock refusal instead. File modes only bite on Linux, so run it there as
+well. It does not prove a real replacement; that needs a trial on the server.
 
 The tests simulate Docker, HTTPS, time and lock refusal. They cover successful
 deployment, lock refusal, interrupted state, pull failure, revision mismatch,

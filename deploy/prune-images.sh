@@ -30,7 +30,7 @@ service_of() {
 referenced_images() {
   local file
   for file in backend-current backend-lastHealthy backend-pending current lastHealthy pending; do
-    [[ ! -f "$state/$file" ]] || sed -n 's/^\(image\|target\|previous\)=\(.\{1,\}\)$/\2/p' "$state/$file"
+    [[ ! -f "$state/$file" ]] || sed -n 's/^\(image\|target\|previous\|previous_ref\|previous_current_image\|previous_healthy_image\)=\(.\{1,\}\)$/\2/p' "$state/$file"
   done
   sed -n 's/^[[:space:]]*\(export[[:space:]]\{1,\}\)\{0,1\}\(BACKEND\|FRONTEND\)_IMAGE=//p' .env | tr -d "\"'"
 }

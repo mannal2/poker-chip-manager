@@ -346,8 +346,8 @@ it('keeps input locked when a reconnect receives a lower tuple', async () => {
   expect(x.c.getView().connection).toBe('online');
 });
 const controllers: OnlineController[] = [];
-// HTTP 응답이 먼저 적용되어도 같은 버전의 확정 알림을 한 번 전달하고 효과와 상태는 건드리지 않는다.
-it.each(['CHECK', 'UNDO'])('observes HTTP-first %s once without replaying effects or replacing state', async (type) => {
+// HTTP 응답이 먼저 적용되어도 같은 버전의 확정 알림을 한 번 전달하고 취소가 아니면 효과를 재생한다.
+it.each(['CHECK', 'UNDO'])('observes HTTP-first %s once and plays effects unless it is an undo', async (type) => {
   const x = setup();
   await x.enter();
   const next = { ...x.entry.state, stateVersion: x.entry.state.stateVersion + 1, draftVersion: 2 };
@@ -369,8 +369,8 @@ it.each(['CHECK', 'UNDO'])('observes HTTP-first %s once without replaying effect
   x.h.onSnapshot(message);
   expect(observed).toHaveBeenCalledExactlyOnceWith(events);
   expect(x.c.getKnownEvents().has(type)).toBe(true);
-  expect(x.c.getView().snapshot).toBe(confirmedState);
-  expect(effect).not.toHaveBeenCalled();
+  expect(x.c.getView().snapshot).toEqual(confirmedState);
+  expect(effect).toHaveBeenCalledTimes(type === 'CHECK' ? 1 : 0);
 });
 
 // HTTP를 보내지 않는 관찰자는 같은 이벤트의 알림과 연속 효과를 각각 한 번 받는다.
@@ -1308,4 +1308,71 @@ it('treats a lost session during request lookup as a lost room', async () => {
   x.api.get.mockResolvedValueOnce({ ok: false, status: 401, code: 'NO_SESSION' });
   await x.c.retry();
   expect(x.c.getView().phase).toBe('gone');
+});
+
+// HTTP 응답이 소켓보다 먼저 와도 요청자 화면의 칩 효과를 한 번 재생한다.
+it('plays the effects of its own action when HTTP confirms before the socket', async () => {
+  const x = setup();
+  await x.enter();
+  const before = x.entry.state;
+  const after = { ...before, stateVersion: before.stateVersion + 1 };
+  const confirmed = vi.fn();
+  x.c.onConfirmed(confirmed);
+  x.api.post.mockImplementationOnce(async (_path, body) => ({
+    ok: true,
+    body: {
+      ...(body as object),
+      outcome: 'APPLIED',
+      code: 'OK',
+      resultStateVersion: after.stateVersion,
+      latestState: after,
+    },
+  }));
+  await x.c.send([{ type: 'CHECK', handScoped: false }]);
+  expect(confirmed).not.toHaveBeenCalled();
+  expect(x.c.getView().effectsFromVersion).toBe(before.stateVersion);
+  const event = { id: 'e1', type: 'CHECK', details: {} };
+  const message = {
+    type: 'SNAPSHOT',
+    previousVersion: before.stateVersion,
+    events: [event],
+    state: after,
+  };
+  x.h.onSnapshot(message as never);
+  x.h.onSnapshot(message as never);
+  expect(confirmed).toHaveBeenCalledTimes(1);
+  expect(confirmed.mock.calls[0][0].events).toEqual([event]);
+  expect(confirmed.mock.calls[0][0].previous).toEqual(before);
+});
+
+// 소켓이 먼저 왔다면 늦은 HTTP 응답이 효과를 다시 예약하지 않는다.
+it('does not repeat effects when the socket confirms before HTTP', async () => {
+  const x = setup();
+  await x.enter();
+  const before = x.entry.state;
+  const after = { ...before, stateVersion: before.stateVersion + 1 };
+  const confirmed = vi.fn();
+  x.c.onConfirmed(confirmed);
+  const message = {
+    type: 'SNAPSHOT',
+    previousVersion: before.stateVersion,
+    events: [{ id: 'e1', type: 'CHECK', details: {} }],
+    state: after,
+  };
+  x.api.post.mockImplementationOnce(async (_path, body) => {
+    x.h.onSnapshot(message as never);
+    return {
+      ok: true,
+      body: {
+        ...(body as object),
+        outcome: 'APPLIED',
+        code: 'OK',
+        resultStateVersion: after.stateVersion,
+        latestState: after,
+      },
+    };
+  });
+  await x.c.send([{ type: 'CHECK', handScoped: false }]);
+  x.h.onSnapshot({ ...message, events: [{ id: 'e2', type: 'CHECK', details: {} }] } as never);
+  expect(confirmed).toHaveBeenCalledTimes(1);
 });

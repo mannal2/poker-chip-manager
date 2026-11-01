@@ -70,6 +70,7 @@ export class OnlineController {
   private processing: Promise<boolean> | null = null;
   private queuedDraft: { potIndex: number; winners: WinnerSelection } | null = null;
   private sending = false;
+  private awaitingEvents: { previous: RoomSnapshot; version: number } | null = null;
   private socketFailures = 0;
   private probing = false;
   private polling: ReturnType<typeof setTimeout> | undefined;
@@ -321,7 +322,7 @@ export class OnlineController {
       this.finish('ROOM_GONE');
   }
   // 토너먼트와 버전 쌍으로 상태 적용 및 효과 재생을 결정한다.
-  private apply(next: RoomSnapshot, message?: SnapshotMessage): boolean {
+  private apply(next: RoomSnapshot, message?: SnapshotMessage, ownAction = false): boolean {
     const previous = this.view.snapshot;
     const same = previous?.tournamentId === next.tournamentId;
     if (
@@ -362,13 +363,30 @@ export class OnlineController {
       next.stateVersion === previous.stateVersion &&
       next.draftVersion === previous.draftVersion &&
       message.previousVersion !== null
-    )
+    ) {
+      // HTTP가 먼저 확정한 자기 행동은 이벤트가 도착한 지금 효과를 재생한다.
+      const awaiting = this.awaitingEvents;
+      if (
+        fresh.length &&
+        !fresh.some((event) => event.type === 'UNDO') &&
+        awaiting?.version === next.stateVersion &&
+        awaiting.previous.stateVersion === message.previousVersion
+      ) {
+        this.awaitingEvents = null;
+        this.confirmed.forEach((listener) =>
+          listener({ events: fresh, previous: awaiting.previous, next }),
+        );
+        this.update({ snapshot: next });
+      }
       return true;
+    }
     const continuous =
       previous &&
       same &&
       message?.previousVersion === previous.stateVersion &&
       next.stateVersion > previous.stateVersion;
+    const confirmedByHttp = !!previous && same && ownAction && next.stateVersion > previous.stateVersion;
+    this.awaitingEvents = confirmedByHttp ? { previous, version: next.stateVersion } : null;
     try {
       if (continuous)
         this.confirmed.forEach((listener) => listener({ events: fresh, previous, next }));
@@ -377,8 +395,8 @@ export class OnlineController {
       this.update({
         snapshot: next,
         effectsFromVersion:
-          continuous && !fresh.some((event) => event.type === 'UNDO')
-            ? previous.stateVersion
+          confirmedByHttp || (continuous && !fresh.some((event) => event.type === 'UNDO'))
+            ? previous!.stateVersion
             : null,
         hasControl: next.you.controlGeneration === this.grantedGeneration,
       });
@@ -546,7 +564,11 @@ export class OnlineController {
         return this.unknownResult(request);
       }
       if (body.latestState && request.scopeRevision === this.scopeRevision)
-        this.apply(body.latestState);
+        this.apply(
+          body.latestState,
+          undefined,
+          body.outcome === 'APPLIED' && request.body.type !== 'UNDO',
+        );
       this.request = null;
       this.update({
         pending: this.sending,
@@ -731,6 +753,7 @@ export class OnlineController {
     this.sending = false;
     this.socketFailures = 0;
     this.probing = false;
+    this.awaitingEvents = null;
     if (!this.closing) {
       this.closing = this.opening
         ? this.opening.catch(() => {}).then(() => this.api.closeStream())

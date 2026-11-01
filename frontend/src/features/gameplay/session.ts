@@ -1,4 +1,5 @@
-import type { GameCommand, GameState, LegalActions } from '../../game/types';
+import type { ReactNode } from 'react';
+import type { GameCommand, GameState, LegalActions, WinnerSelection } from '../../game/types';
 import type { useSetupEditing } from './hooks/useSetupEditing';
 import type { GameCapabilities } from './model/capabilities';
 import type { LoadEvents } from './model/eventPages';
@@ -19,6 +20,13 @@ export type SessionRejectionCode =
 // 게임 화면이 모드별로 받는 상태와 명령 채널
 /** Mode-provided state and command channel that the shared game screen is assembled from. */
 export interface GameSession {
+  canRename?: (id: string) => boolean;
+  disconnectedIds?: ReadonlySet<string>;
+  dockNotice?: string | null;
+  denied?: (need: keyof GameCapabilities) => string;
+  sharedSelection?: { winners: WinnerSelection; potIndex: number } | null;
+  onSelectionChange?: (selection: { winners: WinnerSelection; potIndex: number }) => void;
+  resultActions?: ReactNode;
   state: GameState;
   busy: boolean;
   /** Viewer permissions; storage/server checks still decide the final result. */

@@ -10,7 +10,7 @@ import { SetupPanel } from './components/SetupPanel';
 import { Table } from './components/Table';
 import { useBettingDraft } from './hooks/useBettingDraft';
 import { useSettlementSelection } from './hooks/useSettlementSelection';
-import { permits } from './model/capabilities';
+import { permits, type GameCapabilities } from './model/capabilities';
 import { messageFor } from './model/errorMessages';
 import { buildTableView } from './model/tableView';
 import type { GameCommand } from '../../game/types';
@@ -36,11 +36,25 @@ export function GameScreen({
   ref?: Ref<GameScreenHandle>;
 }) {
   const { state: s, busy, scope, notify, run, capabilities: can } = session;
+  // 필요한 권한에 맞는 모드별 거절 문구를 알린다.
+  function deny(need: keyof GameCapabilities) {
+    notify(session.denied?.(need) ?? '조작 권한이 없습니다.');
+  }
   // 권한을 확인한 뒤 세션으로 명령을 전달한다
   /** Capability check shared by every command the screen issues itself. */
   async function dispatch(command: GameCommand) {
     if (!permits(can, command.type)) {
-      notify('조작 권한이 없습니다.');
+      deny(
+        command.type === 'UNDO'
+          ? 'canUndo'
+          : command.type === 'SETTLE_HAND'
+            ? 'canSettle'
+            : command.type === 'SCHEDULE_BLINDS'
+              ? 'canEditBlinds'
+              : command.type === 'SETUP_UPDATE' || command.type === 'START_TOURNAMENT'
+                ? 'canEditSetup'
+                : 'canAct',
+      );
       return false;
     }
     return session.dispatch(command);
@@ -57,14 +71,21 @@ export function GameScreen({
     notify,
   );
   const { pots, winners, potIndex, currentPot, preview, navigation, selectWinner, resetWinners } =
-    useSettlementSelection(s, settlementScope, busy, notify);
+    useSettlementSelection(
+      s,
+      settlementScope,
+      busy,
+      notify,
+      session.sharedSelection,
+      can.canSettle ? session.onSelectionChange : undefined,
+    );
   useImperativeHandle(ref, () => ({ resetSelection: resetWinners }));
   const close = () => onDialog('');
   // 직전 행동 취소를 권한/상태 확인 후 실행한다
   function undo() {
     const blocked = session.guard();
     if (blocked) return notify(blocked);
-    if (!can.canUndo) return notify('조작 권한이 없습니다.');
+    if (!can.canUndo) return deny('canUndo');
     if (!s.undo) return notify('취소할 직전 행동이 없습니다.');
     void run(async () => {
       if (await dispatch({ type: 'UNDO' })) {
@@ -77,7 +98,7 @@ export function GameScreen({
   function bettingAction(action: BetAction, amount = 0) {
     const blocked = session.guard();
     if (blocked) return notify(blocked);
-    if (!can.canAct) return notify('조작 권한이 없습니다.');
+    if (!can.canAct) return deny('canAct');
     const command = prepareAction(action, amount);
     if (!command) return;
     void run(async () => {
@@ -97,7 +118,13 @@ export function GameScreen({
         onMenu={() => onDialog('menu')}
       />
       <Table
-        {...buildTableView(s, { draftAmount, pots, potIndex, winners })}
+        {...buildTableView(s, {
+          draftAmount,
+          pots,
+          potIndex,
+          winners,
+          disconnectedIds: session.disconnectedIds,
+        })}
         viewSeat={session.viewSeat}
         onSelect={currentPot && can.canSettle ? selectWinner : undefined}
         onPot={() => {
@@ -111,7 +138,8 @@ export function GameScreen({
                 drag: can.canEditSetup ? setup.drag : undefined,
                 editScope: setup.scope,
                 onNameEditing: setup.onNameEditing,
-                onRename: can.canEditSetup ? setup.rename : undefined,
+                onRename: session.canRename || can.canEditSetup ? setup.rename : undefined,
+                canRename: session.canRename,
                 onAdd: can.canEditSetup && changeCount ? () => changeCount(true) : undefined,
                 onRemove: can.canEditSetup && changeCount ? () => changeCount(false) : undefined,
                 onRotate: setup.rotate,
@@ -119,7 +147,26 @@ export function GameScreen({
             : undefined
         }
       />
-      <section className="dock">
+      <section
+        className="dock"
+        // 전체 설정 권한이 없는 시작 버튼 입력을 차단하고 이유를 알린다.
+        onClickCapture={(event) => {
+          if (
+            s.status === 'setup' &&
+            !can.canEditSetup &&
+            (event.target as HTMLElement).closest('button')
+          ) {
+            event.stopPropagation();
+            event.preventDefault();
+            deny('canEditSetup');
+          }
+        }}
+      >
+        {session.dockNotice && (
+          <div className="dock-notice" role="status">
+            {session.dockNotice}
+          </div>
+        )}
         {s.status === 'ended' && (
           <button
             aria-disabled={busy || !s.undo || !can.canUndo}
@@ -137,7 +184,7 @@ export function GameScreen({
             busy={busy || !can.canSettle}
             onWin={() => {
               if (busy) return notify('저장 완료 또는 재시도를 기다려주세요.');
-              if (!can.canSettle) return notify('조작 권한이 없습니다.');
+              if (!can.canSettle) return deny('canSettle');
               if (!preview?.ok)
                 return notify(preview?.error ? messageFor(preview.error) : '승자를 선택하세요.');
               void run(async () => {
@@ -156,6 +203,7 @@ export function GameScreen({
             토너먼트 중단 · 미정산 팟 {s.pot.toLocaleString('ko-KR')} 보존
           </div>
         )}
+        {(s.status === 'ended' || s.status === 'aborted') && session.resultActions}
         {s.status === 'playing' && s.hand?.phase === 'betting' && (
           <BetControls
             call={legal?.callAdditional}
@@ -211,18 +259,29 @@ export function GameScreen({
       )}
       {dialog === 'blinds' && (
         <Dialog dismissOutside title="다음 핸드 블라인드" onClose={close}>
-          <BlindSettings
-            key={s.tournamentId + ':' + scope}
-            initialSB={initialBlinds!.sb}
-            initialBB={initialBlinds!.bb}
-            busy={busy || !can.canEditBlinds}
-            onSave={(sb, bb) => {
-              if (busy) return notify('저장 완료를 기다려주세요.');
-              void run(async () => {
-                if (await dispatch({ type: 'SCHEDULE_BLINDS', sb, bb })) close();
-              });
+          <div
+            // 예약 폼의 자체 잠금 처리 전에 권한 거절 이유를 알린다.
+            onSubmitCapture={(event) => {
+              if (!can.canEditBlinds) {
+                event.preventDefault();
+                event.stopPropagation();
+                deny('canEditBlinds');
+              }
             }}
-          />
+          >
+            <BlindSettings
+              key={s.tournamentId + ':' + scope}
+              initialSB={initialBlinds!.sb}
+              initialBB={initialBlinds!.bb}
+              busy={busy || !can.canEditBlinds}
+              onSave={(sb, bb) => {
+                if (busy) return notify('저장 완료를 기다려주세요.');
+                void run(async () => {
+                  if (await dispatch({ type: 'SCHEDULE_BLINDS', sb, bb })) close();
+                });
+              }}
+            />
+          </div>
         </Dialog>
       )}
     </>

@@ -8,7 +8,7 @@ import type { ChipTransfer } from './chipTransfer';
  */
 export function eventsToTransfers(
   events: GameEvent[],
-  commandType: GameCommand['type'],
+  commandType?: GameCommand['type'],
 ): ChipTransfer[] {
   const moves: ChipTransfer[] = [];
   let delay = 0;
@@ -32,7 +32,12 @@ export function eventsToTransfers(
       delay += 720;
     }
   }
-  if (commandType === 'FOLD' && moves.some((move) => move.kind === 'payout')) {
+  const inferredCommand =
+    commandType ??
+    events.find((event) => ['CHECK', 'CALL', 'BET', 'RAISE', 'ALL_IN', 'FOLD'].includes(event.type))
+      ?.type;
+  const fold = inferredCommand === 'FOLD';
+  if (fold && moves.some((move) => move.kind === 'payout')) {
     const combined: ChipTransfer[] = [];
     for (const move of moves) {
       const existing = combined.find((item) => item.to === move.to);

@@ -9,11 +9,13 @@ export function buildTableView(
     pots,
     potIndex,
     winners,
+    disconnectedIds,
   }: {
     draftAmount: number;
     pots: Pot[];
     potIndex: number;
     winners: WinnerSelection;
+    disconnectedIds?: ReadonlySet<string>;
   },
 ) {
   const button = state.hand?.buttonSeat ?? state.settings.button ?? 0;
@@ -32,6 +34,7 @@ export function buildTableView(
   return {
     players: state.players.map((p, i) => ({
       ...p,
+      disconnected: disconnectedIds?.has(p.id),
       contribution: p.H + (state.hand?.actorId === p.id ? draftAmount : 0),
       pending: state.hand?.actorId === p.id && draftAmount > 0,
       roles: [

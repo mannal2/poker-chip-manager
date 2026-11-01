@@ -14,6 +14,7 @@ export interface TableSetup {
   };
   editScope?: string;
   onRename?: (id: string, name: string) => boolean | Promise<boolean>;
+  canRename?: (id: string) => boolean;
   onNameEditing?: (id: string, editing: boolean, finish?: () => Promise<boolean>) => void;
   onAdd?: () => void;
   onRemove?: () => void;
@@ -57,7 +58,8 @@ export function Table({
     unit: 'var(--u)',
     min: 7,
   });
-  const { drag, onAdd, onRemove, onRotate, onRename, onNameEditing, editScope } = setup ?? {};
+  const { drag, onAdd, onRemove, onRotate, onRename, canRename, onNameEditing, editScope } =
+    setup ?? {};
   return (
     <>
       <div ref={ref} className="table" aria-label="포커 테이블">
@@ -159,7 +161,7 @@ export function Table({
               handlers={drag?.handlers(p.id)}
               busy={busy}
               onSelect={onSelect}
-              onRename={onRename}
+              onRename={!canRename || canRename(p.id) ? onRename : undefined}
               onNameEditing={onNameEditing}
               editScope={editScope}
             />

@@ -42,7 +42,7 @@ export default defineConfig(({ mode }) => ({
       },
     }),
   ],
-  test: { include: ['tests/**/*.test.ts'] },
+  test: { include: ['tests/**/*.test.{ts,tsx}'] },
   build: {
     rollupOptions: {
       input: {

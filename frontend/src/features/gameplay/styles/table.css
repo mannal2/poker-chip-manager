@@ -369,3 +369,22 @@ button.card-values {
 .pot-strip {
   gap: calc(2 * var(--u));
 }
+.disconnected {
+  position: absolute;
+  bottom: calc(100% + 2 * var(--u));
+  left: 0;
+  width: 100%;
+  color: var(--gold);
+  font-size: calc(10 * var(--u));
+  white-space: nowrap;
+}
+.dock-notice {
+  position: absolute;
+  bottom: calc(100% + 2 * var(--u));
+  left: calc(12 * var(--u));
+  right: calc(12 * var(--u));
+  text-align: center;
+  color: var(--muted);
+  font-size: calc(12 * var(--u));
+  pointer-events: none;
+}

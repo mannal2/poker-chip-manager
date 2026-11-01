@@ -5,6 +5,7 @@ import {
   isCommandResponse,
   isJoinResponse,
   isRecoveryStatus,
+  isRecoveryRequestResponse,
 } from '../../src/features/online-game/api/types';
 import { toGameState } from '../../src/features/online-game/model/toGameState';
 import { assertInvariants } from '../../src/game/invariants';
@@ -36,6 +37,34 @@ it('accepts socket, command, join and recovery responses', () => {
   expect(isCommandResponse({ ...(fixture('command-applied') as object), latestState: null })).toBe(
     true,
   );
+});
+
+// 복구 신청 POST 재전송은 승인 후에도 자리 정보 없이 현재 상태와 만료 시각을 반환한다.
+it.each(['PENDING', 'APPROVED', 'REJECTED', 'EXPIRED', 'SUPERSEDED'])(
+  'accepts a %s recovery POST response without granting a seat',
+  (status) => {
+    const response = { recoveryRequestId: 'r', status, expiresAt: '2026-10-30T12:05:00Z' };
+    expect(isRecoveryRequestResponse(response)).toBe(true);
+    if (status === 'APPROVED') expect(isRecoveryStatus(response)).toBe(false);
+  },
+);
+
+// 복구 신청 POST에는 상태 종류와 문자열 식별자 및 만료 시각이 모두 필요하다.
+it('rejects malformed recovery POST responses', () => {
+  expect(isRecoveryRequestResponse(fixture('recovery-request'))).toBe(true);
+  expect(isRecoveryRequestResponse({ recoveryRequestId: 'r', status: 'APPROVED' })).toBe(false);
+  expect(
+    isRecoveryRequestResponse({ recoveryRequestId: 'r', status: 'PENDING', expiresAt: 1 }),
+  ).toBe(false);
+  expect(
+    isRecoveryRequestResponse({ recoveryRequestId: 1, status: 'PENDING', expiresAt: 'at' }),
+  ).toBe(false);
+  expect(
+    isRecoveryRequestResponse({ recoveryRequestId: 'r', status: ['PENDING'], expiresAt: 'at' }),
+  ).toBe(false);
+  expect(
+    isRecoveryRequestResponse({ recoveryRequestId: 'r', status: 'UNKNOWN', expiresAt: 'at' }),
+  ).toBe(false);
 });
 
 // 중첩 필드의 형식 오류가 계약 검증을 통과하지 못하게 한다.

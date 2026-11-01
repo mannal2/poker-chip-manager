@@ -71,6 +71,12 @@ export type RecoveryStatus =
       expiresAt?: string;
     };
 
+export interface RecoveryRequestResponse {
+  recoveryRequestId: string;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'EXPIRED' | 'SUPERSEDED';
+  expiresAt: string;
+}
+
 export interface ServerCommand {
   type: string;
   payload?: object;
@@ -296,5 +302,16 @@ export function isRecoveryStatus(value: unknown): value is RecoveryStatus {
       : typeof value.status === 'string' &&
         ['PENDING', 'REJECTED', 'EXPIRED', 'SUPERSEDED'].includes(value.status) &&
         (value.expiresAt === undefined || typeof value.expiresAt === 'string'))
+  );
+}
+
+// 복구 신청 POST의 최초 응답과 재전송 응답에 포함되는 상태 및 만료 시각을 확인한다.
+export function isRecoveryRequestResponse(value: unknown): value is RecoveryRequestResponse {
+  return (
+    object(value) &&
+    typeof value.recoveryRequestId === 'string' &&
+    typeof value.status === 'string' &&
+    ['PENDING', 'APPROVED', 'REJECTED', 'EXPIRED', 'SUPERSEDED'].includes(value.status) &&
+    typeof value.expiresAt === 'string'
   );
 }

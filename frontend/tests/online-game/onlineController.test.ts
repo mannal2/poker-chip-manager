@@ -821,3 +821,19 @@ it.each(['disconnect', 'control'] as const)(
     expect(x.api.post).toHaveBeenCalledTimes(2);
   },
 );
+
+// 나가기 응답과 권한 회수 소켓의 순서가 달라도 방과 탭 표시를 함께 정리한다.
+it.each([false, true])('clears membership markers on LEAVE when revocation arrives first=%s', async (revokedFirst) => {
+  const x = setup();
+  await x.enter();
+  x.api.post.mockImplementationOnce(async (_path, raw) => {
+    const body = raw as { requestId: string; sequence: number };
+    if (revokedFirst) x.h.onFinal('ACCESS_REVOKED');
+    return { ok: true, status: 200, body: { requestId: body.requestId, sequence: body.sequence, outcome: 'APPLIED', code: 'OK', resultStateVersion: 2, latestState: null } };
+  });
+  await x.c.send([{ type: 'LEAVE', handScoped: false }]);
+  expect(x.c.getView().phase).toBe('entry');
+  expect(x.c.getView().snapshot).toBeNull();
+  expect(localStorage.getItem('online.lastRoom')).toBeNull();
+  expect(sessionStorage.getItem('online.controlRoom')).toBeNull();
+});

@@ -41,12 +41,12 @@ export function buildTableView(
         i === button ? 'D' : '',
         button >= 0 && i === sb && !p.eliminated ? 'SB' : '',
         button >= 0 && i === bb ? 'BB' : '',
-        p.eliminated ? '탈락' : p.folded ? '폴드' : p.stack === 0 ? '올인' : '',
+        p.eliminated || p.forfeited ? '탈락' : p.folded ? '폴드' : p.stack === 0 ? '올인' : '',
       ]
         .filter(Boolean)
         .join(' · '),
       active: state.status === 'playing' && state.hand?.actorId === p.id,
-      out: p.eliminated,
+      out: p.eliminated || !!p.forfeited,
       selected: currentPot ? winners[currentPot.id].includes(p.id) : false,
       eligible: currentPot?.eligible.includes(p.id),
     })),

@@ -477,6 +477,10 @@ export class OnlineController {
         await this.reject(body.code);
         return false;
       }
+      if (request.body.type === 'LEAVE') {
+        localStorage.removeItem(LAST);
+        this.leaveRoomScreen();
+      }
       return true;
     }
     if (!result.ok) {
@@ -586,6 +590,11 @@ export class OnlineController {
   }
   // 최종 메시지에 맞는 단계를 보관하고 모든 채널을 종료한다.
   private finish(type: FinalMessage): void {
+    if (type === 'ACCESS_REVOKED' && this.request?.body.type === 'LEAVE') {
+      localStorage.removeItem(LAST);
+      this.leaveRoomScreen();
+      return;
+    }
     this.stop();
     this.update({
       phase: type === 'ROOM_GONE' ? 'gone' : type === 'ACCESS_REVOKED' ? 'revoked' : 'incompatible',

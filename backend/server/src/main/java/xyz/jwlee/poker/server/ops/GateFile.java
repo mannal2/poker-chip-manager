@@ -52,18 +52,25 @@ public final class GateFile {
         }
     }
 
+    // 정적 판정만 있으므로 인스턴스를 만들지 않는다
     private GateFile() {}
 
-    // 파일을 읽어 게이트 상태를 판정한다. 없는 파일과 완료 기록만 열린 상태다
+    // 파일을 읽어 게이트 상태를 판정한다. 있는 디렉터리 안의 없는 파일과 완료 기록만 열린 상태다
     public static State read(Path path) {
         try {
             return judge(JSON.readTree(Files.readAllBytes(path)));
         } catch (NoSuchFileException e) {
-            return State.OPEN;
+            return parentExists(path) ? State.OPEN : State.closedBy(UNKNOWN);
         } catch (IOException | RuntimeException e) {
             LOG.warn("Cannot read the start gate file {}: {}", path, e.getClass().getSimpleName());
             return State.closedBy(UNKNOWN);
         }
+    }
+
+    // 파일이 놓일 디렉터리가 있는지 확인한다. 없으면 운영 마운트가 빠진 것으로 본다
+    private static boolean parentExists(Path path) {
+        Path parent = path.toAbsolutePath().getParent();
+        return parent != null && Files.isDirectory(parent);
     }
 
     // 읽은 값이 완료 기록이면 열고 그 밖에는 닫는다

@@ -66,6 +66,29 @@ class GateFileTest {
         assertThat(GateFile.read(dir.resolve("missing.json")).closed()).isFalse();
     }
 
+    // 부모 디렉터리가 없으면 마운트 누락으로 보고 닫는지 확인한다
+    @Test
+    void aMissingParentDirectoryIsClosed() {
+        GateFile.State state = GateFile.read(dir.resolve("no-mount").resolve("start-gate.json"));
+
+        assertThat(state.closed()).isTrue();
+        assertThat(state.deploymentId()).isEqualTo("unknown");
+    }
+
+    // 설정이 없으면 게이트가 열린 채 기동하는지 확인한다
+    @Test
+    void anUnsetGateFileStartsOpen() {
+        assertThat(new GateFile.Startup().startGate("").isClosed()).isFalse();
+    }
+
+    // 마운트가 빠진 경로로 기동하면 게이트가 닫히는지 확인한다
+    @Test
+    void aMissingMountStartsClosed() {
+        String path = dir.resolve("no-mount").resolve("start-gate.json").toString();
+
+        assertThat(new GateFile.Startup().startGate(path).deploymentId()).contains("unknown");
+    }
+
     // 완료 단계 파일은 열린 상태인지 확인한다
     @Test
     void aCompletedDeploymentIsOpen() throws IOException {

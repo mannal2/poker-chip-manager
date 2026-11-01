@@ -29,6 +29,7 @@ final class GameClient {
     private final String streamId;
     private final AtomicLong screenSequence = new AtomicLong();
     private final AtomicLong commandSequence = new AtomicLong();
+    private String lastCommand;
 
     String roomId;
     String code;
@@ -136,7 +137,18 @@ final class GameClient {
             json.append(",\"handId\":\"").append(handId).append('"');
         }
         json.append('}');
-        return postJson("/api/rooms/" + roomId + "/commands", json.toString());
+        lastCommand = json.toString();
+        return postJson("/api/rooms/" + roomId + "/commands", lastCommand);
+    }
+
+    // 마지막 명령을 같은 식별자와 순번으로 다시 보낸다
+    ResultActions resendLast() throws Exception {
+        return postJson("/api/rooms/" + roomId + "/commands", lastCommand);
+    }
+
+    // 조작 인수를 요청한다
+    ResultActions postControl() throws Exception {
+        return postJson("/api/rooms/" + roomId + "/control", screen(",\"expectedControlGeneration\":1"));
     }
 
     ResultActions history(String query) throws Exception {

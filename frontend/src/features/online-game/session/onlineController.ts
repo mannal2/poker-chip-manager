@@ -52,6 +52,7 @@ type Request = {
   draft: boolean;
   scopeRevision?: number;
   unresolved?: boolean;
+  limited?: boolean;
 };
 const CONNECTION_ERROR = '서버에 연결하지 못했습니다. 연결 상태를 확인해 주세요.';
 const UNKNOWN_RESULT = '요청 결과를 확인하지 못했습니다. 다시 확인해 주세요.';
@@ -320,7 +321,8 @@ export class OnlineController {
           const request = this.request;
           // 재접속 전에 시작한 전송도 제한 시간 뒤에 같은 원장에서 조회한다
           void Promise.resolve(this.processing).then(() => {
-            if (this.request === request && this.view.connection !== 'offline') void this.retry();
+            if (this.request === request && !request.limited && this.view.connection !== 'offline')
+              void this.retry();
           });
         }
       },
@@ -518,7 +520,16 @@ export class OnlineController {
   // 최초 요청을 보존하고 재시도 가능한 결과 불명 상태를 표시한다
   private unknownResult(request: Request): false {
     request.unresolved = true;
+    request.limited = false;
     this.update({ pending: true, error: UNKNOWN_RESULT });
+    return false;
+  }
+  // 접수 전에 거절된 요청을 보존하고 사용자가 다시 보낼 때까지 자동 재전송을 막는다
+  private limitedResult(request: Request, code: string, retryAfter: number | undefined): false {
+    request.unresolved = true;
+    request.limited = true;
+    const wait = retryAfter === undefined ? '' : ` ${retryAfter}초 뒤에 가능합니다.`;
+    this.update({ pending: true, error: messageFor(code) + wait });
     return false;
   }
   // 동시에 한 개의 HTTP 처리만 시작한다
@@ -559,7 +570,10 @@ export class OnlineController {
         result = await this.api.post(request.path, request.body);
     } else result = await this.api.post(request.path, request.body);
     if (epoch !== this.epoch) return false;
-    if ('unknown' in result) return this.unknownResult(request);
+    if ('unknown' in result)
+      return result.code
+        ? this.limitedResult(request, result.code, result.retryAfter)
+        : this.unknownResult(request);
     const body = result.body;
     if (request.kind === 'command' && isCommandResponse(body)) {
       if (body.requestId !== request.body.requestId || body.sequence !== request.body.sequence) {
@@ -778,7 +792,7 @@ export class OnlineController {
     if (!this.active) return;
     void this.api.refresh();
     if (this.view.phase === 'room') this.connect();
-    else if (this.request) void this.retry();
+    else if (this.request && !this.request.limited) void this.retry();
   }
   // 컨트롤러의 외부 구독과 브라우저 자원을 모두 정리한다
   dispose(): void {

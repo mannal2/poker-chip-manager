@@ -25,6 +25,8 @@ export type ServerErrorCode =
   | 'ROOM_FULL'
   | 'ROOM_NOT_FOUND'
   | 'ROOM_LIMIT'
+  | 'RATE_LIMITED'
+  | 'SESSION_LIMIT'
   | 'INVALID_NAME'
   | 'DUPLICATE_NAME'
   | 'TRANSFER_HOST_FIRST'
@@ -74,6 +76,8 @@ export const errorMessages: Record<ErrorCode, string> = {
   ROOM_FULL: '방이 가득 찼습니다.',
   ROOM_NOT_FOUND: '방을 찾을 수 없습니다.',
   ROOM_LIMIT: '지금은 방을 더 만들 수 없습니다.',
+  RATE_LIMITED: '요청이 너무 많습니다. 잠시 뒤 다시 시도해 주세요.',
+  SESSION_LIMIT: '접속자가 많습니다. 잠시 뒤 다시 시도해 주세요.',
   INVALID_NAME: '이름은 한글, 영문, 숫자, 공백으로 1~10자여야 합니다.',
   DUPLICATE_NAME: '같은 이름이 이미 있습니다.',
   TRANSFER_HOST_FIRST: '방장은 방장을 넘긴 뒤에 기권할 수 있습니다.',

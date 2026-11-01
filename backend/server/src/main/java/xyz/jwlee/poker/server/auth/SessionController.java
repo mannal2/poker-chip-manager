@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RestController;
+import xyz.jwlee.poker.server.room.RoomException;
 import xyz.jwlee.poker.server.support.IdGenerator;
 import xyz.jwlee.poker.server.support.Protocol;
 
@@ -24,15 +25,19 @@ class SessionController {
     static final int MAX_STREAMS = 8;
 
     private final IdGenerator ids;
+    private final SessionLimitListener limit;
 
-    SessionController(IdGenerator ids) {
+    SessionController(IdGenerator ids, SessionLimitListener limit) {
         this.ids = ids;
+        this.limit = limit;
     }
 
-    // 세션을 만들고 CSRF 토큰과 프로토콜 버전을 돌려준다
+    // 세션을 만들고 CSRF 토큰과 프로토콜 버전을 돌려주며 서버 전체 한도를 넘는 새 세션은 거절한다
     @GetMapping("/api/session")
     Map<String, Object> session(HttpServletRequest request, HttpServletResponse response, CsrfToken csrf) {
-        request.getSession(true);
+        if (request.getSession(false) == null && !limit.tryOpen(request)) {
+            throw new RoomException("SESSION_LIMIT");
+        }
         response.setHeader("Cache-Control", "no-store");
         // getToken() loads or creates the deferred token and stores it in the session.
         return Map.of("csrfToken", csrf.getToken(), "protocolVersion", Protocol.VERSION);

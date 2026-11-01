@@ -1,5 +1,14 @@
 poker:
   max-rooms: 10
+  client-ip-header: ""
+  rate-limit:
+    session-per-second: 5
+    session-burst: 10
+    ip-per-minute: 60
+    ip-burst: 20
+    room-per-minute: 5
+    room-burst: 5
+    max-sessions: 2000
   allowed-origins:
     - http://localhost:5173
     - http://127.0.0.1:5173
@@ -27,6 +36,7 @@ spring:
       on-profile: prod
 
 poker:
+  client-ip-header: X-Real-IP
   allowed-origins:
     - https://pcm.jwlee.xyz
 
@@ -45,5 +55,11 @@ spring:
 
 poker:
   max-rooms: 200
+  # Every test browser shares one address, and the suite opens far more rooms than one person would.
+  rate-limit:
+    ip-per-minute: 60000
+    ip-burst: 2000
+    room-per-minute: 60000
+    room-burst: 2000
   allowed-origins:
     - http://127.0.0.1:4174

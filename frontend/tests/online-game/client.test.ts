@@ -25,8 +25,8 @@ it('preserves the original serialized body while a CSRF reload is pending', asyn
 });
 
 // JSON 서버 응답을 만든다
-function reply(body: unknown, status = 200) {
-  return new Response(status === 204 ? null : JSON.stringify(body), { status });
+function reply(body: unknown, status = 200, headers: Record<string, string> = {}) {
+  return new Response(status === 204 ? null : JSON.stringify(body), { status, headers });
 }
 // 각 테스트에서 대체한 브라우저 경계를 복구한다
 afterEach(() => vi.unstubAllGlobals());
@@ -145,4 +145,57 @@ it('stops when token reload fails and exposes stream preparation failure', async
   });
   expect(api.streamId).toBeNull();
   expect(fetch).toHaveBeenCalledTimes(4);
+});
+
+// 빈도 제한과 세션 한도는 결과 불명으로 돌려주되 코드와 대기 시간을 담는다
+it.each([
+  [429, 'RATE_LIMITED', '3', 3],
+  [503, 'SESSION_LIMIT', '60', 60],
+])('reports %i %s as unknown with its retry delay', async (status, code, header, retryAfter) => {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async () => reply({ code }, status, { 'Retry-After': header })),
+  );
+  expect(await new ApiClient().post('/command', {})).toEqual({
+    ok: false,
+    unknown: true,
+    code,
+    retryAfter,
+  });
+});
+
+// 읽을 수 없는 대기 시간은 빼고 결과 불명만 전달한다
+it('leaves out a retry delay that is not a number of seconds', async () => {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async () => reply({ code: 'RATE_LIMITED' }, 429, { 'Retry-After': 'soon' })),
+  );
+  expect(await new ApiClient().post('/command', {})).toEqual({
+    ok: false,
+    unknown: true,
+    code: 'RATE_LIMITED',
+  });
+});
+
+// 방 한도는 기존대로 확정된 거절이고 다른 503은 코드 없는 결과 불명이다
+it('keeps other 503 answers as they were', async () => {
+  const fetch = vi
+    .fn()
+    .mockResolvedValueOnce(reply({ code: 'ROOM_LIMIT' }, 503))
+    .mockResolvedValueOnce(reply({ code: 'OTHER' }, 503));
+  vi.stubGlobal('fetch', fetch);
+  const api = new ApiClient();
+  expect(await api.post('/command', {})).toMatchObject({ ok: false, code: 'ROOM_LIMIT' });
+  expect(await api.post('/command', {})).toEqual({ ok: false, unknown: true });
+});
+
+// 세션 한도로 세션을 받지 못하면 코드를 담아 초기 연결 실패를 알린다
+it('fails opening with the session limit code', async () => {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async () => reply({ code: 'SESSION_LIMIT' }, 503, { 'Retry-After': '60' })),
+  );
+  await expect(new ApiClient().open()).rejects.toMatchObject({
+    result: { code: 'SESSION_LIMIT', retryAfter: 60 },
+  });
 });

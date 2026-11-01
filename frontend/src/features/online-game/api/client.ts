@@ -2,7 +2,18 @@
 export type ApiResult<T> =
   | { ok: true; status: number; body: T }
   | { ok: false; status: number; code: string | undefined; body: unknown }
-  | { ok: false; unknown: true };
+  | { ok: false; unknown: true; code?: string; retryAfter?: number };
+
+// 접수 전에 거절된 응답을 코드와 대기 시간이 있는 결과 불명으로 바꾼다
+function limited(response: Response, code: string | undefined): ApiResult<never> {
+  const retryAfter = Number(response.headers.get('Retry-After') ?? NaN);
+  return {
+    ok: false,
+    unknown: true,
+    ...(code === undefined ? {} : { code }),
+    ...(Number.isFinite(retryAfter) ? { retryAfter } : {}),
+  };
+}
 
 // 초기 연결 실패의 HTTP 결과를 호출자에게 전달한다
 export class ApiOpenError extends Error {
@@ -127,6 +138,8 @@ export class ApiClient {
         response.status === 204 ? undefined : await Promise.race([deadline, response.json()]);
       if (response.ok) return { ok: true, status: response.status, body: value as T };
       const code = typeof value?.code === 'string' ? value.code : undefined;
+      if (response.status === 429 || (response.status === 503 && code === 'SESSION_LIMIT'))
+        return limited(response, code);
       if (response.status >= 500 && !(response.status === 503 && code === 'ROOM_LIMIT'))
         return { ok: false, unknown: true };
       if (method !== 'GET' && response.status === 403 && code === 'CSRF_REJECTED' && retry) {

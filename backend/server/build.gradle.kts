@@ -31,6 +31,8 @@ tasks.test {
     systemProperty("contract.dir", contractDir.path)
     // Tests move the clock themselves, so the background sweep must not race them.
     systemProperty("poker.sweep.enabled", "false")
+    // Scenario tests send commands faster than a person; the rate limit tests switch it back on.
+    systemProperty("poker.rate-limit.enabled", "false")
     inputs.dir(contractDir).withPropertyName("apiContract").withPathSensitivity(PathSensitivity.RELATIVE)
     testLogging {
         events("passed", "failed", "skipped")

@@ -2,7 +2,7 @@ import { afterEach, expect, it, vi } from 'vitest';
 import fixture from '../../../shared/api-contract/create-room.json';
 import playing from '../../../shared/api-contract/snapshot-playing.json';
 import { OnlineController } from '../../src/features/online-game/session/onlineController';
-import { ApiClient } from '../../src/features/online-game/api/client';
+import { ApiClient, ApiOpenError } from '../../src/features/online-game/api/client';
 import type { RoomSocketHandlers } from '../../src/features/online-game/realtime/roomSocket';
 import type { JoinResponse, RoomSnapshot } from '../../src/features/online-game/api/types';
 
@@ -698,6 +698,93 @@ function setup(client?: ApiClient) {
     },
   };
 }
+// 빈도 제한 응답을 흉내 낸다
+const rateLimited = { ok: false, unknown: true, code: 'RATE_LIMITED', retryAfter: 2 };
+
+// 받은 명령을 그대로 적용한 서버 응답을 만든다
+function applied(x: ReturnType<typeof setup>) {
+  return (_path: string, body: unknown) =>
+    Promise.resolve({
+      ok: true,
+      status: 200,
+      body: {
+        ...(body as object),
+        outcome: 'APPLIED',
+        code: 'OK',
+        resultStateVersion: x.entry.state.stateVersion,
+        latestState: x.entry.state,
+      },
+    });
+}
+
+// 429 뒤에도 요청을 보관하고 재시도는 같은 식별자로 나가며 다음 순번은 하나만 늘어난다
+it('keeps a rate limited command and retries it with the same id and sequence', async () => {
+  const x = setup();
+  await x.enter();
+  x.api.post.mockResolvedValueOnce(rateLimited);
+  expect(await x.c.send([{ type: 'START', handScoped: false }])).toBe(false);
+  const first = x.api.post.mock.lastCall![1] as { requestId: string; sequence: number };
+  expect(x.c.getView().pending).toBe(true);
+  expect(x.c.canRetry()).toBe(true);
+  expect(x.c.getView().error).toContain('2초');
+  expect(x.c.getView().error).toContain('요청이 너무 많습니다');
+
+  x.api.get.mockResolvedValueOnce({ ok: false, status: 404, code: 'REQUEST_NOT_FOUND' });
+  x.api.post.mockImplementationOnce(applied(x));
+  expect(await x.c.retry()).toBe(true);
+  const second = x.api.post.mock.lastCall![1] as { requestId: string; sequence: number };
+  expect(second).toEqual(first);
+  expect(x.c.getView()).toMatchObject({ pending: false, error: null });
+
+  x.api.post.mockImplementationOnce(applied(x));
+  expect(await x.c.send([{ type: 'START', handScoped: false }])).toBe(true);
+  const next = x.api.post.mock.lastCall![1] as { requestId: string; sequence: number };
+  expect(next.sequence).toBe(first.sequence + 1);
+  expect(next.requestId).not.toBe(first.requestId);
+});
+
+// 제한된 요청은 소켓이 다시 열려도 사용자가 누르기 전에는 다시 보내지 않는다
+it('does not resend a rate limited command when the socket reopens', async () => {
+  const x = setup();
+  await x.enter();
+  x.api.post.mockResolvedValueOnce(rateLimited);
+  await x.c.send([{ type: 'START', handScoped: false }]);
+  const posts = x.api.post.mock.calls.length;
+  x.h.onState('open');
+  await new Promise((resolve) => setTimeout(resolve));
+  expect(x.api.get).not.toHaveBeenCalled();
+  expect(x.api.post).toHaveBeenCalledTimes(posts);
+  expect(x.c.canRetry()).toBe(true);
+});
+
+// 방 입장 요청도 제한되면 보관한 본문을 사용자가 재시도할 때만 다시 보낸다
+it('keeps a rate limited entry until the person retries', async () => {
+  const x = setup();
+  x.api.post.mockResolvedValueOnce(rateLimited);
+  expect(await x.c.create('Alice')).toBe(false);
+  const first = x.api.post.mock.lastCall![1];
+  expect(x.c.getView()).toMatchObject({ phase: 'joining', pending: true });
+  x.c.restore();
+  await new Promise((resolve) => setTimeout(resolve));
+  expect(x.api.post).toHaveBeenCalledTimes(1);
+
+  expect(await x.c.retry()).toBe(true);
+  expect(x.api.post.mock.lastCall![1]).toEqual(first);
+  expect(x.c.getView().phase).toBe('room');
+});
+
+// 세션 한도로 시작하지 못하면 입장 화면에서 원인을 안내하고 요청을 남기지 않는다
+it('shows the session limit when the session cannot be opened', async () => {
+  const x = setup();
+  x.api.open.mockRejectedValueOnce(
+    new ApiOpenError({ ok: false, unknown: true, code: 'SESSION_LIMIT', retryAfter: 60 }),
+  );
+  expect(await x.c.create('Alice')).toBe(false);
+  expect(x.c.getView()).toMatchObject({ phase: 'entry', pending: false });
+  expect(x.c.getView().error).toContain('접속자가 많습니다');
+  expect(x.api.post).not.toHaveBeenCalled();
+});
+
 // 응답을 잃어도 최신 스냅샷만으로 요청을 확정하지 않는다
 it('resolves an unknown command from the ledger without resending', async () => {
   const x = setup();

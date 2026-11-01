@@ -43,7 +43,10 @@ class ApiExceptionHandler {
             Map.entry("RECOVERY_LIMIT", 422),
             Map.entry("ALREADY_PARTICIPANT", 422),
             Map.entry("RECOVERY_NOT_PENDING", 422),
-            Map.entry("ROOM_LIMIT", 503));
+            Map.entry("ROOM_LIMIT", 503),
+            Map.entry("SESSION_LIMIT", 503));
+
+    private static final String SESSION_LIMIT_RETRY_SECONDS = "60";
 
     // 방 도메인 예외를 코드에 맞는 HTTP 상태로 응답한다
     @ExceptionHandler(RoomException.class)
@@ -90,6 +93,11 @@ class ApiExceptionHandler {
 
     // 캐시 금지 헤더와 함께 오류 본문 응답을 만든다
     private static ResponseEntity<ApiError> respond(int status, String code) {
-        return ResponseEntity.status(status).header(HttpHeaders.CACHE_CONTROL, "no-store").body(ApiError.of(code));
+        ResponseEntity.BodyBuilder response =
+                ResponseEntity.status(status).header(HttpHeaders.CACHE_CONTROL, "no-store");
+        if (code.equals("SESSION_LIMIT")) {
+            response.header(HttpHeaders.RETRY_AFTER, SESSION_LIMIT_RETRY_SECONDS);
+        }
+        return response.body(ApiError.of(code));
     }
 }

@@ -163,6 +163,49 @@ test('refresh on the actor turn clears the betting draft and restores control', 
   }
 });
 
+// 콜 차례에 복귀한 참가자는 새 구독이 지연되어도 서버에서 폴드되지 않는다.
+test('visible actor retains presence while its replacement subscription is delayed', async ({
+  page,
+  browser,
+}) => {
+  const code = await createRoom(page);
+  const context = await browser.newContext();
+  try {
+    const guest = await context.newPage();
+    await joinRoom(guest, code);
+    await startRoom(page);
+    const call = page.getByRole('button', { name: '콜 10', exact: true });
+    await expect(call).toHaveAttribute('aria-disabled', 'false');
+    let subscribe: (() => void) | undefined;
+    // 교체 소켓의 구독 메시지만 보관하여 서버의 자리 등록을 늦춘다.
+    await page.routeWebSocket('**/ws', (socket) => {
+      const server = socket.connectToServer();
+      // 구독 전송 시점을 테스트가 결정하고 나머지 메시지는 즉시 전달한다.
+      socket.onMessage((message) => {
+        if (JSON.parse(message.toString()).type === 'SUBSCRIBE')
+          subscribe = () => server.send(message);
+        else server.send(message);
+      });
+    });
+    await page.evaluate(() => {
+      Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'visible' });
+      document.dispatchEvent(new Event('visibilitychange'));
+    });
+    await expect.poll(() => Boolean(subscribe)).toBe(true);
+    await expect(call).toHaveAttribute('aria-disabled', 'true');
+    await expect(guest.locator('.seat.active .name')).toHaveText('Alice');
+    await expect(guest.locator('.seat .stack')).toHaveText(['990', '980']);
+    await expect(guest.locator('.pot strong')).toHaveText('30');
+    subscribe!();
+    await expect(call).toHaveAttribute('aria-disabled', 'false');
+    await expect(page.locator('.seat .stack')).toHaveText(['990', '980']);
+    await call.click();
+    await expect(guest.locator('.seat.active .name')).toHaveText('Bob');
+    await expect(guest.locator('.pot strong')).toHaveText('40');
+  } finally {
+    await context.close();
+  }
+});
 // 닫힘 이벤트 없이 메시지가 멎은 소켓도 화면 복귀 시 교체하고 세션을 갱신한다.
 test('visibility return replaces a silently dead socket and resumes server updates', async ({ page, browser }) => {
   const code = await createRoom(page);

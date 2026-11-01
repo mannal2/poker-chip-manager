@@ -2,9 +2,274 @@ import { afterEach, expect, it, vi } from 'vitest';
 import fixture from '../../../shared/api-contract/create-room.json';
 import playing from '../../../shared/api-contract/snapshot-playing.json';
 import { OnlineController } from '../../src/features/online-game/session/onlineController';
+import { ApiClient } from '../../src/features/online-game/api/client';
 import type { RoomSocketHandlers } from '../../src/features/online-game/realtime/roomSocket';
 import type { JoinResponse, RoomSnapshot } from '../../src/features/online-game/api/types';
 
+// HTTP와 소켓의 도착 순서가 달라도 최근 토너먼트와 재준비 상태를 보존한다.
+it.each(['START', 'RE_READY'] as const)(
+  'preserves dispatch scope across late %s replies and accepts HTTP-first transitions',
+  async (type) => {
+    for (const delivery of ['http', 'ws', 'superseded']) {
+      const x = setup();
+      await x.enter();
+      const game = structuredClone(playing.response) as RoomSnapshot;
+      const waiting = { ...x.entry.state, stateVersion: type === 'START' ? game.stateVersion + 10 : 0 };
+      const before = type === 'START' ? waiting : game;
+      const after = type === 'START' ? game : waiting;
+      const newerScope = type === 'START' ? waiting : {
+        ...game, tournamentId: 'second-tournament', game: { ...game.game!, tournamentId: 'second-tournament' },
+      };
+      // 소켓으로 토너먼트 경계의 전체 상태를 발행한다.
+      const publish = (state: RoomSnapshot) =>
+        x.h.onSnapshot({ type: 'SNAPSHOT', previousVersion: null, events: [], state });
+      publish(before);
+      let deliver!: () => void;
+      // 원래 요청 식별자와 함께 서버 응답을 원하는 순서에 맞춰 반환한다.
+      x.api.post.mockImplementationOnce(
+        (_path, body) =>
+          new Promise((resolve) => {
+            // 보류한 명령의 확정 결과를 전달한다.
+            deliver = () =>
+              resolve({
+                ok: true,
+                body: {
+                  ...(body as object),
+                  outcome: 'APPLIED',
+                  code: 'OK',
+                  resultStateVersion: after.stateVersion,
+                  latestState: after,
+                },
+              });
+          }),
+      );
+      const work = x.c.send([{ type, handScoped: false }]);
+      if (delivery !== 'http') publish(after);
+      if (delivery === 'superseded') publish(newerScope);
+      deliver();
+      expect(await work).toBe(true);
+      expect(x.c.getView().snapshot).toEqual(delivery === 'superseded' ? newerScope : after);
+      expect(x.c.getView().pending).toBe(false);
+      if (delivery === 'http') publish(after);
+      x.c.dispose();
+    }
+  },
+);
+
+// 늦게 온 인수 성공 응답이 다른 탭에서 이미 얻은 더 높은 세대를 되돌리지 않는다.
+it('retains observed generation three after a delayed generation two takeover', async () => {
+  const x = setup();
+  await x.enter();
+  // 동일 버전에서 조작 세대만 달라진 상태를 만든다.
+  const state = (generation: number) => ({
+    ...x.entry.state,
+    you: { ...x.entry.state.you, controlGeneration: generation },
+  });
+  let finish!: () => void;
+  // 원래 화면이 발급받은 세대의 HTTP 응답을 지연한다.
+  x.api.post.mockImplementationOnce(
+    (_path, body) =>
+      new Promise((resolve) => {
+        // 이전 인수의 확정 결과를 나중에 전달한다.
+        finish = () =>
+          resolve({
+            ok: true,
+            body: {
+              ...(body as object),
+              outcome: 'APPLIED',
+              controlGeneration: 2,
+              latestState: state(2),
+            },
+          });
+      }),
+  );
+  const work = x.c.takeControl();
+  x.h.onSnapshot({ type: 'SNAPSHOT', previousVersion: null, events: [], state: state(3) });
+  finish();
+  expect(await work).toBe(true);
+  expect(x.c.getView()).toMatchObject({
+    hasControl: false,
+    pending: false,
+    snapshot: { you: { controlGeneration: 3 } },
+  });
+});
+
+// 실제 HTTP 분류와 입장 원장이 방 한도 거절을 확정하고 다음 입력에 새 식별자를 발급한다.
+it('unlocks a recorded 503 ROOM_LIMIT and preserves ambiguous 5xx requests', async () => {
+  const x = setup(new ApiClient());
+  const transport = vi
+    .fn()
+    .mockResolvedValueOnce(Response.json({ csrfToken: 'token', protocolVersion: 1 }))
+    .mockResolvedValueOnce(Response.json({ streamId: 'stream' }))
+    .mockResolvedValueOnce(
+      Response.json(
+        { code: 'ROOM_LIMIT', message: '지금은 방을 더 만들 수 없습니다.' },
+        { status: 503 },
+      ),
+    )
+    .mockResolvedValueOnce(Response.json({ code: 'INTERNAL_ERROR' }, { status: 503 }))
+    .mockResolvedValueOnce(Response.json({ code: 'ROOM_LIMIT' }, { status: 500 }))
+    .mockResolvedValueOnce(Response.json(x.entry));
+  vi.stubGlobal('fetch', transport);
+  expect(await x.c.create('Alice')).toBe(false);
+  expect(x.c.getView()).toMatchObject({
+    phase: 'entry',
+    pending: false,
+    error: '지금은 방을 더 만들 수 없습니다.',
+  });
+  expect(await x.c.create('Alice')).toBe(false);
+  expect(x.c.getView().pending).toBe(true);
+  expect(await x.c.retry()).toBe(false);
+  expect(await x.c.retry()).toBe(true);
+  const bodies = transport.mock.calls.slice(2).map((call) => JSON.parse(call[1].body));
+  expect(bodies[1].requestId).not.toBe(bodies[0].requestId);
+  expect(bodies.slice(1)).toEqual([bodies[1], bodies[1], bodies[1]]);
+});
+
+// 일시적인 복구 조회 실패는 재시도하고 확정 404는 사유를 남기며 중단한다.
+it.each(['ROOM_NOT_FOUND', 'REQUEST_NOT_FOUND'])(
+  'stops polling after terminal recovery 404 %s',
+  async (code) => {
+    vi.useFakeTimers();
+    const x = setup();
+    x.api.post.mockResolvedValueOnce({
+      ok: true,
+      body: { recoveryRequestId: 'r', status: 'PENDING', expiresAt: 'later' },
+    });
+    x.api.get
+      .mockResolvedValueOnce({ ok: false, unknown: true })
+      .mockResolvedValueOnce({ ok: false, status: 404, code });
+    await x.c.requestRecovery('CODE', 'Alice');
+    expect(x.c.getView().phase).toBe('recovering');
+    await vi.advanceTimersByTimeAsync(3000);
+    expect(x.c.getView()).toMatchObject({
+      phase: 'entry',
+      pending: false,
+      recovery: null,
+      error: code === 'ROOM_NOT_FOUND' ? '방을 찾을 수 없습니다.' : '복구 신청을 찾을 수 없습니다.',
+    });
+    await vi.advanceTimersByTimeAsync(9000);
+    expect(x.api.get).toHaveBeenCalledTimes(2);
+  },
+);
+
+// 응답 헤더나 본문이 멎어도 재접속한 화면은 원래 요청을 중복 전송하지 않고 조회한다.
+it.each(['fetch', 'body'])(
+  'recovers the original command when %s stalls across reconnect',
+  async (stage) => {
+    vi.useFakeTimers();
+    const x = setup(new ApiClient());
+    const stalled = new Promise<never>(() => {});
+    const transport = vi
+      .fn()
+      .mockResolvedValueOnce(Response.json({ csrfToken: 'token', protocolVersion: 1 }))
+      .mockResolvedValueOnce(Response.json({ streamId: 'stream' }))
+      .mockResolvedValueOnce(Response.json(x.entry))
+      .mockImplementationOnce(() =>
+        stage === 'fetch'
+          ? stalled
+          : {
+              ok: true,
+              status: 200,
+              // 수신이 끝나지 않은 JSON 본문을 대신한다.
+              json: () => stalled,
+            },
+      );
+    vi.stubGlobal('fetch', transport);
+    await x.enter();
+    const work = x.c.send([{ type: 'START', handScoped: false }]);
+    const original = JSON.parse(transport.mock.calls[3][1].body);
+    transport.mockResolvedValueOnce(
+      Response.json({
+        ...original,
+        outcome: 'APPLIED',
+        code: 'OK',
+        resultStateVersion: 1,
+        latestState: x.entry.state,
+      }),
+    );
+    await vi.advanceTimersByTimeAsync(1);
+    x.h.onState('waiting');
+    x.h.onState('open');
+    await vi.advanceTimersByTimeAsync(15000);
+    expect(transport.mock.calls[3][1].signal?.aborted).toBe(true);
+    expect(await work).toBe(false);
+    expect(transport.mock.calls[4][0]).toBe(
+      '/api/rooms/' + x.entry.roomId + '/requests/' + original.requestId,
+    );
+    expect(transport.mock.calls[4][1].method).toBe('GET');
+    expect(transport).toHaveBeenCalledTimes(5);
+    expect(x.c.getView().pending).toBe(false);
+  },
+);
+
+// 초기 접속과 저장한 방 복귀에서 서버가 명시한 버전 불일치를 최종 화면으로 보낸다.
+it.each(['create', 'resume'])(
+  'shows refresh-required on an incompatible %s handshake',
+  async (path) => {
+    const x = setup(new ApiClient());
+    const fetch = vi
+      .fn()
+      .mockResolvedValueOnce(Response.json({ csrfToken: 'token', protocolVersion: 2 }));
+    vi.stubGlobal('fetch', fetch);
+    localStorage.setItem('online.lastRoom', JSON.stringify({ roomId: 'room' }));
+    expect(await (path === 'resume' ? x.c.resume() : x.c.create('Alice'))).toBe(false);
+    expect(x.c.getView()).toMatchObject({ phase: 'incompatible', pending: false });
+    expect(fetch).toHaveBeenCalledTimes(1);
+  },
+);
+
+// 연결 자체의 실패와 서버가 거절한 참가자 접속 상태를 구분한다.
+it('distinguishes transport failure from a disconnected participant rejection', async () => {
+  const x = setup();
+  x.api.open.mockRejectedValueOnce(new Error('network'));
+  await x.c.create('Alice');
+  expect(x.c.getView().error).toBe('서버에 연결하지 못했습니다. 연결 상태를 확인해 주세요.');
+  await x.enter();
+  x.api.post.mockResolvedValueOnce({ ok: false, status: 422, code: 'NOT_CONNECTED' });
+  await x.c.send([{ type: 'START', handScoped: false }]);
+  expect(x.c.getView().error).toBe('접속하지 않은 참가자가 있습니다.');
+});
+
+// LEAVE 결과를 잃은 뒤 원장에서 방을 찾지 못하면 자격 표식을 지우고 입장으로 돌아간다.
+it('completes an unknown LEAVE on ledger ROOM_NOT_FOUND without resending', async () => {
+  const x = setup();
+  await x.enter();
+  x.api.post.mockResolvedValueOnce({ ok: false, unknown: true });
+  await x.c.send([{ type: 'LEAVE', handScoped: false }]);
+  const body = x.api.post.mock.lastCall![1] as { requestId: string };
+  x.api.get.mockResolvedValueOnce({ ok: false, status: 404, code: 'ROOM_NOT_FOUND' });
+  expect(await x.c.retry()).toBe(true);
+  expect(x.api.get).toHaveBeenCalledExactlyOnceWith(
+    '/api/rooms/' + x.entry.roomId + '/requests/' + body.requestId,
+  );
+  expect(x.api.post).toHaveBeenCalledTimes(2);
+  expect(localStorage.getItem('online.lastRoom')).toBeNull();
+  expect(sessionStorage.getItem('online.controlRoom')).toBeNull();
+  expect(x.c.getView()).toMatchObject({
+    phase: 'entry',
+    snapshot: null,
+    pending: false,
+    error: null,
+  });
+});
+
+// 교체 구독의 낮은 버전은 입력을 풀지 않고 최신 스냅샷이 도착할 때까지 기다린다.
+it('keeps input locked when a reconnect receives a lower tuple', async () => {
+  const x = setup();
+  await x.enter();
+  const state = x.c.getView().snapshot!;
+  x.h.onState('open');
+  x.h.onSnapshot({
+    type: 'SNAPSHOT',
+    previousVersion: null,
+    events: [],
+    state: { ...state, stateVersion: state.stateVersion - 1 },
+  });
+  expect(x.c.getView().connection).toBe('syncing');
+  x.h.onSnapshot({ type: 'SNAPSHOT', previousVersion: null, events: [], state });
+  expect(x.c.getView().connection).toBe('online');
+});
 const controllers: OnlineController[] = [];
 // HTTP 응답이 먼저 적용되어도 같은 버전의 확정 알림을 한 번 전달하고 효과와 상태는 건드리지 않는다.
 it.each(['CHECK', 'UNDO'])('observes HTTP-first %s once without replaying effects or replacing state', async (type) => {
@@ -18,7 +283,8 @@ it.each(['CHECK', 'UNDO'])('observes HTTP-first %s once without replaying effect
   x.api.post.mockImplementationOnce(async (_path, raw) => ({ ok: true, body: { ...(raw as object), outcome: 'APPLIED', code: 'OK', resultStateVersion: next.stateVersion, latestState: next } }));
   await x.c.send([{ type: 'CHECK', handScoped: true }]);
   const event = { id: type, type, at: '', tournamentId: next.tournamentId!, hand: 1, details: { playerId: 'p0', auto: type === 'CHECK' } };
-  const message = { type: 'SNAPSHOT' as const, previousVersion: x.entry.state.stateVersion, events: [event], state: next };
+  const events = [event, { ...event, id: 'auto-fold', type: 'FOLD', details: { playerId: 'p1', auto: true } }];
+  const message = { type: 'SNAPSHOT' as const, previousVersion: x.entry.state.stateVersion, events, state: next };
   x.h.onSnapshot({ ...message, state: { ...next, draftVersion: 1 } });
   x.h.onSnapshot({ ...message, state: { ...next, stateVersion: next.stateVersion - 1 } });
   expect(observed).not.toHaveBeenCalled();
@@ -26,7 +292,7 @@ it.each(['CHECK', 'UNDO'])('observes HTTP-first %s once without replaying effect
   const confirmedState = x.c.getView().snapshot;
   x.h.onSnapshot({ ...message, state: structuredClone(next) });
   x.h.onSnapshot(message);
-  expect(observed).toHaveBeenCalledExactlyOnceWith([event]);
+  expect(observed).toHaveBeenCalledExactlyOnceWith(events);
   expect(x.c.getKnownEvents().has(type)).toBe(true);
   expect(x.c.getView().snapshot).toBe(confirmedState);
   expect(effect).not.toHaveBeenCalled();
@@ -56,7 +322,7 @@ it('reconnects an idle room without requiring a pending request', async () => {
   await x.enter();
   expect(x.c.getView().pending).toBe(false);
   x.c.reconnect();
-  expect(x.socket.subscribe).toHaveBeenCalledTimes(2);
+  expect(x.socket.reconnect).toHaveBeenCalledOnce();
   expect(x.c.getView().connection).toBe('syncing');
   x.h.onSnapshot({ type: 'SNAPSHOT', previousVersion: null, events: [], state: x.entry.state });
   expect(x.c.getView().connection).toBe('online');
@@ -224,7 +490,7 @@ afterEach(() => {
   vi.useRealTimers();
 });
 // 브라우저 저장소와 소켓을 대신하는 세션 하네스를 만든다.
-function setup() {
+function setup(client?: ApiClient) {
   const local = new Map<string, string>();
   const tab = new Map<string, string>();
   // 메모리 저장소에 브라우저 저장소 인터페이스를 부여한다.
@@ -257,8 +523,12 @@ function setup() {
     get: vi.fn(),
   };
   let handlers!: RoomSocketHandlers;
-  const socket = { subscribe: vi.fn(), resync: vi.fn(), close: vi.fn() };
-  const c = new OnlineController(api as never, (h) => {
+  const socket = {
+    subscribe: vi.fn(), resync: vi.fn(), close: vi.fn(),
+    // 실제 전송 계층처럼 재접속을 시작하면서 입력을 잠근다.
+    reconnect: vi.fn(() => handlers.onState('connecting')),
+  };
+  const c = new OnlineController(client ?? api as never, (h) => {
     handlers = h;
     return socket;
   });

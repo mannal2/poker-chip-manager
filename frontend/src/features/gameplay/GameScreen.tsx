@@ -1,4 +1,4 @@
-import { useImperativeHandle, type ReactNode, type Ref } from 'react';
+import { useImperativeHandle, useLayoutEffect, useRef, type ReactNode, type Ref } from 'react';
 import { Dialog } from '../../shared/ui/Dialog';
 import { BetControls, type BetAction } from './components/BetControls';
 import { BlindSettings } from './components/BlindSettings';
@@ -62,6 +62,17 @@ export function GameScreen({
   const bettingScope = scope === undefined ? undefined : s.tournamentId + ':' + scope;
   const settlementScope = s.tournamentId + '/' + s.hand?.id + '/' + scope;
   const initialBlinds = s.pendingBlinds ?? s.hand;
+  const blindScope = s.tournamentId + '/' + s.status + '/' + s.hand?.id + '/' + s.hand?.phase;
+  const previousBlindScope = useRef(blindScope);
+  // 열린 블라인드 폼을 다른 핸드나 단계에 재사용하지 않도록 화면 전환 전에 닫는다.
+  useLayoutEffect(() => {
+    if (
+      dialog === 'blinds' &&
+      (s.status !== 'playing' || previousBlindScope.current !== blindScope)
+    )
+      onDialog('');
+    previousBlindScope.current = blindScope;
+  }, [blindScope, dialog, onDialog, s.status]);
   const { changeCount } = setup;
   const legal = session.legal;
   const { draftAmount, submitAllowed, prepareAction, resetDraft } = useBettingDraft(
@@ -132,6 +143,7 @@ export function GameScreen({
           disconnectedIds: session.disconnectedIds,
         })}
         viewSeat={session.viewSeat}
+        boardReveal={session.boardReveal}
         onSelect={currentPot && can.canSettle ? selectWinner : undefined}
         onPot={() => {
           if (currentPot) onDialog('payout');
@@ -214,7 +226,8 @@ export function GameScreen({
           <BetControls
             call={legal?.callAdditional}
             canUndo={!!s.undo && can.canUndo}
-            busy={busy || !can.canAct}
+            busy={busy}
+            canBet={can.canAct}
             draftAmount={draftAmount}
             maxAdditional={legal?.maxAdditional}
             submitAllowed={submitAllowed}
@@ -264,7 +277,7 @@ export function GameScreen({
           <GameHistoryPanel loadEvents={session.loadEvents} state={s} />
         </Dialog>
       )}
-      {dialog === 'blinds' && (
+      {dialog === 'blinds' && s.status === 'playing' && initialBlinds && (
         <Dialog dismissOutside title="다음 핸드 블라인드" onClose={close}>
           <div
             // 예약 폼의 자체 잠금 처리 전에 권한 거절 이유를 알린다.
@@ -278,8 +291,8 @@ export function GameScreen({
           >
             <BlindSettings
               key={s.tournamentId + ':' + scope}
-              initialSB={initialBlinds!.sb}
-              initialBB={initialBlinds!.bb}
+              initialSB={initialBlinds.sb}
+              initialBB={initialBlinds.bb}
               busy={busy || !can.canEditBlinds}
               onSave={(sb, bb) => {
                 if (busy) return notify('저장 완료를 기다려주세요.');

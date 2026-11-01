@@ -1,6 +1,6 @@
 import type { GameEvent, WinnerSelection } from '../../../game/types';
 import { messageFor } from '../../gameplay/model/errorMessages';
-import type { ApiClient, ApiResult } from '../api/client';
+import { ApiOpenError, type ApiClient, type ApiResult } from '../api/client';
 import {
   isCommandResponse,
   isJoinResponse,
@@ -18,22 +18,27 @@ import type { KnownEvent } from '../model/eventNotices';
 export interface OnlineView {
   phase: 'entry' | 'joining' | 'recovering' | 'room' | 'gone' | 'revoked' | 'incompatible';
   snapshot: RoomSnapshot | null;
+  effectsFromVersion?: number | null;
   connection: 'online' | 'syncing' | 'offline';
   hasControl: boolean;
   pending: boolean;
   recovery: RecoveryStatus | null;
   error: string | null;
 }
-type SocketPort = Pick<RoomSocket, 'subscribe' | 'resync' | 'close'>;
+type SocketPort = Pick<RoomSocket, 'subscribe' | 'resync' | 'reconnect' | 'close'>;
 type Confirmed = { events: SnapshotMessage['events']; previous: RoomSnapshot; next: RoomSnapshot };
 type Request = {
   path: string;
   body: Record<string, unknown>;
   kind: 'entry' | 'recovery' | 'control' | 'command';
   draft: boolean;
+  scopeRevision?: number;
+  unresolved?: boolean;
 };
 const LAST = 'online.lastRoom';
 const TAB = 'online.controlRoom';
+const CONNECTION_ERROR = '서버에 연결하지 못했습니다. 연결 상태를 확인해 주세요.';
+const UNKNOWN_RESULT = '요청 결과를 확인하지 못했습니다. 다시 확인해 주세요.';
 
 // 서버 상태와 요청 원장 및 화면 수명을 함께 관리한다.
 export class OnlineController {
@@ -55,6 +60,7 @@ export class OnlineController {
   private sequence = 0;
   private streamSequence = 0;
   private epoch = 0;
+  private scopeRevision = 0;
   private active = false;
   private opened = false;
   private opening: Promise<void> | null = null;
@@ -96,7 +102,7 @@ export class OnlineController {
   }
   // 방의 최신 상태를 다시 구독하여 연결을 복구한다.
   reconnect(): void {
-    if (this.active && this.view.phase === 'room') this.connect();
+    if (this.active && this.view.phase === 'room') this.socket?.reconnect();
   }
   // 화면 변경 구독을 등록하고 해제 함수를 반환한다.
   subscribe = (listener: () => void): (() => void) => {
@@ -130,8 +136,19 @@ export class OnlineController {
       this.opening = opening;
       await opening;
       if (this.opening === opening) this.opening = null;
-    } catch {
-      if (epoch === this.epoch) this.update({ pending: false, error: messageFor('NOT_CONNECTED') });
+    } catch (failure) {
+      if (epoch === this.epoch) {
+        this.opening = null;
+        const code =
+          failure instanceof ApiOpenError && 'code' in failure.result
+            ? failure.result.code
+            : undefined;
+        this.update({
+          phase: code === 'PROTOCOL_INCOMPATIBLE' ? 'incompatible' : 'entry',
+          pending: false,
+          error: code ? messageFor(code) : CONNECTION_ERROR,
+        });
+      }
       return false;
     }
     if (epoch !== this.epoch) {
@@ -185,7 +202,6 @@ export class OnlineController {
       error: null,
     });
     if (!(await this.open()) || epoch !== this.epoch) {
-      if (epoch === this.epoch) this.update({ phase: 'entry', pending: false });
       return false;
     }
     this.request = { path, body: { ...this.envelope(), ...payload }, kind, draft: false };
@@ -210,7 +226,6 @@ export class OnlineController {
       if (epoch === this.epoch) {
         localStorage.removeItem(LAST);
         sessionStorage.removeItem(TAB);
-        this.update({ phase: 'entry', pending: false });
       }
       return false;
     }
@@ -222,7 +237,7 @@ export class OnlineController {
       this.update({
         phase: 'entry',
         pending: false,
-        error: messageFor(!result.ok && !('unknown' in result) ? result.code : 'NOT_CONNECTED'),
+        error: !result.ok && !('unknown' in result) ? messageFor(result.code) : CONNECTION_ERROR,
       });
       return false;
     }
@@ -259,8 +274,8 @@ export class OnlineController {
       // 수신 상태를 적용한 뒤 연결 동기화를 확정한다.
       onSnapshot: (message) => {
         if (epoch !== this.epoch || !this.active) return;
-        this.apply(message.state, message);
-        this.update({ connection: 'online' });
+        if (this.apply(message.state, message)) this.update({ connection: 'online' });
+        else if (this.view.connection === 'syncing') this.socket?.resync();
       },
       // 최종 메시지에 맞는 종료 단계를 설정한다.
       onFinal: (type) => {
@@ -278,24 +293,39 @@ export class OnlineController {
         if (epoch !== this.epoch || !this.active) return;
         this.queuedDraft = null;
         this.update({ connection: state === 'waiting' ? 'offline' : 'syncing' });
-        if (state === 'open' && this.request) void this.retry();
+        if (state === 'open' && this.request) {
+          const request = this.request;
+          // 재접속 전에 시작한 전송도 제한 시간 뒤에 같은 원장에서 조회한다.
+          void Promise.resolve(this.processing).then(() => {
+            if (this.request === request && this.view.connection !== 'offline') void this.retry();
+          });
+        }
       },
     });
     this.socket.subscribe(this.view.snapshot!.roomId, this.view.snapshot!.stateVersion);
   }
   // 토너먼트와 버전 쌍으로 상태 적용 및 효과 재생을 결정한다.
-  private apply(next: RoomSnapshot, message?: SnapshotMessage): void {
+  private apply(next: RoomSnapshot, message?: SnapshotMessage): boolean {
     const previous = this.view.snapshot;
     const same = previous?.tournamentId === next.tournamentId;
+    if (
+      previous?.roomId === next.roomId &&
+      previous.you.participantId === next.you.participantId &&
+      previous.you.controlGeneration > next.you.controlGeneration
+    )
+      return false;
     if (previous && same) {
       if (
         next.stateVersion < previous.stateVersion ||
         (next.stateVersion === previous.stateVersion && next.draftVersion < previous.draftVersion)
       )
-        return;
+        return false;
     }
     if (next.you.controlGeneration > this.generation) this.queuedDraft = null;
-    if (!same) this.knownEvents.clear();
+    if (!same) {
+      ++this.scopeRevision;
+      this.knownEvents.clear();
+    }
     const fresh: GameEvent[] = [];
     for (const event of message?.events ?? []) {
       if (this.knownEvents.has(event.id)) continue;
@@ -317,22 +347,27 @@ export class OnlineController {
       next.draftVersion === previous.draftVersion &&
       message.previousVersion !== null
     )
-      return;
+      return true;
+    const continuous =
+      previous &&
+      same &&
+      message?.previousVersion === previous.stateVersion &&
+      next.stateVersion > previous.stateVersion;
     try {
-      if (
-        previous &&
-        same &&
-        message?.previousVersion === previous.stateVersion &&
-        next.stateVersion > previous.stateVersion
-      )
+      if (continuous)
         this.confirmed.forEach((listener) => listener({ events: fresh, previous, next }));
     } finally {
       // 구독자가 이전 DOM에서 좌표를 준비한 뒤 확정 상태를 화면에 적용한다.
       this.update({
         snapshot: next,
+        effectsFromVersion:
+          continuous && !fresh.some((event) => event.type === 'UNDO')
+            ? previous.stateVersion
+            : null,
         ...(next.you.controlGeneration > this.generation ? { hasControl: false } : {}),
       });
     }
+    return true;
   }
   // 일반 명령 목록을 초안 뒤에서 순서대로 실행한다.
   async send(commands: ServerCommand[]): Promise<boolean> {
@@ -396,6 +431,7 @@ export class OnlineController {
     const state = this.view.snapshot!;
     this.request = {
       kind: 'command',
+      scopeRevision: this.scopeRevision,
       draft,
       path: `/api/rooms/${encodeURIComponent(state.roomId)}/commands`,
       body: {
@@ -430,6 +466,7 @@ export class OnlineController {
         expectedControlGeneration: this.view.snapshot.you.controlGeneration,
       },
       kind: 'control',
+      scopeRevision: this.scopeRevision,
       draft: false,
     };
     return this.execute(false);
@@ -437,6 +474,16 @@ export class OnlineController {
   // 결과 불명 요청을 보관된 식별자와 본문으로 해결한다.
   retry(): Promise<boolean> {
     return this.processing ?? (this.request ? this.execute(true) : Promise.resolve(false));
+  }
+  // 결과 불명으로 종료되어 원장 확인이 필요한 요청만 재시도할 수 있다.
+  canRetry(): boolean {
+    return this.request?.unresolved === true;
+  }
+  // 최초 요청을 보존하고 재시도 가능한 결과 불명 상태를 표시한다.
+  private unknownResult(request: Request): false {
+    request.unresolved = true;
+    this.update({ pending: true, error: UNKNOWN_RESULT });
+    return false;
   }
   // 동시에 한 개의 HTTP 처리만 시작한다.
   private execute(lookup: boolean): Promise<boolean> {
@@ -462,21 +509,28 @@ export class OnlineController {
         `/api/rooms/${encodeURIComponent(this.view.snapshot!.roomId)}/requests/${encodeURIComponent(String(request.body.requestId))}`,
       );
       if (epoch !== this.epoch) return false;
+      if (
+        !result.ok &&
+        !('unknown' in result) &&
+        result.status === 404 &&
+        result.code === 'ROOM_NOT_FOUND' &&
+        request.body.type === 'LEAVE'
+      ) {
+        this.completeLeave();
+        return true;
+      }
       if (!result.ok && !('unknown' in result) && result.code === 'REQUEST_NOT_FOUND')
         result = await this.api.post(request.path, request.body);
     } else result = await this.api.post(request.path, request.body);
     if (epoch !== this.epoch) return false;
-    if ('unknown' in result) {
-      this.update({ pending: true, error: messageFor('NOT_CONNECTED') });
-      return false;
-    }
+    if ('unknown' in result) return this.unknownResult(request);
     const body = result.body;
     if (request.kind === 'command' && isCommandResponse(body)) {
       if (body.requestId !== request.body.requestId || body.sequence !== request.body.sequence) {
-        this.update({ pending: true, error: messageFor('NOT_CONNECTED') });
-        return false;
+        return this.unknownResult(request);
       }
-      if (body.latestState) this.apply(body.latestState);
+      if (body.latestState && request.scopeRevision === this.scopeRevision)
+        this.apply(body.latestState);
       this.request = null;
       this.update({
         pending: this.sending,
@@ -486,10 +540,7 @@ export class OnlineController {
         await this.reject(body.code);
         return false;
       }
-      if (request.body.type === 'LEAVE') {
-        localStorage.removeItem(LAST);
-        this.leaveRoomScreen();
-      }
+      if (request.body.type === 'LEAVE') this.completeLeave();
       return true;
     }
     if (!result.ok) {
@@ -543,7 +594,7 @@ export class OnlineController {
       this.request = null;
       this.generation = body.controlGeneration;
       this.sequence = 0;
-      this.apply(body.latestState);
+      if (request.scopeRevision === this.scopeRevision) this.apply(body.latestState);
       sessionStorage.setItem(TAB, body.latestState.roomId);
       this.update({
         pending: false,
@@ -552,8 +603,7 @@ export class OnlineController {
       });
       return true;
     }
-    this.update({ pending: true, error: messageFor('NOT_CONNECTED') });
-    return false;
+    return this.unknownResult(request);
   }
   // 권한 상실과 순번 오류를 서버 동기화로 복구한다.
   private async reject(code: string | undefined): Promise<void> {
@@ -577,6 +627,23 @@ export class OnlineController {
     const epoch = this.epoch;
     const result = await this.api.get(`/api/recovery-requests/${encodeURIComponent(id)}`);
     if (epoch !== this.epoch) return;
+    if (
+      !result.ok &&
+      !('unknown' in result) &&
+      result.status === 404 &&
+      (result.code === 'ROOM_NOT_FOUND' || result.code === 'REQUEST_NOT_FOUND')
+    ) {
+      this.update({
+        phase: 'entry',
+        pending: false,
+        recovery: null,
+        error:
+          result.code === 'ROOM_NOT_FOUND'
+            ? messageFor(result.code)
+            : '복구 신청을 찾을 수 없습니다.',
+      });
+      return;
+    }
     if (result.ok && isRecoveryStatus(result.body)) {
       this.update({ recovery: result.body });
       if (result.body.status === 'APPROVED') {
@@ -600,8 +667,7 @@ export class OnlineController {
   // 최종 메시지에 맞는 단계를 보관하고 모든 채널을 종료한다.
   private finish(type: FinalMessage): void {
     if (type === 'ACCESS_REVOKED' && this.request?.body.type === 'LEAVE') {
-      localStorage.removeItem(LAST);
-      this.leaveRoomScreen();
+      this.completeLeave();
       return;
     }
     this.stop();
@@ -611,6 +677,11 @@ export class OnlineController {
       hasControl: false,
       pending: false,
     });
+  }
+  // 확정된 탈퇴의 방 표시와 탭 자격을 삭제하고 입장 화면으로 돌아간다.
+  private completeLeave(): void {
+    localStorage.removeItem(LAST);
+    this.leaveRoomScreen();
   }
   // 현재 화면의 비동기 처리와 타이머 및 스트림을 무효화한다.
   private stop(): void {

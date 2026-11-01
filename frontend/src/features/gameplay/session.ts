@@ -20,6 +20,7 @@ export type SessionRejectionCode =
 // 게임 화면이 모드별로 받는 상태와 명령 채널
 /** Mode-provided state and command channel that the shared game screen is assembled from. */
 export interface GameSession {
+  boardReveal?: { version: number; from: number | null };
   canRename?: (id: string) => boolean;
   disconnectedIds?: ReadonlySet<string>;
   dockNotice?: string | null;

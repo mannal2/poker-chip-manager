@@ -53,7 +53,7 @@ function session(overrides: Partial<GameSession> = {}): GameSession {
   };
 }
 // 실제 화면을 같은 루트에 렌더링하여 외부 갱신을 검증한다.
-async function render(s: GameSession, dialog = '', ref?: React.Ref<GameScreenHandle>) {
+async function render(s: GameSession, dialog = '', ref?: React.Ref<GameScreenHandle>, onDialog = vi.fn()) {
   const setup: SetupControls = {
     scope: 'test',
     drag: {
@@ -84,13 +84,80 @@ async function render(s: GameSession, dialog = '', ref?: React.Ref<GameScreenHan
         session={s}
         setup={setup}
         dialog={dialog}
-        onDialog={() => {}}
+        onDialog={onDialog}
         menu={null}
       />,
     ),
   );
   return setup;
 }
+// 다른 탭이 재준비하거나 새 토너먼트로 넘어가면 블라인드 설정을 닫는다.
+it('closes an open blinds dialog when the tournament or phase changes', async () => {
+  const playing = session();
+  const close = vi.fn();
+  await render(playing, 'blinds', undefined, close);
+  expect(host.querySelector('dialog')).not.toBeNull();
+  await render(
+    session({ state: { ...playing.state, tournamentId: 'new' } }),
+    'blinds',
+    undefined,
+    close,
+  );
+  expect(close).toHaveBeenCalledWith('');
+  close.mockClear();
+  await render(
+    session({ state: createTournament(defaultSettings, ctx) }),
+    'blinds',
+    undefined,
+    close,
+  );
+  expect(host.querySelector('dialog')).toBeNull();
+  expect(close).toHaveBeenCalledWith('');
+  await render(playing);
+  expect(host.querySelector('dialog')).toBeNull();
+});
+
+// 방장은 다른 자리의 차례에도 취소할 수 있지만 서버 응답을 기다리는 동안에는 잠긴다.
+it('separates host undo from unavailable betting actions', async () => {
+  const state = fixtureState(3);
+  state.undo = structuredClone(state);
+  const s = session({ state, capabilities: { ...fullCapabilities, canAct: false } });
+  await render(s);
+  const buttons = host.querySelectorAll('.bet-top button');
+  expect(buttons[0].getAttribute('aria-disabled')).toBe('false');
+  expect(buttons[1].getAttribute('aria-disabled')).toBe('true');
+  await click('.bet-top button');
+  expect(s.dispatch).toHaveBeenCalledWith({ type: 'UNDO' });
+  await render({ ...s, busy: true });
+  expect(buttons[0].getAttribute('aria-disabled')).toBe('true');
+});
+
+// 전체 복구에서 건너뛴 카드는 즉시 그리고 이후 연속 버전에서 늘어난 카드만 애니메이션한다.
+it('animates board cards only from the displayed continuous version', async () => {
+  const original = Object.getOwnPropertyDescriptor(Element.prototype, 'animate');
+  const animate = vi.fn(() => ({ cancel: vi.fn() }));
+  Object.defineProperty(Element.prototype, 'animate', { configurable: true, value: animate });
+  try {
+    const state = fixtureState(3);
+    // 같은 핸드에서 수신한 보드와 연속성 정보를 실제 화면에 렌더링한다.
+    const board = (street: number, version: number, from: number | null) =>
+      render(
+        session({
+          state: { ...state, hand: { ...state.hand!, street } },
+          boardReveal: { version, from },
+        }),
+      );
+    await board(0, 1, null);
+    await board(2, 4, null);
+    expect(host.querySelectorAll('.board-card')).toHaveLength(4);
+    expect(animate).not.toHaveBeenCalled();
+    await board(3, 5, 4);
+    expect(animate).toHaveBeenCalledTimes(1);
+  } finally {
+    if (original) Object.defineProperty(Element.prototype, 'animate', original);
+    else Reflect.deleteProperty(Element.prototype, 'animate');
+  }
+});
 // 상태 버전이 그대로여도 외부 취소 핸들은 입력한 베팅 초안을 폐기한다.
 it('discards a betting input through the external undo reset handle', async () => {
   const ref = createRef<GameScreenHandle>();

@@ -1,5 +1,6 @@
 import { PlayerSeat, type CardPlayer } from './PlayerSeat';
 import { BoardCards } from './BoardCards';
+import type { GameSession } from '../session';
 import { useRef } from 'react';
 import { useFitText } from '../../../shared/hooks/useFitText';
 import { seatCoordinates } from '../model/seatLayout';
@@ -35,6 +36,7 @@ export function Table({
   busy,
   setup,
   handKey,
+  boardReveal,
 }: {
   players: CardPlayer[];
   pot: number;
@@ -45,6 +47,7 @@ export function Table({
   /** Present only while the setup screen is editable; each control is optional per mode. */
   setup?: TableSetup;
   handKey?: string;
+  boardReveal?: GameSession['boardReveal'];
   viewSeat?: number;
   onSelect?: (id: string) => void;
   onPot?: () => void;
@@ -137,7 +140,12 @@ export function Table({
                 )}
               </div>
 
-              <BoardCards phase={phase} street={street} handKey={handKey} />
+              <BoardCards
+                phase={phase}
+                street={street}
+                handKey={handKey}
+                boardReveal={boardReveal}
+              />
             </>
           )}
         </div>

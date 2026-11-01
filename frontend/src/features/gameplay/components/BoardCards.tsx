@@ -1,17 +1,22 @@
 import { useLayoutEffect, useRef } from 'react';
+import type { GameSession } from '../session';
 
 // 스트리트에 맞는 수의 공용 카드 자리를 그리고 새 카드에 등장 효과를 준다
 export function BoardCards({
   phase,
   street,
   handKey,
+  boardReveal,
 }: {
   phase: string;
   street: string;
   handKey?: string;
+  boardReveal?: GameSession['boardReveal'];
 }) {
   const boardRef = useRef<HTMLDivElement>(null);
-  const previousBoard = useRef<{ hand?: string; count: number } | null>(null);
+  const previousBoard = useRef<{ hand?: string; count: number; version?: number } | null>(null);
+  const version = boardReveal?.version;
+  const from = boardReveal?.from;
   const count =
     phase === 'setup'
       ? 0
@@ -20,9 +25,10 @@ export function BoardCards({
         : ({ PREFLOP: 0, FLOP: 3, TURN: 4, RIVER: 5 }[street] ?? 0);
   useLayoutEffect(() => {
     const previous = previousBoard.current;
-    previousBoard.current = { hand: handKey, count };
+    previousBoard.current = { hand: handKey, count, version };
     if (
       !previous ||
+      (from !== undefined && from !== previous.version) ||
       previous.hand !== handKey ||
       count <= previous.count ||
       window.matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -40,7 +46,7 @@ export function BoardCards({
       ),
     );
     return () => animations.forEach((animation) => animation.cancel());
-  }, [count, handKey]);
+  }, [count, handKey, from, version]);
   return (
     <div
       ref={boardRef}

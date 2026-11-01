@@ -128,6 +128,7 @@ export function useOnlineGameSession(view: OnlineView, controller: OnlineControl
     return controller.send([{ type: 'RENAME', payload: { name }, handScoped: false }]);
   }
   const session: GameSession = {
+    boardReveal: { version: snapshot.stateVersion, from: view.effectsFromVersion ?? null },
     state,
     sharedSelection,
     onSelectionChange,

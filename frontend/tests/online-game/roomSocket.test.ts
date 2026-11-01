@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { RoomSocket, reconnectDelay } from '../../src/features/online-game/realtime/roomSocket';
 import snapshot from '../../../shared/api-contract/ws-snapshot.json';
+import create from '../../../shared/api-contract/create-room.json';
+import { OnlineController } from '../../src/features/online-game/session/onlineController';
 
 // 브라우저 소켓의 외부 이벤트를 수동으로 전달한다.
 class FakeSocket {
@@ -35,6 +37,37 @@ class FakeSocket {
 }
 let visibility: EventTarget & { visibilityState: string };
 let room: RoomSocket;
+// 실제 컨트롤러와 소켓을 함께 사용하여 PING 하나에 RESYNC 한 번만 전송하는지 확인한다.
+it('sends exactly one RESYNC for a newer PING through the real controller', async () => {
+  const storage = { setItem: vi.fn(), removeItem: vi.fn() };
+  vi.stubGlobal('localStorage', storage);
+  vi.stubGlobal('sessionStorage', storage);
+  const api = {
+    open: vi.fn(),
+    streamId: 'stream',
+    closeStream: vi.fn().mockResolvedValue(undefined),
+    post: vi.fn().mockResolvedValue({ ok: true, body: create.response }),
+  };
+  const controller = new OnlineController(
+    api as never,
+    (handlers) => (room = new RoomSocket('ws://test', handlers)),
+  );
+  try {
+    await controller.create('Alice');
+    const ws = FakeSocket.instances[0];
+    ws.open();
+    ws.message({ ...snapshot, state: create.response.state });
+    ws.message({
+      type: 'PING',
+      stateVersion: create.response.state.stateVersion + 1,
+      nonce: 'next',
+    });
+    expect(controller.getView().connection).toBe('syncing');
+    expect(ws.sent.slice(1)).toEqual([{ type: 'PONG', nonce: 'next' }, { type: 'RESYNC' }]);
+  } finally {
+    controller.dispose();
+  }
+});
 // 연결마다 가짜 시간과 브라우저 경계를 초기화한다.
 beforeEach(() => {
   vi.useFakeTimers();
@@ -104,7 +137,7 @@ it.each(['connecting', 'open', 'waiting'])(
 );
 
 // 구독 및 PING 응답과 전달한 스냅샷 이후의 버전 추적을 확인한다.
-it('subscribes, validates snapshots, echoes nonce and resyncs newer versions', () => {
+it('subscribes, validates snapshots, echoes nonce and reports advertised versions', () => {
   const handlers = setup();
   const ws = FakeSocket.instances[0];
   ws.open();
@@ -121,7 +154,7 @@ it('subscribes, validates snapshots, echoes nonce and resyncs newer versions', (
   ws.message({ type: 'PING', nonce: 'n', stateVersion: snapshot.state.stateVersion });
   expect(ws.sent.at(-1)).toEqual({ type: 'PONG', nonce: 'n' });
   ws.message({ type: 'PING', nonce: 'next', stateVersion: snapshot.state.stateVersion + 1 });
-  expect(ws.sent.slice(-2)).toEqual([{ type: 'PONG', nonce: 'next' }, { type: 'RESYNC' }]);
+  expect(ws.sent.at(-1)).toEqual({ type: 'PONG', nonce: 'next' });
   expect(handlers.onPing).toHaveBeenLastCalledWith(snapshot.state.stateVersion + 1);
 });
 
@@ -167,6 +200,7 @@ it('watches ping silence, reconnects immediately on return and disposes stale ca
   first.open();
   const stale = first.onmessage!;
   const staleOpen = first.onopen!;
+  first.message(snapshot);
   vi.advanceTimersByTime(45000);
   expect(room.state).toBe('waiting');
   visibility.dispatchEvent(new Event('visibilitychange'));
@@ -190,6 +224,7 @@ it('renews the watchdog for each ping and never queues disconnected messages', (
   setup();
   const first = FakeSocket.instances[0];
   first.open();
+  first.message({ ...snapshot, state: { ...snapshot.state, stateVersion: 9 } });
   vi.advanceTimersByTime(44000);
   first.message({ type: 'PING', nonce: 'alive', stateVersion: 9 });
   vi.advanceTimersByTime(44000);
@@ -203,6 +238,19 @@ it('renews the watchdog for each ping and never queues disconnected messages', (
   expect(second.sent).toEqual([
     { type: 'SUBSCRIBE', roomId: snapshot.state.roomId, protocolVersion: 1, lastSeenVersion: 9 },
   ]);
+});
+
+// 상태 발행이 계속되어도 PING이 끊긴 연결은 사십오 초 뒤에 교체한다.
+it('detects missing PING even while snapshots keep arriving', () => {
+  setup();
+  const first = FakeSocket.instances[0];
+  first.open();
+  first.message(snapshot);
+  first.message({ type: 'PING', nonce: 'last', stateVersion: snapshot.state.stateVersion });
+  vi.advanceTimersByTime(44000);
+  first.message(snapshot);
+  vi.advanceTimersByTime(1000);
+  expect(room.state).toBe('waiting');
 });
 
 // 재연결 간격의 지터 범위와 최대 기준 시간을 확인한다.
@@ -224,7 +272,55 @@ it.each([false, true])('replaces a connecting or open connection on return (open
   visibility.visibilityState = 'visible';
   visibility.dispatchEvent(new Event('visibilitychange'));
   expect(FakeSocket.instances).toHaveLength(2);
+  expect(first.readyState).toBe(opened ? 1 : 3);
+  const replacement = FakeSocket.instances[1];
+  replacement.open();
+  expect(first.readyState).toBe(opened ? 1 : 3);
+  replacement.message(snapshot);
   expect(first.readyState).toBe(3);
+});
+
+// 추가 구독 한도에 걸리면 기존 소켓의 전체 상태를 요청하고 무응답 시간도 제한한다.
+it('probes retained presence after replacement refusal and bounds a stalled handshake', () => {
+  const h = setup();
+  const first = FakeSocket.instances[0];
+  first.open();
+  visibility.dispatchEvent(new Event('visibilitychange'));
+  FakeSocket.instances[1].close(1013);
+  expect(first.sent.at(-1)).toEqual({ type: 'RESYNC' });
+  expect(first.readyState).toBe(1);
+  first.message(snapshot);
+  expect(h.onSnapshot).toHaveBeenCalledWith(snapshot);
+  visibility.dispatchEvent(new Event('visibilitychange'));
+  vi.advanceTimersByTime(10000);
+  expect(FakeSocket.instances[2].readyState).toBe(3);
+  expect(first.sent.at(-1)).toEqual({ type: 'RESYNC' });
+  vi.advanceTimersByTime(10000);
+  expect(first.readyState).toBe(3);
+  expect(room.state).toBe('waiting');
+});
+
+// 구독 교체 중 복귀가 반복되어도 연결을 늘리지 않고 종료 경로마다 양쪽 소켓을 정리한다.
+it.each(['offline', 'close', 'retained final', 'replacement final'])('releases both sockets on %s during replacement', reason => {
+  const h = setup();
+  const first = FakeSocket.instances[0];
+  first.open();
+  first.message(snapshot);
+  room.reconnect();
+  const second = FakeSocket.instances[1];
+  second.open();
+  room.reconnect();
+  expect(FakeSocket.instances).toHaveLength(2);
+  expect(first.readyState).toBe(1);
+  if (reason === 'offline') window.dispatchEvent(new Event('offline'));
+  else if (reason === 'close') room.close();
+  else (reason === 'retained final' ? first : second).message({ type: 'ACCESS_REVOKED' });
+  expect([first.readyState, second.readyState]).toEqual([3, 3]);
+  first.message(snapshot);
+  second.message(snapshot);
+  expect(h.onSnapshot).toHaveBeenCalledTimes(1);
+  vi.advanceTimersByTime(60000);
+  expect(FakeSocket.instances).toHaveLength(2);
 });
 
 // 같은 토너먼트의 지연 상태는 기준을 낮추지 않고 새 토너먼트는 낮은 버전을 허용한다.
@@ -237,9 +333,12 @@ it('tracks delivered versions within each tournament without retaining an old to
     ...snapshot,
     state: { ...snapshot.state, stateVersion: snapshot.state.stateVersion - 1 },
   });
-  ws.message({ type: 'PING', nonce: 'same', stateVersion: snapshot.state.stateVersion });
-  expect(ws.sent.at(-1)).toEqual({ type: 'PONG', nonce: 'same' });
-  ws.message({ ...snapshot, state: { ...snapshot.state, tournamentId: 'new', stateVersion: 1 } });
-  ws.message({ type: 'PING', nonce: 'new', stateVersion: 2 });
-  expect(ws.sent.at(-1)).toEqual({ type: 'RESYNC' });
+  room.reconnect();
+  const second = FakeSocket.instances[1];
+  second.open();
+  expect(second.sent[0]).toMatchObject({ type: 'SUBSCRIBE', lastSeenVersion: snapshot.state.stateVersion });
+  second.message({ ...snapshot, state: { ...snapshot.state, tournamentId: 'new', stateVersion: 1 } });
+  room.reconnect();
+  FakeSocket.instances[2].open();
+  expect(FakeSocket.instances[2].sent[0]).toMatchObject({ type: 'SUBSCRIBE', lastSeenVersion: 1 });
 });

@@ -111,7 +111,8 @@ export function RoomPage({ view, controller }: { view: OnlineView; controller: O
           resetSelection();
           game.current?.resetSelection();
         }
-        for (const message of noticesFor(events, controller.getKnownEvents())) notify(message);
+        const notices = noticesFor(events, controller.getKnownEvents());
+        if (notices.length) notify(notices.join(' · '));
       }),
     [controller, resetSelection, notify],
   );
@@ -131,7 +132,7 @@ export function RoomPage({ view, controller }: { view: OnlineView; controller: O
       {view.error && (
         <div className="notice" role="alert">
           {view.error}
-          <button onClick={() => void controller.retry()}>재시도</button>
+          {controller.canRetry() && <button onClick={() => void controller.retry()}>재시도</button>}
         </div>
       )}
       <GameScreen

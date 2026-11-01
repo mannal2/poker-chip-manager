@@ -22,6 +22,8 @@ export function reconnectDelay(attempt: number, random: () => number): number {
 export class RoomSocket {
   state: SocketState = 'connecting';
   private socket: WebSocket | null = null;
+  private retained: WebSocket | null = null;
+  private handshake: ReturnType<typeof setTimeout> | undefined;
   private stopped = false;
   private offline = false;
   private attempt = 0;
@@ -41,7 +43,7 @@ export class RoomSocket {
     this.connect();
   }
 
-  // 호출자가 알고 있는 버전을 구독과 이후 PING 비교의 기준으로 설정한다.
+  // 호출자가 알고 있는 버전을 구독 시 마지막 수신 버전으로 설정한다.
   subscribe(roomId: string, lastSeenVersion: number | null): void {
     if (this.subscription?.roomId !== roomId) this.tournamentId = undefined;
     this.subscription = { roomId, lastSeenVersion };
@@ -58,25 +60,37 @@ export class RoomSocket {
     this.stopped = true;
     clearTimeout(this.reconnectTimer);
     clearTimeout(this.watchdog);
+    clearTimeout(this.handshake);
     document.removeEventListener('visibilitychange', this.onVisibility);
     window.removeEventListener('offline', this.onOffline);
     window.removeEventListener('online', this.onOnline);
     const socket = this.socket;
     this.socket = null;
     socket?.close();
+    this.releaseRetained();
   }
 
   // 화면이 보이면 정지했을 수 있는 소켓을 지연 없이 교체한다.
   private onVisibility = (): void => {
-    if (!this.stopped && document.visibilityState === 'visible') {
+    if (document.visibilityState === 'visible') this.reconnect();
+  };
+
+  // 수동 재접속과 화면 복귀 모두 기존 자리의 접속을 유지하며 구독을 교체한다.
+  reconnect(): void {
+    if (!this.stopped && !this.offline) {
+      if (this.retained) {
+        this.resync();
+        return;
+      }
       clearTimeout(this.reconnectTimer);
       clearTimeout(this.watchdog);
       const socket = this.socket;
       this.socket = null;
-      socket?.close();
+      if (socket?.readyState === 1) this.retained = socket;
+      else socket?.close();
       this.connect();
     }
-  };
+  }
 
   // 브라우저의 연결 끊김 알림으로 소켓 종료를 기다리지 않고 조작을 잠근다.
   private onOffline = (): void => {
@@ -86,7 +100,7 @@ export class RoomSocket {
 
   // 네트워크 복귀 시 예약된 지연을 해제하고 최신 상태를 다시 구독한다.
   private onOnline = (): void => {
-    if (this.stopped) return;
+    if (this.stopped || !this.offline) return;
     this.offline = false;
     clearTimeout(this.reconnectTimer);
     clearTimeout(this.watchdog);
@@ -110,6 +124,7 @@ export class RoomSocket {
     if (this.stopped || this.socket !== previous) return;
     const socket = new WebSocket(this.url);
     this.socket = socket;
+    this.boundHandshake();
     // 연결 성공 시 지연을 초기화하고 방을 다시 구독한다.
     socket.onopen = () => {
       if (this.socket !== socket || this.stopped) return;
@@ -121,12 +136,13 @@ export class RoomSocket {
     };
     // 마지막 메시지가 없는 종료는 코드와 관계없이 다시 연결한다.
     socket.onclose = () => {
+      if (socket === this.retained) this.retained = null;
       if (this.socket !== socket || this.stopped) return;
-      this.wait();
+      this.recoverHandshake();
     };
     // 검증한 서버 메시지만 현재 연결의 핸들러에 전달한다.
     socket.onmessage = (event) => {
-      if (this.socket !== socket || this.stopped) return;
+      if ((this.socket !== socket && this.retained !== socket) || this.stopped) return;
       let message;
       try {
         message = JSON.parse(event.data);
@@ -137,7 +153,12 @@ export class RoomSocket {
       if (['ACCESS_REVOKED', 'ROOM_GONE', 'PROTOCOL_INCOMPATIBLE'].includes(message.type)) {
         this.close();
         this.handlers.onFinal(message.type as FinalMessage);
+      } else if (this.retained === socket) {
+        if (message.type === 'PING' && typeof message.nonce === 'string' && socket.readyState === 1)
+          socket.send(JSON.stringify({ type: 'PONG', nonce: message.nonce }));
       } else if (isSnapshotMessage(message)) {
+        clearTimeout(this.handshake);
+        this.releaseRetained();
         // 전달 버전만 추적한다. 실제 적용 여부와 토너먼트별 병합은 컨트롤러가 판단한다.
         if (this.subscription) {
           this.subscription.lastSeenVersion =
@@ -155,13 +176,42 @@ export class RoomSocket {
         this.watchPing();
         this.send({ type: 'PONG', nonce: message.nonce });
         this.handlers.onPing(message.stateVersion);
-        if (message.stateVersion > (this.subscription?.lastSeenVersion ?? -1)) this.resync();
       }
     };
   }
 
+  // 새 구독이 확인되거나 방을 떠나면 보관한 이전 연결을 해제한다.
+  private releaseRetained(): void {
+    const socket = this.retained;
+    this.retained = null;
+    socket?.close();
+  }
+
+  // 교체가 거절되면 이전 연결을 재확인하고 양쪽 모두 응답하지 않으면 재접속한다.
+  private recoverHandshake(): void {
+    const previous = this.retained;
+    if (previous?.readyState !== 1) return this.wait();
+    const failed = this.socket;
+    this.socket = previous;
+    this.retained = null;
+    failed?.close();
+    this.setState('open');
+    if (this.stopped || this.socket !== previous) return;
+    this.resync();
+    this.boundHandshake();
+    this.watchPing();
+  }
+
+  // 새 연결과 기존 연결의 확인을 각각 십 초로 제한한다.
+  private boundHandshake(): void {
+    clearTimeout(this.handshake);
+    this.handshake = setTimeout(() => this.recoverHandshake(), 10000);
+  }
+
   // 끊어진 소켓을 폐기하고 다음 재연결을 예약한다.
   private wait(): void {
+    clearTimeout(this.handshake);
+    this.releaseRetained();
     clearTimeout(this.watchdog);
     const socket = this.socket;
     this.socket = null;

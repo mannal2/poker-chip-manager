@@ -75,6 +75,13 @@ export class ApiClient {
     result: ApiResult<{ csrfToken: string; protocolVersion: number }>,
   ): ApiResult<{ csrfToken: string; protocolVersion: number }> {
     if (result.ok) {
+      if (Number.isSafeInteger(result.body?.protocolVersion) && result.body.protocolVersion !== 1)
+        return {
+          ok: false,
+          status: result.status,
+          code: 'PROTOCOL_INCOMPATIBLE',
+          body: result.body,
+        };
       if (typeof result.body?.csrfToken !== 'string' || result.body.protocolVersion !== 1)
         return { ok: false, unknown: true };
       this.csrfToken = result.body.csrfToken;
@@ -90,22 +97,37 @@ export class ApiClient {
     keepalive = false,
     retry = true,
   ): Promise<ApiResult<T>> {
+    const abort = new AbortController();
+    let timer: ReturnType<typeof setTimeout>;
+    // 응답 헤더와 본문을 합쳐 한 번의 전송에 십오 초만 기다린다.
+    const deadline = new Promise<never>((_, reject) => {
+      timer = setTimeout(() => {
+        abort.abort();
+        reject(new Error('HTTP timeout'));
+      }, 15000);
+    });
     try {
-      const response = await fetch(path, {
-        method,
-        credentials: 'same-origin',
-        cache: 'no-store',
-        keepalive,
-        headers:
-          method === 'GET'
-            ? {}
-            : { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': this.csrfToken },
-        ...(body === undefined ? {} : { body }),
-      });
-      if (response.status >= 500) return { ok: false, unknown: true };
-      const value = response.status === 204 ? undefined : await response.json();
+      const response = await Promise.race([
+        deadline,
+        fetch(path, {
+          signal: abort.signal,
+          method,
+          credentials: 'same-origin',
+          cache: 'no-store',
+          keepalive,
+          headers:
+            method === 'GET'
+              ? {}
+              : { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': this.csrfToken },
+          ...(body === undefined ? {} : { body }),
+        }),
+      ]);
+      const value =
+        response.status === 204 ? undefined : await Promise.race([deadline, response.json()]);
       if (response.ok) return { ok: true, status: response.status, body: value as T };
       const code = typeof value?.code === 'string' ? value.code : undefined;
+      if (response.status >= 500 && !(response.status === 503 && code === 'ROOM_LIMIT'))
+        return { ok: false, unknown: true };
       if (method !== 'GET' && response.status === 403 && code === 'CSRF_REJECTED' && retry) {
         const session = await this.loadSession();
         if (!session.ok) return session;
@@ -114,6 +136,8 @@ export class ApiClient {
       return { ok: false, status: response.status, code, body: value };
     } catch {
       return { ok: false, unknown: true };
+    } finally {
+      clearTimeout(timer!);
     }
   }
 }

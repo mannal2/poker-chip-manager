@@ -4,7 +4,7 @@
   "short_name": "Poker Chips",
   "lang": "ko",
   "start_url": "/local/",
-  "scope": "/local/",
+  "scope": "/",
   "display": "standalone",
   "theme_color": "#101b18",
   "background_color": "#101b18",

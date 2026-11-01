@@ -5,6 +5,44 @@ import type { RoomSocketHandlers } from '../../src/features/online-game/realtime
 import type { JoinResponse } from '../../src/features/online-game/api/types';
 
 const controllers: OnlineController[] = [];
+// 세션 초기화 실패가 재입력 가능한 단계로 돌아가는지 확인한다.
+it('returns an initial connection failure to entry', async () => {
+  const x = setup();
+  x.api.open.mockRejectedValueOnce(new Error('offline'));
+  expect(await x.c.create('Alice')).toBe(false);
+  expect(x.c.getView().phase).toBe('entry');
+  expect(x.c.getView().error).toBeTruthy();
+});
+// 복귀 실패가 입장 화면과 저장 상태를 함께 복원하는지 확인한다.
+it('returns failed resume to entry and clears the saved room', async () => {
+  const x = setup();
+  localStorage.setItem('online.lastRoom', JSON.stringify({ roomId: 'missing' }));
+  sessionStorage.setItem('online.controlRoom', 'missing');
+  x.api.get.mockResolvedValueOnce({ ok: false, status: 404, code: 'ROOM_NOT_FOUND' });
+  expect(await x.c.resume()).toBe(false);
+  expect(x.c.getView().phase).toBe('entry');
+  expect(x.c.getView().error).toBe('방을 찾을 수 없습니다.');
+  expect(localStorage.getItem('online.lastRoom')).toBeNull();
+  expect(sessionStorage.getItem('online.controlRoom')).toBeNull();
+});
+// 복구 종료 사유를 입장 화면에 보존하고 새 요청을 허용하는지 확인한다.
+it.each(['REJECTED', 'EXPIRED', 'SUPERSEDED'])(
+  'returns %s recovery to entry with a reason',
+  async (status) => {
+    const x = setup();
+    x.api.post.mockResolvedValueOnce({
+      ok: true,
+      body: { recoveryRequestId: 'r', status: 'PENDING', expiresAt: 'later' },
+    });
+    x.api.get.mockResolvedValueOnce({ ok: true, body: { recoveryRequestId: 'r', status } });
+    await x.c.requestRecovery('abc234', 'Alice');
+    await Promise.resolve();
+    expect(x.c.getView().phase).toBe('entry');
+    expect(x.c.getView().error).toBeTruthy();
+    expect(x.c.getView().recovery?.status).toBe(status);
+    expect(await x.c.create('Alice')).toBe(true);
+  },
+);
 // 테스트가 만든 컨트롤러와 전역 환경을 정리한다.
 afterEach(() => {
   controllers.forEach((c) => c.dispose());

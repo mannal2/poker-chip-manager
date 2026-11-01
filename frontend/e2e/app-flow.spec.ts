@@ -19,9 +19,7 @@ test('앱 홈은 모드·업데이트, 단일 모드는 자동 생성/복원, �
   await page.getByRole('button', { name: '관리 메뉴', exact: true }).click();
   await expect(page.locator('.menu-actions button')).toHaveText(['홈', '새 토너먼트']);
   await page.getByRole('button', { name: '홈', exact: true }).click();
-  await expect(
-    page.getByRole('button', { name: '멀티플레이 모드 · 준비 중', exact: true }),
-  ).toBeDisabled();
+  await expect(page.getByRole('button', { name: '멀티플레이 모드', exact: true })).toBeEnabled();
   await page.getByRole('button', { name: '앱 업데이트', exact: true }).click();
   await expect(page.getByText('최신 버전을 사용하고 있습니다.', { exact: true })).toBeVisible();
   await page.mouse.click(3, 3);

@@ -155,7 +155,10 @@ export class OnlineController {
       pending: true,
       error: null,
     });
-    if (!(await this.open()) || epoch !== this.epoch) return false;
+    if (!(await this.open()) || epoch !== this.epoch) {
+      if (epoch === this.epoch) this.update({ phase: 'entry', pending: false });
+      return false;
+    }
     this.request = { path, body: { ...this.envelope(), ...payload }, kind, draft: false };
     return this.execute(false);
   }
@@ -168,15 +171,27 @@ export class OnlineController {
     try {
       roomId = (JSON.parse(saved) as { roomId: string }).roomId;
     } catch {
+      localStorage.removeItem(LAST);
+      sessionStorage.removeItem(TAB);
       return false;
     }
     const epoch = this.epoch;
     this.update({ phase: 'joining', pending: true });
-    if (!(await this.open()) || epoch !== this.epoch) return false;
+    if (!(await this.open()) || epoch !== this.epoch) {
+      if (epoch === this.epoch) {
+        localStorage.removeItem(LAST);
+        sessionStorage.removeItem(TAB);
+        this.update({ phase: 'entry', pending: false });
+      }
+      return false;
+    }
     const result = await this.api.get(`/api/rooms/${encodeURIComponent(roomId)}/state`);
     if (epoch !== this.epoch) return false;
     if (!result.ok || !isRoomSnapshot(result.body)) {
+      localStorage.removeItem(LAST);
+      sessionStorage.removeItem(TAB);
       this.update({
+        phase: 'entry',
         pending: false,
         error: messageFor(!result.ok && !('unknown' in result) ? result.code : 'NOT_CONNECTED'),
       });
@@ -426,8 +441,19 @@ export class OnlineController {
     }
     if (!result.ok) {
       this.request = null;
-      this.update({ pending: this.sending, error: messageFor(result.code) });
-      await this.reject(result.code);
+      this.update({
+        pending: this.sending,
+        error: messageFor(result.code),
+        ...(request.kind === 'entry' || request.kind === 'recovery'
+          ? { phase: 'entry' as const }
+          : {}),
+      });
+      if (
+        result.code !== 'ROOM_NOT_FOUND' ||
+        request.kind === 'command' ||
+        request.kind === 'control'
+      )
+        await this.reject(result.code);
       return false;
     }
     if (request.kind === 'entry' && isJoinResponse(body)) {
@@ -504,7 +530,15 @@ export class OnlineController {
         this.joined(result.body);
         return;
       }
-      if (result.body.status !== 'PENDING') return;
+      if (result.body.status !== 'PENDING') {
+        const reasons = {
+          REJECTED: '방장이 복구 신청을 거절했습니다.',
+          EXPIRED: '복구 신청이 만료되었습니다.',
+          SUPERSEDED: '다른 복구 신청으로 대체되었습니다.',
+        };
+        this.update({ phase: 'entry', pending: false, error: reasons[result.body.status] });
+        return;
+      }
     }
     this.polling = setTimeout(() => {
       void this.pollRecovery(id);

@@ -18,7 +18,9 @@ export function LocalHome({
       <button className="primary" disabled={busy} onClick={onLocal}>
         단일 기기 모드
       </button>
-      <button disabled>멀티플레이 모드 · 준비 중</button>
+      <button disabled={busy} onClick={() => location.assign('/online/')}>
+        멀티플레이 모드
+      </button>
       {onInstall && (
         <button disabled={busy} onClick={onInstall}>
           앱 설치

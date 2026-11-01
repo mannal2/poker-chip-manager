@@ -1,6 +1,6 @@
 # Frontend deployment on the current EC2 server
 
-This script deploys the existing frontend only. It does not restart edge Nginx,
+`deploy-frontend.sh` deploys the existing frontend only. It does not restart edge Nginx,
 change certificates, deploy a backend, delete images, or delete old assets.
 The separate `DEPLOYMENT_SPEC.md` remains the broader implementation plan.
 
@@ -112,12 +112,110 @@ sysctl vm.swappiness
 in the Swap row, the fstab grep should print one line, and `sysctl` should print
 `vm.swappiness = 10`. Run `bash deploy/check-host.sh` again to record it.
 
+## Backend deployment
+
+`deploy-backend.sh` replaces only the backend. It never restarts edge or the
+frontend, and it shares `.local/deploy/lock` with every other script here.
+
+### First-time server order
+
+Do these manual steps in this order. Compose refuses to read a `compose.yaml`
+with a backend service until the variables exist, and refuses a missing gate
+directory, because an absent directory must never read as an open gate.
+
+1. Add `BACKEND_IMAGE`, `BACKEND_MEM_LIMIT=768m` and `BACKEND_HEAP=384m` to `.env`.
+   `BACKEND_IMAGE` must be the digest you are about to deploy.
+2. Create the gate directory: `sudo install -d -m 0755 .local/deploy/gate`
+3. Only then copy the new `compose.yaml` to the server. No script does this.
+
+The production Origin in `application.yaml` must match the `<origin>` argument:
+the `/ws` health check is sent with that Origin and gets 403 otherwise.
+
+### Running it
+
+```bash
+image=ghcr.io/mannal2/poker-chip-manager-backend
+digest=$(sudo docker image inspect --format '{{index .RepoDigests 0}}' "$image:main")
+revision=$(sudo docker image inspect --format '{{index .Config.Labels "org.opencontainers.image.revision"}}' "$digest")
+unit="poker-backend-deploy-$(date +%s)"
+sudo systemd-run --unit="$unit" --service-type=exec --wait --collect \
+  /usr/bin/bash /home/ubuntu/poker-chip-manager/deploy/deploy-backend.sh \
+  "$digest" "$revision" https://pcm.jwlee.xyz "$unit"
+sudo journalctl -u "$unit" --no-pager -n 100
+```
+
+| Exit | Output | Meaning |
+|---|---|---|
+| 0 | `DEPLOYED` | The new backend is healthy and starts are open |
+| 3 | `HELD` | A tournament is in progress; nothing changed. Run it again later |
+| 1 | `ROLLED_BACK` | The new image failed; the previous one runs and starts are open |
+| 1 | `RECOVERY_REQUIRED` | Starts stay closed; run the recovery script |
+| 1 | other messages | Stopped before replacing; starts are open |
+| 2 | | Invalid input or missing `.env` values |
+
+`RECOVERY_REQUIRED` names the case: `NO_PREVIOUS_IMAGE` for a first deployment
+that failed, `ROLLBACK_FAILED` when the previous image also failed. Waiting
+never reopens starts. A backend that is restarting does not answer prepare, so
+the deployment stops without replacing it; investigate that backend first.
+
+The order follows `DEPLOYMENT_SPEC.md` section 4: checks and image pull, prepare,
+closed `gate/start-gate.json`, a final status check, replacement, up to 120 seconds
+of health checks through edge, then `backend-current` and `backend-lastHealthy`,
+a `COMPLETE` gate file, and release. A release is believed only after status
+reads `startsClosed:false`. Health means the target commit in `/api/health`,
+HTML from `/online/`, and 401 from `/ws` for an upgrade request with no session.
+
+`.local/deploy/backend-pending` exists from before prepare until the end of the
+deployment. While it exists, `deploy-backend.sh` and `deploy-frontend.sh` refuse
+to run. Do not delete it to retry.
+
+### Recovery
+
+```bash
+sudo bash deploy/recover-backend.sh
+```
+
+It takes the same lock without waiting, so a live deployment is refused and left
+alone. It then reads the running image and `backend-pending`:
+
+- The new image is running after replacement began and passes health: it finishes
+  the deployment (`RECOVERED completed`).
+- The previous image is running and passes health: it reopens starts without
+  restarting that server (`RECOVERED rolled-back`).
+- Otherwise it restores the previous image and rechecks it. It never replaces a
+  backend that reports a tournament in progress.
+- A first deployment has nothing to restore. The failed backend is stopped, starts
+  stay closed, and the next deployment may run.
+
+Any exit other than 0 with `RECOVERY_REQUIRED` leaves the gate closed and the
+marker in place. Inspect the logs, fix the cause and run it again.
+
+### Pruning images
+
+```bash
+sudo bash deploy/prune-images.sh
+```
+
+Under the lock it recalculates what to keep: images used by this project's
+containers, everything named by the `current`, `lastHealthy` and `pending` files of
+both services and by `.env`, plus the five newest other images per service. It
+removes only names in the two project repositories and the `poker-backend` and
+`poker-frontend` rollback tags, never with force. Docker refuses to remove an image
+in use, and the script reports that and carries on. It does not touch volumes,
+assets or certificates, and it never runs `docker system prune`.
+
 ## Local verification and remaining work
 
 ```bash
-bash -n deploy/deploy-frontend.sh
+bash -n deploy/*.sh
 bash deploy/test-deploy-frontend.sh
+bash deploy/test-deploy-backend.sh
 ```
+
+`test-deploy-backend.sh` simulates Docker, HTTPS, time and the internal API. Where
+`flock` is missing, as on Git Bash, it prints a `SKIP` for the one real-lock check
+and stubs lock refusal instead. It does not prove a real replacement; that needs a
+trial on the server.
 
 The tests simulate Docker, HTTPS, time and lock refusal. They cover successful
 deployment, lock refusal, interrupted state, pull failure, revision mismatch,

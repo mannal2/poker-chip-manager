@@ -23,6 +23,9 @@ flock -n 9 || { echo 'Another deployment holds the lock.' >&2; exit 1; }
 [[ ! -e "$state/pending" ]] || {
   echo "RECOVERY_REQUIRED: inspect $state/pending before another deployment." >&2; exit 1;
 }
+[[ ! -e "$state/backend-pending" ]] || {
+  echo "RECOVERY_REQUIRED: run deploy/recover-backend.sh for $state/backend-pending first." >&2; exit 1;
+}
 
 compose() { env -u FRONTEND_IMAGE docker compose --project-directory "$project" "$@"; }
 available_kb=$(df -Pk "$project" | awk 'END {print $4}')

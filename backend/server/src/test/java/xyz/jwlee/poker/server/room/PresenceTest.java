@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.time.Instant;
 import org.junit.jupiter.api.Test;
 
+// 접속 상태 추적기를 검증한다
 class PresenceTest {
 
     private static final Instant T0 = Instant.parse("2026-10-31T00:00:00Z");

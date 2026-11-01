@@ -88,6 +88,7 @@ class SessionControllerTest {
                         + "\",\"requestId\":\"r1\",\"sequence\":1,\"name\":\"Host\"}"));
     }
 
+    // 닫힌 스트림은 알 수 없는 것으로 처리되고 슬롯이 비는지 확인한다
     @Test
     void aClosedStreamIsUnknownAndItsSlotIsFree() throws Exception {
         Browser b = browser();
@@ -102,11 +103,13 @@ class SessionControllerTest {
         openStream(b);
     }
 
+    // 알 수 없는 스트림을 닫아도 내용 없는 성공이 오는지 확인한다
     @Test
     void closingAnUnknownStreamIsNoContent() throws Exception {
         closeStream(browser(), "no-such-stream").andExpect(status().isNoContent());
     }
 
+    // 다른 세션의 스트림을 닫아도 그 스트림은 열려 있는지 확인한다
     @Test
     void closingAnotherSessionsStreamLeavesItOpen() throws Exception {
         Browser owner = browser();
@@ -117,6 +120,7 @@ class SessionControllerTest {
         create(owner, streamId).andExpect(status().isCreated());
     }
 
+    // 스트림을 닫을 때도 CSRF 토큰과 허용된 출처가 필요한지 확인한다
     @Test
     void closingAStreamStillNeedsTheCsrfTokenAndAnAllowedOrigin() throws Exception {
         Browser b = browser();

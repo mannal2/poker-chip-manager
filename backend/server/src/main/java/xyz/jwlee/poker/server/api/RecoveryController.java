@@ -42,6 +42,7 @@ class RecoveryController {
     private final RoomRegistry registry;
     private final RoomEnv env;
 
+    // 복구 요청 API에 필요한 협력 객체를 주입받는다
     RecoveryController(RoomRegistry registry, Clock clock, IdGenerator ids) {
         this.registry = registry;
         this.env = new RoomEnv(clock, ids);

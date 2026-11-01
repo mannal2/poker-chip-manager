@@ -264,6 +264,7 @@ class GameCommandsTest {
         assertRejected(f, f.send("a", "SETTLE_HAND", "{}"), "INVALID_INPUT");
     }
 
+    // 오래된 상태 버전의 초안도 같은 핸드면 적용되는지 확인한다
     @Test
     void aDraftSentAtAnOldStateVersionIsAppliedInTheSameHand() {
         GameFixture f = atSettlement();
@@ -277,6 +278,7 @@ class GameCommandsTest {
         assertThat(f.room.settlementDraft().draftVersion()).isEqualTo(1);
     }
 
+    // 지난 핸드를 가리키는 초안은 여전히 거부되는지 확인한다
     @Test
     void aDraftNamingAnOldHandIsStillRefused() {
         GameFixture f = atSettlement();

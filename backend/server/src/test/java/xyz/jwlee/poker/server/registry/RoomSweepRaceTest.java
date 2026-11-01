@@ -21,6 +21,7 @@ import xyz.jwlee.poker.server.room.RoomLifecycle;
 import xyz.jwlee.poker.server.room.RoomPhase;
 import xyz.jwlee.poker.server.support.IdGenerator;
 
+// 재접속과 정리가 겹쳐도 방 보존과 삭제 중 하나로 정리되는지 검증한다
 /** A reconnect racing the 30-minute deletion: the room survives with that person connected, or it is gone (M13). */
 class RoomSweepRaceTest {
 
@@ -40,6 +41,7 @@ class RoomSweepRaceTest {
         RoomLifecycle.disconnected(room, "guest-conn", env);
     }
 
+    // 재접속이 정리와 겹치면 그 사람과 방이 남거나 방이 사라지는지 확인한다
     @Test
     void aReconnectRacingTheSweepEitherKeepsTheRoomWithThatPersonOrFindsItGone() throws Exception {
         ExecutorService pool = Executors.newFixedThreadPool(2);

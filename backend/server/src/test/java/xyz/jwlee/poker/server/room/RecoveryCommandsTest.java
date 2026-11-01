@@ -48,6 +48,7 @@ class RecoveryCommandsTest {
         return SnapshotWriter.snapshot(in, in.participant(who).orElseThrow()).json().get("recoveryRequests");
     }
 
+    // 자리 확인이 명단과 자격 증명을 함께 보는지 확인한다
     @Test
     void seatOfChecksTheRosterAndTheCredentialTogether() {
         assertThat(room.seatOf(CommandFixture.binding("b"))).isPresent();
@@ -55,6 +56,7 @@ class RecoveryCommandsTest {
         assertThat(room.seatOf(new SeatBinding("gone", CommandFixture.credential("b")))).isEmpty();
     }
 
+    // 승인하면 새 바인딩만 남고 세대가 하나 오르는지 확인한다
     @Test
     void approvingLeavesOnlyTheNewBindingAndMovesTheGenerationByOne() {
         SeatBinding old = CommandFixture.binding("b");
@@ -70,6 +72,7 @@ class RecoveryCommandsTest {
         assertThat(room.participant("b").orElseThrow().controlGeneration()).isEqualTo(before + 1);
     }
 
+    // 승인이 버전을 올리고 옛 연결을 닫도록 알리는지 확인한다
     @Test
     void approvingBumpsTheVersionAndClosesTheOldConnections() {
         RecoveryRequests.Request request = ask(room, "Bob");
@@ -85,6 +88,7 @@ class RecoveryCommandsTest {
                 .containsExactlyInAnyOrder("conn-a", "conn-c");
     }
 
+    // 승인 시각이 부재 시작이 되고 대기실은 30초를 기다리는지 확인한다
     @Test
     void theApprovalTimeBecomesTheAbsenceAndAWaitingRoomWaitsThirtySecondsForTheNewDevice() {
         RecoveryRequests.Request request = ask(room, "Bob");
@@ -102,6 +106,7 @@ class RecoveryCommandsTest {
         assertThat(room.participant("b")).isEmpty();
     }
 
+    // 복구된 자리가 방장 지위와 칩을 유지하는지 확인한다
     @Test
     void aRecoveredSeatStaysHostAndKeepsItsChips() {
         GameFixture game = GameFixture.started(3, 1, clock);
@@ -114,6 +119,7 @@ class RecoveryCommandsTest {
         assertThat(game.room.game().players.stream().map(p -> p.stack).toList()).isEqualTo(stacks);
     }
 
+    // 탈락한 자리도 복구되며 탈락 상태로 남는지 확인한다
     @Test
     void anEliminatedSeatCanBeRecoveredAndStaysEliminated() {
         GameFixture game = GameFixture.started(3, 1, clock);
@@ -130,6 +136,7 @@ class RecoveryCommandsTest {
         assertThat(statusOf(game.room, request)).isEqualTo(Status.APPROVED);
     }
 
+    // 한 자리가 대기 요청 세 개까지 받고 네 번째는 거부하는지 확인한다
     @Test
     void aSeatTakesThreePendingRequestsAndRefusesTheFourth() {
         ask(room, "Bob");
@@ -141,6 +148,7 @@ class RecoveryCommandsTest {
         ask(room, "Carol");
     }
 
+    // 끝난 요청은 더 이상 한도에 들지 않는지 확인한다
     @Test
     void anEndedRequestNoLongerCountsAgainstTheLimit() {
         RecoveryRequests.Request first = ask(room, "Bob");
@@ -152,6 +160,7 @@ class RecoveryCommandsTest {
         ask(room, "Bob");
     }
 
+    // 한 요청의 승인이 그 자리의 다른 요청만 대체하는지 확인한다
     @Test
     void oneApprovalSupersedesTheOtherRequestsOfThatSeatOnly() {
         RecoveryRequests.Request first = ask(room, "Bob");
@@ -168,6 +177,7 @@ class RecoveryCommandsTest {
         assertThat(code(approve(second))).isEqualTo("RECOVERY_NOT_PENDING");
     }
 
+    // 거절된 요청은 승인할 수 없고 자리를 바꾸지 않는지 확인한다
     @Test
     void aRejectedRequestCannotBeApprovedAndChangesNoSeat() {
         RecoveryRequests.Request request = ask(room, "Bob");
@@ -182,12 +192,14 @@ class RecoveryCommandsTest {
         assertThat(code(approve(request))).isEqualTo("RECOVERY_NOT_PENDING");
     }
 
+    // 없는 요청은 대기 중이 아니고 빠진 필드는 무효인지 확인한다
     @Test
     void anUnknownRequestIsNotPendingAndAMissingFieldIsInvalid() {
         assertThat(code(f.send("a", "RECOVERY_APPROVE", payload("nope")))).isEqualTo("RECOVERY_NOT_PENDING");
         assertThat(code(f.send("a", "RECOVERY_APPROVE", "{}"))).isEqualTo("INVALID_INPUT");
     }
 
+    // 5분이 지난 요청이 정리로 만료되며 버전이 오르는지 확인한다
     @Test
     void afterFiveMinutesARequestIsExpiredByTheSweepWithAVersionBump() {
         RecoveryRequests.Request request = ask(room, "Bob");
@@ -204,6 +216,7 @@ class RecoveryCommandsTest {
         assertThat(code(approve(request))).isEqualTo("RECOVERY_NOT_PENDING");
     }
 
+    // 시간이 지난 요청은 정리가 보기 전에도 승인할 수 없는지 확인한다
     @Test
     void aRequestPastItsTimeCannotBeApprovedBeforeTheSweepSeesIt() {
         RecoveryRequests.Request request = ask(room, "Bob");
@@ -216,6 +229,7 @@ class RecoveryCommandsTest {
                 .isEqualTo(Status.EXPIRED);
     }
 
+    // 끝난 요청이 5분 뒤 버전 변화 없이 지워지는지 확인한다
     @Test
     void anEndedRequestIsDeletedFiveMinutesLaterWithoutABump() {
         RecoveryRequests.Request request = ask(room, "Bob");
@@ -234,6 +248,7 @@ class RecoveryCommandsTest {
         assertThat(room.version()).isEqualTo(version);
     }
 
+    // 게임이 진행 중이어도 정리가 요청을 만료시키는지 확인한다
     @Test
     void theSweepExpiresRequestsWhileAGameRuns() {
         GameFixture game = GameFixture.started(3, 1, clock);
@@ -245,6 +260,7 @@ class RecoveryCommandsTest {
         assertThat(statusOf(game.room, request)).isEqualTo(Status.EXPIRED);
     }
 
+    // 방장만 결정할 수 있는지 확인한다
     @Test
     void onlyTheHostMayDecide() {
         RecoveryRequests.Request request = ask(room, "Carol");
@@ -257,6 +273,7 @@ class RecoveryCommandsTest {
         assertThat(room.seatOf(CommandFixture.binding("c"))).isPresent();
     }
 
+    // 방장의 스냅샷에만 요청이 실리고 세션과 자격 증명은 빠지는지 확인한다
     @Test
     void onlyTheHostsSnapshotListsRequestsAndItCarriesNoSessionOrCredential() {
         RecoveryRequests.Request request = ask(room, "Bob");
@@ -277,6 +294,7 @@ class RecoveryCommandsTest {
         assertThat(row.get("expiresAt").asString()).isEqualTo("2026-10-31T00:05:00Z");
     }
 
+    // 결정된 요청은 방장의 목록에서 빠지는지 확인한다
     @Test
     void aDecidedRequestLeavesTheHostsList() {
         RecoveryRequests.Request request = ask(room, "Bob");
@@ -286,6 +304,7 @@ class RecoveryCommandsTest {
         assertThat(listFor(room, "a")).isEmpty();
     }
 
+    // 어떤 스냅샷이나 발행에도 자격 증명이 보이지 않는지 확인한다
     @Test
     void noSnapshotOrPublicationEverShowsACredential() {
         RecoveryRequests.Request request = ask(room, "Bob");
@@ -299,6 +318,7 @@ class RecoveryCommandsTest {
         assertThat(seatView).doesNotContain(credential);
     }
 
+    // 이름이 공백·형태·대소문자를 무시하고 일치하는지 확인한다
     @Test
     void aNameMatchesIgnoringSpacesFormAndCase() {
         RecoveryRequests.Request request = ask(room, "  bOB ");
@@ -309,6 +329,7 @@ class RecoveryCommandsTest {
         assertThat(ask(korean, "한글").participantId()).isEqualTo("k");
     }
 
+    // 모르는 이름은 찾을 수 없음이고 잘못된 이름은 무효인지 확인한다
     @Test
     void anUnknownNameIsNotFoundAndAnInvalidOneToo() {
         for (String name : List.of("Nobody", "", "bad_name!")) {
@@ -317,6 +338,7 @@ class RecoveryCommandsTest {
         }
     }
 
+    // 이미 앉은 사람은 신청할 수 없지만 낡은 바인딩은 신청할 수 있는지 확인한다
     @Test
     void someoneAlreadySeatedCannotAskButAStaleBindingCan() {
         assertThatThrownBy(() -> RecoveryCommands.request(room, Optional.of(CommandFixture.binding("c")), "Bob", env))
@@ -326,6 +348,7 @@ class RecoveryCommandsTest {
         RecoveryCommands.request(room, Optional.of(new SeatBinding("c", "stale")), "Bob", env);
     }
 
+    // 신청은 자리를 건드리지 않고 방장에게만 알리는지 확인한다
     @Test
     void askingLeavesTheSeatAloneButTellsTheHost() {
         long version = room.version();
@@ -337,6 +360,7 @@ class RecoveryCommandsTest {
         assertThat(room.presence().isConnected("b")).isTrue();
     }
 
+    // 결정 전에 떠난 자리의 요청은 대기가 아니고 방장 목록에서 빠지는지 확인한다
     @Test
     void aSeatThatLeftBeforeTheDecisionIsNoLongerPendingAndLeavesTheHostsList() {
         RecoveryRequests.Request request = ask(room, "Bob");
@@ -346,6 +370,7 @@ class RecoveryCommandsTest {
         assertThat(listFor(room, "a")).isEmpty();
     }
 
+    // 강퇴는 그 자리의 대기 요청만 끝내는지 확인한다
     @Test
     void aKickEndsTheSeatsPendingRequestsOnly() {
         RecoveryRequests.Request bobs = ask(room, "Bob");
@@ -357,6 +382,7 @@ class RecoveryCommandsTest {
         assertThat(statusOf(room, carols)).isEqualTo(Status.PENDING);
     }
 
+    // 자리를 떠나면 그 자리의 대기 요청이 끝나는지 확인한다
     @Test
     void leavingEndsTheSeatsPendingRequests() {
         RecoveryRequests.Request request = ask(room, "Bob");
@@ -366,6 +392,7 @@ class RecoveryCommandsTest {
         assertThat(statusOf(room, request)).isEqualTo(Status.SUPERSEDED);
     }
 
+    // 부재가 만료되면 그 자리의 대기 요청이 끝나는지 확인한다
     @Test
     void anAbsenceThatExpiresEndsTheSeatsPendingRequests() {
         RecoveryRequests.Request request = ask(room, "Bob");
@@ -378,6 +405,7 @@ class RecoveryCommandsTest {
         assertThat(statusOf(room, request)).isEqualTo(Status.SUPERSEDED);
     }
 
+    // 다시 준비한 뒤 부재가 만료돼도 그 자리의 대기 요청이 끝나는지 확인한다
     @Test
     void anAbsenceThatExpiresAfterReReadyEndsTheSeatsPendingRequests() {
         GameFixture game = GameFixture.started(2, 0, clock);
@@ -394,6 +422,7 @@ class RecoveryCommandsTest {
         assertThat(statusOf(game.room, request)).isEqualTo(Status.SUPERSEDED);
     }
 
+    // 이름 변경과 인계가 자격 증명을 유지하는지 확인한다
     @Test
     void aRenameAndATakeoverKeepTheCredential() {
         SeatBinding binding = CommandFixture.binding("b");
@@ -404,6 +433,7 @@ class RecoveryCommandsTest {
         assertThat(room.seatOf(binding)).isPresent();
     }
 
+    // 새 기기가 같은 자리로 접속하는지 확인한다
     @Test
     void theNewDeviceConnectsAsTheSameSeat() {
         RecoveryRequests.Request request = ask(room, "Bob");
@@ -417,6 +447,7 @@ class RecoveryCommandsTest {
         assertThat(room.version()).isEqualTo(version + 1);
     }
 
+    // 옛 연결이 늦게 닫혀도 새 기기가 끊김으로 바뀌지 않는지 확인한다
     @Test
     void theOldConnectionClosingLateDoesNotDisconnectTheNewDevice() {
         RecoveryRequests.Request request = ask(room, "Bob");

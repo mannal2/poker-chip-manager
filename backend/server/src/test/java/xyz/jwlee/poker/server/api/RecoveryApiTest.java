@@ -44,6 +44,7 @@ class RecoveryApiTest {
     // 테스트가 직접 진행시키는 시계를 넣는다
     @TestConfiguration(proxyBeanMethods = false)
     static class Timed {
+        // 복구 시나리오용 고정 시계를 만든다
         @Bean
         @Primary
         Clock recoveryClock() {
@@ -75,6 +76,7 @@ class RecoveryApiTest {
         long sequence;
         long generation = 1;
 
+        // 세션과 CSRF를 갖춘 테스트용 클라이언트를 만든다
         Client() throws Exception {
             MvcResult first = mvc.perform(get("/api/session")).andExpect(status().isOk()).andReturn();
             session = (MockHttpSession) first.getRequest().getSession(false);
@@ -228,6 +230,7 @@ class RecoveryApiTest {
         throw new AssertionError("not on the roster");
     }
 
+    // 요청 응답에 식별자·대기 상태·만료 시각이 담기는지 확인한다
     @Test
     void aRequestAnswersIdPendingAndExpiry() throws Exception {
         Client alice = host();
@@ -240,6 +243,7 @@ class RecoveryApiTest {
                 .andExpect(result -> assertThat(result.getResponse().getHeader("Cache-Control")).isEqualTo("no-store"));
     }
 
+    // 같은 요청을 재시도해도 요청이 하나만 만들어지는지 확인한다
     @Test
     void aRetriedRequestMakesOnlyOne() throws Exception {
         Client alice = host();
@@ -256,6 +260,7 @@ class RecoveryApiTest {
         assertThat(alice.view().get("recoveryRequests")).hasSize(1);
     }
 
+    // 같은 시퀀스를 다른 이름으로 보내면 요청 충돌이 되는지 확인한다
     @Test
     void theSameSequenceWithAnotherNameIsARequestConflict() throws Exception {
         Client alice = host();
@@ -268,6 +273,7 @@ class RecoveryApiTest {
                 .andExpect(jsonPath("$.code").value("REQUEST_CONFLICT"));
     }
 
+    // 거절된 요청은 재시도해도 같은 응답을 받는지 확인한다
     @Test
     void aRefusedRequestIsAnsweredTheSameOnRetry() throws Exception {
         Client alice = host();
@@ -281,6 +287,7 @@ class RecoveryApiTest {
                 .andExpect(jsonPath("$.code").value("RECOVERY_TARGET_NOT_FOUND"));
     }
 
+    // 없는 이름·없는 코드·이미 앉은 세션의 요청이 거부되는지 확인한다
     @Test
     void anUnknownNameACodeThatDoesNotExistAndASeatedSessionAreRefused() throws Exception {
         Client alice = host();
@@ -296,6 +303,7 @@ class RecoveryApiTest {
                 .andExpect(jsonPath("$.code").value("ALREADY_PARTICIPANT"));
     }
 
+    // 한 자리에 대한 네 번째 요청이 한도에서 거부되는지 확인한다
     @Test
     void theFourthRequestOfASeatIsTheLimit() throws Exception {
         Client alice = host();
@@ -308,6 +316,7 @@ class RecoveryApiTest {
                 .andExpect(jsonPath("$.code").value("RECOVERY_LIMIT"));
     }
 
+    // 형식이 잘못된 요청이 무효로 처리되는지 확인한다
     @Test
     void aMalformedRequestIsInvalid() throws Exception {
         Client device = new Client();
@@ -317,6 +326,7 @@ class RecoveryApiTest {
                 .andExpect(status().isBadRequest());
     }
 
+    // 경로가 세션과 CSRF 토큰을 요구하는지 확인한다
     @Test
     void theRouteNeedsASessionAndCsrf() throws Exception {
         Client device = new Client();
@@ -329,6 +339,7 @@ class RecoveryApiTest {
         mvc.perform(get("/api/recovery-requests/x")).andExpect(status().isUnauthorized());
     }
 
+    // 다른 세션은 요청을 읽을 수 없고 요청만으로는 자리가 생기지 않는지 확인한다
     @Test
     void anotherSessionCannotReadARequestAndARequestIsNoSeat() throws Exception {
         Client alice = host();
@@ -345,6 +356,7 @@ class RecoveryApiTest {
         device.state().andExpect(status().isNotFound());
     }
 
+    // 승인 뒤 첫 조회가 세션을 연결하고 놓친 응답도 다시 읽히는지 확인한다
     @Test
     void theFirstReadAfterApprovalLinksTheSessionAndALostAnswerCanBeReadAgain() throws Exception {
         Client alice = host();
@@ -371,6 +383,7 @@ class RecoveryApiTest {
         device.state().andExpect(status().isOk());
     }
 
+    // 거절된 요청은 자리를 주지 않는지 확인한다
     @Test
     void aRejectedRequestGivesNoSeat() throws Exception {
         Client alice = host();
@@ -386,6 +399,7 @@ class RecoveryApiTest {
         device.state().andExpect(status().isNotFound());
     }
 
+    // 요청이 제 시각에 만료로 보이고 정리 5분 뒤 사라지는지 확인한다
     @Test
     void aRequestShowsExpiredAtItsTimeAndIsGoneFiveMinutesAfterTheSweep() throws Exception {
         Client alice = host();
@@ -404,6 +418,7 @@ class RecoveryApiTest {
         device.recovery(id).andExpect(status().isNotFound());
     }
 
+    // 승인됐어도 자리가 이미 바뀌었으면 자리를 주지 않는지 확인한다
     @Test
     void anApprovedRequestWhoseSeatMovedOnGivesNoSeat() throws Exception {
         Client alice = host();
@@ -420,6 +435,7 @@ class RecoveryApiTest {
         first.state().andExpect(status().isNotFound());
     }
 
+    // 자리가 지워지면 신청자가 곧바로 대체됨 상태를 읽는지 확인한다
     @Test
     void anApplicantReadsSupersededAsSoonAsTheSeatIsRemoved() throws Exception {
         Client alice = host();
@@ -432,6 +448,7 @@ class RecoveryApiTest {
         device.recovery(id).andExpect(status().isOk()).andExpect(jsonPath("$.status").value("SUPERSEDED"));
     }
 
+    // 승인이 세션이 이미 가진 자리를 덮어쓰지 않는지 확인한다
     @Test
     void anApprovalDoesNotOverwriteASeatTheSessionAlreadyHolds() throws Exception {
         Client alice = host();
@@ -447,6 +464,7 @@ class RecoveryApiTest {
         assertThat(device.view().get("you").get("participantId").asString()).isEqualTo(device.participantId);
     }
 
+    // 옛 기기가 자리로 들어가는 모든 경로를 잃는지 확인한다
     @Test
     void theOldDeviceLosesEveryPathIntoTheSeat() throws Exception {
         Client alice = host();
@@ -478,6 +496,7 @@ class RecoveryApiTest {
         device.state().andExpect(status().isOk()).andExpect(jsonPath("$.you.controlGeneration").value(2));
     }
 
+    // 옛 기기의 이전 요청을 재시도해도 아무것도 보이지 않는지 확인한다
     @Test
     void retriesOfTheOldDevicesEarlierRequestsShowNothing() throws Exception {
         Client alice = host();
@@ -497,6 +516,7 @@ class RecoveryApiTest {
                 .andExpect(jsonPath("$.code").value("ROOM_NOT_FOUND"));
     }
 
+    // 옛 기기의 참가 요청이 자리로 돌아가지 못하는지 확인한다
     @Test
     void theOldDevicesJoinDoesNotReturnToTheSeat() throws Exception {
         Client alice = host();
@@ -509,6 +529,7 @@ class RecoveryApiTest {
                 .andExpect(status().is(422)).andExpect(jsonPath("$.code").value("DUPLICATE_NAME"));
     }
 
+    // 새 기기가 새 세대의 시퀀스 1부터 자리를 조작하는지 확인한다
     @Test
     void theNewDeviceCommandsTheSeatAtTheNewGenerationFromSequenceOne() throws Exception {
         Client alice = host();
@@ -524,6 +545,7 @@ class RecoveryApiTest {
         (deviceActs ? device : alice).command("CALL", "{}").andExpect(jsonPath("$.outcome").value("APPLIED"));
     }
 
+    // 방장이 자기 자리를 승인하면 이후 아무것도 보이지 않는지 확인한다
     @Test
     void aHostApprovingTheirOwnSeatSeesNothingAfterwards() throws Exception {
         Client alice = host();
@@ -541,6 +563,7 @@ class RecoveryApiTest {
         assertThat(bob.view().get("hostId").asString()).isEqualTo(alice.participantId);
     }
 
+    // 방장을 넘겨받은 사람이 옛 방장의 복구를 승인할 수 있는지 확인한다
     @Test
     void whoeverTookOverTheHostCanApproveTheOldHostsRecovery() throws Exception {
         Client alice = host();

@@ -121,6 +121,7 @@ class EventJsonTest {
                         object("{\"playerId\":\"p2\",\"shares\":{\"p0\":1000}}"));
     }
 
+    // 자동 행동과 방장 강제 폴드 표시는 참일 때만 JSON에 실리는지 확인한다
     @Test
     void automaticActionsAndHostForfeitsCarryTheirMarksOnlyWhenTrue() {
         String at = "2026-10-31T00:00:00Z";

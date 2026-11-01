@@ -14,6 +14,7 @@ class SweepTask {
 
     private final RoomRegistry registry;
 
+    // 정리 작업이 쓸 방 레지스트리를 받는다
     SweepTask(RoomRegistry registry) {
         this.registry = registry;
     }

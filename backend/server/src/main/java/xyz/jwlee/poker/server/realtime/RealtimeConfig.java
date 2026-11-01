@@ -14,6 +14,7 @@ class RealtimeConfig implements WebSocketConfigurer {
     private final RoomSocketHandler handler;
     private final WebSocketHandshakeGuard guard;
 
+    // WebSocket 핸들러와 핸드셰이크 검사기를 주입받는다
     RealtimeConfig(RoomSocketHandler handler, WebSocketHandshakeGuard guard) {
         this.handler = handler;
         this.guard = guard;

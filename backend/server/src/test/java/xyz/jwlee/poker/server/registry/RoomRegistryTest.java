@@ -40,6 +40,7 @@ class RoomRegistryTest {
         private final MutableClock time;
         private boolean fail;
 
+        // 처음 한 번은 실패하는 시계를 시작 시각으로 만든다
         FailingOnceClock(Instant start) {
             time = new MutableClock(start);
         }
@@ -54,6 +55,7 @@ class RoomRegistryTest {
             fail = true;
         }
 
+        // 한 번 실패한 뒤 현재 시각을 돌려준다
         @Override
         public Instant instant() {
             if (fail) {
@@ -63,11 +65,13 @@ class RoomRegistryTest {
             return time.instant();
         }
 
+        // 시계의 시간대를 돌려준다
         @Override
         public ZoneId getZone() {
             return ZoneOffset.UTC;
         }
 
+        // 지정한 시간대로 바꾼 시계를 돌려준다
         @Override
         public Clock withZone(ZoneId zone) {
             return this;

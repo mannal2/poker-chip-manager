@@ -45,6 +45,7 @@ final class GameClient {
         streamId = MAPPER.readTree(stream.getResponse().getContentAsString()).get("streamId").asString();
     }
 
+    // 첫 사람이 방장인 방을 만들고 참가자별 클라이언트를 돌려준다
     /** A room of {@code names.length} people, the first being the host. */
     static GameClient[] room(MockMvc mvc, RoomRegistry registry, String... names) throws Exception {
         GameClient[] clients = new GameClient[names.length];

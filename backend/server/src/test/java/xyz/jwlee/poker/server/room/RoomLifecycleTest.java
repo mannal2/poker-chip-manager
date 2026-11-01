@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 import tools.jackson.databind.node.ObjectNode;
 import xyz.jwlee.poker.server.support.IdGenerator;
 
+// 방 수명 주기 규칙을 검증한다
 class RoomLifecycleTest {
 
     private final MutableClock clock = new MutableClock(Instant.parse("2026-10-31T00:00:00Z"));

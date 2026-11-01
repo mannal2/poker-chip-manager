@@ -54,6 +54,7 @@ class AutoActionTest {
         return (EventDetails.PlayerActed) r.events().get(0).details();
     }
 
+    // 낼 몫이 없으면 체크하고 이벤트에 자동 표시를 남기는지 확인한다
     @Test
     void checksWhenNothingIsOwedAndMarksTheEventAutomatic() {
         GameState s = call(call(started(3))); // UTG and SB call, the big blind owes nothing
@@ -64,6 +65,7 @@ class AutoActionTest {
         assertThat(acted(r).playerId()).isEqualTo(s.hand.actorId);
     }
 
+    // 낼 몫이 있으면 폴드하고 이벤트에 자동 표시를 남기는지 확인한다
     @Test
     void foldsWhenACallIsOwedAndMarksTheEventAutomatic() {
         GameState s = started(3);
@@ -74,12 +76,14 @@ class AutoActionTest {
         assertThat(r.state().version).isEqualTo(s.version + 1);
     }
 
+    // 사람이 한 행동에는 자동 표시가 붙지 않는지 확인한다
     @Test
     void aHumanActionIsNotMarkedAutomatic() {
         TransitionResult.Applied r = apply(started(3), new GameCommand.Fold(null));
         assertThat(acted(r).automatic()).isFalse();
     }
 
+    // 자동 행동이 사람 행동 이전의 스냅샷을 유지하고 이벤트를 덧붙이는지 확인한다
     @Test
     void anAutomaticActionKeepsTheSnapshotBeforeTheHumanActionAndAppendsItsEvents() {
         GameState before = started(3);
@@ -95,6 +99,7 @@ class AutoActionTest {
                 .doesNotContainAnyElementsOf(autoStep.events().stream().map(GameEvent::id).toList());
     }
 
+    // 자동 행동 뒤 되돌리면 사람 행동 이전 상태로 돌아가는지 확인한다
     @Test
     void undoingAfterAnAutomaticActionRestoresTheStateBeforeTheHumanAction() {
         GameState before = started(3);
@@ -111,6 +116,7 @@ class AutoActionTest {
         assertThat(details.eventIds()).containsAll(autoStep.events().stream().map(GameEvent::id).toList());
     }
 
+    // 스냅샷이 없으면 자동 행동의 스냅샷도 null로 남는지 확인한다
     @Test
     void withoutASnapshotAnAutomaticActionLeavesItNull() {
         GameState s = started(3);
@@ -118,6 +124,7 @@ class AutoActionTest {
         assertThat(auto(s).state().undo).isNull();
     }
 
+    // 자동 폴드로 핸드가 끝나면 정산하고 다음 핸드를 나누는지 확인한다
     @Test
     void anAutomaticFoldThatEndsTheHandPaysOutAndDealsTheNextHand() {
         GameState s = started(2); // heads-up: the small blind owes 5, so the automatic action folds
@@ -131,6 +138,7 @@ class AutoActionTest {
         assertThat(total).isEqualTo(next.initialTotal);
     }
 
+    // 행동할 차례인 사람이 없으면 자동 행동이 거부되는지 확인한다
     @Test
     void isRejectedWhenNobodyIsToAct() {
         GameState s = apply(started(2), new GameCommand.AllIn(null)).state();

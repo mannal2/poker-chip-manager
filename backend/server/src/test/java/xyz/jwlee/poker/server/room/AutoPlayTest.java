@@ -12,6 +12,7 @@ import xyz.jwlee.poker.game.model.ActionType;
 import xyz.jwlee.poker.game.model.Phase;
 import xyz.jwlee.poker.server.support.IdGenerator;
 
+// 접속이 끊긴 사람의 자동 진행을 검증한다
 class AutoPlayTest {
 
     private static final RoomEnv ENV = new RoomEnv(Clock.systemUTC(), IdGenerator.random());
@@ -33,6 +34,7 @@ class AutoPlayTest {
                 .map(d -> (EventDetails.PlayerActed) d).toList();
     }
 
+    // 끊긴 차례는 낼 몫이 있으면 같은 응답 안에서 폴드되는지 확인한다
     @Test
     void aDisconnectedActorFoldsInsideTheSameResponseWhenSomethingIsOwed() {
         GameFixture f = GameFixture.started(3, 0);
@@ -50,6 +52,7 @@ class AutoPlayTest {
         });
     }
 
+    // 끊긴 차례는 낼 몫이 없으면 체크하는지 확인한다
     @Test
     void aDisconnectedActorChecksWhenNothingIsOwed() {
         GameFixture f = GameFixture.started(3, 0);
@@ -67,6 +70,7 @@ class AutoPlayTest {
         assertThat(f.actor()).isEqualTo("b");
     }
 
+    // 끊긴 자리가 이어져도 접속 중인 사람 차례까지 자동 진행되는지 확인한다
     @Test
     void consecutiveDisconnectedSeatsAreHandledUntilAConnectedPersonIsToAct() {
         GameFixture f = GameFixture.started(3, 0);
@@ -80,6 +84,7 @@ class AutoPlayTest {
         assertThat(f.actor()).isEqualTo("a");
     }
 
+    // 모두 끊기면 멈추고 누군가 돌아오면 다시 진행되는지 확인한다
     @Test
     void nothingMovesWhileEveryoneIsDisconnectedAndResumesWhenSomeoneReturns() {
         GameFixture f = GameFixture.started(3, 0);
@@ -100,6 +105,7 @@ class AutoPlayTest {
         assertThat(f.actor()).isEqualTo("c");
     }
 
+    // 정산 단계에서 자동 진행이 멈추는지 확인한다
     @Test
     void itStopsAtTheSettlementStep() {
         GameFixture f = GameFixture.started(3, 0);
@@ -115,6 +121,7 @@ class AutoPlayTest {
         assertThat(f.room.game().hand.phase).isEqualTo(Phase.SETTLEMENT);
     }
 
+    // 되돌린 뒤에도 행동자가 아직 없으면 자동 진행이 다시 이어지는지 확인한다
     @Test
     void anUndoIsFollowedByAutoPlayAgainWhileTheActorIsStillGone() {
         GameFixture f = GameFixture.started(3, 0);
@@ -128,6 +135,7 @@ class AutoPlayTest {
         assertThat(f.actor()).isEqualTo("c");
     }
 
+    // 되돌리면 돌아온 사람이 직접 행동하도록 남겨 두는지 확인한다
     @Test
     void anUndoLeavesTheReturnedPersonToActForThemselves() {
         GameFixture f = GameFixture.started(3, 0);
@@ -142,6 +150,7 @@ class AutoPlayTest {
         assertThat(f.actor()).isEqualTo("b");
     }
 
+    // 끊긴 방장도 대신 진행되는지 확인한다
     @Test
     void aDisconnectedHostIsPlayedForToo() {
         GameFixture f = GameFixture.started(3, 0);
@@ -153,6 +162,7 @@ class AutoPlayTest {
         assertThat(f.actor()).isEqualTo("b");
     }
 
+    // 자동 폴드로 핸드가 끝나도 블라인드를 내고 탈락자가 없는지 확인한다
     @Test
     void anAutomaticFoldThatEndsTheHandStillPaysBlindsAndEliminatesNobody() {
         // Both gone: a and b fold, c takes hand 1, and play stops when connected c is to act in hand 2.

@@ -11,6 +11,7 @@ public final class MutableClock extends Clock {
 
     private volatile Instant now;
 
+    // 시작 시각으로 조작 가능한 시계를 만든다
     public MutableClock(Instant start) {
         this.now = start;
     }
@@ -20,16 +21,19 @@ public final class MutableClock extends Clock {
         now = now.plus(by);
     }
 
+    // 현재 시계 시각을 돌려준다
     @Override
     public Instant instant() {
         return now;
     }
 
+    // 시계의 시간대를 돌려준다
     @Override
     public ZoneId getZone() {
         return ZoneOffset.UTC;
     }
 
+    // 지정한 시간대로 바꾼 시계를 돌려준다
     @Override
     public Clock withZone(ZoneId zone) {
         return this;

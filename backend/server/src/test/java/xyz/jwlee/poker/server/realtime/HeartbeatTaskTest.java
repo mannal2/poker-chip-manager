@@ -47,10 +47,12 @@ class HeartbeatTaskTest {
         task.tick();
     }
 
+    // 방의 현재 상태 버전을 읽는다
     private long stateVersion() {
         return registry.withRoom(roomId, Room::version);
     }
 
+    // 15초마다 현재 상태 버전을 실은 ping이 나가는지 확인한다
     @Test
     void aPingGoesOutEveryFifteenSecondsWithTheCurrentStateVersion() throws Exception {
         after(Duration.ofMillis(14_900));
@@ -73,6 +75,7 @@ class HeartbeatTaskTest {
         assertThat(socket.message(1).get("stateVersion").asLong()).isEqualTo(stateVersion());
     }
 
+    // 구독하지 않은 연결은 10초까지만 유지되는지 확인한다
     @Test
     void anUnsubscribedConnectionLastsUntilTenSeconds() throws Exception {
         FakeSocket fresh = new FakeSocket();
@@ -88,6 +91,7 @@ class HeartbeatTaskTest {
         await().until(() -> hub.connections().equals(List.of(connection)));
     }
 
+    // 아무 응답이 없는 연결은 45초까지만 유지되는지 확인한다
     @Test
     void aSilentConnectionLastsUntilFortyFiveSeconds() throws Exception {
         after(Duration.ofMillis(44_900));
@@ -97,6 +101,7 @@ class HeartbeatTaskTest {
         assertThat(socket.awaitClosed()).isEqualTo(1001);
     }
 
+    // pong은 기한을 늘리지만 상태 버전은 올리지 않는지 확인한다
     @Test
     void aPongExtendsTheDeadlineButNotTheStateVersion() throws Exception {
         long before = stateVersion();
@@ -115,6 +120,7 @@ class HeartbeatTaskTest {
         socket.awaitClosed();
     }
 
+    // 다른 nonce의 pong은 기한을 늘리지 못하는지 확인한다
     @Test
     void aPongWithAnotherNonceDoesNotExtendTheDeadline() throws Exception {
         after(Duration.ofSeconds(15));
@@ -127,6 +133,7 @@ class HeartbeatTaskTest {
         socket.awaitClosed();
     }
 
+    // 10초 동안 멈춘 전송은 연결을 닫는지 확인한다
     @Test
     void aSendStalledForTenSecondsIsClosed() throws Exception {
         socket.block();
@@ -140,6 +147,7 @@ class HeartbeatTaskTest {
         assertThat(socket.awaitClosed()).isEqualTo(1001);
     }
 
+    // 많은 연결을 훑을 때 방 하나가 없어져도 계속 진행되는지 확인한다
     @Test
     void aSweepOfManyConnectionsSurvivesOneRoomBeingGone() throws Exception {
         registry.remove(roomId);

@@ -73,6 +73,7 @@ public final class Connection {
     private final Instant openedAt;
     private volatile String roomId;
 
+    // 소켓과 식별자로 연결 하나를 만든다
     private Connection(String connectionId, String sessionId, Socket socket, Clock clock, Consumer<Connection> onClosed) {
         this.connectionId = connectionId;
         this.sessionId = sessionId;
@@ -93,7 +94,9 @@ public final class Connection {
         return connection;
     }
 
+    // 연결 식별자를 돌려준다
     public String connectionId() { return connectionId; }
+    // 연결을 연 세션 식별자를 돌려준다
     public String sessionId() { return sessionId; }
 
     // 구독한 방을 돌려주고 구독 전이면 null을 돌려준다
@@ -105,8 +108,11 @@ public final class Connection {
     // 닫히기 시작했는지 확인한다
     boolean isClosed() { return closing.get(); }
 
+    // 마지막 pong 수신 시각을 돌려준다
     Instant lastPong() { return lastPong; }
+    // 마지막 ping 발송 시각을 돌려준다
     Instant lastPing() { return lastPing; }
+    // 연결이 열린 시각을 돌려준다
     Instant openedAt() { return openedAt; }
 
     // 진행 중인 전송의 시작 시각을 돌려준다

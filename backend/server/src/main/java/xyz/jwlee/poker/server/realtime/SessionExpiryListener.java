@@ -11,6 +11,7 @@ class SessionExpiryListener implements HttpSessionListener {
 
     private final ConnectionHub hub;
 
+    // 세션 만료를 연결 허브에 알릴 수 있게 허브를 받는다
     SessionExpiryListener(ConnectionHub hub) {
         this.hub = hub;
     }

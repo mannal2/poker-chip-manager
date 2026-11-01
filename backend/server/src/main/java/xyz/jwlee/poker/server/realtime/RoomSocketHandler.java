@@ -51,11 +51,13 @@ class RoomSocketHandler extends TextWebSocketHandler {
 
     // Spring 소켓을 연결이 쓰는 소켓으로 맞춘다
     private record SpringSocket(WebSocketSession session) implements Connection.Socket {
+        // 소켓에 텍스트 메시지를 보낸다
         @Override
         public void send(String text) throws IOException {
             session.sendMessage(new TextMessage(text));
         }
 
+        // 지정한 코드로 소켓을 닫는다
         @Override
         public void close(int code) throws IOException {
             session.close(new CloseStatus(code));
@@ -68,6 +70,7 @@ class RoomSocketHandler extends TextWebSocketHandler {
     private final IdGenerator ids;
     private final RoomEnv env;
 
+    // 소켓 핸들러에 필요한 협력 객체를 주입받는다
     RoomSocketHandler(ConnectionHub hub, RoomRegistry registry, Clock clock, IdGenerator ids) {
         this.hub = hub;
         this.registry = registry;

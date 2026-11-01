@@ -70,6 +70,7 @@ class ConnectionTest {
         return c;
     }
 
+    // 전송이 막힌 동안에는 가장 최근 스냅샷만 대기하는지 확인한다
     @Test
     void whileASendIsBlockedOnlyTheLatestSnapshotWaits() throws Exception {
         blockOnFirstSnapshot();
@@ -88,6 +89,7 @@ class ConnectionTest {
         assertThat(versionOf(socket, 2)).isEqualTo(102);
     }
 
+    // 전송 시작 시각이 전송 중에만 존재하는지 확인한다
     @Test
     void sendingSinceIsPresentOnlyDuringASend() throws Exception {
         assertThat(connection.sendingSince()).isEmpty();
@@ -99,6 +101,7 @@ class ConnectionTest {
         await().atMost(Duration.ofSeconds(5)).until(() -> connection.sendingSince().isEmpty());
     }
 
+    // 늦게 온 낮은 버전 스냅샷이 높은 버전을 대체하지 않는지 확인한다
     @Test
     void aLateLowerSnapshotNeverReplacesAHigherOne() throws Exception {
         blockOnFirstSnapshot();
@@ -114,6 +117,7 @@ class ConnectionTest {
         assertThat(socket.message(1).get("state").get("draftVersion").asLong()).isEqualTo(2);
     }
 
+    // 높은 버전을 보낸 뒤 늦게 온 낮은 버전은 버려지는지 확인한다
     @Test
     void aLateLowerSnapshotIsDroppedAfterTheHigherOneWasSent() throws Exception {
         connection.offerSnapshot(snapshot(5, 0));
@@ -127,6 +131,7 @@ class ConnectionTest {
         assertThat(versionOf(socket, 1)).isEqualTo(6);
     }
 
+    // 더 높은 초안 버전은 대체하고 같은 버전은 그대로 전달되는지 확인한다
     @Test
     void aHigherDraftVersionReplacesAndTheSameVersionIsStillDelivered() throws Exception {
         connection.offerSnapshot(snapshot(5, 1));
@@ -140,6 +145,7 @@ class ConnectionTest {
         await().atMost(Duration.ofSeconds(5)).until(() -> socket.sent.size() == 3);
     }
 
+    // 마지막 메시지는 대체되지 않고 연결을 끝내는지 확인한다
     @Test
     void aFinalMessageIsNotReplacedAndEndsTheConnection() throws Exception {
         blockOnFirstSnapshot();
@@ -156,6 +162,7 @@ class ConnectionTest {
         await().atMost(Duration.ofSeconds(5)).until(() -> closedCalls.get() == 1);
     }
 
+    // 한도를 넘는 메시지는 보내지 않고 연결을 닫는지 확인한다
     @Test
     void aMessageOverTheLimitIsNotSentAndClosesTheConnection() throws Exception {
         ObjectNode big = snapshot(1, 0);
@@ -168,6 +175,7 @@ class ConnectionTest {
         await().atMost(Duration.ofSeconds(5)).until(() -> closedCalls.get() == 1);
     }
 
+    // 한도에 딱 맞는 메시지는 보내지는지 확인한다
     @Test
     void aMessageExactlyAtTheLimitIsSent() throws Exception {
         ObjectNode exact = snapshot(1, 0);
@@ -182,6 +190,7 @@ class ConnectionTest {
         assertThat(socket.closedWith).isNotDone();
     }
 
+    // 전송이 실패하면 연결을 닫는지 확인한다
     @Test
     void aFailedSendClosesTheConnection() throws Exception {
         socket.failSends();
@@ -192,6 +201,7 @@ class ConnectionTest {
         await().atMost(Duration.ofSeconds(5)).until(() -> closedCalls.get() == 1);
     }
 
+    // 전송이 막혀 있어도 닫기가 즉시 반환되는지 확인한다
     @Test
     @Timeout(value = 5, unit = TimeUnit.SECONDS)
     void closingReturnsAtOnceEvenWhileASendIsBlocked() throws Exception {
@@ -208,6 +218,7 @@ class ConnectionTest {
         assertThat(closedCalls).hasValue(1);
     }
 
+    // 막힌 연결이 발행이나 다른 연결을 붙잡지 않는지 확인한다
     @Test
     @Timeout(value = 5, unit = TimeUnit.SECONDS)
     void aBlockedConnectionDoesNotHoldUpPublishOrTheOthers() throws Exception {
@@ -228,6 +239,7 @@ class ConnectionTest {
         await().atMost(Duration.ofSeconds(4)).until(() -> healthy.sent.size() == 1);
     }
 
+    // 허브가 마지막 메시지는 전달하고 나머지는 버리는지 확인한다
     @Test
     void theHubDeliversFinalMessagesAndDropsTheRest() throws Exception {
         ConnectionHub hub = new ConnectionHub();
@@ -248,6 +260,7 @@ class ConnectionTest {
         await().atMost(Duration.ofSeconds(5)).until(() -> hub.connections().isEmpty());
     }
 
+    // 세션을 폐기하면 그 세션의 연결만 끝나는지 확인한다
     @Test
     void revokingASessionEndsOnlyItsConnections() throws Exception {
         ConnectionHub hub = new ConnectionHub();
@@ -263,6 +276,7 @@ class ConnectionTest {
         assertThat(other.closedWith).isNotDone();
     }
 
+    // 서버 전체 한도를 넘는 연결을 허브가 거부하는지 확인한다
     @Test
     void theHubRefusesTheConnectionOverTheServerLimit() {
         ConnectionHub hub = new ConnectionHub();
@@ -282,6 +296,7 @@ class ConnectionTest {
         all.forEach(Connection::close);
     }
 
+    // 연결이 닫힘 콜백 이전에 이미 닫히는 중임을 아는지 확인한다
     @Test
     void aConnectionKnowsItIsClosingBeforeItsCallbackRuns() {
         CompletableFuture<Boolean> seen = new CompletableFuture<>();
@@ -292,6 +307,7 @@ class ConnectionTest {
         assertThat(seen).succeedsWithin(Duration.ofSeconds(5)).isEqualTo(true);
     }
 
+    // 한 세션의 아홉 번째 연결은 거부하되 다른 세션은 허용하는지 확인한다
     @Test
     void theHubRefusesTheNinthConnectionOfASessionButNotAnotherSession() {
         ConnectionHub hub = new ConnectionHub();

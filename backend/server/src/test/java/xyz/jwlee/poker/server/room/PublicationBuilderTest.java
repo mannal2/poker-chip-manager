@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.node.ObjectNode;
 
+// 발행 메시지 조립을 검증한다
 class PublicationBuilderTest {
 
     // 수집 결과를 연결 ID별 메시지로 펼친다

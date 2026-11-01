@@ -21,6 +21,7 @@ public final class WebSocketHandshakeGuard implements HandshakeInterceptor {
 
     private final Set<String> allowed;
 
+    // 인증 설정을 받아 핸드셰이크 검사기를 만든다
     WebSocketHandshakeGuard(AuthProperties props) {
         this.allowed = Set.copyOf(props.allowedOrigins());
     }

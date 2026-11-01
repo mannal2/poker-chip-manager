@@ -63,7 +63,9 @@ public final class Room {
     public String code() { return code; }
     public Instant createdAt() { return createdAt; }
     public ReentrantLock lock() { return lock; }
+    // 방의 접속 상태 추적기를 돌려준다
     public Presence presence() { return presence; }
+    // 방의 복구 요청 목록을 돌려준다
     public RecoveryRequests recoveryRequests() { return recoveryRequests; }
 
     public RoomPhase phase() { return phase; }
@@ -79,7 +81,9 @@ public final class Room {
     public RoomSettings lastStartSettings() { return lastStartSettings; }
     public GameState game() { return game; }
     public Map<String, String> playerIds() { return playerIds; }
+    // 방에 쌓인 게임 이벤트 목록을 돌려준다
     public List<GameEvent> events() { return events; }
+    // 진행 중인 승자 초안을 돌려준다
     public SettlementDraft settlementDraft() { return settlementDraft; }
     // 지금까지 저장한 승자 초안의 마지막 버전을 돌려준다
     public long draftVersion() { return draftVersion; }
@@ -110,14 +114,18 @@ public final class Room {
                 .or(() -> existingLedger(id, current - 1).flatMap(ledger -> ledger.find(requestId)));
     }
 
+    // 방이 비워져 닫혔는지 돌려준다
     /** True once the room has been emptied; a closed room is treated as not found. Set under the room lock. */
     public boolean isClosed() { return closed; }
 
     // 방을 닫는다. 표에서 빼는 일은 호출자가 방 잠금을 푼 뒤에 한다
     void close() { this.closed = true; }
 
+    // 방장 인계가 열려 있는지 돌려준다
     public boolean hostTakeoverOpen() { return hostTakeoverOpen; }
+    // 방장 인계를 연다
     void openHostTakeover() { this.hostTakeoverOpen = true; }
+    // 방장 인계를 닫는다
     void closeHostTakeover() { this.hostTakeoverOpen = false; }
 
     // 명단에서 빠진 사람의 끊어야 할 연결 ID를 꺼내고 목록을 비운다
@@ -316,6 +324,7 @@ public final class Room {
         pointDealerAt(dealer);
     }
 
+    // 딜러 위치를 지정한 참가자로 옮긴다
     void setDealer(String participantId) { pointDealerAt(participantId); }
 
     // 참가자의 이름을 바꾼다

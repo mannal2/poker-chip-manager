@@ -54,6 +54,7 @@ class RoomSocketHttpTest {
     // 세션을 곧바로 무효화하는 테스트 전용 경로를 더한다
     @TestConfiguration
     static class ExpireSession {
+        // 세션 만료를 흉내 내는 테스트용 라우트를 만든다
         @Bean
         RouterFunction<ServerResponse> expireSessionRoute() {
             return RouterFunctions.route().GET("/test/expire-session", request -> {
@@ -142,12 +143,14 @@ class RoomSocketHttpTest {
         private final StringBuilder partial = new StringBuilder();
         private WebSocket socket;
 
+        // 소켓이 열리면 리스너가 첫 메시지를 요청한다
         @Override
         public void onOpen(WebSocket webSocket) {
             socket = webSocket;
             webSocket.request(1);
         }
 
+        // 받은 텍스트 조각을 모아 완성된 메시지를 큐에 넣는다
         @Override
         public CompletionStage<?> onText(WebSocket webSocket, CharSequence data, boolean last) {
             partial.append(data);
@@ -159,12 +162,14 @@ class RoomSocketHttpTest {
             return null;
         }
 
+        // 소켓이 닫힌 코드를 기록한다
         @Override
         public CompletionStage<?> onClose(WebSocket webSocket, int statusCode, String reason) {
             closed.complete(statusCode);
             return null;
         }
 
+        // 소켓 오류를 기록한다
         @Override
         public void onError(WebSocket webSocket, Throwable error) {
             closed.complete(-1);
@@ -230,6 +235,7 @@ class RoomSocketHttpTest {
         long sequence;
         long streamSequence;
 
+        // 이름 붙은 가상 브라우저를 만들고 세션을 연다
         Browser(String name) throws Exception {
             this.name = name;
             HttpResponse<String> session = send("GET", "/api/session", null, null, null);
@@ -333,6 +339,7 @@ class RoomSocketHttpTest {
         return registry.withRoom(who.roomId, room -> room.presence().isConnected(who.participantId));
     }
 
+    // 잘못된 출처·없는 출처·세션 없음이 거부되는지 확인한다
     @Test
     void aBadOriginAMissingOriginAndNoSessionAreRefused() throws Exception {
         Browser b = host();
@@ -343,6 +350,7 @@ class RoomSocketHttpTest {
         assertThat(refusedStatus("PCM_SESSION=stale", ORIGIN)).isEqualTo(401);
     }
 
+    // 구독자가 현재 스냅샷과 다음 변경을 이벤트와 함께 받는지 확인한다
     @Test
     void aSubscriberGetsTheCurrentSnapshotAndThenTheNextChangeWithItsEvents() throws Exception {
         Browser host = host();
@@ -372,6 +380,7 @@ class RoomSocketHttpTest {
         assertThat(types).contains("HAND_START");
     }
 
+    // 소켓을 닫으면 다른 화면에 참가자가 끊김으로 보이는지 확인한다
     @Test
     void closingTheSocketShowsTheParticipantDisconnectedOnOtherScreens() throws Exception {
         Browser host = host();
@@ -386,6 +395,7 @@ class RoomSocketHttpTest {
         assertThat(presence(bob)).isFalse();
     }
 
+    // 옛 소켓이 늦게 닫혀도 다시 접속한 참가자는 접속 상태로 남는지 확인한다
     @Test
     void aLateCloseOfTheOldSocketLeavesTheReconnectedParticipantConnected() throws Exception {
         Browser host = host();
@@ -405,6 +415,7 @@ class RoomSocketHttpTest {
         assertThat(hostScreen.closed).isNotDone();
     }
 
+    // 참가자의 다섯 번째 연결은 닫히고 나머지 네 개는 유지되는지 확인한다
     @Test
     void theFifthConnectionOfAParticipantIsClosedAndTheOtherFourStay() throws Exception {
         Browser host = host();
@@ -425,6 +436,7 @@ class RoomSocketHttpTest {
         assertThat(connectionCount(host)).isEqualTo(4);
     }
 
+    // 한도를 넘는 수신 메시지는 연결을 닫고 아무것도 바꾸지 않는지 확인한다
     @Test
     void anInboundMessageOverTheLimitClosesTheConnectionAndChangesNothing() throws Exception {
         Browser host = host();
@@ -451,6 +463,7 @@ class RoomSocketHttpTest {
         return "{\"type\":\"PONG\",\"nonce\":\"" + "x".repeat(bytes - shell.length()) + "\"}";
     }
 
+    // 형식이 잘못된 메시지는 방을 건드리지 않고 연결을 닫는지 확인한다
     @Test
     void malformedMessagesCloseTheConnectionWithoutTouchingTheRoom() throws Exception {
         Browser host = host();
@@ -467,6 +480,7 @@ class RoomSocketHttpTest {
         assertThat(host.version()).isEqualTo(version);
     }
 
+    // 두 번째 방을 구독하면 연결이 닫히는지 확인한다
     @Test
     void subscribingToASecondRoomClosesTheConnection() throws Exception {
         Browser host = host();
@@ -479,6 +493,7 @@ class RoomSocketHttpTest {
         await().atMost(WAIT).until(() -> !presence(host));
     }
 
+    // 같은 방을 다시 구독하면 스냅샷을 다시 보내는지 확인한다
     @Test
     void subscribingAgainToTheSameRoomResendsTheSnapshot() throws Exception {
         Browser host = host();
@@ -490,6 +505,7 @@ class RoomSocketHttpTest {
         assertThat(connectionCount(host)).isEqualTo(1);
     }
 
+    // 다른 프로토콜 버전은 알려 준 뒤 닫는지 확인한다
     @Test
     void anotherProtocolVersionIsToldAndClosed() throws Exception {
         Browser host = host();
@@ -502,6 +518,7 @@ class RoomSocketHttpTest {
         assertThat(presence(host)).isFalse();
     }
 
+    // 자리가 없는 세션은 철회되고 아무것도 보지 못하는지 확인한다
     @Test
     void aSessionWithoutASeatIsRevokedAndSeesNothing() throws Exception {
         Browser host = host();
@@ -515,6 +532,7 @@ class RoomSocketHttpTest {
         assertThat(screen.awaitClosed()).isEqualTo(1000);
     }
 
+    // 없는 방은 그 방에 자리가 없는 세션에게 철회로 보이는지 확인한다
     @Test
     void anUnknownRoomLooksRevokedToASessionThatHasNoSeatInIt() throws Exception {
         Browser stranger = new Browser("stranger");
@@ -526,6 +544,7 @@ class RoomSocketHttpTest {
         assertThat(screen.awaitClosed()).isEqualTo(1000);
     }
 
+    // 강퇴된 참가자는 철회되고 다시 구독할 수 없는지 확인한다
     @Test
     void aKickedParticipantIsRevokedAndCannotSubscribeAgain() throws Exception {
         Browser host = host();
@@ -542,6 +561,7 @@ class RoomSocketHttpTest {
         again.next("ACCESS_REVOKED");
     }
 
+    // 방이 삭제되면 남은 사람들이 방 사라짐을 받는지 확인한다
     @Test
     void whenTheRoomIsDeletedTheRemainingPeopleGetRoomGone() throws Exception {
         Browser host = host();
@@ -560,6 +580,7 @@ class RoomSocketHttpTest {
         assertThat(bobScreen.awaitClosed()).isEqualTo(1000);
     }
 
+    // 이 세션의 삭제된 방을 구독하면 방 사라짐이 오는지 확인한다
     @Test
     void subscribingToADeletedRoomOfThisSessionIsRoomGone() throws Exception {
         Browser host = host();
@@ -572,6 +593,7 @@ class RoomSocketHttpTest {
         assertThat(screen.awaitClosed()).isEqualTo(1000);
     }
 
+    // 세션을 무효화하면 그 연결들이 철회되는지 확인한다
     @Test
     void invalidatingTheSessionRevokesItsConnections() throws Exception {
         Browser host = host();
@@ -590,6 +612,7 @@ class RoomSocketHttpTest {
         assertThat(refusedStatus(bob.cookie, ORIGIN)).isEqualTo(401);
     }
 
+    // 재동기화가 버전을 올리지 않고 현재 상태를 다시 보내는지 확인한다
     @Test
     void aResyncResendsTheCurrentStateWithoutMovingTheVersion() throws Exception {
         Browser host = host();
@@ -604,6 +627,7 @@ class RoomSocketHttpTest {
         assertThat(host.version()).isEqualTo(version);
     }
 
+    // 인계하면 그 참가자의 모든 화면이 버전 변화 없이 새 세대를 받는지 확인한다
     @Test
     void aTakeoverShowsEveryScreenOfThatParticipantTheNewGenerationWithoutAVersionBump() throws Exception {
         Browser host = host();
@@ -627,6 +651,7 @@ class RoomSocketHttpTest {
                 .get("state").get("you").get("controlGeneration").asLong()).isEqualTo(1);
     }
 
+    // ping의 nonce를 담은 pong이 버전을 올리지 않고 연결을 유지시키는지 확인한다
     @Test
     void aPongWithTheNonceOfThePingKeepsTheConnectionAliveWithoutMovingTheVersion() throws Exception {
         Browser host = host();
@@ -644,6 +669,7 @@ class RoomSocketHttpTest {
         assertThat(host.version()).isEqualTo(version);
     }
 
+    // 서버 한도를 넘는 소켓이 핸드셰이크 뒤에 닫히는지 확인한다
     @Test
     void aSocketOverTheServerLimitIsClosedAfterTheHandshake() throws Exception {
         Browser host = host();
@@ -661,6 +687,7 @@ class RoomSocketHttpTest {
         }
     }
 
+    // 구독 전에 닫힌 소켓은 흔적을 남기지 않는지 확인한다
     @Test
     void aSocketClosedBeforeSubscribingLeavesNoTrace() throws Exception {
         Browser host = host();
@@ -676,6 +703,7 @@ class RoomSocketHttpTest {
         assertThat(stored).isEqualTo(version);
     }
 
+    // 방 대기 중에 닫힌 구독 연결이 분리된 채 남는지 확인한다
     @Test
     void aConnectionClosedWhileItsSubscribeWaitsForTheRoomStaysDetached() throws Exception {
         Browser host = host();
@@ -699,12 +727,14 @@ class RoomSocketHttpTest {
         assertThat(presence(host)).isFalse();
     }
 
+    // 하트비트가 예약되어 있는지 확인한다
     @Test
     void theHeartbeatIsScheduled() {
         assertThat(scheduled.getScheduledTasks()).extracting(Object::toString)
                 .anyMatch(task -> task.contains("HeartbeatTask.tick"));
     }
 
+    // 세션의 아홉 번째 소켓만 닫히고 나머지와 다른 세션은 무사한지 확인한다
     @Test
     void theNinthSocketOfASessionIsClosedAndTheOthersAndOtherSessionsAreFine() throws Exception {
         Browser host = host();

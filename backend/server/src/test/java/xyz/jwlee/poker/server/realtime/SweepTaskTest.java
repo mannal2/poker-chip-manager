@@ -17,6 +17,7 @@ class SweepTaskTest {
                     () -> new RoomRegistry(IdGenerator.random(), Clock.systemUTC(), new RoomPublisher.Silent()))
             .withUserConfiguration(SweepTask.class);
 
+    // 정리 작업이 꺼두지 않는 한 실행되는지 확인한다
     @Test
     void theSweepRunsUnlessItIsSwitchedOff() {
         runner.withPropertyValues("poker.sweep.enabled=").withSystemProperties("poker.sweep.enabled=")

@@ -87,12 +87,14 @@ class RecoverySocketHttpTest {
         private final StringBuilder partial = new StringBuilder();
         private WebSocket socket;
 
+        // 소켓이 열리면 리스너가 첫 메시지를 요청한다
         @Override
         public void onOpen(WebSocket webSocket) {
             socket = webSocket;
             webSocket.request(1);
         }
 
+        // 받은 텍스트 조각을 모아 완성된 메시지를 큐에 넣는다
         @Override
         public CompletionStage<?> onText(WebSocket webSocket, CharSequence data, boolean last) {
             partial.append(data);
@@ -104,12 +106,14 @@ class RecoverySocketHttpTest {
             return null;
         }
 
+        // 소켓이 닫힌 코드를 기록한다
         @Override
         public CompletionStage<?> onClose(WebSocket webSocket, int statusCode, String reason) {
             closed.complete(statusCode);
             return null;
         }
 
+        // 소켓 오류를 기록한다
         @Override
         public void onError(WebSocket webSocket, Throwable error) {
             closed.complete(-1);
@@ -164,6 +168,7 @@ class RecoverySocketHttpTest {
         long sequence;
         long streamSequence;
 
+        // 이름 붙은 가상 브라우저를 만들고 세션을 연다
         Browser(String name) throws Exception {
             this.name = name;
             HttpResponse<String> session = send("GET", "/api/session", null, null, null);
@@ -282,6 +287,7 @@ class RecoverySocketHttpTest {
         });
     }
 
+    // 방장 화면에만 복구 요청이 보이는지 확인한다
     @Test
     void theHostsScreenShowsARequestAndOnlyTheHosts() throws Exception {
         Browser host = host();
@@ -297,6 +303,7 @@ class RecoverySocketHttpTest {
         assertThat(bobs.get("state").get("recoveryRequests")).isEmpty();
     }
 
+    // 승인하면 옛 소켓이 접근 철회로 닫히고 옛 쿠키는 쓸 수 없는지 확인한다
     @Test
     void approvalClosesTheOldSocketsWithAccessRevokedAndTheOldCookieCannotSubscribeAgain() throws Exception {
         Browser host = host();
@@ -320,6 +327,7 @@ class RecoverySocketHttpTest {
         assertThat(again.awaitClosed()).isEqualTo(1000);
     }
 
+    // 새 기기가 자리로 구독하고 옛 소켓의 닫힘이 접속 상태를 깨지 않는지 확인한다
     @Test
     void theNewDeviceSubscribesAsTheSeatAndTheOldSocketsCloseLeavesItConnected() throws Exception {
         Browser host = host();
@@ -343,6 +351,7 @@ class RecoverySocketHttpTest {
                 room -> room.presence().isConnected(bob.participantId))).isTrue();
     }
 
+    // 낡은 자격으로 붙어 있던 소켓이 재동기화 때 철회되는지 확인한다
     @Test
     void aSocketLeftAttachedWithAStaleCredentialIsRevokedOnResync() throws Exception {
         Browser host = host();
@@ -356,6 +365,7 @@ class RecoverySocketHttpTest {
         assertThat(screen.awaitClosed()).isEqualTo(1000);
     }
 
+    // 낡은 자격으로 붙어 있던 소켓이 두 번째 구독 때 철회되는지 확인한다
     @Test
     void aSocketLeftAttachedWithAStaleCredentialIsRevokedOnASecondSubscribe() throws Exception {
         Browser host = host();
@@ -369,6 +379,7 @@ class RecoverySocketHttpTest {
         assertThat(screen.awaitClosed()).isEqualTo(1000);
     }
 
+    // 대기 중인 신청자는 구독 권한이 없는지 확인한다
     @Test
     void aRequesterHasNoSubscriptionRightWhilePending() throws Exception {
         Browser host = host();

@@ -61,6 +61,7 @@ final class FakeSocket implements Connection.Socket {
         return closedWith.get(WAIT_SECONDS, TimeUnit.SECONDS);
     }
 
+    // 보낸 메시지를 기록하거나 설정에 따라 막고 실패시킨다
     @Override
     public void send(String text) throws IOException {
         if (failing) {
@@ -76,6 +77,7 @@ final class FakeSocket implements Connection.Socket {
         sent.add(text);
     }
 
+    // 닫힌 코드를 기록한다
     @Override
     public void close(int code) {
         closedWith.complete(code);

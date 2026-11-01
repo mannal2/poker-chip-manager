@@ -38,12 +38,14 @@ public final class CommandPipeline {
     // 명령 종류별 규칙을 방에 적용하는 처리기 형식
     @FunctionalInterface
     private interface Applier {
+        // 명령을 방에 적용한다
         void apply(Room room, Participant actor, CommandRequest request, RoomEnv env);
     }
 
     // 대기실 명령처럼 payload만 필요한 처리기 형식
     @FunctionalInterface
     private interface WaitingApplier {
+        // payload만으로 대기실 명령을 적용한다
         void apply(Room room, Participant actor, JsonNode payload);
     }
 

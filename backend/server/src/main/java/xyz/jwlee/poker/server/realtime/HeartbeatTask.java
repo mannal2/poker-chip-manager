@@ -26,6 +26,7 @@ public final class HeartbeatTask {
     private final Clock clock;
     private final IdGenerator ids;
 
+    // 하트비트에 필요한 허브·레지스트리·시계를 주입받는다
     HeartbeatTask(ConnectionHub hub, RoomRegistry registry, Clock clock, IdGenerator ids) {
         this.hub = hub;
         this.registry = registry;

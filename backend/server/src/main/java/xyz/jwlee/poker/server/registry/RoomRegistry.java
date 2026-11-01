@@ -66,6 +66,7 @@ public class RoomRegistry {
     private final RoomPublisher publisher;
     private final RoomCodes codes;
 
+    // 방 레지스트리를 만든다
     public RoomRegistry(IdGenerator ids, Clock clock, RoomPublisher publisher) {
         this.ids = ids;
         this.clock = clock;

@@ -22,6 +22,7 @@ public final class Presence {
         private Instant absentSince;
         private final List<String> connections = new ArrayList<>();
 
+        // 참가자 기록 하나를 접속 시작 시각으로 만든다
         private Record(Instant joinedAt) {
             this.absentSince = joinedAt;
         }
@@ -64,6 +65,7 @@ public final class Presence {
         return true;
     }
 
+    // 참가자가 지금 접속 중인지 확인한다
     public boolean isConnected(String participantId) {
         Record record = records.get(participantId);
         return record != null && !record.connections.isEmpty();
@@ -81,6 +83,7 @@ public final class Presence {
         return record != null && !record.everConnected;
     }
 
+    // 참가자의 현재 연결 수를 돌려준다
     public int connectionCount(String participantId) {
         Record record = records.get(participantId);
         return record == null ? 0 : record.connections.size();

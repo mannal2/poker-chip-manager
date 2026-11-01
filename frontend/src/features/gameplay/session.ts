@@ -49,6 +49,7 @@ export interface GameSession {
 // 설정 편집 조작 모음(모드별 추가 기능 포함)
 /** Shared setup editing plus optional mode extras (local: player count and screen rotation). */
 export type SetupControls = ReturnType<typeof useSetupEditing> & {
+  validateSettings?: typeof import('../../game/settings').validateSettings;
   changeCount?: (add: boolean) => void;
   rotate?: () => void;
 };

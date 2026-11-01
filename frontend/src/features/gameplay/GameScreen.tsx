@@ -230,6 +230,7 @@ export function GameScreen({
               s.settings.bb
             }
             settings={s.settings}
+            validate={setup.validateSettings}
             busy={busy || !can.canEditSetup}
             onSave={setup.saveSettings}
             onStart={setup.start}

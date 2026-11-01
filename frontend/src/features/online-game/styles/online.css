@@ -24,3 +24,14 @@
   opacity: 0.5;
   cursor: default;
 }
+.waiting-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: calc(4 * var(--u)) calc(12 * var(--u));
+}
+.waiting-bar button {
+  min-height: calc(36 * var(--u));
+  padding: calc(4 * var(--u)) calc(8 * var(--u));
+  font-size: calc(13 * var(--u));
+}

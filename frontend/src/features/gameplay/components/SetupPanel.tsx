@@ -8,11 +8,13 @@ export function SetupPanel({
   busy,
   onSave,
   onStart,
+  validate = validateSettings,
 }: {
   settings: GameSettings;
   busy: boolean;
   onSave: (s: GameSettings) => void;
   onStart: (s: GameSettings) => void;
+  validate?: typeof validateSettings;
 }) {
   const [draft, setDraft] = useState({
       initial: String(settings.initial),
@@ -34,7 +36,7 @@ export function SetupPanel({
   function save() {
     if (composing.current) return;
     const s = values(),
-      v = validateSettings(s);
+      v = validate(s);
     setError(v.ok ? '' : messageFor(v.code));
     if (v.ok && JSON.stringify(s) !== JSON.stringify(settings)) onSave(v.settings);
   }
@@ -44,7 +46,7 @@ export function SetupPanel({
         id="setupForm"
         onSubmit={(e) => {
           e.preventDefault();
-          const v = validateSettings(values());
+          const v = validate(values());
           if (v.ok) {
             setError('');
             onStart(v.settings);

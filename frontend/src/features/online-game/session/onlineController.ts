@@ -1,4 +1,4 @@
-import type { WinnerSelection } from '../../../game/types';
+import type { GameEvent, WinnerSelection } from '../../../game/types';
 import { messageFor } from '../../gameplay/model/errorMessages';
 import type { ApiClient, ApiResult } from '../api/client';
 import {
@@ -74,6 +74,23 @@ export class OnlineController {
 
   // 외부 저장소가 같은 객체를 읽도록 현재 화면을 반환한다.
   getView = (): OnlineView => this.view;
+  // API 인스턴스를 노출하지 않고 현재 방의 토너먼트 기록을 조회한다.
+  async loadEvents(tournamentId: string, after: number, limit: number): Promise<GameEvent[]> {
+    const roomId = this.view.snapshot!.roomId;
+    const query = new URLSearchParams({ tournamentId, after: String(after), limit: String(limit) });
+    const result = await this.api.get<{ events: GameEvent[]; nextAfter: number }>(
+      `/api/rooms/${encodeURIComponent(roomId)}/history?${query}`,
+    );
+    if (!result.ok) {
+      if (!('unknown' in result) && result.status === 410) return [];
+      throw new Error('기록을 불러오지 못했습니다.');
+    }
+    return result.body.events;
+  }
+  // 방의 최신 상태를 다시 구독하여 연결을 복구한다.
+  reconnect(): void {
+    if (this.active && this.view.phase === 'room') this.connect();
+  }
   // 화면 변경 구독을 등록하고 해제 함수를 반환한다.
   subscribe = (listener: () => void): (() => void) => {
     this.listeners.add(listener);

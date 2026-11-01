@@ -5,6 +5,26 @@ import type { RoomSocketHandlers } from '../../src/features/online-game/realtime
 import type { JoinResponse } from '../../src/features/online-game/api/types';
 
 const controllers: OnlineController[] = [];
+// 서버 기록 응답의 이벤트와 쿼리 및 만료된 토너먼트 처리를 확인한다.
+it('loads room history with pagination and returns no events on 410', async () => {
+  const x = setup();
+  await x.enter();
+  const events = [{ sequence: 1, type: 'CALL' }];
+  x.api.get.mockResolvedValueOnce({ ok: true, body: { events, nextAfter: 1 } });
+  expect(await x.c.loadEvents('t/a', 0, 100)).toEqual(events);
+  const requested = x.api.get.mock.lastCall![0] as string;
+  const url = new URL(requested, 'http://localhost');
+  expect(url.pathname).toBe(`/api/rooms/${x.c.getView().snapshot!.roomId}/history`);
+  expect(Object.fromEntries(url.searchParams)).toEqual({
+    tournamentId: 't/a',
+    after: '0',
+    limit: '100',
+  });
+  x.api.get.mockResolvedValueOnce({ ok: false, status: 410, code: 'TOURNAMENT_CHANGED' });
+  expect(await x.c.loadEvents('old', 10, 50)).toEqual([]);
+  x.api.get.mockResolvedValueOnce({ ok: false, unknown: true });
+  await expect(x.c.loadEvents('t', 0, 10)).rejects.toThrow('기록을 불러오지 못했습니다.');
+});
 // 세션 초기화 실패가 재입력 가능한 단계로 돌아가는지 확인한다.
 it('returns an initial connection failure to entry', async () => {
   const x = setup();

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { OnlineEntry } from './components/OnlineEntry';
 import { OnlineFatal } from './components/OnlineFatal';
 import { useOnlineController } from './hooks/useOnlineController';
+import { RoomPage } from './RoomPage';
 
 // 연결 상태와 컨트롤러 단계에 따라 온라인 진입 화면을 선택한다.
 export function OnlineApp() {
@@ -18,6 +19,7 @@ export function OnlineApp() {
     };
   }, []);
   const fatal = ['gone', 'revoked', 'incompatible'].includes(view.phase);
+  if (view.phase === 'room' && view.snapshot) return <RoomPage view={view} controller={controller} />;
   return (
     <main className="online-app">
       <h1>멀티플레이 모드</h1>
@@ -25,10 +27,6 @@ export function OnlineApp() {
         <p role="status">멀티플레이 모드를 이용하려면 인터넷 연결이 필요합니다.</p>
       ) : fatal ? (
         <OnlineFatal phase={view.phase} />
-      ) : view.phase === 'room' ? (
-        <p>
-          방 코드: <strong data-testid="room-code">{view.snapshot?.code}</strong>
-        </p>
       ) : (
         <OnlineEntry view={view} controller={controller} />
       )}

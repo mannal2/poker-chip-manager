@@ -1,10 +1,13 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { GameScreen } from '../gameplay/GameScreen';
+import type { GameScreenHandle } from '../gameplay/session';
 import { useScreenFit } from '../../shared/hooks/useScreenFit';
 import { WaitingBar } from './components/WaitingBar';
 import { ConnectionBanner } from './components/ConnectionBanner';
 import { useOnlineGameSession } from './hooks/useOnlineGameSession';
 import type { OnlineController, OnlineView } from './session/onlineController';
+import { useOnlineChipMotion } from './hooks/useOnlineChipMotion';
+import { noticesFor } from './model/eventNotices';
 import '../gameplay/styles/header.css';
 import '../gameplay/styles/table.css';
 import '../gameplay/styles/controls.css';
@@ -14,7 +17,21 @@ export function RoomPage({ view, controller }: { view: OnlineView; controller: O
   const screen = useRef<HTMLElement>(null);
   useScreenFit(screen);
   const [dialog, setDialog] = useState('');
-  const { session, setup, toast } = useOnlineGameSession(view, controller);
+  const game = useRef<GameScreenHandle>(null);
+  const { session, setup, toast, resetSelection } = useOnlineGameSession(view, controller);
+  const notify = toast.show;
+  useOnlineChipMotion(screen, controller, view.snapshot!);
+  useEffect(
+    () =>
+      controller.onConfirmed(({ events }) => {
+        if (events.some((event) => event.type === 'UNDO')) {
+          resetSelection();
+          game.current?.resetSelection();
+        }
+        for (const message of noticesFor(events, controller.getKnownEvents())) notify(message);
+      }),
+    [controller, resetSelection, notify],
+  );
   return (
     <main ref={screen} className="phone online-room" aria-busy={view.pending}>
       <ConnectionBanner view={view} controller={controller} />
@@ -28,6 +45,7 @@ export function RoomPage({ view, controller }: { view: OnlineView; controller: O
         </div>
       )}
       <GameScreen
+        ref={game}
         session={session}
         setup={setup}
         dialog={dialog}

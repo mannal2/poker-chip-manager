@@ -55,5 +55,9 @@ export function useBettingDraft(
     else notify(messageFor(result.code));
   }
 
-  return { draftAmount, submitAllowed, prepareAction };
+  // 외부에서 확정한 취소에 맞춰 미제출 베팅 금액을 폐기한다.
+  function resetDraft() {
+    setDraft({ scope, version: -1, amount: 0 });
+  }
+  return { draftAmount, submitAllowed, prepareAction, resetDraft };
 }

@@ -21,7 +21,14 @@ export function useSettlementSelection(
   const pots =
     state?.status === 'playing' && state.hand?.phase === 'settlement' ? buildPots(state) : [];
   const winners: WinnerSelection = sharedSelection
-    ? Object.fromEntries(pots.map((p) => [p.id, sharedSelection.winners[p.id] ?? []]))
+    ? Object.fromEntries(
+        pots.map((p) => [
+          p.id,
+          p.eligible.length === 1
+            ? p.eligible
+            : (sharedSelection.winners[p.id] ?? []).filter((id) => p.eligible.includes(id)),
+        ]),
+      )
     : Object.fromEntries(
         pots.map((p) => [
           p.id,
@@ -33,7 +40,7 @@ export function useSettlementSelection(
         ]),
       );
   const potIndex = sharedSelection
-    ? sharedSelection.potIndex
+    ? Math.max(0, Math.min(sharedSelection.potIndex, pots.length - 1))
     : draft.key === scope
       ? Math.min(draft.index, pots.length - 1)
       : 0;

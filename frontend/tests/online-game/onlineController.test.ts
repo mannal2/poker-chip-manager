@@ -1,10 +1,82 @@
 import { afterEach, expect, it, vi } from 'vitest';
 import fixture from '../../../shared/api-contract/create-room.json';
+import playing from '../../../shared/api-contract/snapshot-playing.json';
 import { OnlineController } from '../../src/features/online-game/session/onlineController';
 import type { RoomSocketHandlers } from '../../src/features/online-game/realtime/roomSocket';
-import type { JoinResponse } from '../../src/features/online-game/api/types';
+import type { JoinResponse, RoomSnapshot } from '../../src/features/online-game/api/types';
 
 const controllers: OnlineController[] = [];
+// 같은 발행 묶음과 후속 발행에 중복된 이벤트 ID의 효과를 한 번만 전달한다.
+it('deduplicates confirmed event ids within and across publications', async () => {
+  const x = setup();
+  await x.enter();
+  const before = x.c.getView().snapshot!;
+  const event = {
+    id: 'same',
+    type: 'CHECK',
+    tournamentId: before.tournamentId!,
+    hand: 1,
+    at: '',
+    details: {},
+  };
+  const confirmed = vi.fn();
+  x.c.onConfirmed(confirmed);
+  x.h.onSnapshot({
+    type: 'SNAPSHOT',
+    previousVersion: before.stateVersion,
+    state: { ...before, stateVersion: before.stateVersion + 1 },
+    events: [event, event],
+  });
+  expect(confirmed.mock.calls[0][0].events).toEqual([event]);
+  x.h.onSnapshot({
+    type: 'SNAPSHOT',
+    previousVersion: before.stateVersion + 1,
+    state: { ...before, stateVersion: before.stateVersion + 2 },
+    events: [event],
+  });
+  expect(confirmed.mock.calls[1][0].events).toEqual([]);
+});
+// 확정 효과 전에 이전 화면을 유지하고 이름 메타데이터와 최근 200개 제한을 보관한다.
+it('keeps bounded named event metadata without mutating wire events and clears it for a new tournament', async () => {
+  const x = setup();
+  await x.enter();
+  x.h.onSnapshot({
+    type: 'SNAPSHOT',
+    previousVersion: null,
+    state: {
+      ...(structuredClone(playing.response) as RoomSnapshot),
+      stateVersion: x.c.getView().snapshot!.stateVersion + 1,
+    },
+    events: [],
+  });
+  const before = x.c.getView().snapshot!;
+  const next = { ...before, stateVersion: before.stateVersion + 1 };
+  const events = Array.from({ length: 201 }, (_, n) => ({
+    id: `e${n}`,
+    type: 'CHECK',
+    tournamentId: next.tournamentId!,
+    hand: 1,
+    at: '',
+    details: { playerId: 'p0' },
+  }));
+  const confirmed = vi.fn(() => expect(x.c.getView().snapshot).toBe(before));
+  x.c.onConfirmed(confirmed);
+  x.h.onSnapshot({ type: 'SNAPSHOT', previousVersion: before.stateVersion, state: next, events });
+  expect(confirmed).toHaveBeenCalledOnce();
+  expect(x.c.getView().snapshot).toBe(next);
+  expect(x.c.getKnownEvents().size).toBe(200);
+  expect(x.c.getKnownEvents().has('e0')).toBe(false);
+  expect(x.c.getKnownEvents().get('e1')?.event).toBe(events[1]);
+  expect(x.c.getKnownEvents().get('e1')?.actorName).toBe('Alice');
+  expect(events[1].details).toEqual({ playerId: 'p0' });
+  x.h.onSnapshot({
+    type: 'SNAPSHOT',
+    previousVersion: null,
+    state: { ...next, tournamentId: 'different', stateVersion: 0 },
+    events: [],
+  });
+  expect(x.c.getKnownEvents().size).toBe(0);
+});
 // 서버 기록 응답의 이벤트와 쿼리 및 만료된 토너먼트 처리를 확인한다.
 it('loads room history with pagination and returns no events on 410', async () => {
   const x = setup();

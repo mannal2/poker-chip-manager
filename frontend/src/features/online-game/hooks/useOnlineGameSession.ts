@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useToast } from '../../../shared/hooks/useToast';
 import { validChips, type GameSettings, type SettingsValidation } from '../../../game/settings';
 import type { GameCommand } from '../../../game/types';
@@ -33,6 +33,47 @@ export function useOnlineGameSession(view: OnlineView, controller: OnlineControl
   const toast = useToast();
   const notify = toast.show;
   const busy = view.pending || view.connection !== 'online' || !view.hasControl;
+  const selectionScope = `${state.tournamentId}:${state.hand?.id}:${state.hand?.phase}:${snapshot.hostId}:${snapshot.you.controlGeneration}`;
+  const [selection, setSelection] = useState<{
+    scope: string;
+    value: NonNullable<GameSession['sharedSelection']>;
+  } | null>(null);
+  const authoritative: NonNullable<GameSession['sharedSelection']> = snapshot.settlementDraft ?? {
+    winners: {},
+    potIndex: 0,
+  };
+  if (
+    selection &&
+    (selection.scope !== selectionScope ||
+      !snapshot.you.capabilities.canSettle ||
+      !view.hasControl ||
+      view.connection !== 'online' ||
+      view.error ||
+      (selection.value.potIndex === authoritative.potIndex &&
+        Object.keys({ ...selection.value.winners, ...authoritative.winners }).every(
+          (id) =>
+            [...(selection.value.winners[id] ?? [])].sort().join('\0') ===
+            [...(authoritative.winners[id] ?? [])].sort().join('\0'),
+        )))
+  )
+    setSelection(null);
+  const sharedSelection =
+    selection?.scope === selectionScope &&
+    snapshot.you.capabilities.canSettle &&
+    view.hasControl &&
+    !view.error
+      ? selection.value
+      : authoritative;
+  // 칩 상태는 유지하고 방장의 최신 정산 선택만 즉시 표시하여 서버에 보낸다.
+  function onSelectionChange(value: NonNullable<GameSession['sharedSelection']>) {
+    if (guard() || !controller.getView().snapshot!.you.capabilities.canSettle) return;
+    setSelection({ scope: selectionScope, value });
+    controller.sendDraft(value.potIndex, value.winners);
+  }
+  // 외부 취소가 확정되면 호스트가 보관한 정산 선택을 폐기한다.
+  function resetSelection() {
+    setSelection(null);
+  }
   // 현재 컨트롤러 값을 읽어 오래된 이벤트에서도 중복 명령을 막는다.
   function guard() {
     const current = controller.getView();
@@ -79,6 +120,8 @@ export function useOnlineGameSession(view: OnlineView, controller: OnlineControl
   }
   const session: GameSession = {
     state,
+    sharedSelection,
+    onSelectionChange,
     busy,
     capabilities: snapshot.you.capabilities,
     legal: snapshot.legal,
@@ -102,5 +145,5 @@ export function useOnlineGameSession(view: OnlineView, controller: OnlineControl
     loadEvents: (tournamentId, after, limit) => controller.loadEvents(tournamentId, after, limit),
   };
   const setup: SetupControls = { ...editing, rename, validateSettings: validateOnlineSettings };
-  return { session, setup, toast };
+  return { session, setup, toast, resetSelection };
 }

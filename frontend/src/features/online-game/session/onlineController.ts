@@ -13,6 +13,7 @@ import {
   type SnapshotMessage,
 } from '../api/types';
 import type { FinalMessage, RoomSocket, RoomSocketHandlers } from '../realtime/roomSocket';
+import type { KnownEvent } from '../model/eventNotices';
 
 export interface OnlineView {
   phase: 'entry' | 'joining' | 'recovering' | 'room' | 'gone' | 'revoked' | 'incompatible';
@@ -47,6 +48,7 @@ export class OnlineController {
   };
   private listeners = new Set<() => void>();
   private confirmed = new Set<(value: Confirmed) => void>();
+  private knownEvents = new Map<string, KnownEvent>();
   private socket: SocketPort | null = null;
   private generation = 0;
   private sequence = 0;
@@ -74,6 +76,10 @@ export class OnlineController {
 
   // 외부 저장소가 같은 객체를 읽도록 현재 화면을 반환한다.
   getView = (): OnlineView => this.view;
+  // 서버 이벤트를 변형하지 않고 최근 이벤트의 표시 이름 메타데이터를 제공한다.
+  getKnownEvents(): ReadonlyMap<string, KnownEvent> {
+    return this.knownEvents;
+  }
   // API 인스턴스를 노출하지 않고 현재 방의 토너먼트 기록을 조회한다.
   async loadEvents(tournamentId: string, after: number, limit: number): Promise<GameEvent[]> {
     const roomId = this.view.snapshot!.roomId;
@@ -290,17 +296,34 @@ export class OnlineController {
         return;
     }
     if (next.you.controlGeneration > this.generation) this.queuedDraft = null;
-    this.update({
-      snapshot: next,
-      ...(next.you.controlGeneration > this.generation ? { hasControl: false } : {}),
-    });
-    if (
-      previous &&
-      same &&
-      message?.previousVersion === previous.stateVersion &&
-      next.stateVersion > previous.stateVersion
-    )
-      this.confirmed.forEach((listener) => listener({ events: message.events, previous, next }));
+    if (!same) this.knownEvents.clear();
+    const fresh: GameEvent[] = [];
+    for (const event of message?.events ?? []) {
+      if (this.knownEvents.has(event.id)) continue;
+      fresh.push(event);
+      const id = event.details.playerId;
+      const actorName =
+        next.game?.players.find((p) => p.id === id)?.name ??
+        previous?.game?.players.find((p) => p.id === id)?.name;
+      this.knownEvents.set(event.id, { event, actorName });
+    }
+    while (this.knownEvents.size > 200)
+      this.knownEvents.delete(this.knownEvents.keys().next().value!);
+    try {
+      if (
+        previous &&
+        same &&
+        message?.previousVersion === previous.stateVersion &&
+        next.stateVersion > previous.stateVersion
+      )
+        this.confirmed.forEach((listener) => listener({ events: fresh, previous, next }));
+    } finally {
+      // 구독자가 이전 DOM에서 좌표를 준비한 뒤 확정 상태를 화면에 적용한다.
+      this.update({
+        snapshot: next,
+        ...(next.you.controlGeneration > this.generation ? { hasControl: false } : {}),
+      });
+    }
   }
   // 일반 명령 목록을 초안 뒤에서 순서대로 실행한다.
   async send(commands: ServerCommand[]): Promise<boolean> {

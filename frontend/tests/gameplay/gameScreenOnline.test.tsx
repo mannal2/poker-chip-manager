@@ -1,11 +1,15 @@
 // @vitest-environment happy-dom
-import { act } from 'react';
+import { act, createRef } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { GameScreen } from '../../src/features/gameplay/GameScreen';
-import type { GameSession, SetupControls } from '../../src/features/gameplay/session';
+import type {
+  GameSession,
+  SetupControls,
+  GameScreenHandle,
+} from '../../src/features/gameplay/session';
 import { fullCapabilities } from '../../src/features/gameplay/model/capabilities';
-import { createTournament } from '../../src/game/transition';
+import { createTournament, getLegalActions } from '../../src/game/transition';
 import { defaultSettings } from '../../src/game/settings';
 import { fixtureState, ctx } from '../game/helpers';
 
@@ -46,7 +50,7 @@ function session(overrides: Partial<GameSession> = {}): GameSession {
   };
 }
 // 실제 화면을 같은 루트에 렌더링하여 외부 갱신을 검증한다.
-async function render(s: GameSession, dialog = '') {
+async function render(s: GameSession, dialog = '', ref?: React.Ref<GameScreenHandle>) {
   const setup: SetupControls = {
     scope: 'test',
     drag: {
@@ -71,11 +75,50 @@ async function render(s: GameSession, dialog = '') {
   };
   await act(() =>
     root.render(
-      <GameScreen session={s} setup={setup} dialog={dialog} onDialog={() => {}} menu={null} />,
+      <GameScreen
+        ref={ref}
+        session={s}
+        setup={setup}
+        dialog={dialog}
+        onDialog={() => {}}
+        menu={null}
+      />,
     ),
   );
   return setup;
 }
+// 상태 버전이 그대로여도 외부 취소 핸들은 입력한 베팅 초안을 폐기한다.
+it('discards a betting input through the external undo reset handle', async () => {
+  const ref = createRef<GameScreenHandle>();
+  const state = fixtureState(3);
+  const s = session({ state, legal: getLegalActions(state) });
+  await render(s, '', ref);
+  await click('[aria-label="50칩 추가"]');
+  expect(host.querySelectorAll('.bet.pending')).toHaveLength(1);
+  await act(() => ref.current!.resetSelection());
+  expect(host.querySelectorAll('.bet.pending')).toHaveLength(0);
+});
+
+// 잘못된 공유 팟 인덱스와 참가자 ID는 화면 입력에 전파하지 않는다.
+it('clamps unknown shared pots, drops ineligible winners and auto-selects sole eligibility', async () => {
+  const state = fixtureState(3);
+  state.hand!.phase = 'settlement';
+  state.hand!.actorId = null;
+  state.players.forEach((p, i) => {
+    p.H = [10, 20, 20][i];
+  });
+  state.players[2].folded = true;
+  state.pot = 50;
+  await render(
+    session({ state, sharedSelection: { potIndex: 99, winners: { pot0: ['unknown'], pot1: [] } } }),
+  );
+  expect(host.querySelector('.pot strong')?.textContent).toBe('20');
+  expect(host.querySelector('[data-player="p1"]')?.classList.contains('selected')).toBe(true);
+  await render(
+    session({ state, sharedSelection: { potIndex: -1, winners: { pot0: ['unknown', 'p2'] } } }),
+  );
+  expect(host.querySelectorAll('.seat.selected')).toHaveLength(0);
+});
 // DOM 버튼을 눌러 실제 React 이벤트를 전달한다.
 async function click(selector: string) {
   const node = host.querySelector<HTMLElement>(selector);

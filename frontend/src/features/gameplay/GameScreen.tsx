@@ -64,7 +64,7 @@ export function GameScreen({
   const initialBlinds = s.pendingBlinds ?? s.hand;
   const { changeCount } = setup;
   const legal = session.legal;
-  const { draftAmount, submitAllowed, prepareAction } = useBettingDraft(
+  const { draftAmount, submitAllowed, prepareAction, resetDraft } = useBettingDraft(
     s,
     legal,
     bettingScope,
@@ -79,7 +79,13 @@ export function GameScreen({
       session.sharedSelection,
       can.canSettle ? session.onSelectionChange : undefined,
     );
-  useImperativeHandle(ref, () => ({ resetSelection: resetWinners }));
+  useImperativeHandle(ref, () => ({
+    // 외부 취소가 확정되면 정산 선택과 베팅 초안을 함께 폐기한다.
+    resetSelection: () => {
+      resetWinners();
+      resetDraft();
+    },
+  }));
   const close = () => onDialog('');
   // 직전 행동 취소를 권한/상태 확인 후 실행한다
   function undo() {

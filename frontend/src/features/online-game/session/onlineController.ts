@@ -39,6 +39,7 @@ const LAST = 'online.lastRoom';
 const TAB = 'online.controlRoom';
 const CONNECTION_ERROR = '서버에 연결하지 못했습니다. 연결 상태를 확인해 주세요.';
 const UNKNOWN_RESULT = '요청 결과를 확인하지 못했습니다. 다시 확인해 주세요.';
+const LOST_ROOM_CODES = ['NO_SESSION', 'ROOM_NOT_FOUND'];
 
 // 서버 상태와 요청 원장 및 화면 수명을 함께 관리한다.
 export class OnlineController {
@@ -69,6 +70,8 @@ export class OnlineController {
   private processing: Promise<boolean> | null = null;
   private queuedDraft: { potIndex: number; winners: WinnerSelection } | null = null;
   private sending = false;
+  private socketFailures = 0;
+  private probing = false;
   private polling: ReturnType<typeof setTimeout> | undefined;
   private refreshTimer: ReturnType<typeof setInterval> | undefined;
 
@@ -273,6 +276,7 @@ export class OnlineController {
       // 수신 상태를 적용한 뒤 연결 동기화를 확정한다.
       onSnapshot: (message) => {
         if (epoch !== this.epoch || !this.active) return;
+        this.socketFailures = 0;
         if (this.apply(message.state, message)) this.update({ connection: 'online' });
         else if (this.view.connection === 'syncing') this.socket?.resync();
       },
@@ -292,6 +296,7 @@ export class OnlineController {
         if (epoch !== this.epoch || !this.active) return;
         this.queuedDraft = null;
         this.update({ connection: state === 'waiting' ? 'offline' : 'syncing' });
+        if (state === 'waiting' && ++this.socketFailures >= 2) void this.probeRoom();
         if (state === 'open' && this.request) {
           const request = this.request;
           // 재접속 전에 시작한 전송도 제한 시간 뒤에 같은 원장에서 조회한다.
@@ -302,6 +307,18 @@ export class OnlineController {
       },
     });
     this.socket.subscribe(this.view.snapshot!.roomId, this.view.snapshot!.stateVersion);
+  }
+  // 소켓 거절 사유는 브라우저가 알 수 없으므로 재연결이 이어지면 방과 세션을 HTTP로 확인한다.
+  private async probeRoom(): Promise<void> {
+    const snapshot = this.view.snapshot;
+    if (this.probing || !snapshot) return;
+    const epoch = this.epoch;
+    this.probing = true;
+    const result = await this.api.get(`/api/rooms/${encodeURIComponent(snapshot.roomId)}/state`);
+    if (epoch !== this.epoch) return;
+    this.probing = false;
+    if (!result.ok && !('unknown' in result) && LOST_ROOM_CODES.includes(result.code ?? ''))
+      this.finish('ROOM_GONE');
   }
   // 토너먼트와 버전 쌍으로 상태 적용 및 효과 재생을 결정한다.
   private apply(next: RoomSnapshot, message?: SnapshotMessage): boolean {
@@ -629,7 +646,7 @@ export class OnlineController {
       this.socket?.resync();
       await this.takeControl();
     }
-    if (code === 'ROOM_NOT_FOUND') this.finish('ROOM_GONE');
+    if (LOST_ROOM_CODES.includes(code ?? '')) this.finish('ROOM_GONE');
     if (code === 'PROTOCOL_INCOMPATIBLE') this.finish(code);
   }
   // 복구 승인이 나올 때까지 삼 초 간격으로 결과를 조회한다.
@@ -681,6 +698,10 @@ export class OnlineController {
       return;
     }
     this.stop();
+    if (type === 'ROOM_GONE') {
+      localStorage.removeItem(LAST);
+      sessionStorage.removeItem(TAB);
+    }
     this.update({
       phase: type === 'ROOM_GONE' ? 'gone' : type === 'ACCESS_REVOKED' ? 'revoked' : 'incompatible',
       connection: 'offline',
@@ -708,6 +729,8 @@ export class OnlineController {
     this.queuedDraft = null;
     this.processing = null;
     this.sending = false;
+    this.socketFailures = 0;
+    this.probing = false;
     if (!this.closing) {
       this.closing = this.opening
         ? this.opening.catch(() => {}).then(() => this.api.closeStream())

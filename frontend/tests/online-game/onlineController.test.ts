@@ -1264,3 +1264,48 @@ it.each([false, true])('clears membership markers on LEAVE when revocation arriv
   expect(localStorage.getItem('online.lastRoom')).toBeNull();
   expect(sessionStorage.getItem('online.controlRoom')).toBeNull();
 });
+
+// 서버 재시작으로 세션이나 방이 사라지면 재연결을 멈추고 소실 화면으로 보낸다.
+it.each(['NO_SESSION', 'ROOM_NOT_FOUND'])(
+  'leaves the reconnect loop when the probe answers %s',
+  async (code) => {
+    const x = setup();
+    await x.enter();
+    x.api.get.mockResolvedValue({ ok: false, status: code === 'NO_SESSION' ? 401 : 404, code });
+    x.h.onState('waiting');
+    expect(x.api.get).not.toHaveBeenCalled();
+    x.h.onState('connecting');
+    x.h.onState('waiting');
+    await vi.waitFor(() => expect(x.c.getView().phase).toBe('gone'));
+    expect(x.api.get).toHaveBeenCalledTimes(1);
+    expect(x.socket.close).toHaveBeenCalled();
+    expect(localStorage.getItem('online.lastRoom')).toBeNull();
+    expect(sessionStorage.getItem('online.controlRoom')).toBeNull();
+  },
+);
+
+// 방이 살아 있거나 서버가 아직 응답하지 않으면 재연결을 계속한다.
+it.each([
+  ['a live room', { ok: true, status: 200, body: {} }],
+  ['an unreachable server', { ok: false, unknown: true }],
+])('keeps reconnecting after %s', async (_name, result) => {
+  const x = setup();
+  await x.enter();
+  x.api.get.mockResolvedValue(result);
+  x.h.onState('waiting');
+  x.h.onState('waiting');
+  await vi.waitFor(() => expect(x.api.get).toHaveBeenCalledTimes(1));
+  await Promise.resolve();
+  expect(x.c.getView().phase).toBe('room');
+});
+
+// 결과를 모르는 요청의 원장 조회에서 세션 상실을 확인해도 소실 화면으로 보낸다.
+it('treats a lost session during request lookup as a lost room', async () => {
+  const x = setup();
+  await x.enter();
+  x.api.post.mockResolvedValueOnce({ ok: false, unknown: true });
+  await x.c.send([{ type: 'CHECK', handScoped: false }]);
+  x.api.get.mockResolvedValueOnce({ ok: false, status: 401, code: 'NO_SESSION' });
+  await x.c.retry();
+  expect(x.c.getView().phase).toBe('gone');
+});

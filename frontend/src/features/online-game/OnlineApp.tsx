@@ -26,7 +26,7 @@ export function OnlineApp() {
       {!online ? (
         <p role="status">멀티플레이 모드를 이용하려면 인터넷 연결이 필요합니다.</p>
       ) : fatal ? (
-        <OnlineFatal phase={view.phase} />
+        <OnlineFatal phase={view.phase} code={view.snapshot?.code} />
       ) : (
         <OnlineEntry view={view} controller={controller} />
       )}

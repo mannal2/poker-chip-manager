@@ -36,12 +36,14 @@ export function useOnlineGameSession(view: OnlineView, controller: OnlineControl
   const selectionScope = `${state.tournamentId}:${state.hand?.id}:${state.hand?.phase}:${snapshot.hostId}:${snapshot.you.controlGeneration}`;
   const [selection, setSelection] = useState<{
     scope: string;
+    draftVersion: number;
     value: NonNullable<GameSession['sharedSelection']>;
   } | null>(null);
   const authoritative: NonNullable<GameSession['sharedSelection']> = snapshot.settlementDraft ?? {
     winners: {},
     potIndex: 0,
   };
+  // 제출 전 초안과 값이 같아도 새 버전이 확인되기 전에는 마지막 선택을 유지한다.
   if (
     selection &&
     (selection.scope !== selectionScope ||
@@ -49,7 +51,8 @@ export function useOnlineGameSession(view: OnlineView, controller: OnlineControl
       !view.hasControl ||
       view.connection !== 'online' ||
       view.error ||
-      (selection.value.potIndex === authoritative.potIndex &&
+      (snapshot.draftVersion > selection.draftVersion &&
+        selection.value.potIndex === authoritative.potIndex &&
         Object.keys({ ...selection.value.winners, ...authoritative.winners }).every(
           (id) =>
             [...(selection.value.winners[id] ?? [])].sort().join('\0') ===
@@ -67,7 +70,11 @@ export function useOnlineGameSession(view: OnlineView, controller: OnlineControl
   // 칩 상태는 유지하고 방장의 최신 정산 선택만 즉시 표시하여 서버에 보낸다.
   function onSelectionChange(value: NonNullable<GameSession['sharedSelection']>) {
     if (guard() || !controller.getView().snapshot!.you.capabilities.canSettle) return;
-    setSelection({ scope: selectionScope, value });
+    setSelection({
+      scope: selectionScope,
+      draftVersion: controller.getView().snapshot!.draftVersion,
+      value,
+    });
     controller.sendDraft(value.potIndex, value.winners);
   }
   // 외부 취소가 확정되면 호스트가 보관한 정산 선택을 폐기한다.

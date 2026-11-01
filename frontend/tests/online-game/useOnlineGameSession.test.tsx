@@ -14,6 +14,66 @@ import type { RoomSnapshot } from '../../src/features/online-game/api/types';
 import { validateSettings } from '../../src/game/settings';
 import playing from '../../../shared/api-contract/snapshot-playing.json';
 
+// 원래 서버 값과 같은 마지막 선택도 새 버전의 확인이 올 때까지 유지한다.
+it('retains a cleared pick through the initial draft and delayed first echo until a newer clear acknowledgement', async () => {
+  vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
+  const root = createRoot(document.createElement('div'));
+  const snapshot = structuredClone(playing.response) as RoomSnapshot;
+  snapshot.draftVersion = 10;
+  snapshot.settlementDraft = { draftVersion: 10, winners: {}, potIndex: 0 };
+  snapshot.you.capabilities.canSettle = true;
+  let view: OnlineView = {
+    phase: 'room',
+    snapshot,
+    connection: 'online',
+    hasControl: true,
+    pending: false,
+    recovery: null,
+    error: null,
+  };
+  const controller = { getView: () => view, sendDraft: vi.fn() } as unknown as OnlineController;
+  let result!: ReturnType<typeof useOnlineGameSession>;
+  // 서버 초안의 확정 순서를 실제 훅에 전달한다.
+  function Harness() {
+    result = useOnlineGameSession(view, controller);
+    return null;
+  }
+  const picked = { potIndex: 0, winners: { pot0: ['a'] } };
+  const cleared = { potIndex: 0, winners: {} };
+  try {
+    await act(() => root.render(<Harness />));
+    await act(() => result.session.onSelectionChange!(picked));
+    await act(() => result.session.onSelectionChange!(cleared));
+    await act(() => root.render(<Harness />));
+    expect(result.session.sharedSelection!.winners).toEqual(cleared.winners);
+    view = {
+      ...view,
+      snapshot: { ...snapshot, draftVersion: 11, settlementDraft: { ...picked, draftVersion: 11 } },
+    };
+    await act(() => root.render(<Harness />));
+    expect(result.session.sharedSelection!.winners).toEqual(cleared.winners);
+    view = {
+      ...view,
+      snapshot: {
+        ...snapshot,
+        draftVersion: 12,
+        settlementDraft: { ...cleared, draftVersion: 12 },
+      },
+    };
+    await act(() => root.render(<Harness />));
+    expect(result.session.sharedSelection!.winners).toEqual(cleared.winners);
+    view = {
+      ...view,
+      snapshot: { ...snapshot, draftVersion: 13, settlementDraft: { ...picked, draftVersion: 13 } },
+    };
+    await act(() => root.render(<Harness />));
+    expect(result.session.sharedSelection).toMatchObject(picked);
+  } finally {
+    await act(() => root.unmount());
+    vi.unstubAllGlobals();
+  }
+});
+
 // 연속 선택 중 오래된 서버 초안은 무시하고 마지막 응답과 관찰자 상태는 반영한다.
 it('keeps the latest host pick through delayed echoes and restores server picks for observers', async () => {
   vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);

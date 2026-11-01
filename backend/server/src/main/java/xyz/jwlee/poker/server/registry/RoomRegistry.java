@@ -1,6 +1,7 @@
 package xyz.jwlee.poker.server.registry;
 
 import java.time.Clock;
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -76,6 +77,7 @@ public class RoomRegistry {
     private final RoomPublisher publisher;
     private final RoomCodes codes;
     private final int maxRooms;
+    private final Duration abandonedLimit;
     private final StartGate gate;
 
     // 방 레지스트리를 만든다
@@ -88,10 +90,18 @@ public class RoomRegistry {
         this(ids, clock, publisher, maxRooms, new StartGate());
     }
 
-    // 서버 전체 시작 게이트를 함께 받아 레지스트리를 만든다
+    // 서버 전체 시작 게이트를 함께 받아 기본 방 삭제 시간으로 레지스트리를 만든다
+    public RoomRegistry(IdGenerator ids, Clock clock, RoomPublisher publisher, int maxRooms, StartGate gate) {
+        this(ids, clock, publisher, maxRooms, gate, RoomLifecycle.ABANDONED_ROOM_LIMIT.toSeconds());
+    }
+
+    // 전원 미접속 방의 삭제 시간까지 받아 레지스트리를 만든다
+    /** {@code abandonedSeconds} is 1800 in production; only the e2e profile shortens it, so leftover games end soon. */
     @Autowired
     public RoomRegistry(IdGenerator ids, Clock clock, RoomPublisher publisher,
-            @Value("${poker.max-rooms:10}") int maxRooms, StartGate gate) {
+            @Value("${poker.max-rooms:10}") int maxRooms, StartGate gate,
+            @Value("${poker.abandoned-room-seconds:1800}") long abandonedSeconds) {
+        this.abandonedLimit = Duration.ofSeconds(abandonedSeconds);
         this.maxRooms = maxRooms;
         this.gate = gate;
         this.ids = ids;
@@ -284,7 +294,7 @@ public class RoomRegistry {
         try {
             update(roomId, room -> {
                 try {
-                    RoomLifecycle.sweep(room, env);
+                    RoomLifecycle.sweep(room, env, abandonedLimit);
                 } catch (RoomException e) {
                     throw new IllegalStateException(e);
                 }

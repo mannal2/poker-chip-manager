@@ -129,6 +129,11 @@ export function RoomPage({ view, controller }: { view: OnlineView; controller: O
       {view.snapshot!.roomPhase === 'WAITING' && (
         <WaitingBar code={view.snapshot!.code} notify={session.notify} />
       )}
+      {view.snapshot!.deployPending && view.snapshot!.roomPhase !== 'PLAYING' && (
+        <div className="notice deploy-notice" role="status">
+          서버 업데이트 중입니다. 방이 사라질 수 있습니다
+        </div>
+      )}
       {view.error && (
         <div className="notice" role="alert">
           {view.error}

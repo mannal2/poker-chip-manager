@@ -38,7 +38,9 @@ export type ServerErrorCode =
   | 'RECOVERY_NOT_PENDING'
   | 'RECOVERY_TARGET_NOT_FOUND'
   | 'ALREADY_PARTICIPANT'
-  | 'FORBIDDEN';
+  | 'FORBIDDEN'
+  | 'DEPLOY_PENDING'
+  | 'UNDO_DEPLOY_PENDING';
 
 // 거절 사유 코드별 한국어 안내 문구
 export const errorMessages: Record<ErrorCode, string> = {
@@ -91,6 +93,8 @@ export const errorMessages: Record<ErrorCode, string> = {
   RECOVERY_TARGET_NOT_FOUND: '이 이름의 자리를 찾을 수 없습니다.',
   ALREADY_PARTICIPANT: '이미 이 방에 참가하고 있습니다.',
   FORBIDDEN: '이 작업을 할 권한이 없습니다.',
+  DEPLOY_PENDING: '서버 업데이트가 끝나면 시작할 수 있습니다',
+  UNDO_DEPLOY_PENDING: '서버 업데이트 중이라 취소할 수 없습니다',
 };
 
 // 거절 코드를 사용자에게 보여줄 문구로 바꾼다

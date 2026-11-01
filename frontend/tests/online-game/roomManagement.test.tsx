@@ -117,6 +117,24 @@ it('rejects a reconnected target at confirmation time', async () => {
   }
 });
 
+// 서버 업데이트 안내는 대기방과 결과 화면에만 보이고 진행 화면에는 보이지 않는다
+it.each([
+  ['WAITING', true],
+  ['RESULT', true],
+  ['PLAYING', false],
+] as const)('shows the server update notice in %s only when pending: %s', async (phase, shown) => {
+  const notice = '서버 업데이트 중입니다. 방이 사라질 수 있습니다';
+  const x = await mountRoom(phase);
+  try {
+    expect(x.host.textContent).not.toContain(notice);
+    x.view.snapshot!.deployPending = true;
+    await x.rerender();
+    expect(x.host.textContent?.includes(notice)).toBe(shown);
+  } finally {
+    await x.close();
+  }
+});
+
 // 비활성 재준비 버튼을 누르면 현재 조작권 부족을 안내한다
 it('explains why a result reset is unavailable', async () => {
   const x = await mountRoom('RESULT');
@@ -132,7 +150,7 @@ it('explains why a result reset is unavailable', async () => {
 
 // 실제 세션 훅과 페이지에 필요한 최소 컨트롤러 경계를 제공한다
 async function mountRoom(
-  phase: 'PLAYING' | 'RESULT' = 'PLAYING',
+  phase: 'WAITING' | 'PLAYING' | 'RESULT' = 'PLAYING',
   error: string | null = null,
   unresolved = false,
 ) {
@@ -179,6 +197,9 @@ async function mountRoom(
     publish: async (events: GameEvent[]) => act(() => observe(events)),
     // 컨트롤러가 받은 최신 상태를 페이지의 오래된 이벤트에서도 읽도록 교체한다
     update: (patch: Partial<OnlineView>) => Object.assign(view, patch),
+    // 바뀐 뷰로 페이지를 다시 그린다
+    rerender: async () =>
+      act(() => root.render(<RoomPage view={{ ...view }} controller={controller} />)),
     // 표시 문구가 일치하는 실제 버튼을 누른다
     click: async (label: string) => {
       const button = [...host.querySelectorAll('button')].find((b) => b.textContent === label);

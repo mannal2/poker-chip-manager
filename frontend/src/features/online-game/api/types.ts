@@ -22,6 +22,7 @@ export interface RoomSnapshot {
   settings: { initial: number; sb: number; bb: number; button: number };
   hostId: string;
   hostTakeoverOpen: boolean;
+  deployPending: boolean;
   participants: RoomParticipant[];
   you: {
     participantId: string;
@@ -216,6 +217,7 @@ export function isRoomSnapshot(value: unknown): value is RoomSnapshot {
     !integer(value.draftVersion) ||
     !(value.tournamentId === null || typeof value.tournamentId === 'string') ||
     typeof value.hostTakeoverOpen !== 'boolean' ||
+    typeof value.deployPending !== 'boolean' ||
     !object(value.settings) ||
     !['initial', 'sb', 'bb', 'button'].every((key) =>
       integer((value.settings as Record<string, unknown>)[key]),

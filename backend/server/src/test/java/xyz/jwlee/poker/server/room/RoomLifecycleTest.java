@@ -518,6 +518,22 @@ class RoomLifecycleTest {
         assertThat(f.room.isClosed()).isTrue();
     }
 
+    // 줄인 방 삭제 시간을 넘기면 30분보다 일찍 닫히는지 확인한다
+    @Test
+    void aShorterAbandonedLimitClosesTheRoomSooner() {
+        GameFixture f = GameFixture.started(2, 0, clock);
+        drop(f.room, "a");
+        drop(f.room, "b");
+
+        pass(19_000);
+        RoomLifecycle.sweep(f.room, env, Duration.ofSeconds(20));
+        assertThat(f.room.isClosed()).isFalse();
+
+        pass(1_000);
+        RoomLifecycle.sweep(f.room, env, Duration.ofSeconds(20));
+        assertThat(f.room.isClosed()).isTrue();
+    }
+
     // 삭제 시간은 마지막 사람이 끊긴 때부터 세는지 확인한다
     @Test
     void theThirtyMinutesCountFromTheLastDisconnect() {

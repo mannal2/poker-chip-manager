@@ -15,7 +15,7 @@ public final class RoomLifecycle {
     static final Duration WAITING_RECONNECT_GRACE = Duration.ofSeconds(5);
     static final Duration FIRST_CONNECTION_WAIT = Duration.ofSeconds(30);
     static final Duration HOST_TAKEOVER_DELAY = Duration.ofSeconds(60);
-    static final Duration ABANDONED_ROOM_LIMIT = Duration.ofMinutes(30);
+    public static final Duration ABANDONED_ROOM_LIMIT = Duration.ofMinutes(30);
     static final Duration RECOVERY_REQUEST_LIFETIME = Duration.ofMinutes(5);
 
     private RoomLifecycle() {}
@@ -41,8 +41,13 @@ public final class RoomLifecycle {
         AutoPlay.run(room, env);
     }
 
-    // 현재 단계의 시간 규칙을 한 번 판정한다
+    // 현재 단계의 시간 규칙을 기본 방 삭제 시간으로 한 번 판정한다
     public static void sweep(Room room, RoomEnv env) {
+        sweep(room, env, ABANDONED_ROOM_LIMIT);
+    }
+
+    // 전원 미접속 방을 abandonedLimit 뒤에 닫는 시간 규칙을 한 번 판정한다
+    public static void sweep(Room room, RoomEnv env, Duration abandonedLimit) {
         Instant now = env.now();
         if (room.recoveryRequests().sweep(now)) {
             room.bumpVersion();
@@ -50,7 +55,7 @@ public final class RoomLifecycle {
         switch (room.phase()) {
             case WAITING -> expireAbsences(room, now);
             case PLAYING, RESULT -> {
-                if (everyoneGone(room, now)) {
+                if (everyoneGone(room, abandonedLimit, now)) {
                     room.close();
                 } else {
                     openHostTakeover(room, now);
@@ -77,9 +82,9 @@ public final class RoomLifecycle {
     }
 
     // 지금 전원이 끊겨 있고 마지막 사람이 끊긴 지 30분이 지났는지 확인한다
-    private static boolean everyoneGone(Room room, Instant now) {
+    private static boolean everyoneGone(Room room, Duration limit, Instant now) {
         return room.participants().stream()
-                .allMatch(p -> absentFor(room, p.participantId(), ABANDONED_ROOM_LIMIT, now));
+                .allMatch(p -> absentFor(room, p.participantId(), limit, now));
     }
 
     // 방장이 60초 이상 끊겼으면 인수 요청을 한 번 연다

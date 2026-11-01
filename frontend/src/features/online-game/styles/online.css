@@ -76,3 +76,8 @@
   grid-template-columns: 1fr 1fr;
   gap: calc(8 * var(--u));
 }
+.deploy-notice {
+  margin: calc(4 * var(--u)) calc(12 * var(--u));
+  padding: calc(6 * var(--u)) calc(12 * var(--u));
+  text-align: center;
+}

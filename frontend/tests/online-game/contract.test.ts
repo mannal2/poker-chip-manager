@@ -79,6 +79,8 @@ it('rejects malformed nested contract data', () => {
   expect(
     isRoomSnapshot({ ...source, game: { ...(source.game as object), status: ['playing'] } }),
   ).toBe(false);
+  expect(isRoomSnapshot({ ...source, deployPending: undefined })).toBe(false);
+  expect(isRoomSnapshot({ ...source, deployPending: 'true' })).toBe(false);
   expect(isSnapshotMessage({ ...(fixture('ws-snapshot') as object), events: [{}] })).toBe(false);
   expect(isCommandResponse({ ...(fixture('command-applied') as object), latestState: {} })).toBe(
     false,
@@ -90,6 +92,12 @@ it('rejects malformed nested contract data', () => {
     false,
   );
   expect(isRecoveryStatus({ recoveryRequestId: 'r', status: ['PENDING'] })).toBe(false);
+});
+
+// 배포 게이트 거절 코드를 한국어 안내로 바꾼다
+it('explains the deployment gate rejections', () => {
+  expect(messageFor('DEPLOY_PENDING')).toBe('서버 업데이트가 끝나면 시작할 수 있습니다');
+  expect(messageFor('UNDO_DEPLOY_PENDING')).toBe('서버 업데이트 중이라 취소할 수 없습니다');
 });
 
 // 온라인 오류 코드를 서버 계약의 한국어 안내로 표시한다

@@ -20,11 +20,12 @@ test('approves recovery with seat and chips preserved and revokes the old screen
     await recovery.getByLabel('이름', { exact: true }).fill('Bob');
     await recovery.getByRole('button', { name: '기존 참가자로 복구', exact: true }).click();
     await expect(page.getByRole('region', { name: '방 관리 요청' })).toContainText('Bob');
-    await expect(page.locator('time')).toHaveAttribute('datetime', /T/);
-    await expect(page.getByRole('region', { name: '방 관리 요청' })).toContainText(
+    await page.reload();
+    await page.getByRole('button', { name: 'Bob 복구 신청 확인', exact: true }).click();
+    await expect(page.locator('dialog time')).toHaveAttribute('datetime', /T/);
+    await expect(page.getByRole('dialog', { name: '복구 신청' })).toContainText(
       '실제 사람이 맞는지',
     );
-    await page.reload();
     await page.getByRole('button', { name: '복구 승인', exact: true }).click();
     await expect(recovery.locator('.seat')).toHaveCount(2);
     await expect(recovery.locator('.seat .name')).toHaveText(names);
@@ -46,6 +47,7 @@ test('rejects a recovery request', async ({ page, browser }) => {
     await recovery.goto(`/online/?code=${code}`);
     await recovery.getByLabel('이름', { exact: true }).fill('Alice');
     await recovery.getByRole('button', { name: '기존 참가자로 복구', exact: true }).click();
+    await page.getByRole('button', { name: 'Alice 복구 신청 확인', exact: true }).click();
     await page.getByRole('button', { name: '복구 거절', exact: true }).click();
     await expect(recovery.getByRole('alert')).toHaveText('방장이 복구 신청을 거절했습니다.');
     await expect(page.locator('.seat .name')).toHaveText(['Alice']);

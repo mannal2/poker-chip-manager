@@ -40,6 +40,7 @@ const TAB = 'online.controlRoom';
 const RECOVERY = 'online.recoveryRequest';
 const CONNECTION_ERROR = '서버에 연결하지 못했습니다. 연결 상태를 확인해 주세요.';
 const UNKNOWN_RESULT = '요청 결과를 확인하지 못했습니다. 다시 확인해 주세요.';
+const TOO_MANY_SCREENS = '열린 화면이 너무 많습니다. 사용하지 않는 화면을 닫아 주세요.';
 const LOST_ROOM_CODES = ['NO_SESSION', 'ROOM_NOT_FOUND'];
 
 // 서버 상태와 요청 원장 및 화면 수명을 함께 관리한다.
@@ -286,6 +287,7 @@ export class OnlineController {
       onSnapshot: (message) => {
         if (epoch !== this.epoch || !this.active) return;
         this.socketFailures = 0;
+        if (this.view.error === TOO_MANY_SCREENS) this.update({ error: null });
         if (this.apply(message.state, message)) this.update({ connection: 'online' });
         else if (this.view.connection === 'syncing') this.socket?.resync();
       },
@@ -299,6 +301,10 @@ export class OnlineController {
           this.update({ connection: 'syncing' });
           this.socket?.resync();
         }
+      },
+      // 연결 한도로 거절된 화면에 재연결이 멈추지 않는 이유를 안내한다.
+      onTooManyScreens: () => {
+        if (epoch === this.epoch) this.update({ error: TOO_MANY_SCREENS });
       },
       // 열린 소켓에서도 스냅샷을 받기 전에는 조작을 잠근다.
       onState: (state) => {

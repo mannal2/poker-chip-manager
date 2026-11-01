@@ -29,3 +29,12 @@ it('announces host settlement and result preparation only to guests', () => {
   expect(dockNoticeFor(s, guest.participantId)).toBe('방장이 다음 게임을 준비하고 있습니다');
   expect(dockNoticeFor(s, s.hostId)).toBeNull();
 });
+
+// 단독 자격 팟은 초안이 없어도 자동 선택된 한 명을 표시한다.
+it('counts the automatically selected winner of a sole-eligible pot', () => {
+  const s = fixture('snapshot-settlement') as RoomSnapshot;
+  const guest = s.participants.find((p) => p.participantId !== s.hostId)!;
+  s.game!.players[1].folded = true;
+  s.settlementDraft = null;
+  expect(dockNoticeFor(s, guest.participantId)).toBe('방장이 승자를 선택하고 있습니다 · 1명 선택');
+});

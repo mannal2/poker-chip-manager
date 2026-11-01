@@ -35,3 +35,36 @@
   padding: calc(4 * var(--u)) calc(8 * var(--u));
   font-size: calc(13 * var(--u));
 }
+.online-room {
+  position: relative;
+}
+.host-requests {
+  position: absolute;
+  z-index: 20;
+  top: calc(52 * var(--u));
+  left: calc(12 * var(--u));
+  right: calc(12 * var(--u));
+  max-height: 40%;
+  overflow-y: auto;
+  display: grid;
+  gap: calc(8 * var(--u));
+}
+.host-requests:empty {
+  display: none;
+}
+.host-requests > button,
+.host-request {
+  padding: calc(10 * var(--u));
+  border: 1px solid var(--gold);
+  border-radius: calc(10 * var(--u));
+  background: var(--bg);
+}
+.host-request p {
+  margin: 0 0 calc(6 * var(--u));
+  font-size: calc(13 * var(--u));
+}
+.host-request-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: calc(8 * var(--u));
+}

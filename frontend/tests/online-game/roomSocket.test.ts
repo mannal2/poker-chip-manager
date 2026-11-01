@@ -342,3 +342,18 @@ it('tracks delivered versions within each tournament without retaining an old to
   FakeSocket.instances[2].open();
   expect(FakeSocket.instances[2].sent[0]).toMatchObject({ type: 'SUBSCRIBE', lastSeenVersion: 1 });
 });
+
+// 서버의 연결 한도 거절을 일반 끊김과 구분해 알리고 재연결은 계속한다.
+it('reports a full server close and keeps retrying', () => {
+  const onTooManyScreens = vi.fn();
+  const handlers = { onSnapshot: vi.fn(), onFinal: vi.fn(), onPing: vi.fn(), onState: vi.fn(), onTooManyScreens };
+  const socket = new RoomSocket('ws://test', handlers);
+  socket.subscribe('room', 1);
+  const first = FakeSocket.instances.at(-1)!;
+  first.open();
+  first.close(1013);
+  expect(onTooManyScreens).toHaveBeenCalledOnce();
+  vi.advanceTimersByTime(1500);
+  expect(FakeSocket.instances.at(-1)).not.toBe(first);
+  socket.close();
+});

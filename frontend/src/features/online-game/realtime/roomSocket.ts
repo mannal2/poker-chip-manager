@@ -11,7 +11,11 @@ export interface RoomSocketHandlers {
   onPing(stateVersion: number): void;
   // 연결 단계가 바뀌면 화면 소유자에게 전달한다.
   onState(state: SocketState): void;
+  // 서버가 연결 수 한도로 이 화면을 받지 못했음을 전달한다.
+  onTooManyScreens?(): void;
 }
+
+const TRY_LATER = 1013;
 
 // 재연결 횟수에 따라 최대 15초 기준의 지터 지연을 계산한다.
 export function reconnectDelay(attempt: number, random: () => number): number {
@@ -135,9 +139,10 @@ export class RoomSocket {
       this.watchPing();
     };
     // 마지막 메시지가 없는 종료는 코드와 관계없이 다시 연결한다.
-    socket.onclose = () => {
+    socket.onclose = (event) => {
       if (socket === this.retained) this.retained = null;
       if (this.socket !== socket || this.stopped) return;
+      if (event.code === TRY_LATER) this.handlers.onTooManyScreens?.();
       this.recoverHandshake();
     };
     // 검증한 서버 메시지만 현재 연결의 핸들러에 전달한다.

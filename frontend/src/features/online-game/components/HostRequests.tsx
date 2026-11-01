@@ -19,7 +19,7 @@ export function HostRequests({
       )}
       {snapshot.hostId === snapshot.you.participantId &&
         snapshot.recoveryRequests.map((request) => (
-          <div key={request.recoveryRequestId}>
+          <div className="host-request" key={request.recoveryRequestId}>
             <p>
               {request.name} · 복구 신청{' '}
               <time dateTime={request.requestedAt}>
@@ -30,30 +30,32 @@ export function HostRequests({
               실제 사람이 맞는지 직접 확인한 뒤 승인하세요. 승인하면 기존 기기의 참가 권한이
               회수됩니다.
             </p>
-            <button
-              aria-disabled={busy}
-              onClick={() =>
-                send({
-                  type: 'RECOVERY_APPROVE',
-                  payload: { recoveryRequestId: request.recoveryRequestId },
-                  handScoped: false,
-                })
-              }
-            >
-              복구 승인
-            </button>
-            <button
-              aria-disabled={busy}
-              onClick={() =>
-                send({
-                  type: 'RECOVERY_REJECT',
-                  payload: { recoveryRequestId: request.recoveryRequestId },
-                  handScoped: false,
-                })
-              }
-            >
-              복구 거절
-            </button>
+            <div className="host-request-actions">
+              <button
+                aria-disabled={busy}
+                onClick={() =>
+                  send({
+                    type: 'RECOVERY_APPROVE',
+                    payload: { recoveryRequestId: request.recoveryRequestId },
+                    handScoped: false,
+                  })
+                }
+              >
+                복구 승인
+              </button>
+              <button
+                aria-disabled={busy}
+                onClick={() =>
+                  send({
+                    type: 'RECOVERY_REJECT',
+                    payload: { recoveryRequestId: request.recoveryRequestId },
+                    handScoped: false,
+                  })
+                }
+              >
+                복구 거절
+              </button>
+            </div>
           </div>
         ))}
     </section>

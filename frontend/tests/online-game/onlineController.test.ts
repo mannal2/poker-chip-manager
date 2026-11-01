@@ -1425,3 +1425,13 @@ it('resumes polling a recovery request after a reload', async () => {
   expect(second.c.getView().recovery?.status).toBe('PENDING');
   expect(second.api.get).toHaveBeenCalledWith('/api/recovery-requests/recover');
 });
+
+// 연결 한도 안내는 표시하고 스냅샷을 다시 받으면 지운다.
+it('shows the too-many-screens notice until a snapshot arrives', async () => {
+  const x = setup();
+  await x.enter();
+  x.h.onTooManyScreens!();
+  expect(x.c.getView().error).toContain('열린 화면이 너무 많습니다');
+  x.h.onSnapshot({ type: 'SNAPSHOT', previousVersion: null, events: [], state: x.entry.state });
+  expect(x.c.getView().error).toBeNull();
+});

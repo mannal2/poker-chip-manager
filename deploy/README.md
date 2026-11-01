@@ -65,6 +65,42 @@ Further deployments stop with `RECOVERY_REQUIRED`. Inspect the journal, pending
 record, running image and HTTPS response under the same deployment lock before
 deciding to complete or roll back. Do not remove this marker merely to retry.
 
+## Checking the host and adding swap
+
+Before the backend rollout, run the read-only host check on the server and keep
+its output. It prints architecture, memory, swap, disk, Docker versions,
+container memory and the HTTP status of the service address, and no secrets:
+
+```bash
+cd /home/ubuntu/poker-chip-manager
+bash deploy/check-host.sh
+```
+
+The measured host has 1907MiB of memory and no swap, which is below the backend
+memory floor (see T79 in `TECH_DECISIONS.md`). The operator adds a 2GiB swap
+file on the server; this is a manual server step and is not run by any script
+here:
+
+```bash
+sudo fallocate -l 2G /swapfile
+sudo chmod 600 /swapfile
+sudo mkswap /swapfile
+sudo swapon /swapfile
+echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+echo 'vm.swappiness=10' | sudo tee /etc/sysctl.d/99-poker-swap.conf
+sudo sysctl --system
+```
+
+Verify:
+
+```bash
+swapon --show
+free -m
+```
+
+`swapon --show` should list `/swapfile` at 2G and `free -m` should show 2047
+or so in the Swap row. Run `bash deploy/check-host.sh` again to record it.
+
 ## Local verification and remaining work
 
 ```bash

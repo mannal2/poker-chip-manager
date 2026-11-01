@@ -63,7 +63,7 @@ public final class RoomLifecycle {
     private static void expireAbsences(Room room, Instant now) {
         List<String> expired = room.participants().stream().map(Participant::participantId)
                 .filter(id -> graceOver(room, id, now)).toList();
-        expired.forEach(room::removeParticipant);
+        expired.forEach(id -> room.removeParticipant(id, now));
         if (!expired.isEmpty()) {
             room.bumpVersion();
         }

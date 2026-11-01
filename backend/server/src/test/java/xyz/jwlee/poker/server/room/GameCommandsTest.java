@@ -265,6 +265,30 @@ class GameCommandsTest {
     }
 
     @Test
+    void aDraftSentAtAnOldStateVersionIsAppliedInTheSameHand() {
+        GameFixture f = atSettlement();
+        CommandRequest draft = f.request("a", "SETTLEMENT_DRAFT", "{\"potIndex\":0,\"winners\":{\"pot0\":[\"p1\"]}}",
+                f.room.game().tournamentId, f.room.game().hand.id);
+        long moved = f.room.bumpVersion();
+
+        f.check(f.base.pipeline.execute(f.room, "a", draft));
+
+        assertThat(f.room.version()).isEqualTo(moved);
+        assertThat(f.room.settlementDraft().draftVersion()).isEqualTo(1);
+    }
+
+    @Test
+    void aDraftNamingAnOldHandIsStillRefused() {
+        GameFixture f = atSettlement();
+        String oldHand = f.room.game().hand.id;
+        f.check(f.send("a", "SETTLE_HAND", "{\"winners\":{\"pot0\":[\"p1\"]}}"));
+        assertThat(f.room.game().hand.id).isNotEqualTo(oldHand);
+
+        assertRejected(f, f.sendScoped("a", "SETTLEMENT_DRAFT", "{\"potIndex\":0,\"winners\":{\"pot0\":[\"p1\"]}}",
+                f.room.game().tournamentId, oldHand), "TOURNAMENT_CHANGED");
+    }
+
+    @Test
     void aDraftIsSavedWithoutChangingTheRoomVersion() {
         GameFixture f = atSettlement();
         long version = f.room.version();

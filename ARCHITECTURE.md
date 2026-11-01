@@ -236,16 +236,16 @@ Spring Boot 4·Spring MVC·가상 스레드 앱이다. 방은 서버 메모리�
 - 잠금 순서는 스트림 장부 → 공용 잠금 → 방 잠금 → 세션 모니터다. 역순으로 잡지 않는다. `RoomRegistry.withRoom`의 작업 안에서 공용 잠금을 부르지 않는다. 방 삭제는 방 잠금 안에서 닫고, 푼 뒤에 표에서 뺀다.
 - 명령 검사 순서는 `CommandPipeline` 주석이 기준이다: 형식 → 방 → 참가자 → 조작 세대 → 중복 → 권한 → 토너먼트·핸드 → 상태 버전 → 규칙.
 - 생성·참가·인수는 세션 스트림 장부, 게임 명령은 참가자·조작 세대별 장부를 쓴다. 세대 장부는 현재와 직전만 보관한다.
-- 명령의 CONTROL_LOST(세대 장부)는 순번을 소진하지 않는 유일한 비즈니스 거절이다. `/control`의 CONTROL_LOST는 세션 스트림 장부에 기록되어 순번을 소진한다. 인수는 room version을 올리지 않는다. 승자 초안도 room version 대신 자기 `draftVersion`을 쓴다.
+- 명령의 CONTROL_LOST(세대 장부)는 순번을 소진하지 않는 유일한 비즈니스 거절이다. `/control`의 CONTROL_LOST는 세션 스트림 장부에 기록되어 순번을 소진한다. 인수는 room version을 올리지 않는다. 승자 초안도 room version 대신 자기 `draftVersion`을 쓰므로 상태 버전 검사를 건너뛴다. 핸드 범위 검사는 받는다.
 - 세션 스트림은 `DELETE /api/session/streams/{streamId}`로 닫는다. `StartConditions`의 전원 연결은 `Presence`의 실제 판정이다.
 
 ### 잠금과 전송의 경계
 
 - 방을 바꾸는 경로는 모두 `RoomRegistry.update`를 지난다. 작업이 끝나면 방 잠금 안에서 `PublicationBuilder.collect`가 수신자별 메시지를 만들고, 잠금을 푼 뒤 `RoomPublisher.publish`로 넘긴다. 시간 규칙의 `sweepAll`과 닫힌 방의 표 제거도 같은 길이다. 응답 기록은 장부 잠금 안에서 끝나므로 발행은 장부 잠금 안일 수 있고, 그래서 `ConnectionHub.publish`는 대기열에 넣기만 하고 바로 돌아온다.
-- 소켓 전송은 `Connection`마다 가상 스레드 하나가 한다. 대기는 진행 중 1개, PING 1개, 최신 스냅샷 1개, 마지막 메시지 1개뿐이다. 중간 스냅샷은 대체되고, 발행 순서가 뒤바뀌어도 `(stateVersion, draftVersion)`이 낮은 스냅샷은 버린다. 같은 값은 새 시점의 화면(RESYNC·조작 인수)일 수 있어 보낸다. ACCESS_REVOKED·ROOM_GONE·PROTOCOL_INCOMPATIBLE은 대체되지 않고 이것을 보낸 뒤 연결을 닫는다.
+- 소켓 전송은 `Connection`마다 가상 스레드 하나가 한다. 대기는 진행 중 1개, PING 1개, 최신 스냅샷 1개, 마지막 메시지 1개뿐이다. 중간 스냅샷은 대체되고, 발행 순서가 뒤바뀌어도 `(stateVersion, draftVersion)`이 낮은 스냅샷은 버린다. 같은 값은 새 시점의 화면(RESYNC·조작 인수)일 수 있어 보낸다. 화면은 낮은 쌍을 버리고 같은 쌍은 `previousVersion`이 `null`일 때만 효과 없이 적용한다. ACCESS_REVOKED·ROOM_GONE·PROTOCOL_INCOMPATIBLE은 대체되지 않고 이것을 보낸 뒤 1000으로 닫는다. 마지막 메시지 없이 닫는 연결은 1001이고, 재연결 여부는 코드가 아니라 마지막 메시지로 정한다.
 - 전송 실패는 연결을 닫을 뿐 게임 변경을 되돌리지 않는다. 등록되지 않았거나 회수된 연결로 가는 전달은 버린다.
 - 구독은 방 잠금 안에서 자리 자격·연결 한도를 확인하고 `connected`와 첫 스냅샷 예약까지 한 번에 처리한다. 닫힘과 겹치면 먼저 방을 기록하고 잠금 안에서 닫힘을 확인하는 순서로, 닫힌 연결이 붙은 채 남지 않게 한다. RESYNC와 두 번째 SUBSCRIBE도 자리 자격을 다시 확인한다.
-- 연결 상태 전환, 방장 인수 요청 열림, 복구 신청 생성은 상태 버전을 올린다. 생존 응답과 조작 화면 인수는 올리지 않는다. 인수 뒤에는 그 참가자의 연결마다 스냅샷을 다시 보내 새 `controlGeneration`을 알린다. 30분 미접속으로 방을 닫을 때도 올리지 않는다. 볼 사람이 없고 ROOM_GONE에는 버전이 없기 때문이다.
+- 연결 상태 전환, 방장 인수 요청 열림, 복구 신청 생성은 상태 버전을 올린다. 생존 응답과 조작 화면 인수는 올리지 않는다. 인수 뒤에는 그 참가자의 연결마다 `previousVersion: null`인 스냅샷을 같은 버전으로 다시 보내 새 `controlGeneration`을 알린다. 30분 미접속으로 방을 닫을 때도 올리지 않는다. 볼 사람이 없고 ROOM_GONE에는 버전이 없기 때문이다.
 - 참가자를 명단에서 뺄 때 `Presence.forget`이 돌려준 연결은 `revokedConnections`로 나가 ACCESS_REVOKED를 받는다. 복구 승인도 같은 길로 옛 연결을 닫고 `Presence.forget`·`Presence.joined`로 첫 연결 대기를 다시 건다. 승인 때 대상이 차례이면 `AutoPlay`가 바로 처리한다. 첫 연결 전인 사람은 다시 준비 뒤에도 30초 대기를 유지한다. 방장 인수 요청은 방장 본인이 돌아올 때만 닫힌다.
 
 ### 경로

@@ -2,7 +2,6 @@ package xyz.jwlee.poker.server.room;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
 import tools.jackson.databind.node.ArrayNode;
 import tools.jackson.databind.node.JsonNodeFactory;
 import tools.jackson.databind.node.ObjectNode;
@@ -13,7 +12,8 @@ import xyz.jwlee.poker.game.event.GameEvent;
  * The caller holds the room lock. A subscriber gets one SNAPSHOT when the state version or the draft version
  * moved since the last collection, in their own view. A connection that asked for a snapshot gets exactly one
  * message without history, whatever else changed: it has not seen the previous version, so a delta means nothing
- * to it. A closed room sends no SNAPSHOT, its remaining connections go to {@code goneConnections}.
+ * to it. A closed room sends no SNAPSHOT, its remaining connections go to {@code goneConnections}. Nothing is
+ * taken off the room until every message is built, so a build that throws loses nothing for the next collection.
  */
 public final class PublicationBuilder {
 
@@ -23,8 +23,6 @@ public final class PublicationBuilder {
 
     // 쌓인 변경을 메시지로 만들고 수집 위치를 현재로 옮긴다
     public static Publication collect(Room room) {
-        List<String> revoked = room.drainPendingRevocations();
-        Set<String> requested = room.drainSnapshotRequests();
         List<Publication.Delivery> deliveries = new ArrayList<>();
         List<String> gone = new ArrayList<>();
         if (room.isClosed()) {
@@ -33,13 +31,15 @@ public final class PublicationBuilder {
             boolean changed = room.changedSinceCollect();
             ArrayNode events = changed ? eventsSinceCollect(room) : F.arrayNode();
             room.presence().subscribers().forEach((connectionId, participantId) -> {
-                boolean asked = requested.contains(connectionId);
+                boolean asked = room.snapshotRequested(connectionId);
                 if (changed || asked) {
                     room.participant(participantId).ifPresent(viewer -> deliveries.add(new Publication.Delivery(
                             connectionId, asked ? fresh(room, viewer) : delta(room, viewer, events))));
                 }
             });
         }
+        List<String> revoked = room.drainPendingRevocations();
+        room.clearSnapshotRequests();
         room.markCollected();
         return new Publication(List.copyOf(deliveries), revoked, List.copyOf(gone));
     }

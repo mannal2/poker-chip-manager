@@ -20,13 +20,16 @@ import tools.jackson.databind.node.ObjectNode;
  * Every offer returns at once, whatever the socket is doing: besides the send in progress only one PING, the
  * latest snapshot and one final message wait here, so a stuck client costs no memory and holds up nobody (X06).
  * Publications run unlocked and can swap, so a snapshot lower than one already offered is dropped; an equal one
- * still goes out, because a resync or a takeover repeats the version with a new view (R9). A final message
- * outranks everything and nothing follows it. {@link #close} never touches the socket on the calling thread:
+ * still goes out, because a resync or a takeover repeats the version with a new view (R9) and carries a null
+ * {@code previousVersion}, the only form a screen applies at an equal pair. A final message outranks everything and
+ * nothing follows it. Code 1000 means a final message was sent; a plain close is 1001, and whether a screen reconnects
+ * depends on the final message, not on the code. {@link #close} never touches the socket on the calling thread:
  * closing a socket whose send is stuck can itself wait for that send.
  */
 public final class Connection {
 
-    static final int CLOSE_NORMAL = 1000;
+    static final int CLOSE_AFTER_FINAL = 1000;
+    static final int CLOSE_NO_FINAL = 1001;
     static final int CLOSE_POLICY = 1008;
     static final int CLOSE_TOO_BIG = 1009;
     static final int CLOSE_TRY_LATER = 1013;
@@ -181,9 +184,9 @@ public final class Connection {
         }
     }
 
-    // 정상 코드로 연결을 닫는다
+    // 마지막 메시지 없이 연결을 닫는다
     public void close() {
-        close(CLOSE_NORMAL);
+        close(CLOSE_NO_FINAL);
     }
 
     // 연결을 닫는다. 소켓 닫기와 콜백은 별도 가상 스레드에서 한 번만 실행한다
@@ -230,17 +233,17 @@ public final class Connection {
                 }
                 send(text);
                 if (next.last()) {
-                    close(CLOSE_NORMAL);
+                    close(CLOSE_AFTER_FINAL);
                     return;
                 }
                 next = take();
             }
         } catch (IOException | RuntimeException e) {
             LOG.debug("Sending on connection {} failed", connectionId, e);
-            close(CLOSE_NORMAL);
+            close(CLOSE_NO_FINAL);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            close(CLOSE_NORMAL);
+            close(CLOSE_NO_FINAL);
         }
     }
 

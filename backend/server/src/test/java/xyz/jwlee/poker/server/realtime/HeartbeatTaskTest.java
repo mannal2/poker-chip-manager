@@ -83,7 +83,7 @@ class HeartbeatTaskTest {
         assertThat(fresh.closedWith).isNotDone();
 
         after(Duration.ofMillis(100));
-        fresh.awaitClosed();
+        assertThat(fresh.awaitClosed()).isEqualTo(1001);
         assertThat(socket.closedWith).isNotDone();
         await().until(() -> hub.connections().equals(List.of(connection)));
     }
@@ -94,7 +94,7 @@ class HeartbeatTaskTest {
         assertThat(socket.closedWith).isNotDone();
 
         after(Duration.ofMillis(100));
-        socket.awaitClosed();
+        assertThat(socket.awaitClosed()).isEqualTo(1001);
     }
 
     @Test
@@ -137,7 +137,7 @@ class HeartbeatTaskTest {
         assertThat(socket.closedWith).isNotDone();
 
         after(Duration.ofMillis(100));
-        socket.awaitClosed();
+        assertThat(socket.awaitClosed()).isEqualTo(1001);
     }
 
     @Test

@@ -62,8 +62,13 @@ public final class RecoveryRequests {
     // 신청을 승인으로 끝내고 같은 자리의 다른 대기 신청을 밀어낸다
     void approve(Request request, String credential, Instant now) {
         requests.put(request.id(), request.ended(Status.APPROVED, now, credential));
+        supersede(request.participantId(), now);
+    }
+
+    // 자리의 대기 신청을 모두 밀어낸다
+    void supersede(String participantId, Instant now) {
         for (Request other : pending()) {
-            if (other.participantId().equals(request.participantId())) {
+            if (other.participantId().equals(participantId)) {
                 requests.put(other.id(), other.ended(Status.SUPERSEDED, now, null));
             }
         }

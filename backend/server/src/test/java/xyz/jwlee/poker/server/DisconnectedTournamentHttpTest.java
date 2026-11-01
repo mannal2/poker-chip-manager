@@ -173,7 +173,7 @@ class DisconnectedTournamentHttpTest {
         bob.screen.goSilent();
         passTime(Duration.ofSeconds(45), alice, carol);
 
-        assertThat(bob.screen.awaitClosed()).isEqualTo(1000);
+        assertThat(bob.screen.awaitClosed()).isEqualTo(1001);
         alice.screen.awaitState(s -> bob.absentIn(s)
                 && !"p1".equals(s.get("game").get("hand").get("actorId").asString()));
         assertThat(alice.history(tournamentId, e -> e.get("details").path("auto").asBoolean(false)))

@@ -1,6 +1,7 @@
 package xyz.jwlee.poker.server.room;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -145,6 +146,23 @@ class PublicationBuilderTest {
         assertThat(publication.goneConnections()).containsExactlyInAnyOrder("conn-a", "conn-b");
         assertThat(publication.deliveries()).isEmpty();
         assertThat(publication.revokedConnections()).isEmpty();
+    }
+
+    // 메시지를 만들다 실패해도 끊을 연결과 스냅샷 요청이 다음 수집까지 남는지 확인한다
+    @Test
+    void aFailedBuildLosesNeitherRevocationsNorSnapshotRequests() {
+        CommandFixture f = new CommandFixture(3);
+        PublicationBuilder.collect(f.room);
+        f.send("a", "KICK", "{\"participantId\":\"b\"}");
+        f.room.requestSnapshot("conn-a");
+        f.room.events().add(null);
+
+        assertThatThrownBy(() -> PublicationBuilder.collect(f.room)).isInstanceOf(RuntimeException.class);
+
+        f.room.events().removeLast();
+        Publication publication = PublicationBuilder.collect(f.room);
+        assertThat(publication.revokedConnections()).containsExactly("conn-b");
+        assertThat(messages(publication).get("conn-a").get("previousVersion").isNull()).isTrue();
     }
 
     // 마지막 사람이 나가 방이 닫혀도 그 사람의 연결이 끊을 목록에 들어가는지 확인한다

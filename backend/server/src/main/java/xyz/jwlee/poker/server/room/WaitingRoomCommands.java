@@ -81,25 +81,26 @@ final class WaitingRoomCommands {
     }
 
     // 본인이 아닌 참가자를 방에서 내보낸다
-    static void kick(Room room, Participant actor, JsonNode payload) {
+    static void kick(Room room, Participant actor, CommandRequest request, RoomEnv env) {
         requireWaiting(room);
-        String target = existing(room, string(object(payload), "participantId"));
+        String target = existing(room, string(object(request.payload()), "participantId"));
         if (target.equals(actor.participantId())) {
             throw invalid();
         }
-        room.removeParticipant(target);
+        room.removeParticipant(target, env.now());
     }
 
     // 게임이 진행 중이 아닐 때 요청자가 방을 떠난다
     /** Allowed in the waiting room and on the result screen, not while a game runs. */
-    static void leave(Room room, Participant actor, JsonNode payload) {
+    static void leave(Room room, Participant actor, CommandRequest request, RoomEnv env) {
+        JsonNode payload = request.payload();
         if (room.phase() == RoomPhase.PLAYING) {
             throw new RoomException("NOT_WAITING");
         }
         if (payload != null && !payload.isNull() && !(payload.isObject() && payload.isEmpty())) {
             throw invalid();
         }
-        room.removeParticipant(actor.participantId());
+        room.removeParticipant(actor.participantId(), env.now());
     }
 
     // 방장 자리를 다른 참가자에게 넘긴다

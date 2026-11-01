@@ -188,7 +188,7 @@ class ConnectionTest {
 
         connection.offerSnapshot(snapshot(1, 0));
 
-        socket.awaitClosed();
+        assertThat(socket.awaitClosed()).isEqualTo(1001);
         await().atMost(Duration.ofSeconds(5)).until(() -> closedCalls.get() == 1);
     }
 
@@ -200,7 +200,7 @@ class ConnectionTest {
         connection.close();
         connection.close();
 
-        socket.awaitClosed();
+        assertThat(socket.awaitClosed()).isEqualTo(1001);
         await().atMost(Duration.ofSeconds(5)).until(() -> closedCalls.get() == 1);
         connection.offerSnapshot(snapshot(2, 0));
         socket.release();

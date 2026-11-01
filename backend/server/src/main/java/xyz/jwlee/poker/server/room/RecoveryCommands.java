@@ -34,9 +34,6 @@ public final class RecoveryCommands {
     static void approve(Room room, Participant actor, CommandRequest command, RoomEnv env) {
         Instant now = env.now();
         Request request = pending(room, command.payload(), now);
-        if (!room.hasParticipant(request.participantId())) {
-            throw new RoomException("RECOVERY_TARGET_NOT_FOUND");
-        }
         String credential = env.newId();
         room.recoverSeat(request.participantId(), credential, now);
         room.recoveryRequests().approve(request, credential, now);

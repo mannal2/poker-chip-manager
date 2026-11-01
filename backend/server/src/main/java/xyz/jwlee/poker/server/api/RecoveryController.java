@@ -116,13 +116,20 @@ class RecoveryController {
         }
         SeatBinding binding = new SeatBinding(found.participantId(), found.credential());
         // A later recovery or a kick took the seat from this approval: it opens nothing any more.
-        if (room.seatOf(binding).isEmpty()) {
+        // Nor does it replace another seat this session holds: the owner of the approved seat has to ask again.
+        if (room.seatOf(binding).isEmpty() || holdsAnotherSeat(room, identity, binding)) {
             return body.put("status", Status.SUPERSEDED.name());
         }
         identity.bind(room.roomId(), binding);
         body.put("status", status.name());
         body.setAll(RoomController.entry(room, room.seatOf(binding).orElseThrow()));
         return body;
+    }
+
+    // 세션이 승인된 자리가 아닌 다른 유효한 자리를 이 방에서 들고 있는지 확인한다
+    private static boolean holdsAnotherSeat(Room room, SessionIdentity identity, SeatBinding approved) {
+        return identity.bindingIn(room.roomId()).filter(held -> !held.equals(approved))
+                .flatMap(room::seatOf).isPresent();
     }
 
     // 신청 생성 응답 본문을 만든다

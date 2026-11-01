@@ -141,11 +141,14 @@ public final class Room {
         });
     }
 
-    // 스냅샷을 요청한 연결을 꺼내고 목록을 비운다
-    Set<String> drainSnapshotRequests() {
-        Set<String> drained = Set.copyOf(snapshotRequests);
+    // 이 연결이 스냅샷을 요청했는지 확인한다
+    boolean snapshotRequested(String connectionId) {
+        return snapshotRequests.contains(connectionId);
+    }
+
+    // 처리한 스냅샷 요청을 비운다
+    void clearSnapshotRequests() {
         snapshotRequests.clear();
-        return drained;
     }
 
     // 지난 수집 뒤 상태 버전이나 초안 버전이 움직였는지 확인한다
@@ -373,13 +376,15 @@ public final class Room {
     /**
      * Removes a participant. The dealer stays on the same person (-1 if that was the leaver); a leaving host
      * hands the room to the earliest connected joiner, or the earliest joiner left when nobody is connected; the
-     * last one out closes the room. Their connections wait in {@link #drainPendingRevocations} to be ended.
+     * last one out closes the room. Their connections wait in {@link #drainPendingRevocations} to be ended, and
+     * their pending recovery requests end now: no host can see or approve them any more.
      */
-    void removeParticipant(String participantId) {
+    void removeParticipant(String participantId, Instant now) {
         String dealer = dealerId();
         participants.removeIf(p -> p.participantId().equals(participantId));
         ledgers.keySet().removeIf(k -> k.startsWith(participantId + "#"));
         pendingRevocations.addAll(presence.forget(participantId));
+        recoveryRequests.supersede(participantId, now);
         pointDealerAt(dealer);
         if (participants.isEmpty()) {
             hostId = null;

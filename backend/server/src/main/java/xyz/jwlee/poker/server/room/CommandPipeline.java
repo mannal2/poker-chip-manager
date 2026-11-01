@@ -24,7 +24,8 @@ import xyz.jwlee.poker.server.support.IdGenerator;
  *       REQUEST_CONFLICT / RESULT_EXPIRED / SEQUENCE_GAP.</li>
  *   <li>permission: FORBIDDEN.</li>
  *   <li>tournament/hand scope: TOURNAMENT_CHANGED.</li>
- *   <li>room state version: STALE_STATE.</li>
+ *   <li>room state version: STALE_STATE. A command that does not bump the version (the settlement draft) skips
+ *       this step, so another person's connection flip cannot refuse it; its hand scope above still applies.</li>
  *   <li>rule and commit: the handler validates and changes the room, then the version goes up by one.</li>
  * </ol>
  * From the permission step on, a refusal is recorded as REJECTED and uses up the sequence. CONTROL_LOST is the
@@ -49,7 +50,8 @@ public final class CommandPipeline {
     // 명령 종류별 실행 조건(방장 전용, 핸드 범위, 버전 증가)과 처리기
     /**
      * {@code handScoped}: the request must carry the current hand id; otherwise a hand id is optional but,
-     * when present, must match. {@code bumpsVersion}: false only for the settlement draft, which has its own counter.
+     * when present, must match. {@code bumpsVersion}: false only for the settlement draft, which has its own counter
+     * and so is not held to the room's state version either.
      */
     private record Handler(boolean hostOnly, boolean handScoped, boolean bumpsVersion, Applier applier) { }
 
@@ -71,8 +73,8 @@ public final class CommandPipeline {
             case "SET_SEAT_ORDER" -> waiting(true, WaitingRoomCommands::setSeatOrder);
             case "SET_DEALER" -> waiting(true, WaitingRoomCommands::setDealer);
             case "RENAME" -> waiting(false, WaitingRoomCommands::rename);
-            case "KICK" -> waiting(true, WaitingRoomCommands::kick);
-            case "LEAVE" -> waiting(false, WaitingRoomCommands::leave);
+            case "KICK" -> plain(true, WaitingRoomCommands::kick);
+            case "LEAVE" -> plain(false, WaitingRoomCommands::leave);
             case "TRANSFER_HOST" -> waiting(true, WaitingRoomCommands::transferHost);
             case "TAKE_HOST" -> waiting(false, WaitingRoomCommands::takeHost);
             case "START" -> plain(true, GameCommands::start);
@@ -119,7 +121,7 @@ public final class CommandPipeline {
         try {
             checkPermission(room, actor, handler);
             checkScope(room, request, handler);
-            checkVersion(room, request);
+            checkVersion(room, request, handler);
             handler.applier().apply(room, actor, request, env);
             if (handler.bumpsVersion()) {
                 AutoPlay.run(room, env);
@@ -204,9 +206,9 @@ public final class CommandPipeline {
         }
     }
 
-    // 요청이 기대한 방 상태 버전이 현재와 같은지 확인한다
-    private static void checkVersion(Room room, CommandRequest request) {
-        if (request.expectedStateVersion() != room.version()) {
+    // 버전을 올리는 명령이 기대한 방 상태 버전이 현재와 같은지 확인한다
+    private static void checkVersion(Room room, CommandRequest request, Handler handler) {
+        if (handler.bumpsVersion() && request.expectedStateVersion() != room.version()) {
             throw new RoomException("STALE_STATE");
         }
     }

@@ -338,12 +338,60 @@ class RecoveryCommandsTest {
     }
 
     @Test
-    void aSeatThatLeftBeforeTheDecisionIsNotFoundAndLeavesTheHostsList() {
+    void aSeatThatLeftBeforeTheDecisionIsNoLongerPendingAndLeavesTheHostsList() {
         RecoveryRequests.Request request = ask(room, "Bob");
         f.send("a", "KICK", "{\"participantId\":\"b\"}");
 
-        assertThat(code(approve(request))).isEqualTo("RECOVERY_TARGET_NOT_FOUND");
+        assertThat(code(approve(request))).isEqualTo("RECOVERY_NOT_PENDING");
         assertThat(listFor(room, "a")).isEmpty();
+    }
+
+    @Test
+    void aKickEndsTheSeatsPendingRequestsOnly() {
+        RecoveryRequests.Request bobs = ask(room, "Bob");
+        RecoveryRequests.Request carols = ask(room, "Carol");
+
+        f.send("a", "KICK", "{\"participantId\":\"b\"}");
+
+        assertThat(statusOf(room, bobs)).isEqualTo(Status.SUPERSEDED);
+        assertThat(statusOf(room, carols)).isEqualTo(Status.PENDING);
+    }
+
+    @Test
+    void leavingEndsTheSeatsPendingRequests() {
+        RecoveryRequests.Request request = ask(room, "Bob");
+
+        f.send("b", "LEAVE", "{}");
+
+        assertThat(statusOf(room, request)).isEqualTo(Status.SUPERSEDED);
+    }
+
+    @Test
+    void anAbsenceThatExpiresEndsTheSeatsPendingRequests() {
+        RecoveryRequests.Request request = ask(room, "Bob");
+        RoomLifecycle.disconnected(room, "conn-b", env);
+
+        clock.advance(Duration.ofSeconds(5));
+        RoomLifecycle.sweep(room, env);
+
+        assertThat(room.hasParticipant("b")).isFalse();
+        assertThat(statusOf(room, request)).isEqualTo(Status.SUPERSEDED);
+    }
+
+    @Test
+    void anAbsenceThatExpiresAfterReReadyEndsTheSeatsPendingRequests() {
+        GameFixture game = GameFixture.started(2, 0, clock);
+        RecoveryRequests.Request request = ask(game.room, "Bob");
+        RoomLifecycle.disconnected(game.room, "conn-b", env);
+        game.check(game.send("a", "ABORT", "{}"));
+        game.check(game.send("a", "RE_READY", "{}"));
+        assertThat(statusOf(game.room, request)).isEqualTo(Status.PENDING);
+
+        clock.advance(Duration.ofSeconds(5));
+        RoomLifecycle.sweep(game.room, env);
+
+        assertThat(game.room.hasParticipant("b")).isFalse();
+        assertThat(statusOf(game.room, request)).isEqualTo(Status.SUPERSEDED);
     }
 
     @Test

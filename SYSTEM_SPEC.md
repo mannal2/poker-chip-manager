@@ -429,7 +429,7 @@ C1~C3은 승인되어 본문에 반영했다. 위 상세화 항목은 아래 14~
 
 클라이언트 메시지는 SUBSCRIBE(roomId, protocolVersion, lastSeenVersion), PONG(nonce), RESYNC다. 게임 변경은 REST만 사용한다. 서버 메시지는 SNAPSHOT, PING(nonce,stateVersion), ACCESS_REVOKED, PROTOCOL_INCOMPATIBLE, ROOM_GONE이다. 복구 신청자는 자기 신청 결과만 조회하며 방 스냅샷 구독 권한은 없다.
 
-구독 등록과 초기 스냅샷 캡처를 방 잠금 안에서 처리한다. 같은 방의 낮은/같은 버전은 무시하되 제어·인증 종료 메시지를 버전 필터로 버리지 않는다. PING 버전 불일치나 연결 복구 시 전체 상태를 요청한다. 재연결은1·2·4·8·최대15초와 지터를 초기안으로 사용하고 연결 후에도 최신 상태 확인 전 조작을 막는다. HTTP 조회만으로 참가자의 온라인 상태를 만들지 않는다.
+구독 등록과 초기 스냅샷 캡처를 방 잠금 안에서 처리한다. 같은 방에서 `(stateVersion, draftVersion)`이 낮은 메시지는 버리고, 같은 쌍은 `previousVersion`이 `null`일 때만 효과 재생 없이 적용한다. 제어·인증 종료 메시지는 버전 필터로 버리지 않는다. PING 버전 불일치나 연결 복구 시 전체 상태를 요청한다. 재연결은1·2·4·8·최대15초와 지터를 초기안으로 사용하고 연결 후에도 최신 상태 확인 전 조작을 막는다. HTTP 조회만으로 참가자의 온라인 상태를 만들지 않는다.
 
 ### 2B 서버 확정 사항 (2026-10-31)
 
@@ -437,11 +437,11 @@ C1~C3은 승인되어 본문에 반영했다. 위 상세화 항목은 아래 14~
 
 - SNAPSHOT 형식은 `{type, previousVersion, events, state}`다. `state`는 수신자별 `GET state`와 같다. 방이 바뀌어 보내는 메시지는 `previousVersion`에 지난 전송 시점의 버전을, `events`에 그 뒤의 게임 이벤트를 담는다. 번호 `sequence`는 기록 조회와 같다. 구독·RESYNC·조작 인수의 응답은 `previousVersion: null`, `events: []`다. 이 메시지를 받은 화면은 효과를 재생하지 않고 상태만 맞춘다.
 - 스냅샷에 `draftVersion`, `hostTakeoverOpen`, 참가자별 `connected`, `you.canTakeHost`, `recoveryRequests`가 있다. `recoveryRequests`는 방장에게만 채워지고 세션·자격 값은 넣지 않는다.
-- 승자 초안은 `stateVersion`을 올리지 않으므로 화면은 `(stateVersion, draftVersion)` 순서로 오래된 메시지를 버린다.
+- 승자 초안은 `stateVersion`을 올리지 않으므로 화면은 `(stateVersion, draftVersion)` 순서로 오래된 메시지를 버린다. 같은 쌍은 `previousVersion`이 `null`일 때만 효과 재생 없이 적용한다. 초안 명령은 버전을 올리지 않으므로 `expectedStateVersion` 검사(`STALE_STATE`)를 건너뛰고, 다른 사람의 연결 변화로 순번을 잃지 않는다. 핸드 범위 검사(`TOURNAMENT_CHANGED`)는 그대로 받는다.
 - `lastSeenVersion`은 형식만 검사한다(숫자 또는 `null`). 서버는 구독할 때마다 전체 상태를 보낸다.
-- 잘못된 메시지와 다른 방 구독은 1008, 수신 4KiB 초과와 전송 256KiB 초과는 1009, 연결 한도 초과는 1013으로 닫고 방을 바꾸지 않는다. 다른 규약 버전은 PROTOCOL_INCOMPATIBLE, 자리가 없으면 ACCESS_REVOKED, 지워진 자기 방이면 ROOM_GONE을 보낸 뒤 1000으로 닫는다. 자리가 없는 세션에는 방 존재 여부를 구분해 주지 않는다.
+- 잘못된 메시지와 다른 방 구독은 1008, 수신 4KiB 초과와 전송 256KiB 초과는 1009, 연결 한도 초과는 1013으로 닫고 방을 바꾸지 않는다. 다른 규약 버전은 PROTOCOL_INCOMPATIBLE, 자리가 없으면 ACCESS_REVOKED, 지워진 자기 방이면 ROOM_GONE을 보낸 뒤 1000으로 닫는다. 마지막 메시지 없이 닫을 때(무응답, 전송 정체, 구독 기한 초과, 전송 실패)는 1001이다. 재연결 여부는 종료 코드가 아니라 마지막 메시지를 받았는지로 정한다. 자리가 없는 세션에는 방 존재 여부를 구분해 주지 않는다.
 - 추가 명령: `TAKE_HOST`(요청이 열려 있지 않으면 409 `HOST_TAKEOVER_CLOSED`, 자격이 없으면 `FORBIDDEN`), `FORFEIT_DISCONNECTED`(방장 전용, 대상이 접속 중이면 422 `TARGET_CONNECTED`), `RECOVERY_APPROVE`·`RECOVERY_REJECT`(방장 전용, payload `recoveryRequestId`, 대기 중이 아니면 422 `RECOVERY_NOT_PENDING`).
-- 복구 오류: 자리 없음 404 `RECOVERY_TARGET_NOT_FOUND`, 자리당 3개 초과 422 `RECOVERY_LIMIT`, 이미 그 방의 자리에 있으면 422 `ALREADY_PARTICIPANT`, 방 코드 없음 404 `ROOM_NOT_FOUND`, 남의 신청 조회 404 `REQUEST_NOT_FOUND`. 신청 상태는 `PENDING`·`APPROVED`·`REJECTED`·`EXPIRED`·`SUPERSEDED`다. 승인된 뒤 그 자리를 다시 잃었으면 조회 결과는 `SUPERSEDED`다.
+- 복구 오류: 자리 없음 404 `RECOVERY_TARGET_NOT_FOUND`, 자리당 3개 초과 422 `RECOVERY_LIMIT`, 이미 그 방의 자리에 있으면 422 `ALREADY_PARTICIPANT`, 방 코드 없음 404 `ROOM_NOT_FOUND`, 남의 신청 조회 404 `REQUEST_NOT_FOUND`. 신청 상태는 `PENDING`·`APPROVED`·`REJECTED`·`EXPIRED`·`SUPERSEDED`다. 승인된 뒤 그 자리를 다시 잃었으면 조회 결과는 `SUPERSEDED`다. 자리가 명단에서 빠지면(내보내기, 나가기, 대기방 유예 만료, 다시 준비 뒤 만료 포함) 그 자리의 대기 신청은 바로 `SUPERSEDED`가 된다. 조회한 세션이 그 방의 다른 유효한 자리를 이미 들고 있으면 자리를 덮어쓰지 않고 `SUPERSEDED`로 답한다. 이때 승인된 자리는 아무도 가져가지 못하므로 자리 주인이 다시 신청한다.
 - 복구 신청 생성은 방장이 보도록 상태 버전을 올린다. 연결 변경처럼 다른 참가자의 명령이 드물게 `STALE_STATE`가 될 수 있다. 승인으로 옛 연결이 닫힐 때 복구 대상이 현재 차례이면 자동 처리가 그 차례를 처리한다.
 
 ## 15. 인증 설정과 자원 보호 초안

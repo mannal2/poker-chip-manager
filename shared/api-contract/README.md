@@ -43,6 +43,8 @@
 - 장부에 기록된 명령 결과는 `{requestId, sequence, outcome, code, resultStateVersion, latestState}`다.
 - 명령의 `CONTROL_LOST`처럼 명령 장부에 기록되지 않은 거절은 `outcome` 없이 `{code, message}`다. `SEQUENCE_GAP`·`PROTOCOL_INCOMPATIBLE`·`INVALID_INPUT`·`ROOM_NOT_FOUND`도 그렇다. 인수 거절도 같은 모양이다.
 - 구독·RESYNC·조작 인수로 받는 SNAPSHOT은 `previousVersion: null`, `events: []`다. `ws-snapshot`처럼 방 변경으로 받는 것은 이전 버전과 이벤트가 있다.
+- 화면은 `(stateVersion, draftVersion)`이 낮은 SNAPSHOT을 버린다. 같은 쌍은 `previousVersion`이 `null`일 때만 효과 재생 없이 적용한다.
+- 마지막 메시지(`ACCESS_REVOKED`·`ROOM_GONE`·`PROTOCOL_INCOMPATIBLE`) 뒤에는 1000, 메시지 없이 끊을 때는 1001로 닫는다. 재연결 여부는 코드가 아니라 마지막 메시지를 받았는지로 정한다.
 - 복구 결과 조회는 대기·거절·만료·대체면 `{recoveryRequestId, status}`만, 승인이면 생성·참가와 같은 필드를 함께 돌려준다.
 - 본문이 `{code}`뿐인 것은 `ORIGIN_REJECTED`·`CSRF_REJECTED`·`NO_SESSION`(필터 응답)과 `TOO_MANY_STREAMS`다. 본문 과대 413은 `{code, message}`다.
 

@@ -421,6 +421,33 @@ class RecoveryApiTest {
     }
 
     @Test
+    void anApplicantReadsSupersededAsSoonAsTheSeatIsRemoved() throws Exception {
+        Client alice = host();
+        Client bob = bob(alice);
+        Client device = new Client();
+        String id = device.asked(alice.code, "Bob");
+
+        alice.command("KICK", "{\"participantId\":\"" + bob.participantId + "\"}");
+
+        device.recovery(id).andExpect(status().isOk()).andExpect(jsonPath("$.status").value("SUPERSEDED"));
+    }
+
+    @Test
+    void anApprovalDoesNotOverwriteASeatTheSessionAlreadyHolds() throws Exception {
+        Client alice = host();
+        bob(alice);
+        Client device = new Client();
+        String id = device.asked(alice.code, "Bob");
+        device.join(alice.code, "Carol");
+        alice.approve(id);
+
+        device.recovery(id).andExpect(status().isOk()).andExpect(jsonPath("$.status").value("SUPERSEDED"))
+                .andExpect(jsonPath("$.participantId").doesNotExist());
+
+        assertThat(device.view().get("you").get("participantId").asString()).isEqualTo(device.participantId);
+    }
+
+    @Test
     void theOldDeviceLosesEveryPathIntoTheSeat() throws Exception {
         Client alice = host();
         Client bob = bob(alice);

@@ -10,7 +10,8 @@
     "test": "vitest",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview --host 127.0.0.1",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "test:e2e:online": "playwright test --config playwright.online.config.ts"
   },
   "dependencies": {
     "idb": "8.0.4",

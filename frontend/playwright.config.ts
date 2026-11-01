@@ -16,7 +16,7 @@ export default defineConfig({
   workers: process.env.CI ? 2 : 6,
   use: { baseURL: 'http://127.0.0.1:4173' },
   projects: [
-    ...browsers.map((b) => ({ ...b, testIgnore: serialSpecs })),
+    ...browsers.map((b) => ({ ...b, testIgnore: [...serialSpecs, '**/online/**'] })),
     // Chained, not just workers: 1 each, so the two browsers never edit shared files at once.
     ...browsers.map((b, i) => ({
       ...b,

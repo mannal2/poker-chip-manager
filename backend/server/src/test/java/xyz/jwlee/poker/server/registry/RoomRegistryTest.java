@@ -260,6 +260,19 @@ class RoomRegistryTest {
         assertThat(output).contains("Room sweep failed");
     }
 
+    // 설정한 방 한도까지 생성하고 다음 생성은 거절하는지 확인한다
+    @Test
+    void configuredLimitRefusesTheFourthRoom() {
+        RoomRegistry limited = new RoomRegistry(() -> "id" + seq.incrementAndGet(), Clock.systemUTC(), published::add, 3);
+        for (int i = 0; i < 3; i++) {
+            limited.create("host" + i);
+        }
+        assertThatThrownBy(() -> limited.create("late"))
+                .isInstanceOfSatisfying(RoomException.class, e -> assertThat(e.code()).isEqualTo("ROOM_LIMIT"));
+        assertThat(limited.size()).isEqualTo(3);
+    }
+
+    // 기본 생성자가 방 열 개를 허용하고 다음 생성은 거절하는지 확인한다
     @Test
     void createsUpToTenRoomsThenRefuses() {
         for (int i = 0; i < 10; i++) {

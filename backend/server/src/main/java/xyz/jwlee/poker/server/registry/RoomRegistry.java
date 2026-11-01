@@ -12,6 +12,8 @@ import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import xyz.jwlee.poker.server.room.Participant;
 import xyz.jwlee.poker.server.room.Publication;
@@ -26,7 +28,7 @@ import xyz.jwlee.poker.server.support.IdGenerator;
 
 // 활성 방을 보관하고 전역 잠금과 방 잠금으로 접근을 조율하는 저장소
 /**
- * All active rooms (waiting, playing and result), at most {@value #MAX_ROOMS}.
+ * All active rooms (waiting, playing and result), with a configurable limit (default {@value #MAX_ROOMS}).
  *
  * <p>Locking: one global lock guards the room table and the code index; each room has its own lock.
  * The order is always global then room, never the reverse. {@link #update} and {@link #withRoom} hold only the
@@ -65,9 +67,18 @@ public class RoomRegistry {
     private final Clock clock;
     private final RoomPublisher publisher;
     private final RoomCodes codes;
+    private final int maxRooms;
 
     // 방 레지스트리를 만든다
     public RoomRegistry(IdGenerator ids, Clock clock, RoomPublisher publisher) {
+        this(ids, clock, publisher, MAX_ROOMS);
+    }
+
+    // 설정한 최대 방 수로 레지스트리를 만든다
+    @Autowired
+    public RoomRegistry(IdGenerator ids, Clock clock, RoomPublisher publisher,
+            @Value("${poker.max-rooms:10}") int maxRooms) {
+        this.maxRooms = maxRooms;
         this.ids = ids;
         this.clock = clock;
         this.publisher = publisher;
@@ -97,7 +108,7 @@ public class RoomRegistry {
      */
     public Entry create(String hostName, BiConsumer<String, SeatBinding> bind) {
         Created created = withGlobal(() -> {
-            if (rooms.size() >= MAX_ROOMS) {
+            if (rooms.size() >= maxRooms) {
                 throw new RoomException("ROOM_LIMIT");
             }
             Room room = new Room(ids.next(), codes.next(byCode.keySet()), clock.instant());

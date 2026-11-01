@@ -1,4 +1,5 @@
 poker:
+  max-rooms: 10
   allowed-origins:
     - http://localhost:5173
     - http://127.0.0.1:5173
@@ -35,3 +36,14 @@ server:
       cookie:
         name: __Host-pcm-session
         secure: true
+
+---
+spring:
+  config:
+    activate:
+      on-profile: e2e
+
+poker:
+  max-rooms: 200
+  allowed-origins:
+    - http://127.0.0.1:4174

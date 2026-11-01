@@ -499,3 +499,195 @@ it('serializes old stream cleanup before a replacement entry', async () => {
   expect(x.api.open).toHaveBeenCalledTimes(2);
   expect(x.c.getView().phase).toBe('room');
 });
+// 종료된 화면의 응답을 기다리지 않고 새 방의 명령을 시작할 수 있어야 한다.
+it('starts replacement room commands while an old request is unresolved', async () => {
+  const x = setup();
+  await x.enter();
+  let finishOld!: (value: unknown) => void;
+  x.api.post.mockImplementationOnce(
+    () =>
+      new Promise((resolve) => {
+        finishOld = resolve;
+      }),
+  );
+  const old = x.c.send([{ type: 'START', handScoped: false }]);
+  x.c.leaveRoomScreen();
+  await x.enter();
+  x.api.post.mockImplementationOnce(async (_path, body) => ({
+    ok: true,
+    body: {
+      ...(body as object),
+      outcome: 'APPLIED',
+      code: 'OK',
+      resultStateVersion: 1,
+      latestState: x.entry.state,
+    },
+  }));
+  expect(await x.c.send([{ type: 'START', handScoped: false }])).toBe(true);
+  finishOld({ ok: false, unknown: true });
+  await old;
+});
+// 이전 화면의 완료 처리가 새 화면에서 초안을 기다리는 명령 잠금을 해제하지 않아야 한다.
+it('keeps the replacement send guard when an old command completes', async () => {
+  const x = setup();
+  await x.enter();
+  let finishOld!: (value: unknown) => void;
+  let finishDraft!: (value: unknown) => void;
+  x.api.post.mockImplementationOnce(
+    () =>
+      new Promise((resolve) => {
+        finishOld = resolve;
+      }),
+  );
+  const old = x.c.send([{ type: 'START', handScoped: false }]);
+  x.c.leaveRoomScreen();
+  await x.enter();
+  x.api.post.mockImplementationOnce(
+    () =>
+      new Promise((resolve) => {
+        finishDraft = resolve;
+      }),
+  );
+  x.c.sendDraft(0, {});
+  expect(x.api.post.mock.calls.at(-1)![1]).toMatchObject({ type: 'SETTLEMENT_DRAFT' });
+  const draft = x.api.post.mock.calls.at(-1)![1];
+  const current = x.c.send([{ type: 'START', handScoped: false }]);
+  finishOld({ ok: false, unknown: true });
+  await old;
+  x.c.sendDraft(9, {});
+  x.api.post.mockImplementation(async (_path, body) => ({
+    ok: true,
+    body: {
+      ...(body as object),
+      outcome: 'APPLIED',
+      code: 'OK',
+      resultStateVersion: 1,
+      latestState: x.entry.state,
+    },
+  }));
+  finishDraft({
+    ok: true,
+    body: {
+      ...(draft as object),
+      outcome: 'APPLIED',
+      code: 'OK',
+      resultStateVersion: 1,
+      latestState: x.entry.state,
+    },
+  });
+  expect(await current).toBe(true);
+  expect(x.api.post.mock.calls.slice(3).map(([, body]) => (body as { type: string }).type)).toEqual(
+    ['SETTLEMENT_DRAFT', 'START'],
+  );
+});
+// 결과 불명 초안은 화면을 잠그고 확정 원장 조회 이후에만 잠금을 해제한다.
+it.each([false, true])(
+  'locks an unknown draft until ledger resolution, missing=%s',
+  async (missing) => {
+    const x = setup();
+    await x.enter();
+    x.api.post.mockResolvedValueOnce({ ok: false, unknown: true });
+    x.c.sendDraft(0, {});
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+    const body = x.api.post.mock.calls.at(-1)![1];
+    expect(x.c.getView().pending).toBe(true);
+    expect(await x.c.send([{ type: 'START', handScoped: false }])).toBe(false);
+    x.h.onSnapshot({
+      type: 'SNAPSHOT',
+      previousVersion: null,
+      events: [],
+      state: { ...x.entry.state, stateVersion: 9 },
+    });
+    expect(x.c.getView().pending).toBe(true);
+    const confirmed = {
+      ok: true,
+      body: {
+        ...(body as object),
+        outcome: 'APPLIED',
+        code: 'OK',
+        resultStateVersion: 1,
+        latestState: x.entry.state,
+      },
+    };
+    x.api.get.mockResolvedValueOnce(missing ? { ok: false, code: 'REQUEST_NOT_FOUND' } : confirmed);
+    if (missing) x.api.post.mockResolvedValueOnce(confirmed);
+    expect(await x.c.retry()).toBe(true);
+    expect(x.c.getView().pending).toBe(false);
+    expect(x.api.post).toHaveBeenCalledTimes(missing ? 3 : 2);
+    if (missing) expect(x.api.post.mock.calls.at(-1)![1]).toEqual(body);
+  },
+);
+// 일반 명령이 기다리던 초안의 결과가 불명이어도 잠금을 유지한다.
+it('keeps unknown draft pending after a waiting ordinary send stops', async () => {
+  const x = setup();
+  await x.enter();
+  let finishDraft!: (value: unknown) => void;
+  x.api.post.mockImplementationOnce(
+    () =>
+      new Promise((resolve) => {
+        finishDraft = resolve;
+      }),
+  );
+  x.c.sendDraft(0, {});
+  const ordinary = x.c.send([{ type: 'START', handScoped: false }]);
+  finishDraft({ ok: false, unknown: true });
+  expect(await ordinary).toBe(false);
+  expect(x.c.getView().pending).toBe(true);
+  expect(x.api.post).toHaveBeenCalledTimes(2);
+});
+// 연결이나 조작권을 잃으면 아직 보내지 않은 초안은 폐기한다.
+it.each(['disconnect', 'control'] as const)(
+  'discards queued drafts after %s',
+  async (transition) => {
+    const x = setup();
+    await x.enter();
+    let finishDraft!: (value: unknown) => void;
+    x.api.post.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finishDraft = resolve;
+        }),
+    );
+    x.c.sendDraft(0, {});
+    x.c.sendDraft(1, {});
+    const body = x.api.post.mock.calls.at(-1)![1];
+    if (transition === 'disconnect') x.h.onState('waiting');
+    else
+      x.h.onSnapshot({
+        type: 'SNAPSHOT',
+        previousVersion: null,
+        events: [],
+        state: { ...x.entry.state, you: { ...x.entry.state.you, controlGeneration: 2 } },
+      });
+    x.api.post.mockImplementation(async (_path, request) => ({
+      ok: true,
+      body: {
+        ...(request as object),
+        outcome: 'APPLIED',
+        code: 'OK',
+        resultStateVersion: 1,
+        latestState: x.entry.state,
+      },
+    }));
+    finishDraft({
+      ok: true,
+      body: {
+        ...(body as object),
+        outcome: 'APPLIED',
+        code: 'OK',
+        resultStateVersion: 1,
+        latestState: null,
+      },
+    });
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(x.api.post).toHaveBeenCalledTimes(2);
+    x.h.onState('open');
+    x.h.onSnapshot({ type: 'SNAPSHOT', previousVersion: null, events: [], state: x.entry.state });
+    await Promise.resolve();
+    expect(x.api.post).toHaveBeenCalledTimes(2);
+  },
+);

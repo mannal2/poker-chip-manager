@@ -232,6 +232,7 @@ export class OnlineController {
       // 열린 소켓에서도 스냅샷을 받기 전에는 조작을 잠근다.
       onState: (state) => {
         if (epoch !== this.epoch || !this.active) return;
+        this.queuedDraft = null;
         this.update({ connection: state === 'waiting' ? 'offline' : 'syncing' });
         if (state === 'open' && this.request) void this.retry();
       },
@@ -256,6 +257,7 @@ export class OnlineController {
       )
         return;
     }
+    if (next.you.controlGeneration > this.generation) this.queuedDraft = null;
     this.update({
       snapshot: next,
       ...(next.you.controlGeneration > this.generation ? { hasControl: false } : {}),
@@ -283,6 +285,7 @@ export class OnlineController {
     const epoch = this.epoch;
     try {
       if (this.processing) await this.processing;
+      if (epoch !== this.epoch) return false;
       while (this.queuedDraft && !this.request) await this.flushDraft();
       if (this.request || epoch !== this.epoch) return false;
       for (const command of commands) {
@@ -296,9 +299,10 @@ export class OnlineController {
       }
       return true;
     } finally {
-      this.sending = false;
-      if (epoch === this.epoch)
-        this.update({ pending: this.request !== null && !this.request.draft });
+      if (epoch === this.epoch) {
+        this.sending = false;
+        this.update({ pending: this.request !== null });
+      }
     }
   }
   // 최신 승자 선택 한 건만 대기시킨다.
@@ -306,6 +310,7 @@ export class OnlineController {
     if (
       this.view.connection !== 'online' ||
       !this.view.hasControl ||
+      this.view.pending ||
       this.sending ||
       (this.request && !this.request.draft)
     )
@@ -317,6 +322,7 @@ export class OnlineController {
   private async flushDraft(): Promise<boolean> {
     const draft = this.queuedDraft;
     this.queuedDraft = null;
+    if (!this.active || this.view.connection !== 'online' || !this.view.hasControl) return false;
     return draft
       ? this.command({ type: 'SETTLEMENT_DRAFT', payload: draft, handScoped: true }, true)
       : true;
@@ -397,13 +403,15 @@ export class OnlineController {
     } else result = await this.api.post(request.path, request.body);
     if (epoch !== this.epoch) return false;
     if ('unknown' in result) {
-      this.update({ pending: !request.draft || this.sending, error: messageFor('NOT_CONNECTED') });
+      this.update({ pending: true, error: messageFor('NOT_CONNECTED') });
       return false;
     }
     const body = result.body;
     if (request.kind === 'command' && isCommandResponse(body)) {
-      if (body.requestId !== request.body.requestId || body.sequence !== request.body.sequence)
+      if (body.requestId !== request.body.requestId || body.sequence !== request.body.sequence) {
+        this.update({ pending: true, error: messageFor('NOT_CONNECTED') });
         return false;
+      }
       if (body.latestState) this.apply(body.latestState);
       this.request = null;
       this.update({
@@ -465,12 +473,15 @@ export class OnlineController {
       });
       return true;
     }
-    this.update({ pending: !request.draft, error: messageFor('NOT_CONNECTED') });
+    this.update({ pending: true, error: messageFor('NOT_CONNECTED') });
     return false;
   }
   // 권한 상실과 순번 오류를 서버 동기화로 복구한다.
   private async reject(code: string | undefined): Promise<void> {
-    if (code === 'CONTROL_LOST') this.update({ hasControl: false });
+    if (code === 'CONTROL_LOST') {
+      this.queuedDraft = null;
+      this.update({ hasControl: false });
+    }
     if (
       ['SEQUENCE_GAP', 'REQUEST_CONFLICT', 'RESULT_EXPIRED'].includes(code ?? '') &&
       this.view.snapshot
@@ -522,6 +533,7 @@ export class OnlineController {
     this.request = null;
     this.queuedDraft = null;
     this.processing = null;
+    this.sending = false;
     if (!this.closing) {
       this.closing = this.opening
         ? this.opening.catch(() => {}).then(() => this.api.closeStream())

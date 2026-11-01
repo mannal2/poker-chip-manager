@@ -37,6 +37,7 @@ type Request = {
 };
 const LAST = 'online.lastRoom';
 const TAB = 'online.controlRoom';
+const RECOVERY = 'online.recoveryRequest';
 const CONNECTION_ERROR = '서버에 연결하지 못했습니다. 연결 상태를 확인해 주세요.';
 const UNKNOWN_RESULT = '요청 결과를 확인하지 못했습니다. 다시 확인해 주세요.';
 const LOST_ROOM_CODES = ['NO_SESSION', 'ROOM_NOT_FOUND'];
@@ -214,6 +215,8 @@ export class OnlineController {
   // 마지막 방을 조회하고 이 탭의 표시가 있을 때만 조작권을 인수한다.
   async resume(): Promise<boolean> {
     if (this.view.pending || this.request || this.view.phase === 'room') return false;
+    const recovery = sessionStorage.getItem(RECOVERY);
+    if (recovery) return this.resumeRecovery(recovery);
     const saved = localStorage.getItem(LAST);
     if (!saved) return false;
     let roomId: string;
@@ -226,18 +229,14 @@ export class OnlineController {
     }
     const epoch = this.epoch;
     this.update({ phase: 'joining', pending: true });
-    if (!(await this.open()) || epoch !== this.epoch) {
-      if (epoch === this.epoch) {
-        localStorage.removeItem(LAST);
-        sessionStorage.removeItem(TAB);
-      }
-      return false;
-    }
+    if (!(await this.open()) || epoch !== this.epoch) return false;
     const result = await this.api.get(`/api/rooms/${encodeURIComponent(roomId)}/state`);
     if (epoch !== this.epoch) return false;
     if (!result.ok || !isRoomSnapshot(result.body)) {
-      localStorage.removeItem(LAST);
-      sessionStorage.removeItem(TAB);
+      if (!result.ok && !('unknown' in result) && LOST_ROOM_CODES.includes(result.code ?? '')) {
+        localStorage.removeItem(LAST);
+        sessionStorage.removeItem(TAB);
+      }
       this.update({
         phase: 'entry',
         pending: false,
@@ -250,6 +249,15 @@ export class OnlineController {
     this.update({ phase: 'room', pending: false, hasControl: false });
     this.connect();
     if (sessionStorage.getItem(TAB) === roomId) return this.takeControl();
+    return true;
+  }
+  // 새로고침 전에 보낸 복구 신청의 결과 조회를 이어간다.
+  private async resumeRecovery(id: string): Promise<boolean> {
+    const epoch = this.epoch;
+    this.update({ phase: 'recovering', pending: true, recovery: null });
+    if (!(await this.open()) || epoch !== this.epoch) return false;
+    this.update({ pending: false, recovery: { recoveryRequestId: id, status: 'PENDING' } });
+    void this.pollRecovery(id);
     return true;
   }
   // 입장 응답의 세대와 저장 가능한 방 정보만 보관한다.
@@ -604,6 +612,7 @@ export class OnlineController {
     }
     if (request.kind === 'recovery' && isRecoveryRequestResponse(body)) {
       this.request = null;
+      sessionStorage.setItem(RECOVERY, body.recoveryRequestId);
       this.update({
         pending: false,
         recovery: {
@@ -682,6 +691,7 @@ export class OnlineController {
       result.status === 404 &&
       (result.code === 'ROOM_NOT_FOUND' || result.code === 'REQUEST_NOT_FOUND')
     ) {
+      sessionStorage.removeItem(RECOVERY);
       this.update({
         phase: 'entry',
         pending: false,
@@ -695,6 +705,7 @@ export class OnlineController {
     }
     if (result.ok && isRecoveryStatus(result.body)) {
       this.update({ recovery: result.body });
+      if (result.body.status !== 'PENDING') sessionStorage.removeItem(RECOVERY);
       if (result.body.status === 'APPROVED') {
         this.joined(result.body);
         return;
@@ -769,6 +780,7 @@ export class OnlineController {
   leaveRoomScreen(): void {
     this.stop();
     sessionStorage.removeItem(TAB);
+    sessionStorage.removeItem(RECOVERY);
     this.update({
       phase: 'entry',
       snapshot: null,

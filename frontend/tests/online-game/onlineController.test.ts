@@ -1376,3 +1376,52 @@ it('does not repeat effects when the socket confirms before HTTP', async () => {
   x.h.onSnapshot({ ...message, events: [{ id: 'e2', type: 'CHECK', details: {} }] } as never);
   expect(confirmed).toHaveBeenCalledTimes(1);
 });
+
+// 일시적인 네트워크 오류로는 복귀할 방 정보를 지우지 않는다.
+it('keeps the saved room when resume fails without an answer', async () => {
+  const x = setup();
+  localStorage.setItem('online.lastRoom', JSON.stringify({ roomId: 'room' }));
+  sessionStorage.setItem('online.controlRoom', 'room');
+  x.api.get.mockResolvedValueOnce({ ok: false, unknown: true });
+  expect(await x.c.resume()).toBe(false);
+  expect(x.c.getView().phase).toBe('entry');
+  expect(localStorage.getItem('online.lastRoom')).not.toBeNull();
+  expect(sessionStorage.getItem('online.controlRoom')).toBe('room');
+});
+
+// 세션을 준비하지 못한 복귀도 저장된 방 정보를 유지한다.
+it('keeps the saved room when the session cannot be opened', async () => {
+  const x = setup();
+  localStorage.setItem('online.lastRoom', JSON.stringify({ roomId: 'room' }));
+  x.api.open.mockRejectedValueOnce(new Error('offline'));
+  expect(await x.c.resume()).toBe(false);
+  expect(x.c.getView().phase).toBe('entry');
+  expect(localStorage.getItem('online.lastRoom')).not.toBeNull();
+});
+
+// 복구 대기 중 새로고침해도 같은 신청의 결과를 이어서 조회한다.
+it('resumes polling a recovery request after a reload', async () => {
+  const first = setup();
+  first.api.post.mockResolvedValueOnce({
+    ok: true,
+    body: { recoveryRequestId: 'recover', status: 'PENDING', expiresAt: 'later' },
+  });
+  first.api.get.mockResolvedValue({
+    ok: true,
+    body: { recoveryRequestId: 'recover', status: 'REJECTED' },
+  });
+  await first.c.requestRecovery('ABCDEF', 'Alice');
+  await vi.waitFor(() => expect(first.c.getView().phase).toBe('entry'));
+  expect(sessionStorage.getItem('online.recoveryRequest')).toBeNull();
+
+  const second = setup();
+  sessionStorage.setItem('online.recoveryRequest', 'recover');
+  second.api.get.mockResolvedValueOnce({
+    ok: true,
+    body: { recoveryRequestId: 'recover', status: 'PENDING' },
+  });
+  expect(await second.c.resume()).toBe(true);
+  expect(second.c.getView().phase).toBe('recovering');
+  expect(second.c.getView().recovery?.status).toBe('PENDING');
+  expect(second.api.get).toHaveBeenCalledWith('/api/recovery-requests/recover');
+});

@@ -50,8 +50,12 @@ export class ApiClient {
   }
 
   // 변경 요청에 CSRF 토큰을 붙여 전송한다.
-  post<T = unknown>(path: string, body: unknown): Promise<ApiResult<T>> {
-    return this.request<T>(path, 'POST', body);
+  async post<T = unknown>(path: string, body: unknown): Promise<ApiResult<T>> {
+    try {
+      return this.request<T>(path, 'POST', JSON.stringify(body));
+    } catch {
+      return { ok: false, unknown: true };
+    }
   }
 
   // 조회 요청을 쿠키 인증과 함께 전송한다.
@@ -82,7 +86,7 @@ export class ApiClient {
   private async request<T>(
     path: string,
     method: string,
-    body?: unknown,
+    body?: string,
     keepalive = false,
     retry = true,
   ): Promise<ApiResult<T>> {
@@ -96,7 +100,7 @@ export class ApiClient {
           method === 'GET'
             ? {}
             : { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': this.csrfToken },
-        ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+        ...(body === undefined ? {} : { body }),
       });
       if (response.status >= 500) return { ok: false, unknown: true };
       const value = response.status === 204 ? undefined : await response.json();

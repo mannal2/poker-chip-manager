@@ -82,7 +82,9 @@ export class RoomSocket {
   // 새 소켓의 이벤트만 허용하고 이전 소켓의 콜백을 무시한다.
   private connect(): void {
     if (this.stopped) return;
+    const previous = this.socket;
     this.setState('connecting');
+    if (this.stopped || this.socket !== previous) return;
     const socket = new WebSocket(this.url);
     this.socket = socket;
     // 연결 성공 시 지연을 초기화하고 방을 다시 구독한다.
@@ -90,6 +92,7 @@ export class RoomSocket {
       if (this.socket !== socket || this.stopped) return;
       this.attempt = 0;
       this.setState('open');
+      if (this.stopped || this.socket !== socket) return;
       this.sendSubscription();
       this.watchPing();
     };
@@ -141,6 +144,7 @@ export class RoomSocket {
     this.socket = null;
     socket?.close();
     this.setState('waiting');
+    if (this.stopped || this.socket !== null) return;
     this.reconnectTimer = setTimeout(
       () => this.connect(),
       reconnectDelay(this.attempt++, Math.random),

@@ -1,6 +1,29 @@
 import { afterEach, expect, it, vi } from 'vitest';
 import { ApiClient } from '../../src/features/online-game/api/client';
 
+// 토큰 재조회 중 호출자가 본문을 변경해도 최초 직렬화 결과로 재시도한다.
+it('preserves the original serialized body while a CSRF reload is pending', async () => {
+  let release!: (response: Response) => void;
+  const token = new Promise<Response>((resolve) => {
+    release = resolve;
+  });
+  const fetch = vi
+    .fn()
+    .mockResolvedValueOnce(reply({ code: 'CSRF_REJECTED' }, 403))
+    .mockReturnValueOnce(token)
+    .mockResolvedValueOnce(reply({ accepted: true }));
+  vi.stubGlobal('fetch', fetch);
+  const body = { requestId: 'original', payload: { amount: 5 } };
+  const pending = new ApiClient().post('/command', body);
+  await vi.waitFor(() => expect(fetch).toHaveBeenCalledTimes(2));
+  body.requestId = 'changed';
+  body.payload.amount = 50;
+  release(reply({ csrfToken: 'fresh', protocolVersion: 1 }));
+  await pending;
+  expect(fetch.mock.calls[0][1].body).toBe('{"requestId":"original","payload":{"amount":5}}');
+  expect(fetch.mock.calls[2][1].body).toBe('{"requestId":"original","payload":{"amount":5}}');
+});
+
 // JSON 서버 응답을 만든다.
 function reply(body: unknown, status = 200) {
   return new Response(status === 204 ? null : JSON.stringify(body), { status });

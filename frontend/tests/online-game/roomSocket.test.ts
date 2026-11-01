@@ -59,6 +59,30 @@ function setup() {
   return handlers;
 }
 
+// 외부 상태 콜백에서 종료하면 이후 소켓과 타이머를 만들지 않는다.
+it.each(['connecting', 'open', 'waiting'])(
+  'stops all work when closed from %s callback',
+  (state) => {
+    const handlers = setup();
+    handlers.onState.mockImplementation((next) => {
+      if (next === state) room.close();
+    });
+    const first = FakeSocket.instances[0];
+    if (state === 'connecting') {
+      visibility.dispatchEvent(new Event('visibilitychange'));
+      expect(FakeSocket.instances).toHaveLength(1);
+    } else {
+      first.open();
+      if (state === 'waiting') first.close();
+    }
+    expect(vi.getTimerCount()).toBe(0);
+    expect(FakeSocket.instances.every((socket) => socket.readyState === 3)).toBe(true);
+    vi.advanceTimersByTime(120000);
+    visibility.dispatchEvent(new Event('visibilitychange'));
+    expect(FakeSocket.instances).toHaveLength(1);
+  },
+);
+
 // 구독 및 PING 응답과 전달한 스냅샷 이후의 버전 추적을 확인한다.
 it('subscribes, validates snapshots, echoes nonce and resyncs newer versions', () => {
   const handlers = setup();

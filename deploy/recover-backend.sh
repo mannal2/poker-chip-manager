@@ -66,6 +66,13 @@ still_required() {
   echo "RECOVERY_REQUIRED: $1 $pending and the gate were left in place." >&2
   exit 1
 }
+# 서버가 게이트 파일과 달리 열렸다고 읽히면 기록하지 않고 끝낸다
+stop_if_mount_broken() {
+  mount_is_broken "$1" || return 0
+  echo "GATE_MOUNT_BROKEN: the new backend reads open while $gate_file is closed." >&2
+  echo 'It may hold games, so it was neither recorded nor replaced. Fix the gate mount and rerun.' >&2
+  exit 1
+}
 # 배포 기록에 남은 값으로 상태 파일 하나를 되돌린다
 restore_record() {
   local image revision
@@ -104,15 +111,11 @@ target_ran=no
 if [[ ( "$phase" == replacing || "$phase" == releasing ) && -n "$running" && "$running" == "$target_id" ]]; then
   target_ran=yes
   response=$(read_status) || response=''
-  if mount_is_broken "$response"; then
-    set_phase releasing
-    echo "GATE_MOUNT_BROKEN: the new backend reads open while $gate_file is closed." >&2
-    echo 'It may hold games, so it was neither recorded nor replaced. Fix the gate mount and rerun.' >&2
-    exit 1
-  fi
+  stop_if_mount_broken "$response"
 fi
 if [[ "$target_ran" == yes ]] && healthy "$target_id" "$revision" no; then
-  read_status > /dev/null || still_required 'The new backend is healthy but its status cannot be read.'
+  response=$(read_status) || still_required 'The new backend is healthy but its status cannot be read.'
+  stop_if_mount_broken "$response"
   replace_file "$state/backend-current" "image=$target
 revision=$revision
 "
@@ -128,7 +131,7 @@ fi
 
 if [[ -z "$rollback" ]]; then
   # A first deployment has nothing to return to. The closed gate file stays for the next attempt.
-  replace_is_safe "$phase" || still_required 'NO_PREVIOUS_IMAGE: the backend cannot be proved free of games.'
+  replace_is_safe || still_required 'NO_PREVIOUS_IMAGE: the backend cannot be proved free of games. Stop it first if that is acceptable.'
   if [[ -n "$running" ]]; then compose stop backend; fi
   rm -- "$pending"
   echo 'NO_PREVIOUS_IMAGE: the failed first deployment was stopped and starts stay closed.' >&2
@@ -140,7 +143,7 @@ if [[ -n "$running" && "$running" == "$previous_id" ]]; then
   healthy "$previous_id" "$previous_revision" no \
     || still_required 'The previous backend is running but failed the health check. See the README for the manual step.'
 else
-  replace_is_safe "$phase" || still_required 'The backend cannot be proved free of games, so it was not replaced.'
+  replace_is_safe || still_required 'The backend cannot be proved free of games, so it was left running. Stop it first if that is acceptable.'
   # A releasing deployment may already have written COMPLETE, and the restored server must boot closed.
   write_gate PREPARED || still_required 'The gate file could not be written.'
   set_phase rolling-back

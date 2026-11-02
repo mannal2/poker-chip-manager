@@ -149,14 +149,15 @@ sudo journalctl -u "$unit" --no-pager -n 100
 | 0 | `DEPLOYED` | The new backend is healthy and starts are open |
 | 3 | `HELD` | A tournament is in progress; nothing changed. Run it again later |
 | 1 | `ROLLED_BACK` | The new image failed; the previous one runs and starts are open |
-| 1 | `RECOVERY_REQUIRED` | Unfinished; run the recovery script. Starts stay closed, except with `GATE_MOUNT_BROKEN`, where they are open |
+| 1 | `RECOVERY_REQUIRED` | Unfinished; run the recovery script. Starts are closed, except: open with `GATE_MOUNT_BROKEN`, unknown if the backend does not answer |
 | 1 | other messages | Stopped before replacing; nothing was changed |
 | 2 | | Invalid input or missing `.env` values |
 
 `RECOVERY_REQUIRED` names the case: `NO_PREVIOUS_IMAGE` for a first deployment
 that failed, `ROLLBACK_FAILED` when the previous image also failed, and
 `GATE_MOUNT_BROKEN` when the new backend reads open while the gate file is closed.
-That last backend can accept games, so it is left running. Waiting never reopens
+That backend can accept games, so it is left running, as is any backend that does
+not answer. Waiting never reopens
 starts. A backend that is restarting does not answer prepare, so
 the deployment stops without replacing it; investigate that backend first.
 
@@ -190,20 +191,22 @@ alone. It then reads the running image and `backend-pending`:
 - The previous image is running and passes health: it reopens starts without
   restarting that server (`RECOVERED rolled-back`).
 - Otherwise it restores the previous image and rechecks it, along with
-  `backend-current` and `backend-lastHealthy`. It replaces a backend only when it
-  is proved free of games: no container is running, or status reads closed with
-  0 tournaments. Unreadable status never allows replacing a running new image, in
-  any phase. A new container that has exited or is gone may be rolled back. If
-  Docker cannot say what is running, recovery stops too.
+  `backend-current` and `backend-lastHealthy`. If Docker cannot say what is
+  running, recovery stops.
 - A first deployment has nothing to restore. The failed backend is stopped, starts
   stay closed, and the next deployment may run.
+
+One rule covers every replacement or stop, in both scripts and every phase: no
+backend container is running, or status is readable with `startsClosed:true` and
+0 tournaments. Anything else ends in `RECOVERY_REQUIRED`, so a running backend
+that does not answer always needs an operator to stop it first.
 
 | Exit | Output | Meaning |
 |---|---|---|
 | 0 | `NOTHING_TO_RECOVER` | No marker, and starts are open or no backend runs |
 | 0 | `RECOVERED ...` | Completed, rolled back, or the gate was opened |
 | 1 | `UNOWNED_GATE_CLOSED` | No marker, but this backend's starts are closed |
-| 1 | `RECOVERY_REQUIRED` | Unresolved; the marker and gate stay. Fix the cause and rerun |
+| 1 | `RECOVERY_REQUIRED` | Unresolved; the marker stays and the backend was not replaced. Fix the cause and rerun |
 | 1 | `NO_PREVIOUS_IMAGE` | Failed first deployment stopped; starts stay closed |
 | 2 | | Invalid arguments |
 
@@ -213,9 +216,9 @@ open, so it can hold games. Recovery exits 1 and leaves `backend-current` and
 the backend so it boots closed, after checking status for tournaments, and rerun
 recovery.
 
-**Unreadable status on a running new image.** Recovery will not guess. Find out
-why status fails. If you accept losing whatever that backend holds, stop it as
-described below and rerun recovery.
+**A running backend that does not answer.** Recovery will not guess, whichever
+image it runs. Find out why status fails. If you accept losing whatever that
+backend holds, stop it with `sudo docker compose stop backend` and rerun recovery.
 
 **Closed starts with no marker.** Find out why before opening them, then:
 

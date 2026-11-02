@@ -49,21 +49,16 @@ running_image() {
   [[ -n "$active" ]] || return 0
   docker inspect --format '{{.Image}}' "$active"
 }
-# 교체해도 진행 게임을 지우지 않는다는 근거가 있을 때만 참이다
+# backend가 없거나 닫힌 채 게임 0개로 읽힐 때만 참이다
 replace_is_safe() {
-  local phase=$1 active response
+  local active response
   active=$(compose ps -q backend) || return 1
   [[ -n "$active" ]] || return 0
-  if response=$(read_status); then
-    [[ "$(plain_field "$response" startsClosed)" == true \
-      && "$(plain_field "$response" activeTournaments)" == 0 ]]
-    return
-  fi
-  # The old process proved closed with no games before these phases, but that says
-  # nothing about a new backend that is running: its mount may have booted it open.
-  # So with no status, only the proved process itself may go. Releasing voids even that.
-  [[ "$phase" == replacing || "$phase" == rolling-back ]] && gate_is_mine \
-    && [[ -n "$previous_id" && "$(docker inspect --format '{{.Image}}' "$active")" == "$previous_id" ]]
+  # This is the only rule, for every phase. A running backend that does not answer
+  # could be holding games, so an operator has to stop it first.
+  response=$(read_status) || return 1
+  [[ "$(plain_field "$response" startsClosed)" == true \
+    && "$(plain_field "$response" activeTournaments)" == 0 ]]
 }
 # 게이트 파일은 닫혔는데 서버가 열렸다고 읽히면 참이다
 mount_is_broken() {

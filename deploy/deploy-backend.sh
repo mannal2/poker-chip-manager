@@ -192,14 +192,12 @@ revision=$revision
 fi
 
 echo 'NEW_IMAGE_FAILED: restoring the previous backend with the gate closed.' >&2
-# A server that read open may hold games from now on, so the closed proof is void.
 response=$(read_status) || response=''
 if mount_is_broken "$response"; then
-  set_phase releasing || echo 'The releasing phase could not be recorded.' >&2
   recovery_required 'GATE_MOUNT_BROKEN: the new backend reads open while the gate file is closed. It was not replaced.'
 fi
 [[ -n "$rollback" ]] || recovery_required 'NO_PREVIOUS_IMAGE: there is no earlier healthy backend to restore.'
-replace_is_safe replacing || recovery_required 'ROLLBACK_FAILED: the backend cannot be proved free of games, so it was not replaced.'
+replace_is_safe || recovery_required 'ROLLBACK_FAILED: the backend cannot be proved free of games, so it was left running.'
 set_phase rolling-back || recovery_required 'ROLLBACK_FAILED: the phase could not be recorded.'
 if start_backend "$rollback" && healthy "$previous_id" "$previous_revision" no; then
   if set_image "$previous_ref" && open_gate; then

@@ -69,7 +69,11 @@ internal() {
       [[ ${SCENARIO:-} != kill-after-prepare ]] || die_now
       printf '{"result":"READY","processId":"process-%s","activeTournaments":0}\n' "$(cat "$MOCK_DIR/proc")" ;;
     */status)
-      [[ ${SCENARIO:-} != status-down ]] || exit 7
+      [[ ${SCENARIO:-} != status-down && ! -e $MOCK_DIR/status-dead ]] || exit 7
+      if [[ ${SCENARIO:-} == status-flicker && ! -e $MOCK_DIR/flickered ]]; then
+        touch "$MOCK_DIR/flickered"
+        exit 7
+      fi
       if [[ -n $(cat "$MOCK_DIR/holder") ]]; then
         [[ ${SCENARIO:-} != kill-after-gate ]] || die_now
         [[ ${SCENARIO:-} != status-failure ]] || exit 7
@@ -131,6 +135,7 @@ case "$1" in
           echo old > "$MOCK_DIR/running"
         else
           [[ ${SCENARIO:-} != replace-failure ]] || exit 1
+          if [[ ${SCENARIO:-} == replace-failure-blind ]]; then touch "$MOCK_DIR/status-dead"; exit 1; fi
           echo new > "$MOCK_DIR/running"
         fi
         [[ ${SCENARIO:-} == broken-mount ]] && : > "$MOCK_DIR/holder" || boot
@@ -200,7 +205,7 @@ chmod +x "$fixture/bin/"*
 reset() {
   export SCENARIO=''
   rm -rf -- "$fixture/.local"
-  rm -f "$fixture/clock" "$fixture/images" "$fixture/removed" "$fixture/edge-calls" "$fixture/sleeps"
+  rm -f "$fixture/clock" "$fixture/images" "$fixture/removed" "$fixture/edge-calls" "$fixture/sleeps" "$fixture/status-dead" "$fixture/flickered"
   printf 'BACKEND_IMAGE=%s\nBACKEND_MEM_LIMIT=768m\nBACKEND_HEAP=384m\nFRONTEND_IMAGE=front:keep\nOTHER_SETTING=keep\n' \
     "$old_image" > "$fixture/.env"
   echo "${1:-old}" > "$fixture/running"
@@ -454,7 +459,6 @@ test_broken_mount() {
   run_deploy
   check 'exit' [ "$result" = 1 ]
   check 'word' grep -q 'RECOVERY_REQUIRED.*GATE_MOUNT_BROKEN' "$fixture/output"
-  check 'proof voided' grep -q phase=releasing "$state/backend-pending"
   check 'one up only' [ "$(grep -c 'up -d' "$fixture/calls")" = 1 ]
   check 'fails before edge checks' [ ! -e "$fixture/edge-calls" ]
   check 'does not wait' [ ! -e "$fixture/sleeps" ]
@@ -488,9 +492,16 @@ test_recover_mount_warning() {
     check "$scenario lastHealthy untouched" grep -q "revision=$old_revision" "$state/backend-lastHealthy"
     check "$scenario no replacement" lacks 'up -d' "$fixture/calls"
     check "$scenario gate file closed" lacks COMPLETE "$gate_file"
-    check "$scenario proof voided" grep -q phase=releasing "$state/backend-pending"
     echo "PASS mount warning after $scenario"
   done
+  : > "$fixture/holder"
+  export SCENARIO=status-flicker
+  run_script recover-backend.sh
+  check 'flicker exit' [ "$result" = 1 ]
+  check 'flicker word' grep -q GATE_MOUNT_BROKEN "$fixture/output"
+  check 'flicker current untouched' [ ! -e "$state/backend-current" ]
+  echo 'PASS mount warning after one unreadable status'
+  export SCENARIO=''
   # 고친 마운트로 다시 띄우면 닫힌 채 기동한다
   echo deploy-1 > "$fixture/holder"
   run_script recover-backend.sh
@@ -729,7 +740,6 @@ test_releasing_never_replaces_blind() {
   export SCENARIO=kill-after-release
   run_deploy
   check 'killed' [ "$result" -ge 128 ]
-  check 'phase' grep -q phase=releasing "$state/backend-pending"
   echo 2 > "$fixture/active"
   : > "$fixture/calls"
   export SCENARIO=status-down
@@ -814,6 +824,52 @@ test_recover_unknown_running() {
   check 'first dead reports' grep -q NO_PREVIOUS_IMAGE "$fixture/output"
   check 'first dead clears' [ ! -e "$state/backend-pending" ]
   echo 'PASS dead first deployment clears'
+}
+# 같은 digest를 다시 배포해도 답하지 않는 서버는 교체하지 않는다
+test_same_digest_unknown_status() {
+  reset none
+  printf 'image=%s\nrevision=%s\n' "$target" "$revision" > "$state/backend-lastHealthy"
+  echo 2 > "$fixture/active"
+  export SCENARIO=status-down
+  run_deploy
+  check 'deploy exit' [ "$result" = 1 ]
+  check 'deploy word' grep -q 'RECOVERY_REQUIRED.*ROLLBACK_FAILED' "$fixture/output"
+  check 'one up only' [ "$(grep -c 'up -d' "$fixture/calls")" = 1 ]
+  check 'still running' grep -q new "$fixture/running"
+  : > "$fixture/calls"
+  run_script recover-backend.sh
+  check 'recover exit' [ "$result" = 1 ]
+  check 'recover no replacement' lacks 'up -d' "$fixture/calls"
+  check 'recover no stop' lacks ' stop ' "$fixture/calls"
+  echo 'PASS same digest with unknown status is not replaced'
+}
+# 답하지 않는 이전 서버는 남기고 운영자가 멈춘 뒤에만 되돌린다
+test_old_server_unknown_status() {
+  reset
+  export SCENARIO=replace-failure-blind
+  run_deploy
+  check 'exit' [ "$result" = 1 ]
+  check 'word' grep -q RECOVERY_REQUIRED "$fixture/output"
+  check 'one up only' [ "$(grep -c 'up -d' "$fixture/calls")" = 1 ]
+  check 'left running' grep -q old "$fixture/running"
+  check 'pending' [ -e "$state/backend-pending" ]
+  : > "$fixture/calls"
+  export SCENARIO=''
+  run_script recover-backend.sh
+  check 'recover exit' [ "$result" = 1 ]
+  check 'recover word' grep -q RECOVERY_REQUIRED "$fixture/output"
+  check 'recover left running' grep -q old "$fixture/running"
+  check 'recover no replacement' lacks 'up -d' "$fixture/calls"
+  echo 'PASS old server with unknown status is left running'
+  echo none > "$fixture/running"
+  rm -f "$fixture/status-dead"
+  run_script recover-backend.sh
+  check 'stopped exit' [ "$result" = 0 ]
+  check 'stopped word' grep -q 'RECOVERED rolled-back' "$fixture/output"
+  check 'stopped running old' grep -q old "$fixture/running"
+  check 'stopped gate' gate_open
+  check 'stopped env' grep -q "^BACKEND_IMAGE=$old_image\$" "$fixture/.env"
+  echo 'PASS operator stop then rollback'
 }
 # 기록까지 끝난 배포를 되돌리면 상태 파일도 이전 값으로 돌아간다
 test_recover_restores_records() {
@@ -912,6 +968,8 @@ test_frontend_pending
 test_releasing_never_replaces_blind
 test_recover_unknown_running
 test_recover_mount_warning
+test_same_digest_unknown_status
+test_old_server_unknown_status
 test_recover_restores_records
 test_deploy_locked
 test_prune

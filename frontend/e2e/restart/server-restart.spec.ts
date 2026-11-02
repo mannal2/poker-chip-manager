@@ -42,6 +42,23 @@ async function replayWithOldSession(
   return { status: response.status(), body: await response.json() };
 }
 
+// 화면의 새 세션과 CSRF 토큰으로 이전 요청 본문을 그대로 보낸다
+async function replayWithNewSession(page: Page, path: string, body: unknown) {
+  // 페이지 안에서 세션 토큰을 받아 같은 Origin으로 전송한다
+  return page.evaluate(
+    async ({ target, sent }) => {
+      const session = await (await fetch('/api/session')).json();
+      const response = await fetch(target, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': session.csrfToken },
+        body: JSON.stringify(sent),
+      });
+      return { status: response.status, code: (await response.json()).code };
+    },
+    { target: path, sent: body },
+  );
+}
+
 // 게임 중 서버가 재시작되면 방 소실을 안내하고 이전 인증·명령이 새 서버에서 아무것도 만들지 않는다(M16)
 test('a server restart during a game reports the lost room and ignores old requests', async ({
   page,
@@ -81,9 +98,11 @@ test('a server restart during a game reports the lost room and ignores old reque
     expect(created).toBeDefined();
     expect(started).toBeDefined();
     const oldRequestIds = new Set(before.map((sent) => sent.body.requestId));
+    expect(oldRequestIds.has(undefined)).toBe(false);
 
     const after: Record<string, unknown>[] = [];
-    const restartedAt = Date.now();
+    // 재시작을 시작한 순간부터 45초 안에 두 화면이 소실을 안내해야 한다
+    const deadline = Date.now() + 45_000;
     await backend.stop();
     backend = undefined;
     // 재시작 뒤 방장 화면이 보내는 모든 변경 요청을 기록한다
@@ -93,13 +112,15 @@ test('a server restart during a game reports the lost room and ignores old reque
     backend = await startBackend();
     expect(await serverStatus(request)).toMatchObject({ rooms: 0, startsClosed: false });
 
-    const remaining = 45_000 - (Date.now() - restartedAt);
     for (const current of [page, guest]) {
-      await expect(current.getByRole('alert')).toHaveText(LOST, { timeout: remaining });
+      await expect(current.getByRole('alert')).toHaveText(LOST, {
+        timeout: Math.max(1, deadline - Date.now()),
+      });
       await expect(
         current.getByRole('link', { name: '입장 화면으로', exact: true }),
       ).toHaveAttribute('href', `/online/?code=${code}`);
     }
+    expect(Date.now()).toBeLessThanOrEqual(deadline);
 
     await page.getByRole('link', { name: '입장 화면으로', exact: true }).click();
     await expect(page).toHaveURL(`/online/?code=${code}`);
@@ -125,21 +146,20 @@ test('a server restart during a game reports the lost room and ignores old reque
         status: 401,
         body: { code: 'NO_SESSION' },
       });
-    // 새 세션으로 보낸 이전 명령도 사라진 방을 찾지 못한다
-    const replayed = await page.evaluate(
-      // 새 세션의 CSRF 토큰을 받아 이전 명령 본문을 그대로 보낸다
-      async ({ roomId, body }) => {
-        const session = await (await fetch('/api/session')).json();
-        const response = await fetch(`/api/rooms/${roomId}/commands`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': session.csrfToken },
-          body: JSON.stringify(body),
-        });
-        return { status: response.status, code: (await response.json()).code };
-      },
-      { roomId: oldRoomId, body: started.body },
-    );
-    expect(replayed).toEqual({ status: 404, code: 'ROOM_NOT_FOUND' });
+    // 새 세션으로 보낸 이전 명령은 사라진 방을 찾지 못한다
+    expect(
+      await replayWithNewSession(page, `/api/rooms/${oldRoomId}/commands`, started.body),
+    ).toEqual({ status: 404, code: 'ROOM_NOT_FOUND' });
+    // 새 방에 보낸 이전 시작은 새 세대 원장의 다음 순번이 아니므로 거절된다
+    expect(started.body.sequence).toBeGreaterThan(1);
+    expect(
+      await replayWithNewSession(page, `/api/rooms/${newRoomId}/commands`, started.body),
+    ).toEqual({ status: 409, code: 'SEQUENCE_GAP' });
+    // 이전 방 생성 본문의 화면 스트림은 새 세션에 없다
+    expect(await replayWithNewSession(page, '/api/rooms', created.body)).toEqual({
+      status: 409,
+      code: 'UNKNOWN_STREAM',
+    });
 
     expect(await serverStatus(request)).toMatchObject({ rooms: 1, activeTournaments: 0 });
     const unchanged = (await roomState(page, newRoomId)).body;

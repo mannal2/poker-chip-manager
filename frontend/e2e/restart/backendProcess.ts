@@ -123,6 +123,24 @@ export async function startBackend(): Promise<BackendProcess> {
   const exited = new Promise<void>((done) => child.once('exit', () => done()));
   let gone = false;
   void exited.then(() => (gone = true));
+  // 프로세스 트리를 끝내고 정해진 시간 안에 종료되지 않으면 분명한 오류로 실패한다
+  const terminate = async () => {
+    if (!gone) await killTree(child);
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    // 종료 대기의 상한을 둔다
+    const limit = new Promise<never>((_, reject) => {
+      timer = setTimeout(
+        () => reject(new Error(`Backend process ${child.pid} did not exit after being killed`)),
+        30_000,
+      );
+    });
+    try {
+      await Promise.race([exited, limit]);
+    } finally {
+      clearTimeout(timer);
+      log.end();
+    }
+  };
   try {
     await waitFor(
       // 시작 중에 프로세스가 끝나면 기록과 함께 실패하고 아니면 상태 경로를 확인한다
@@ -135,16 +153,14 @@ export async function startBackend(): Promise<BackendProcess> {
       'the backend health check',
     );
   } catch (error) {
-    await killTree(child);
+    await terminate().catch(() => {});
     throw error;
   }
   return {
     // 강제 종료로 메모리의 방과 세션을 모두 잃게 하고 포트가 빌 때까지 기다린다
     async stop() {
-      if (!gone) await killTree(child);
-      await exited;
+      await terminate();
       await waitFor(async () => !(await portOpen()), 30_000, `port ${PORT} to close`);
-      log.end();
     },
   };
 }

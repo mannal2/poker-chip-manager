@@ -479,6 +479,7 @@ async function main() {
   finish();
 }
 
+// 집계 전에 실패한 실행은 원인을 남기고 2로 끝낸다
 main().catch((error) => {
   log(error?.stack ?? String(error));
   process.exit(2);

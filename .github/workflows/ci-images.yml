@@ -32,6 +32,13 @@ jobs:
           bash -n deploy/deploy-frontend.sh
           bash deploy/test-deploy-frontend.sh
 
+      - name: Check release planning
+        run: |
+          bash -n deploy/plan-release.sh
+          bash -n deploy/check-revision.sh
+          bash -n deploy/release-remote.sh
+          bash deploy/test-plan-release.sh
+
       - name: Set up Node
         uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
@@ -95,9 +102,115 @@ jobs:
         if: failure()
         run: docker logs poker-ci || true
 
-  publish:
-    needs: checks
+  backend:
+    uses: ./.github/workflows/backend-ci.yml
+
+  online-e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      - name: Set up Java
+        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: "25"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
+
+      - name: Set up Node
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm --prefix frontend ci
+
+      # Compiling first keeps bootRun inside Playwright's server start limit.
+      - name: Compile backend
+        working-directory: backend
+        run: ./gradlew :server:classes
+
+      - name: Online browser tests
+        working-directory: frontend
+        # Pull requests skip the 60-second test and the serial deploy-gate project.
+        run: |
+          if [[ "$GITHUB_EVENT_NAME" == pull_request ]]; then
+            npx playwright install --with-deps chromium
+            npx playwright test --config playwright.online.config.ts \
+              --project=chromium --grep-invert @slow
+          else
+            npx playwright install --with-deps chromium webkit
+            npx playwright test --config playwright.online.config.ts
+          fi
+
+  plan:
+    needs: [checks, backend, online-e2e]
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    outputs:
+      backend: ${{ steps.compare.outputs.backend }}
+      frontend: ${{ steps.compare.outputs.frontend }}
+
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout history
+        if: vars.BACKEND_DEPLOY_ENABLED == 'true'
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      # An unreachable server must not stop publishing; the deploy job reports it.
+      - name: Connect to Tailscale
+        if: vars.BACKEND_DEPLOY_ENABLED == 'true'
+        continue-on-error: true
+        uses: tailscale/github-action@d1b6cd204f8dceda5b3eaad7f1f767be390056cd # v4
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          audience: ${{ secrets.TS_AUDIENCE }}
+          tags: tag:github-actions
+          ping: ${{ secrets.DEPLOY_HOST }}
+
+      - name: Compare with deployed revisions
+        id: compare
+        env:
+          BACKEND_ENABLED: ${{ vars.BACKEND_DEPLOY_ENABLED }}
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_HOST_KEY: ${{ secrets.DEPLOY_HOST_KEY }}
+        run: |
+          set -euo pipefail
+
+          if [[ "$BACKEND_ENABLED" != true ]]; then
+            printf 'frontend=true\nbackend=false\n' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          revisions=$(bash deploy/release-remote.sh read-revisions)
+          frontend_current=$(sed -n 's/^frontend_current=//p' <<< "$revisions")
+          backend_current=$(sed -n 's/^backend_current=//p' <<< "$revisions")
+          bash deploy/check-revision.sh changed "$frontend_current" "$backend_current" "$GITHUB_SHA" \
+            >> "$GITHUB_OUTPUT"
+
+      - name: Remove temporary SSH key
+        if: always()
+        run: rm -f "$RUNNER_TEMP/poker-ssh/id_ed25519"
+
+  publish:
+    needs: plan
+    if: needs.plan.outputs.frontend == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
@@ -151,97 +264,90 @@ jobs:
             echo 'A newer main commit exists; leaving the main image tag unchanged.'
           fi
 
-  deploy:
-    needs: publish
-    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+  publish-backend:
+    needs: plan
+    if: vars.BACKEND_DEPLOY_ENABLED == 'true' && needs.plan.outputs.backend == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
+
+    outputs:
+      image: ${{ steps.publish.outputs.image }}
+
+    permissions:
+      contents: read
+      packages: write
+
+    env:
+      IMAGE: ghcr.io/mannal2/poker-chip-manager-backend
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      - name: Log in to GHCR
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GHCR_USER: ${{ github.actor }}
+        run: |
+          printf '%s' "$GHCR_TOKEN" |
+            docker login ghcr.io \
+              --username "$GHCR_USER" \
+              --password-stdin
+
+      - name: Build and publish
+        id: publish
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          docker build \
+            --platform linux/amd64 \
+            -f backend/Dockerfile \
+            --build-arg "REVISION=$GITHUB_SHA" \
+            --label "org.opencontainers.image.source=https://github.com/mannal2/poker-chip-manager" \
+            --label "org.opencontainers.image.revision=$GITHUB_SHA" \
+            -t "$IMAGE:sha-$GITHUB_SHA" backend
+
+          docker push "$IMAGE:sha-$GITHUB_SHA"
+
+          digest=$(docker image inspect --format '{{index .RepoDigests 0}}' "$IMAGE:sha-$GITHUB_SHA")
+          [[ "$digest" == "$IMAGE"@sha256:* && "${digest##*@sha256:}" =~ ^[a-f0-9]{64}$ ]]
+          printf 'image=%s\n' "$digest" >> "$GITHUB_OUTPUT"
+
+          latest=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')
+          if [[ "$latest" == "$GITHUB_SHA" ]]; then
+            docker tag "$IMAGE:sha-$GITHUB_SHA" "$IMAGE:main"
+            docker push "$IMAGE:main"
+          else
+            echo 'A newer main commit exists; leaving the main image tag unchanged.'
+          fi
+
+  deploy:
+    needs: [plan, publish, publish-backend]
+    # A skipped publish is normal here; a failed one stops both services.
+    if: >-
+      !cancelled()
+      && needs.plan.result == 'success'
+      && (needs.publish.result == 'success' || needs.publish.result == 'skipped')
+      && (needs.publish-backend.result == 'success' || needs.publish-backend.result == 'skipped')
+      && (needs.plan.outputs.frontend == 'true' || needs.plan.outputs.backend == 'true')
 
     permissions:
       contents: read
       id-token: write
+      packages: read
 
-    steps:
-      - name: Checkout deployment script
-        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
-        with:
-          ref: ${{ github.sha }}
-          persist-credentials: false
-
-      - name: Connect to Tailscale
-        uses: tailscale/github-action@d1b6cd204f8dceda5b3eaad7f1f767be390056cd # v4
-        with:
-          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
-          audience: ${{ secrets.TS_AUDIENCE }}
-          tags: tag:github-actions
-          ping: ${{ secrets.DEPLOY_HOST }}
-
-      - name: Deploy frontend
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          FRONTEND_IMAGE: ${{ needs.publish.outputs.image }}
-          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
-          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
-          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
-          DEPLOY_HOST_KEY: ${{ secrets.DEPLOY_HOST_KEY }}
-        run: |
-          set -euo pipefail
-
-          latest=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')
-          if [[ "$latest" != "$GITHUB_SHA" ]]; then
-            echo 'Skipping deployment: this run is no longer the latest main commit.'
-            exit 0
-          fi
-
-          repository=ghcr.io/mannal2/poker-chip-manager-frontend
-          [[ "$FRONTEND_IMAGE" == "$repository"@sha256:* && "${FRONTEND_IMAGE##*@sha256:}" =~ ^[a-f0-9]{64}$ ]]
-          [[ "$GITHUB_SHA" =~ ^[a-f0-9]{40}$ ]]
-          [[ "$GITHUB_RUN_ID" =~ ^[0-9]+$ && "$GITHUB_RUN_ATTEMPT" =~ ^[0-9]+$ ]]
-          : "${DEPLOY_HOST:?DEPLOY_HOST is missing}"
-          : "${DEPLOY_USER:?DEPLOY_USER is missing}"
-          : "${DEPLOY_SSH_KEY:?DEPLOY_SSH_KEY is missing}"
-          : "${DEPLOY_HOST_KEY:?DEPLOY_HOST_KEY is missing}"
-
-          umask 077
-          mkdir -p "$RUNNER_TEMP/poker-ssh"
-          printf '%s\n' "$DEPLOY_SSH_KEY" |
-            tr -d '\r' > "$RUNNER_TEMP/poker-ssh/id_ed25519"
-          printf '%s\n' "$DEPLOY_HOST_KEY" |
-            awk '{print "poker-server " $1 " " $2}' \
-            > "$RUNNER_TEMP/poker-ssh/known_hosts"
-
-          unit="poker-deploy-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
-          ssh_options=(
-            -i "$RUNNER_TEMP/poker-ssh/id_ed25519"
-            -o UserKnownHostsFile="$RUNNER_TEMP/poker-ssh/known_hosts"
-            -o HostKeyAlias=poker-server
-            -o StrictHostKeyChecking=yes
-            -o IdentitiesOnly=yes
-            -o BatchMode=yes
-            -o ConnectTimeout=15
-            -o ServerAliveInterval=15
-            -o ServerAliveCountMax=3
-          )
-          bash -n deploy/deploy-frontend.sh
-          scp "${ssh_options[@]}" deploy/deploy-frontend.sh \
-            "$DEPLOY_USER@$DEPLOY_HOST:/home/ubuntu/poker-chip-manager/deploy/deploy-frontend-$unit.sh"
-
-          ssh "${ssh_options[@]}" \
-            "$DEPLOY_USER@$DEPLOY_HOST" \
-            "bash -s -- '$FRONTEND_IMAGE' '$GITHUB_SHA' '$unit'" <<'REMOTE'
-          set -euo pipefail
-          image=$1
-          revision=$2
-          unit=$3
-          script="/home/ubuntu/poker-chip-manager/deploy/deploy-frontend-$unit.sh"
-          bash -n "$script"
-          result=0
-          sudo -n systemd-run --unit="$unit" --service-type=exec --wait --collect \
-            /usr/bin/bash "$script" "$image" "$revision" https://pcm.jwlee.xyz || result=$?
-          sudo -n journalctl -u "$unit" --no-pager -n 200 || true
-          exit "$result"
-          REMOTE
-
-      - name: Remove temporary SSH key
-        if: always()
-        run: rm -f "$RUNNER_TEMP/poker-ssh/id_ed25519"
+    uses: ./.github/workflows/deploy.yml
+    with:
+      ref: ${{ github.sha }}
+      backend_changed: ${{ needs.plan.outputs.backend }}
+      frontend_changed: ${{ needs.plan.outputs.frontend }}
+      backend_image: ${{ needs.publish-backend.outputs.image }}
+      frontend_image: ${{ needs.publish.outputs.image }}
+      require_latest: true
+    secrets:
+      TS_OAUTH_CLIENT_ID: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+      TS_AUDIENCE: ${{ secrets.TS_AUDIENCE }}
+      DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+      DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+      DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+      DEPLOY_HOST_KEY: ${{ secrets.DEPLOY_HOST_KEY }}

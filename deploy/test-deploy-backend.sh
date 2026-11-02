@@ -238,6 +238,22 @@ gate_closed() { [[ -f "$gate_file" ]] && ! grep -q COMPLETE "$gate_file" && [[ -
 gate_open() { grep -q '"phase":"COMPLETE"' "$gate_file" && [[ -z $(cat "$fixture/holder") ]]; }
 # 교체가 일어나지 않았는지 확인한다
 not_replaced() { lacks 'up -d' "$fixture/calls" && grep -q "BACKEND_IMAGE=$old_image" "$fixture/.env"; }
+# 실행별 업로드 위치에서도 프로젝트와 상태 경로를 올바르게 찾는다
+test_run_directory() {
+  reset
+  mkdir "$fixture/deploy/run-unit"
+  cp deploy/deploy-backend.sh deploy/recover-backend.sh deploy/backend-lib.sh "$fixture/deploy/run-unit/"
+  run_script run-unit/deploy-backend.sh "$target" "$revision" "$origin" deploy-1
+  check 'run directory deploys' [ "$result" = 0 ]
+  check 'run directory uses the project state' grep -qx "revision=$revision" "$state/backend-current"
+  check 'run directory updates the project env' grep -q "^BACKEND_IMAGE=$target\$" "$fixture/.env"
+  run_script run-unit/recover-backend.sh
+  check 'run directory recovery exit' [ "$result" = 0 ]
+  check 'run directory recovery word' grep -q NOTHING_TO_RECOVER "$fixture/output"
+  check 'run directory leaves no stray state' [ ! -e "$fixture/deploy/.local" ]
+  rm -rf -- "$fixture/deploy/run-unit"
+  echo 'PASS run directory'
+}
 # 정상 배포는 prepare, 재확인, 교체, 해제 순서를 지키고 상태 파일을 남긴다
 test_success() {
   reset
@@ -972,4 +988,5 @@ test_same_digest_unknown_status
 test_old_server_unknown_status
 test_recover_restores_records
 test_deploy_locked
+test_run_directory
 test_prune

@@ -103,7 +103,7 @@ test('forfeits a disconnected participant', async ({ page, browser }) => {
 });
 
 // 명시적으로 끊긴 방장의 실제 60초 경과 뒤 인수 요청이 새로고침에도 유지된다
-test('takes host after a real 60 second disconnection', async ({ browser }) => {
+test('takes host after a real 60 second disconnection', { tag: '@slow' }, async ({ browser }) => {
   test.slow();
   const hostContext = await browser.newContext();
   const guestContext = await browser.newContext();

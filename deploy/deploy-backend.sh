@@ -6,7 +6,11 @@ umask 077
 # Exit codes: 0 DEPLOYED, 3 HELD, 1 failure, 2 invalid input. The numbered
 # comments follow DEPLOYMENT_SPEC section 4.
 script_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
-project=$(cd -- "$script_dir/.." && pwd)
+# Actions uploads each run's scripts into deploy/run-<unit>/, one level deeper.
+case "$script_dir" in
+  */deploy/run-*) project=$(cd -- "$script_dir/../.." && pwd) ;;
+  *) project=$(cd -- "$script_dir/.." && pwd) ;;
+esac
 cd "$project"
 target=${1:-}
 revision=${2:-}

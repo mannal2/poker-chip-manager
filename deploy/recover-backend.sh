@@ -7,7 +7,11 @@ umask 077
 # Exit codes: 0 nothing to do or recovered, 1 still unresolved, 2 invalid input.
 # recover-backend.sh --open-unowned-gate <origin> opens a gate no record explains.
 script_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
-project=$(cd -- "$script_dir/.." && pwd)
+# Actions uploads each run's scripts into deploy/run-<unit>/, one level deeper.
+case "$script_dir" in
+  */deploy/run-*) project=$(cd -- "$script_dir/../.." && pwd) ;;
+  *) project=$(cd -- "$script_dir/.." && pwd) ;;
+esac
 cd "$project"
 mode=${1:-}
 origin=''

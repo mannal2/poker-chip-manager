@@ -24,7 +24,7 @@ export function validChips(n: number): boolean {
 // 이름의 앞뒤 공백을 제거하고 NFC로 정규화해 서버와 같은 이름 규칙을 만족하면 돌려준다
 export function normalizeName(raw: string): string | null {
   const name = raw.trim().normalize('NFC');
-  return /^[가-힣a-zA-Z0-9 ]{1,10}$/.test(name) ? name : null;
+  return /^[가-힣ㄱ-ㅣa-zA-Z0-9 ]{1,10}$/.test(name) ? name : null;
 }
 // 이름을 정규화하고 이름/칩/좌석 규칙을 검사해 검증 결과를 돌려준다
 export function validateSettings(input: GameSettings): SettingsValidation {

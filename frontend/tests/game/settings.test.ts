@@ -47,7 +47,10 @@ describe('이름 하나', () => {
     expect(normalizeName('가')).toBe('가');
     expect(normalizeName('Ab 12')).toBe('Ab 12');
     expect(normalizeName('가나다라마바사아자차')).toBe('가나다라마바사아자차');
+    expect(normalizeName('ㄱ')).toBe('ㄱ');
+    expect(normalizeName('ㅏ')).toBe('ㅏ');
+    expect(normalizeName('ㅎㅎ ㄲㅘ')).toBe('ㅎㅎ ㄲㅘ');
   });
-  for (const name of ['', '   ', 'a!', '가나다라마바사아자차카', 'é'])
+  for (const name of ['', '   ', 'a!', '가나다라마바사아자차카', 'é', 'ㅤ', 'ㆍ'])
     it(`거절 ${JSON.stringify(name)}`, () => expect(normalizeName(name)).toBeNull());
 });

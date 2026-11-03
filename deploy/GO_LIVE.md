@@ -268,7 +268,7 @@ sudo docker compose exec -T backend curl -fsS http://127.0.0.1:8080/internal/dep
   sudo bash /home/ubuntu/poker-chip-manager/deploy/run-poker-backend-deploy-<실행>-<시도>/recover-backend.sh
   ```
 
-  첫 배포는 되돌릴 이전 이미지가 없으므로 복구는 실패한 backend를 멈추고 `NO_PREVIOUS_IMAGE`로 끝난다. 새 backend가 상태 조회에 답하지 않으면(재시작 반복, 768m 안의 OOM 등) 복구는 게임이 없음을 증명하지 못해 `RECOVERY_REQUIRED`로 멈춘다. 첫 배포는 시작을 연 적이 없어 게임이 있을 수 없으므로, 그때는 직접 멈추고 복구를 다시 실행한다.
+  첫 배포는 되돌릴 이전 이미지가 없으므로 복구는 실패한 backend를 멈추고 `NO_PREVIOUS_IMAGE`로 끝난다. 새 backend가 상태 조회에 답하지 않으면(재시작 반복, 768m 안의 OOM 등) 복구는 게임이 없음을 증명하지 못해 `RECOVERY_REQUIRED`로 멈춘다. 배포가 `releasing` 단계까지 갔다면 시작 차단이 이미 풀렸을 수 있으므로, 직접 멈추기 전에 `sudo grep '^phase=' /home/ubuntu/poker-chip-manager/.local/deploy/backend-pending`으로 단계를 확인한다. `releasing`이 아니면 시작을 연 적이 없어 게임이 있을 수 없다. `releasing`이어도 백엔드가 실패하면 프런트는 보류되어 이전 프런트(온라인 버튼이 꺼진 화면)가 그대로이므로, 화면으로 게임을 만들 수는 없다. 어느 경우든 확인한 뒤에 직접 멈추고 복구를 다시 실행한다.
 
   ```bash
   cd /home/ubuntu/poker-chip-manager
@@ -320,7 +320,7 @@ sudo cat /home/ubuntu/poker-chip-manager/.local/deploy/current   # revision=병�
 
 ```bash
 cd /home/ubuntu/poker-chip-manager
-digest='ghcr.io/mannal2/poker-chip-manager-frontend@sha256:<2단계의 image= 값>'
+digest='<2단계의 image= 값 전체>'
 revision='<2단계의 revision= 값>'
 sudo docker image inspect "$digest" > /dev/null 2>&1 || sudo docker pull "$digest"
 unit="poker-deploy-rollback-$(date +%s)"
@@ -361,11 +361,11 @@ done | tee "$HOME/load-mem-$(date +%Y%m%d-%H%M).log"
 
 PC(Node 24)의 저장소 루트에서 실행한다. 한 주소에서 방 생성 분당 5개, 새 세션 분당 30개 한도 때문에 준비에만 몇 분이 걸리며, 그동안의 429는 `setupWaits`로 따로 센다(R18). 같은 주소에서 다른 사람이 방을 만들면 한도를 나눠 쓴다.
 
-```powershell
-node deploy/load/load-rooms.mjs --url https://pcm.jwlee.xyz --rooms 10 --players 9 --minutes 10 | Out-File -Encoding utf8 load-result.json
+```bash
+node deploy/load/load-rooms.mjs --url https://pcm.jwlee.xyz --rooms 10 --players 9 --minutes 10 > load-result.json
 ```
 
-Windows PowerShell 5.1의 `>`는 UTF-16으로 저장하므로 `Out-File -Encoding utf8`을 쓴다. Git Bash에서는 `> load-result.json`으로 충분하다.
+Git Bash에서 실행한다. Windows PowerShell 5.1의 `>`는 UTF-16으로, `Out-File -Encoding utf8`은 BOM을 붙여 저장하므로 `jq`나 `JSON.parse`가 결과를 읽지 못한다.
 
 끝나면 서버의 기록을 Ctrl+C로 멈추고 다시 본다.
 

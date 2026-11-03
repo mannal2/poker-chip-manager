@@ -39,6 +39,11 @@ afterEach(async () => {
   host.remove();
   vi.unstubAllGlobals();
 });
+// React가 변경을 감지하도록 입력 값을 바꾸고 input 이벤트를 보낸다
+function type(input: HTMLInputElement, value: string) {
+  Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(input, value);
+  input.dispatchEvent(new Event('input', { bubbles: true }));
+}
 // 초대 코드 입력과 세션의 지연 시작을 확인한다
 it('prefills the invite code without contacting the server', async () => {
   await act(() => root.render(<OnlineApp />));
@@ -51,6 +56,7 @@ it('keeps an invalid name rejection visible on the entry form', async () => {
   await act(() => host.querySelector<HTMLButtonElement>('button')!.click());
   expect(host.textContent).toContain('이름은 한글, 영문, 숫자, 공백으로 1~10자여야 합니다.');
   expect(host.querySelector('input')).not.toBeNull();
+  expect(fetch).not.toHaveBeenCalled();
 });
 // 승인 대기 중에 중복 복구 신청이나 새 입장을 제공하지 않는지 확인한다
 it('shows only approval guidance while recovery is pending', async () => {
@@ -113,6 +119,7 @@ it.each([
     }),
   );
   await act(() => root.render(<OnlineApp />));
+  await act(() => type(host.querySelector<HTMLInputElement>('[name="name"]')!, 'Alice'));
   await act(() => host.querySelectorAll<HTMLButtonElement>('button')[2].click());
   expect(host.querySelector('[role="alert"]')?.textContent).toBe(reason);
   expect(host.querySelector<HTMLInputElement>('[name="code"]')).not.toBeNull();

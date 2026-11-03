@@ -1,3 +1,4 @@
+import { normalizeName } from '../../../game/settings';
 import type { GameEvent, WinnerSelection } from '../../../game/types';
 import { messageFor } from '../../gameplay/model/errorMessages';
 import { ApiOpenError, type ApiClient, type ApiResult } from '../api/client';
@@ -202,15 +203,25 @@ export class OnlineController {
   }
   // 새 방을 생성한다
   create(name: string): Promise<boolean> {
+    if (this.rejectsName(name)) return Promise.resolve(false);
     return this.enter('/api/rooms', { name }, 'entry');
   }
   // 방 코드와 이름으로 참가한다
   join(code: string, name: string): Promise<boolean> {
+    if (this.rejectsName(name)) return Promise.resolve(false);
     return this.enter('/api/room-joins', { code, name }, 'entry');
   }
   // 기존 참가자 자리의 복구 승인을 요청한다
   requestRecovery(code: string, name: string): Promise<boolean> {
+    if (this.rejectsName(name)) return Promise.resolve(false);
     return this.enter('/api/recovery-requests', { code, name }, 'recovery');
+  }
+  // 서버 이름 규칙에 맞지 않는 이름은 빈도 한도를 쓰지 않도록 요청 전에 입장 화면에서 거절한다
+  private rejectsName(name: string): boolean {
+    if (normalizeName(name) !== null) return false;
+    if (!this.request && !this.view.pending && this.view.phase !== 'room')
+      this.update({ error: messageFor('INVALID_NAME') });
+    return true;
   }
   // 입장 요청을 보관하여 명시적 재시도에도 같은 본문을 사용한다
   private async enter(path: string, payload: object, kind: 'entry' | 'recovery'): Promise<boolean> {

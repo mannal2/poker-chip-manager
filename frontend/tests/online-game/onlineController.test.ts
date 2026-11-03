@@ -757,6 +757,24 @@ it('does not resend a rate limited command when the socket reopens', async () =>
   expect(x.c.canRetry()).toBe(true);
 });
 
+// 서버 이름 규칙에 맞지 않는 이름은 세션을 열거나 요청을 보내지 않고 입장 화면에서 거절한다
+it.each(['', '   ', 'a!', '가나다라마바사아자차카'])(
+  'rejects the name %j before any request',
+  async (name) => {
+    const x = setup();
+    expect(await x.c.create(name)).toBe(false);
+    expect(await x.c.join('ABC123', name)).toBe(false);
+    expect(await x.c.requestRecovery('ABC123', name)).toBe(false);
+    expect(x.api.open).not.toHaveBeenCalled();
+    expect(x.api.post).not.toHaveBeenCalled();
+    expect(x.c.getView()).toMatchObject({
+      phase: 'entry',
+      pending: false,
+      error: '이름은 한글, 영문, 숫자, 공백으로 1~10자여야 합니다.',
+    });
+  },
+);
+
 // 방 입장 요청도 제한되면 보관한 본문을 사용자가 재시도할 때만 다시 보낸다
 it('keeps a rate limited entry until the person retries', async () => {
   const x = setup();

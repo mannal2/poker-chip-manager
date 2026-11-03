@@ -212,7 +212,7 @@ gh variable list        # BACKEND_DEPLOY_ENABLED  true
 | **권장: IP 주소의 `/online/`·`/api/`·`/ws`를 도메인으로 보낸다** | IP 주소에서 버튼을 누르면 `https://pcm.jwlee.xyz/online/`으로 이동한다. `/local/`과 IP 주소의 로컬 기록은 그대로다 |
 | 그대로 둔다 | IP 주소 사용자는 버튼을 누르면 오류 화면을 본다. 이 위험을 받아들인다고 기록한다 |
 
-권장안을 고르면 6단계 전에 아래를 적용한다. 저장소의 `deploy/edge/nginx/default.conf`는 바꾸지 않았으므로, 적용했다면 같은 변경을 나중에 저장소에도 반영한다.
+권장안을 고르면 6단계 전에 아래를 적용한다. 2026-11-03 공개 때 이 권장안을 서버에 적용했고, 저장소의 `deploy/edge/nginx/default.conf`에도 같은 블록을 반영했다.
 
 **할 일:** 서버의 `/home/ubuntu/edge/nginx/default.conf`에서 `listen 443 ssl;`인 서버 블록의 `location / {` 바로 위에 다음 블록을 넣는다. 80번 서버 블록은 이미 모든 요청을 HTTPS로 보내므로 바꾸지 않는다.
 

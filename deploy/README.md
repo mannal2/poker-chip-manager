@@ -148,6 +148,7 @@ the `/ws` health check is sent with that Origin and gets 403 otherwise.
 
 ```bash
 image=ghcr.io/mannal2/poker-chip-manager-backend
+sudo docker pull "$image:main"
 digest=$(sudo docker image inspect --format '{{index .RepoDigests 0}}' "$image:main")
 revision=$(sudo docker image inspect --format '{{index .Config.Labels "org.opencontainers.image.revision"}}' "$digest")
 unit="poker-backend-deploy-$(date +%s)"
@@ -273,7 +274,10 @@ assets or certificates, and it never runs `docker system prune`.
 ## Operational checks
 
 Run on the server from `/home/ubuntu/poker-chip-manager`. None of these change
-anything, and none print cookies, keys or request bodies.
+anything, and none print cookies, keys or request bodies. The scripts run as root
+under `umask 077`, so after an automated deployment `.local/deploy` should be 0700
+and `.env` 0600, both owned by root; hence the `sudo`. Those modes are derived from
+the scripts; confirm them once with `sudo stat -c '%a %U %n' .local .local/deploy .env`.
 
 ```bash
 # Service state, restarts and OOM kills
@@ -283,9 +287,9 @@ sudo docker inspect --format '{{.State.Status}} restarts={{.RestartCount}} oom={
 
 # Running image against the deployment records
 sudo docker inspect --format '{{.Image}}' "$id"
-grep -E '^(BACKEND|FRONTEND)_IMAGE=' .env
+sudo grep -E '^(BACKEND|FRONTEND)_IMAGE=' .env
 sudo cat .local/deploy/backend-current .local/deploy/current
-ls .local/deploy/            # backend-pending or pending means RECOVERY_REQUIRED
+sudo ls .local/deploy/       # backend-pending or pending means RECOVERY_REQUIRED
 
 # Version through edge, and rooms, games and the start gate inside the container
 curl -fsS https://pcm.jwlee.xyz/api/health

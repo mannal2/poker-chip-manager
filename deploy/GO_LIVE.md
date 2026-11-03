@@ -4,6 +4,8 @@
 
 이 문서의 명령은 아직 실제 서버에서 실행하지 않았다. 토큰·쿠키·키는 저장소·명령줄 인자·로그·이 문서의 기록란 어디에도 붙여 넣지 않는다.
 
+**권한:** 배포 스크립트는 root로 `umask 077`에서 실행되므로, 자동 배포가 한 번이라도 돈 서버에서는 `.local/deploy`가 root 소유 0700, `.env`가 root 소유 0600일 것이다. 그래서 이 문서는 그 안을 읽는 명령에 모두 `sudo`를 붙였다. 이 권한은 스크립트에서 추론한 값이므로 처음 접속했을 때 `sudo stat -c '%a %U %n' .local .local/deploy .env`로 실제 값을 확인한다.
+
 ## 순서 한눈에
 
 | 단계 | 내용 | 계획의 순서와 다른 점 |
@@ -13,6 +15,7 @@
 | 3 | 게이트 디렉터리와 `compose.yaml` | |
 | 4 | edge 적용(`nginx -t` 뒤 graceful reload) | backend 첫 배포보다 **앞**으로 옮겼다 |
 | 5 | Actions 준비와 `BACKEND_DEPLOY_ENABLED` | 계획의 첫 단계(병합 순서)에서 나온 일 |
+| 5a | IP 주소의 멀티플레이 경로 처리(**사용자 결정**) | 계획에 없던 단계. 6단계 전에 정한다 |
 | 6 | 병합 = backend 첫 배포 | 프런트 배포도 같은 실행에서 backend 결과에 따라 이어진다 |
 | 7 | HTTPS·WS 확인 | |
 | 8 | 프런트 배포 확인 | |
@@ -46,7 +49,7 @@ EC2에 SSH로 접속해 `/home/ubuntu/poker-chip-manager`에서 실행한다.
 
 ```bash
 cd /home/ubuntu/poker-chip-manager
-sudo cat .local/deploy/current          # 지금 프런트의 image=와 revision=
+sudo cat .local/deploy/current          # 지금 프런트의 image=와 revision=. 8단계 되돌리기에 쓰므로 그대로 적어 둔다
 sudo cp -p .env ".env.backup-$(date +%s)"
 sudo cp -p compose.yaml "compose.yaml.backup-$(date +%s)"
 ```
@@ -64,7 +67,8 @@ printf '%s\n' \
 **할 일 — GHCR 읽기 권한:** 배포 스크립트는 root로 실행되므로 root의 Docker가 비공개 backend 패키지를 읽어야 한다. 프런트 배포가 이미 root의 GHCR 로그인을 쓰고 있다. 그 자격이 `read:packages` 범위만 가진 classic PAT이면 같은 계정의 backend 패키지도 읽을 수 있으므로 바꾸지 않는다. 새로 로그인해야 한다면 `read:packages`만 가진 토큰을 만들고, 화면에 보이지 않게 입력한다.
 
 ```bash
-read -rs token && printf '%s' "$token" | sudo docker login ghcr.io -u mannal2 --password-stdin; unset token
+read -rsp 'GHCR token: ' token; echo
+printf '%s' "$token" | sudo docker login ghcr.io -u mannal2 --password-stdin; unset token
 ```
 
 **확인:**
@@ -77,7 +81,12 @@ sudo docker manifest inspect ghcr.io/mannal2/poker-chip-manager-frontend:main > 
 
 backend 패키지는 6단계에서 처음 발행되므로 지금은 확인할 수 없다. 권한이 없으면 6단계의 `docker pull`에서 아무것도 바꾸기 전에 멈추고, 프런트도 보류된다.
 
-**되돌리기:** `sudo cp -p .env.backup-<시각> .env`. 새로 로그인했다면 이전 토큰으로 다시 로그인한다.
+**되돌리기:** 더한 세 줄만 지운다. 백업 전체를 되돌리면 그 사이 배포가 바꾼 `FRONTEND_IMAGE`까지 옛 값으로 돌아가므로, 백업은 비교용으로만 쓴다. 새로 로그인했다면 이전 토큰으로 다시 로그인한다.
+
+```bash
+sudo sed -i '/^BACKEND_\(IMAGE\|MEM_LIMIT\|HEAP\)=/d' .env
+sudo grep -c '^BACKEND_' .env     # 0
+```
 
 ## 3. 게이트 디렉터리와 `compose.yaml`
 
@@ -109,7 +118,7 @@ sudo cp compose.yaml.upload compose.yaml
 **확인:**
 
 ```bash
-stat -c '%a %n' .local/deploy/gate                # 755
+sudo stat -c '%a %n' .local/deploy/gate           # 755
 sudo docker compose config -q && echo compose-ok
 sudo docker compose config --services             # frontend, backend
 sudo docker compose ps                            # frontend만 실행 중, 재시작되지 않았다
@@ -179,6 +188,47 @@ gh variable list        # BACKEND_DEPLOY_ENABLED  true
 
 **되돌리기:** `gh variable set BACKEND_DEPLOY_ENABLED --body false`. 이후 main 실행은 프런트만 배포하고 backend는 그대로 둔다.
 
+## 5a. IP 주소의 멀티플레이 경로 처리 (사용자 결정)
+
+**사용자가 정해야 한다.** 같은 프런트가 `https://54.180.47.226`에서도 열린다(edge의 `default.conf`, 전환 기간에 유지). 이 서버 블록은 모든 경로를 프런트로 보내고 backend는 `https://pcm.jwlee.xyz` Origin만 받는다. 6단계 뒤 IP 주소의 앱 홈에도 켜진 멀티플레이 버튼이 보이지만, `/api/`·`/ws`가 프런트로 가서 누르면 오류 화면이 된다. MULTIPLAYER_MODE 17절은 IP 주소로 멀티플레이를 공개하지 않는다고 정했다.
+
+| 선택 | 결과 |
+|---|---|
+| **권장: IP 주소의 `/online/`·`/api/`·`/ws`를 도메인으로 보낸다** | IP 주소에서 버튼을 누르면 `https://pcm.jwlee.xyz/online/`으로 이동한다. `/local/`과 IP 주소의 로컬 기록은 그대로다 |
+| 그대로 둔다 | IP 주소 사용자는 버튼을 누르면 오류 화면을 본다. 이 위험을 받아들인다고 기록한다 |
+
+권장안을 고르면 6단계 전에 아래를 적용한다. 저장소의 `deploy/edge/nginx/default.conf`는 바꾸지 않았으므로, 적용했다면 같은 변경을 나중에 저장소에도 반영한다.
+
+**할 일:** 서버의 `/home/ubuntu/edge/nginx/default.conf`에서 `listen 443 ssl;`인 서버 블록의 `location / {` 바로 위에 다음 블록을 넣는다. 80번 서버 블록은 이미 모든 요청을 HTTPS로 보내므로 바꾸지 않는다.
+
+```nginx
+    # 멀티플레이는 도메인에서만 공개한다
+    location ~ ^/(online|api|ws)(/|$) {
+        return 308 https://pcm.jwlee.xyz$request_uri;
+    }
+```
+
+```bash
+cd /home/ubuntu/edge
+sudo cp -p nginx/default.conf "default.conf.backup-$(date +%s)"
+sudo nano nginx/default.conf        # 위 블록을 넣는다
+sudo docker compose exec -T nginx nginx -t && \
+  sudo docker compose exec -T nginx nginx -s reload
+```
+
+**확인:**
+
+```bash
+curl -sS -o /dev/null -w '%{http_code} %{redirect_url}\n' https://54.180.47.226/online/
+# 308 https://pcm.jwlee.xyz/online/
+curl -sS -o /dev/null -w '%{http_code} %{redirect_url}\n' https://54.180.47.226/api/health
+# 308 https://pcm.jwlee.xyz/api/health
+curl -sS -o /dev/null -w '%{http_code}\n' https://54.180.47.226/local/
+# 200: 로컬 앱은 그대로
+```
+
+**되돌리기:** `sudo cp -p default.conf.backup-<시각> nginx/default.conf` 뒤 같은 `nginx -t`와 reload. `nginx -t`가 실패하면 reload하지 않고 같은 방법으로 되돌린다.
+
 ## 6. 병합 = backend 첫 배포
 
 **할 일:** PR #16의 검사가 통과했는지 보고 병합한다. main 실행 "CI and images"가 다음 순서로 진행한다.
@@ -200,10 +250,10 @@ backend 배포는 서버에서 `poker-backend-deploy-<실행>-<시도>` 유닛�
 
 ```bash
 cd /home/ubuntu/poker-chip-manager
-ls .local/deploy/                                  # backend-pending, pending이 없어야 한다
+sudo ls .local/deploy/                             # backend-pending, pending이 없어야 한다
 sudo cat .local/deploy/backend-current             # revision=병합 커밋
 sudo cat .local/deploy/gate/start-gate.json        # "phase":"COMPLETE"
-grep '^BACKEND_IMAGE=' .env                        # 자리표시자가 아니라 실제 digest
+sudo grep '^BACKEND_IMAGE=' .env                   # 자리표시자가 아니라 실제 digest
 sudo docker compose exec -T backend curl -fsS http://127.0.0.1:8080/internal/deploy/status
 # "startsClosed":false, "activeTournaments":0
 ```
@@ -211,14 +261,22 @@ sudo docker compose exec -T backend curl -fsS http://127.0.0.1:8080/internal/dep
 **되돌리기와 실패 처리:**
 
 - 검사 실패(`restart-e2e` 등): `plan` 이후가 실행되지 않으므로 서버는 그대로다. 원인을 고친 커밋을 main에 병합한다.
-- `Connect to Tailscale` 실패: 서버는 그대로다. OIDC 설정을 고친 뒤 Deploy 워크플로를 수동 실행하고 `ref`에 병합 커밋의 전체 SHA를 넣는다.
+- `Connect to Tailscale` 실패: 서버는 그대로다. OIDC 설정을 고친 뒤 Deploy 워크플로를 main에서 수동 실행하고 `ref`에 병합 커밋의 전체 SHA를 넣는다.
 - backend 실패: 요약에 종료 코드가 나오고 프런트는 보류된다. 로그에 `RECOVERY_REQUIRED`가 있으면 요약이 알려 주는 실행 디렉터리의 복구 스크립트를 실행한다.
 
   ```bash
   sudo bash /home/ubuntu/poker-chip-manager/deploy/run-poker-backend-deploy-<실행>-<시도>/recover-backend.sh
   ```
 
-  첫 배포는 되돌릴 이전 이미지가 없으므로 복구는 실패한 backend를 멈추고 `NO_PREVIOUS_IMAGE`로 끝난다. `sudo journalctl -u poker-backend-deploy-<실행>-<시도> --no-pager`와 `sudo docker compose logs --no-color backend`로 원인을 고친 뒤 Deploy 워크플로를 같은 SHA로 수동 실행한다.
+  첫 배포는 되돌릴 이전 이미지가 없으므로 복구는 실패한 backend를 멈추고 `NO_PREVIOUS_IMAGE`로 끝난다. 새 backend가 상태 조회에 답하지 않으면(재시작 반복, 768m 안의 OOM 등) 복구는 게임이 없음을 증명하지 못해 `RECOVERY_REQUIRED`로 멈춘다. 첫 배포는 시작을 연 적이 없어 게임이 있을 수 없으므로, 그때는 직접 멈추고 복구를 다시 실행한다.
+
+  ```bash
+  cd /home/ubuntu/poker-chip-manager
+  sudo docker compose stop backend
+  sudo bash deploy/run-poker-backend-deploy-<실행>-<시도>/recover-backend.sh
+  ```
+
+  `sudo journalctl -u poker-backend-deploy-<실행>-<시도> --no-pager`와 `sudo docker compose logs --no-color backend`로 원인을 고친 뒤 Deploy 워크플로를 main에서 같은 SHA로 수동 실행한다.
 - `HELD`는 첫 배포에서는 나오지 않는다(진행 중 게임이 없다).
 
 ## 7. HTTPS·WS 확인
@@ -254,15 +312,30 @@ curl -sS -o /dev/null -w '%{http_code}\n' https://pcm.jwlee.xyz/internal/deploy/
 sudo cat /home/ubuntu/poker-chip-manager/.local/deploy/current   # revision=병합 커밋
 ```
 
-`https://pcm.jwlee.xyz/local/`의 앱 홈에서 멀티플레이 버튼이 켜져 있고 `/online/`으로 간다. 단일 기기 모드가 그대로 동작하고, 오프라인 준비 완료 뒤 비행기 모드에서도 열린다.
+`https://pcm.jwlee.xyz/local/`의 앱 홈에서 멀티플레이 버튼이 켜져 있고 `/online/`으로 간다. 5a단계에서 권장안을 적용했다면 `https://54.180.47.226/local/`에서 버튼을 눌렀을 때 `https://pcm.jwlee.xyz/online/`으로 이동하는지도 본다. 그대로 두기로 했다면 IP 주소의 버튼이 오류 화면으로 끝나는 것을 확인하고 기록한다. 단일 기기 모드가 그대로 동작하고, 오프라인 준비 완료 뒤 비행기 모드에서도 열린다.
 
-프런트가 보류됐다면(요약의 `The frontend was held too`) backend를 고친 뒤 Deploy 워크플로를 병합 커밋으로 수동 실행한다. backend가 이미 배포됐으면 프런트만 남은 차이로 배포된다.
+프런트가 보류됐다면(요약의 `The frontend was held too`) backend를 고친 뒤 Deploy 워크플로를 main에서 병합 커밋으로 수동 실행한다. backend가 이미 배포됐으면 프런트만 남은 차이로 배포된다.
 
-**되돌리기:** 2단계에서 기록한 이전 프런트의 `image=`·`revision=`으로 [README.md](README.md)의 "First manual deployment on EC2" 명령을 실행하면 버튼이 꺼진 화면으로 돌아간다. 다음 main 실행이 다시 새 프런트를 배포하므로, 오래 유지하려면 버튼을 끄는 커밋을 main에 병합한다.
+**되돌리기:** 2단계에서 적어 둔 이전 프런트의 `image=`·`revision=`을 그대로 넣어 수동 배포한다. README의 "First manual deployment on EC2"는 `:main` 태그를 읽는데, 그 태그는 이미 병합 커밋의 새 프런트를 가리키므로 쓰지 않는다. 이전 이미지는 서버에 남아 있지만, 정리됐다면 digest로 다시 받는다.
+
+```bash
+cd /home/ubuntu/poker-chip-manager
+digest='ghcr.io/mannal2/poker-chip-manager-frontend@sha256:<2단계의 image= 값>'
+revision='<2단계의 revision= 값>'
+sudo docker image inspect "$digest" > /dev/null 2>&1 || sudo docker pull "$digest"
+unit="poker-deploy-rollback-$(date +%s)"
+sudo systemd-run --unit="$unit" --service-type=exec --wait --collect \
+  /usr/bin/bash /home/ubuntu/poker-chip-manager/deploy/deploy-frontend.sh \
+  "$digest" "$revision" https://pcm.jwlee.xyz
+sudo journalctl -u "$unit" --no-pager -n 100
+sudo cat .local/deploy/current        # revision=2단계의 값
+```
+
+`deploy/deploy-frontend.sh`가 서버에 없거나 오래됐으면 저장소의 같은 파일을 먼저 올린다(README의 "Upload from Windows PowerShell"). 다음 main 실행이 다시 새 프런트를 배포하므로, 오래 유지하려면 버튼을 끄는 커밋을 main에 병합한다.
 
 ## 9. 실기기 확인
 
-**할 일:** [frontend/DEVICE_CHECKS.md](../frontend/DEVICE_CHECKS.md)의 "온라인 실기기 확인 대기" 항목을 실제 운영 주소에서 확인한다. 특히 동일 Wi-Fi 9명, iPhone 잠금 뒤 복귀, 설치 앱 안의 `/online/`, 초대 링크, 긴 이름의 복구 알림이다.
+**할 일:** [frontend/DEVICE_CHECKS.md](../frontend/DEVICE_CHECKS.md)의 "운영 서버 공개 확인 (계획 4)" 항목을 실제 운영 주소에서 확인하고, 같은 파일의 "온라인 실기기 확인 대기" 항목도 운영 주소로 다시 본다. 특히 동일 Wi-Fi 9명, iPhone 잠금 뒤 복귀, 설치 앱 안의 `/online/`, 초대 링크, 긴 이름의 복구 알림이다.
 
 **확인:** 결과(기기, OS·브라우저 버전, 날짜, 통과 여부)를 DEVICE_CHECKS.md에 기록한다. 같은 Wi-Fi 9명이 참가·조작하는 동안 `요청이 너무 많습니다` 안내가 나오면 안 된다.
 
@@ -289,8 +362,10 @@ done | tee "$HOME/load-mem-$(date +%Y%m%d-%H%M).log"
 PC(Node 24)의 저장소 루트에서 실행한다. 한 주소에서 방 생성 분당 5개, 새 세션 분당 30개 한도 때문에 준비에만 몇 분이 걸리며, 그동안의 429는 `setupWaits`로 따로 센다(R18). 같은 주소에서 다른 사람이 방을 만들면 한도를 나눠 쓴다.
 
 ```powershell
-node deploy/load/load-rooms.mjs --url https://pcm.jwlee.xyz --rooms 10 --players 9 --minutes 10 > load-result.json
+node deploy/load/load-rooms.mjs --url https://pcm.jwlee.xyz --rooms 10 --players 9 --minutes 10 | Out-File -Encoding utf8 load-result.json
 ```
+
+Windows PowerShell 5.1의 `>`는 UTF-16으로 저장하므로 `Out-File -Encoding utf8`을 쓴다. Git Bash에서는 `> load-result.json`으로 충분하다.
 
 끝나면 서버의 기록을 Ctrl+C로 멈추고 다시 본다.
 
@@ -320,7 +395,7 @@ sudo docker compose exec -T backend curl -fsS http://127.0.0.1:8080/internal/dep
 2. 프런트: 8단계의 되돌리기로 이전 프런트를 배포한다. 오래 유지하려면 버튼을 끄는 커밋을 main에 병합한다.
 3. 변수: `gh variable set BACKEND_DEPLOY_ENABLED --body false`.
 4. backend를 멈추려면 게임이 0개일 때 `sudo docker compose stop backend`. 진행 중 게임이 있으면 끝날 때까지 기다린다.
-5. edge·`compose.yaml`·`.env`는 남겨도 프런트에 영향이 없다. 되돌리려면 각 단계의 되돌리기를 역순(4 → 3 → 2)으로 따른다. backend가 멈춘 뒤에만 한다.
+5. edge·`compose.yaml`·`.env`는 남겨도 프런트에 영향이 없다. 되돌리려면 각 단계의 되돌리기를 역순(5a → 4 → 3 → 2)으로 따른다. backend가 멈춘 뒤에만 한다. `.env`는 백업 전체가 아니라 `BACKEND_` 세 줄만 지운다(2단계). 백업에는 공개 전 `FRONTEND_IMAGE`가 있어 지금 실행 중인 프런트와 어긋난다.
 
 ## 수용 시험 기록
 

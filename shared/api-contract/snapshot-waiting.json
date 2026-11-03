@@ -1,0 +1,54 @@
+{
+  "method" : "GET",
+  "path" : "/api/rooms/{roomId}/state",
+  "status" : 200,
+  "request" : null,
+  "response" : {
+    "roomId" : "00000000-0000-4000-8000-000000000003",
+    "code" : "ABC234",
+    "roomPhase" : "WAITING",
+    "stateVersion" : 6,
+    "draftVersion" : 0,
+    "deployPending" : false,
+    "tournamentId" : null,
+    "settings" : {
+      "initial" : 1000,
+      "sb" : 5,
+      "bb" : 10,
+      "button" : 0
+    },
+    "hostId" : "00000000-0000-4000-8000-000000000004",
+    "hostTakeoverOpen" : false,
+    "participants" : [ {
+      "participantId" : "00000000-0000-4000-8000-000000000004",
+      "name" : "Alice",
+      "seat" : 0,
+      "playerId" : null,
+      "isHost" : true,
+      "connected" : true
+    }, {
+      "participantId" : "00000000-0000-4000-8000-000000000006",
+      "name" : "Bob",
+      "seat" : 1,
+      "playerId" : null,
+      "isHost" : false,
+      "connected" : true
+    } ],
+    "you" : {
+      "participantId" : "00000000-0000-4000-8000-000000000004",
+      "controlGeneration" : 1,
+      "canTakeHost" : false,
+      "capabilities" : {
+        "canAct" : false,
+        "canUndo" : false,
+        "canSettle" : false,
+        "canEditSetup" : true,
+        "canEditBlinds" : false
+      }
+    },
+    "game" : null,
+    "legal" : null,
+    "settlementDraft" : null,
+    "recoveryRequests" : [ ]
+  }
+}

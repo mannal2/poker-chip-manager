@@ -1,0 +1,12 @@
+.gradle
+.dockerignore
+.gitattributes
+.gitignore
+Dockerfile
+**/build
+.env*
+*.pem
+*.key
+**/.env*
+**/*.pem
+**/*.key

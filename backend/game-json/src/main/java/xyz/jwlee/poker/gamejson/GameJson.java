@@ -1,17 +1,16 @@
-package xyz.jwlee.poker.game.fixtures;
+package xyz.jwlee.poker.gamejson;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.JsonNodeFactory;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.node.ArrayNode;
+import tools.jackson.databind.node.JsonNodeFactory;
+import tools.jackson.databind.node.ObjectNode;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import xyz.jwlee.poker.game.LegalActions;
 import xyz.jwlee.poker.game.command.GameCommand;
-import xyz.jwlee.poker.game.event.EventDetails;
-import xyz.jwlee.poker.game.event.GameEvent;
 import xyz.jwlee.poker.game.model.Blinds;
 import xyz.jwlee.poker.game.model.GameSettings;
 import xyz.jwlee.poker.game.model.GameState;
@@ -21,22 +20,25 @@ import xyz.jwlee.poker.game.model.Player;
 import xyz.jwlee.poker.game.model.TournamentStatus;
 import xyz.jwlee.poker.game.model.UndoSnapshot;
 
+// TypeScript 게임 모델의 필드명을 사용하는 JSON과 Java 게임 모델을 상호 변환한다
 /**
- * Converts the shared fixtures' TS-named JSON to and from the Java model. This is the only place
- * that knows the TS-name to Java-name mapping (B/H, actedAt/reopenAt, W/R, sb/bb, ...).
+ * Converts the TS-named JSON (shared fixtures, server protocol) to and from the Java game model.
+ * Together with {@link EventJson} this is the only place that knows the TS-name to Java-name
+ * mapping (B/H, actedAt/reopenAt, W/R, sb/bb, ...).
  */
-public final class StateJson {
+public final class GameJson {
     private static final JsonNodeFactory F = JsonNodeFactory.instance;
 
-    private StateJson() {}
+    private GameJson() {}
 
     // ---- state ----
 
-    public static GameState read(JsonNode n) {
+    // JSON에서 게임 상태(되돌리기 스냅샷 포함)를 읽는다
+    public static GameState readState(JsonNode n) {
         GameState s = new GameState();
-        s.tournamentId = n.get("tournamentId").asText();
+        s.tournamentId = n.get("tournamentId").asString();
         s.version = n.get("version").asInt();
-        s.status = TournamentStatus.valueOf(n.get("status").asText().toUpperCase(Locale.ROOT));
+        s.status = TournamentStatus.valueOf(n.get("status").asString().toUpperCase(Locale.ROOT));
         s.settings = readSettings(n.get("settings"));
         s.initialTotal = n.get("initialTotal").asInt();
         s.setupOrder = present(n, "setupOrder") ? strings(n.get("setupOrder")) : null;
@@ -50,12 +52,13 @@ public final class StateJson {
         if (present(n, "undo")) {
             // The TS snapshot is the flat state minus "undo", plus optional eventIds.
             JsonNode u = n.get("undo");
-            s.undo = new UndoSnapshot(read(u), present(u, "eventIds") ? strings(u.get("eventIds")) : null);
+            s.undo = new UndoSnapshot(readState(u), present(u, "eventIds") ? strings(u.get("eventIds")) : null);
         }
         return s;
     }
 
-    public static JsonNode write(GameState s) {
+    // 게임 상태를 JSON 객체로 쓴다
+    public static ObjectNode writeState(GameState s) {
         ObjectNode n = F.objectNode();
         n.put("tournamentId", s.tournamentId);
         n.put("version", s.version);
@@ -79,7 +82,7 @@ public final class StateJson {
         if (s.undo == null) {
             n.putNull("undo");
         } else {
-            ObjectNode u = (ObjectNode) write(s.undo.state());
+            ObjectNode u = writeState(s.undo.state());
             u.remove("undo");
             if (s.undo.eventIds() != null) {
                 u.set("eventIds", stringArray(s.undo.eventIds()));
@@ -89,6 +92,7 @@ public final class StateJson {
         return n;
     }
 
+    // JSON에서 테이블 설정을 읽는다
     public static GameSettings readSettings(JsonNode n) {
         return new GameSettings(
                 strings(n.get("names")),
@@ -98,7 +102,8 @@ public final class StateJson {
                 n.get("button").asInt());
     }
 
-    private static ObjectNode writeSettings(GameSettings g) {
+    // 테이블 설정을 JSON 객체로 쓴다
+    public static ObjectNode writeSettings(GameSettings g) {
         ObjectNode n = F.objectNode();
         n.set("names", stringArray(g.names()));
         n.put("initial", g.initial());
@@ -108,10 +113,11 @@ public final class StateJson {
         return n;
     }
 
+    // JSON에서 플레이어를 읽는다
     private static Player readPlayer(JsonNode n) {
         Player p = new Player();
-        p.id = n.get("id").asText();
-        p.name = n.get("name").asText();
+        p.id = n.get("id").asString();
+        p.name = n.get("name").asString();
         p.stack = n.get("stack").asInt();
         p.eliminated = n.get("eliminated").asBoolean();
         p.folded = n.get("folded").asBoolean();
@@ -124,6 +130,7 @@ public final class StateJson {
         return p;
     }
 
+    // 플레이어를 JSON 객체로 쓴다
     public static ObjectNode writePlayer(Player p) {
         ObjectNode n = F.objectNode();
         n.put("id", p.id);
@@ -145,18 +152,19 @@ public final class StateJson {
         return n;
     }
 
+    // JSON에서 핸드를 읽는다
     private static Hand readHand(JsonNode n) {
         Hand h = new Hand();
-        h.id = n.get("id").asText();
+        h.id = n.get("id").asString();
         h.number = n.get("number").asInt();
         h.street = n.get("street").asInt();
-        h.phase = Phase.valueOf(n.get("phase").asText().toUpperCase(Locale.ROOT));
+        h.phase = Phase.valueOf(n.get("phase").asString().toUpperCase(Locale.ROOT));
         h.buttonSeat = n.get("buttonSeat").asInt();
         h.sbSeat = n.get("sbSeat").asInt();
         h.bbSeat = n.get("bbSeat").asInt();
         h.smallBlind = n.get("sb").asInt();
         h.bigBlind = n.get("bb").asInt();
-        h.actorId = present(n, "actorId") ? n.get("actorId").asText() : null;
+        h.actorId = present(n, "actorId") ? n.get("actorId").asString() : null;
         h.currentBet = n.get("W").asInt();
         h.minRaise = n.get("R").asInt();
         h.pending = strings(n.get("pending"));
@@ -164,6 +172,7 @@ public final class StateJson {
         return h;
     }
 
+    // 핸드를 JSON 객체로 쓴다
     private static ObjectNode writeHand(Hand h) {
         ObjectNode n = F.objectNode();
         n.put("id", h.id);
@@ -189,9 +198,10 @@ public final class StateJson {
 
     // ---- commands ----
 
-    public static GameCommand command(JsonNode n) {
-        String player = present(n, "playerId") ? n.get("playerId").asText() : null;
-        return switch (n.get("type").asText()) {
+    // JSON의 type 값에 맞는 게임 명령 객체를 만든다
+    public static GameCommand readCommand(JsonNode n) {
+        String player = present(n, "playerId") ? n.get("playerId").asString() : null;
+        return switch (n.get("type").asString()) {
             case "START_TOURNAMENT" -> new GameCommand.StartTournament();
             case "SETUP_UPDATE" -> new GameCommand.SetupUpdate(
                     readSettings(n.get("settings")), present(n, "order") ? strings(n.get("order")) : null);
@@ -205,91 +215,56 @@ public final class StateJson {
             case "SCHEDULE_BLINDS" -> new GameCommand.ScheduleBlinds(n.get("sb").asInt(), n.get("bb").asInt());
             case "UNDO" -> new GameCommand.Undo();
             case "ABORT" -> new GameCommand.Abort();
-            case "FORFEIT" -> new GameCommand.Forfeit(player);
-            default -> throw new IllegalArgumentException("Unknown command type: " + n.get("type").asText());
+            case "FORFEIT" -> new GameCommand.Forfeit(player, false);
+            default -> throw new IllegalArgumentException("Unknown command type: " + n.get("type").asString());
         };
     }
 
+    // 팟별 승자 JSON을 맵으로 읽는다
     private static Map<String, List<String>> winners(JsonNode n) {
         Map<String, List<String>> out = new LinkedHashMap<>();
         n.properties().forEach(e -> out.put(e.getKey(), strings(e.getValue())));
         return out;
     }
 
-    // ---- events ----
+    // ---- legal actions ----
 
-    public static JsonNode event(GameEvent e) {
+    // 가능한 행동 정보를 JSON 객체로 쓴다
+    /** Legal actions with the TS field names. */
+    public static ObjectNode writeLegal(LegalActions l) {
         ObjectNode n = F.objectNode();
-        n.put("id", e.id());
-        n.put("at", e.at());
-        n.put("tournamentId", e.tournamentId());
-        n.put("hand", e.hand());
-        n.put("type", e.type());
-        n.set("details", details(e.details()));
-        return n;
-    }
-
-    private static ObjectNode details(EventDetails d) {
-        ObjectNode n = F.objectNode();
-        switch (d) {
-            case EventDetails.HandStarted x -> {
-                n.put("buttonSeat", x.buttonSeat());
-                n.put("sbSeat", x.sbSeat());
-                n.put("bbSeat", x.bbSeat());
-                n.put("sb", x.smallBlind());
-                n.put("bb", x.bigBlind());
-            }
-            case EventDetails.PlayerActed x -> {
-                n.put("playerId", x.playerId());
-                n.put("additional", x.additional());
-            }
-            case EventDetails.UncalledReturned x -> {
-                n.put("playerId", x.playerId());
-                n.put("amount", x.amount());
-            }
-            case EventDetails.RoundClosed x -> n.put("showdown", x.showdown());
-            case EventDetails.StreetStarted x -> n.put("street", x.street());
-            case EventDetails.PotsPaid x -> {
-                n.put("pot", x.pot());
-                ObjectNode payouts = n.putObject("payouts");
-                x.payouts().forEach(payouts::put);
-            }
-            case EventDetails.PlayerEliminated x -> n.put("playerId", x.playerId());
-            case EventDetails.TournamentEnded x -> n.put("winner", x.winner());
-            case EventDetails.BlindsScheduled x -> {
-                n.put("sb", x.smallBlind());
-                n.put("bb", x.bigBlind());
-            }
-            case EventDetails.ActionUndone x -> {
-                if (x.eventIds() != null) {
-                    n.set("eventIds", stringArray(x.eventIds()));
-                }
-            }
-            case EventDetails.TournamentAborted x -> { }
-            case EventDetails.PlayerForfeited x -> n.put("playerId", x.playerId());
-            case EventDetails.ForfeitStackSplit x -> {
-                n.put("playerId", x.playerId());
-                ObjectNode shares = n.putObject("shares");
-                x.shares().forEach(shares::put);
-            }
+        n.set("actor", l.actor() == null ? F.nullNode() : writePlayer(l.actor()));
+        n.put("callAdditional", l.callAdditional());
+        n.put("minRaiseAdditional", l.minRaiseAdditional());
+        n.put("maxAdditional", l.maxAdditional());
+        n.put("canRaise", l.canRaise());
+        n.put("canCheck", l.canCheck());
+        n.put("canCall", l.canCall());
+        if (l.reasonCode() == null) {
+            n.putNull("reasonCode");
+        } else {
+            n.put("reasonCode", l.reasonCode().name());
         }
         return n;
     }
 
     // ---- helpers ----
 
+    // 키가 있고 null이 아닌지 확인한다
     private static boolean present(JsonNode n, String key) {
         JsonNode v = n.get(key);
         return v != null && !v.isNull();
     }
 
+    // JSON 배열을 문자열 목록으로 읽는다
     private static List<String> strings(JsonNode arr) {
         List<String> out = new ArrayList<>();
-        arr.forEach(x -> out.add(x.asText()));
+        arr.forEach(x -> out.add(x.asString()));
         return out;
     }
 
-    private static ArrayNode stringArray(List<String> list) {
+    // 문자열 목록을 JSON 배열로 만든다
+    static ArrayNode stringArray(List<String> list) {
         ArrayNode a = F.arrayNode();
         list.forEach(a::add);
         return a;

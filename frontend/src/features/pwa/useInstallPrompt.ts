@@ -1,16 +1,19 @@
 import { useEffect, useRef, useState } from 'react';
 
+// 브라우저의 앱 설치 요청 이벤트
 interface InstallEvent extends Event {
   prompt(): Promise<void>;
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
 }
 const seenKey = 'poker-install-offer-dismissed';
+// 이미 설치된 앱(독립 실행)으로 열렸는지 확인한다
 function standalone() {
   return (
     window.matchMedia('(display-mode: standalone)').matches ||
     !!(navigator as Navigator & { standalone?: boolean }).standalone
   );
 }
+// 사용자가 설치 안내를 이미 닫았는지 읽는다
 function dismissed() {
   try {
     return localStorage.getItem(seenKey) === '1';
@@ -18,6 +21,7 @@ function dismissed() {
     return false;
   }
 }
+// 앱 설치 안내의 표시 여부와 설치 요청을 관리하는 훅
 export function useInstallPrompt(enabled: boolean) {
   const [installed, setInstalled] = useState(standalone);
   const [seen, setSeen] = useState(dismissed);
@@ -32,6 +36,7 @@ export function useInstallPrompt(enabled: boolean) {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState('');
   const prompting = useRef(false);
+  // 설치 안내를 봤다는 사실을 기억해 다시 띄우지 않게 한다
   function remember() {
     setSeen(true);
     try {
@@ -65,12 +70,14 @@ export function useInstallPrompt(enabled: boolean) {
       media.removeEventListener('change', changed);
     };
   }, []);
+  // 설치 안내를 닫는다
   function close() {
     if (prompting.current) return;
     remember();
     setOpened(false);
     setError('');
   }
+  // 브라우저의 설치 창을 띄우고 사용자의 선택을 반영한다
   async function install() {
     if (!candidate || prompting.current) return;
     const event = candidate;

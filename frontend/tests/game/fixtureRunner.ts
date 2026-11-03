@@ -8,6 +8,7 @@ import pots from '../../../shared/game-fixtures/pots.json';
 import settlement from '../../../shared/game-fixtures/settlement.json';
 import lifecycle from '../../../shared/game-fixtures/lifecycle.json';
 import undo from '../../../shared/game-fixtures/undo.json';
+import events from '../../../shared/game-fixtures/events.json';
 import forfeit from '../../../shared/game-fixtures/forfeit.json';
 import { validateSettings } from '../../src/game/settings';
 import {
@@ -19,11 +20,11 @@ import {
 import { nextPositions, initialBlindSeats } from '../../src/game/positions';
 import { buildPots, previewSettlement } from '../../src/game/settlement';
 import { assertInvariants } from '../../src/game/invariants';
-import type { GameCommand, GameState, Pot } from '../../src/game/types';
+import type { GameCommand, GameEvent, GameState, Pot } from '../../src/game/types';
 
 // Fixture format v2: every case carries a full GameState (or the suite's own input) and a
 // list of commands; the runner holds no interpretation of compact states.
-const suites = { settings, positions, betting, pots, settlement, lifecycle, undo };
+const suites = { settings, positions, betting, pots, settlement, lifecycle, undo, events };
 export type SuiteName = keyof typeof suites;
 type Command = {
   type: string;
@@ -42,6 +43,7 @@ type Case = {
   expectedLegal?: unknown;
   expectedError: string | null;
   expectedEvents: string[];
+  expectedEventDetails?: { type: string; details: unknown }[];
 };
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
@@ -56,7 +58,7 @@ function step(
   s: GameState,
   raw: Command,
   ctx: Case['context'],
-  events?: string[],
+  events?: GameEvent[],
   history: GameState[] = [],
 ): GameState {
   const { expectError, expectedStateSubset, expectRestores, ...command } = raw;
@@ -71,7 +73,7 @@ function step(
   }
   if (!r.ok) throw Error(r.errorCode);
   assertInvariants(r.state);
-  events?.push(...r.events.map((e) => e.type));
+  events?.push(...r.events);
   if (expectedStateSubset !== undefined) expect(r.state).toMatchObject(expectedStateSubset);
   if (expectRestores !== undefined)
     expect(r.state).toEqual({ ...history[expectRestores], version: s.version + 1, undo: null });
@@ -127,7 +129,7 @@ function runSettlement(f: Case) {
 
 function runLifecycle(f: Case) {
   let s = createTournament(f.initialState, f.context);
-  const events: string[] = [];
+  const events: GameEvent[] = [];
   // Case-level expectedError: the last command must be rejected, all earlier ones succeed.
   const history: GameState[] = [];
   f.commands.forEach((command, i) => {
@@ -143,7 +145,18 @@ function runLifecycle(f: Case) {
   });
   if (f.expectedError) return;
   expect(s).toMatchObject(f.expectedStateSubset);
-  for (const type of f.expectedEvents) expect(events).toContain(type);
+  const types = events.map((e) => e.type);
+  for (const type of f.expectedEvents) expect(types).toContain(type);
+  if (f.expectedEventDetails)
+    expect(events.map(({ type, details }) => ({ type, details }))).toEqual(f.expectedEventDetails);
+}
+
+// ok, plus the normalized names (valid) or the error code (invalid).
+function runSettings(f: Case) {
+  const r = validateSettings(f.initialState);
+  expect(r.ok).toBe(f.expectedStateSubset.ok);
+  if (r.ok) expect(r.settings.names).toEqual(f.expectedStateSubset.names);
+  else expect(r.code).toBe(f.expectedStateSubset.code);
 }
 
 function runPositions(f: Case) {
@@ -160,13 +173,14 @@ function runPositions(f: Case) {
 }
 
 const runners: Record<SuiteName, (f: Case) => void> = {
-  settings: (f) => expect(validateSettings(f.initialState).ok).toBe(f.expectedStateSubset.ok),
+  settings: runSettings,
   positions: runPositions,
   betting: runBetting,
   pots: runPots,
   settlement: runSettlement,
   lifecycle: runLifecycle,
   undo: runLifecycle,
+  events: runLifecycle,
 };
 
 // Server-only suites: the TS engine has no such command, so their cases are only checked

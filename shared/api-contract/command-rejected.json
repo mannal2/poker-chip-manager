@@ -1,0 +1,142 @@
+{
+  "method" : "POST",
+  "path" : "/api/rooms/{roomId}/commands",
+  "status" : 409,
+  "request" : {
+    "protocolVersion" : 1,
+    "requestId" : "command-04-4",
+    "sequence" : 4,
+    "controlGeneration" : 1,
+    "expectedStateVersion" : 6,
+    "type" : "ALL_IN",
+    "tournamentId" : "00000000-0000-4000-8000-000000000010",
+    "handId" : "00000000-0000-4000-8000-000000000010:hand:1"
+  },
+  "response" : {
+    "requestId" : "command-04-4",
+    "sequence" : 4,
+    "outcome" : "REJECTED",
+    "code" : "STALE_STATE",
+    "resultStateVersion" : 7,
+    "latestState" : {
+      "roomId" : "00000000-0000-4000-8000-000000000003",
+      "code" : "ABC234",
+      "roomPhase" : "PLAYING",
+      "stateVersion" : 7,
+      "draftVersion" : 0,
+      "deployPending" : false,
+      "tournamentId" : "00000000-0000-4000-8000-000000000010",
+      "settings" : {
+        "initial" : 1000,
+        "sb" : 5,
+        "bb" : 10,
+        "button" : 0
+      },
+      "hostId" : "00000000-0000-4000-8000-000000000004",
+      "hostTakeoverOpen" : false,
+      "participants" : [ {
+        "participantId" : "00000000-0000-4000-8000-000000000004",
+        "name" : "Alice",
+        "seat" : 0,
+        "playerId" : "p0",
+        "isHost" : true,
+        "connected" : true
+      }, {
+        "participantId" : "00000000-0000-4000-8000-000000000006",
+        "name" : "Bob",
+        "seat" : 1,
+        "playerId" : "p1",
+        "isHost" : false,
+        "connected" : true
+      } ],
+      "you" : {
+        "participantId" : "00000000-0000-4000-8000-000000000004",
+        "controlGeneration" : 1,
+        "canTakeHost" : false,
+        "capabilities" : {
+          "canAct" : true,
+          "canUndo" : false,
+          "canSettle" : false,
+          "canEditSetup" : false,
+          "canEditBlinds" : true
+        }
+      },
+      "game" : {
+        "tournamentId" : "00000000-0000-4000-8000-000000000010",
+        "version" : 1,
+        "status" : "playing",
+        "settings" : {
+          "names" : [ "Alice", "Bob" ],
+          "initial" : 1000,
+          "sb" : 5,
+          "bb" : 10,
+          "button" : 0
+        },
+        "initialTotal" : 2000,
+        "setupOrder" : [ "p0", "p1" ],
+        "players" : [ {
+          "id" : "p0",
+          "name" : "Alice",
+          "stack" : 995,
+          "eliminated" : false,
+          "folded" : false,
+          "B" : 5,
+          "H" : 5,
+          "actedAt" : null,
+          "reopenAt" : 0
+        }, {
+          "id" : "p1",
+          "name" : "Bob",
+          "stack" : 990,
+          "eliminated" : false,
+          "folded" : false,
+          "B" : 10,
+          "H" : 10,
+          "actedAt" : null,
+          "reopenAt" : 0
+        } ],
+        "hand" : {
+          "id" : "00000000-0000-4000-8000-000000000010:hand:1",
+          "number" : 1,
+          "street" : 0,
+          "phase" : "betting",
+          "buttonSeat" : 0,
+          "sbSeat" : 0,
+          "bbSeat" : 1,
+          "sb" : 5,
+          "bb" : 10,
+          "actorId" : "p0",
+          "W" : 10,
+          "R" : 10,
+          "pending" : [ "p0", "p1" ],
+          "showdown" : false
+        },
+        "pot" : 15,
+        "pendingBlinds" : null,
+        "undo" : null
+      },
+      "legal" : {
+        "actor" : {
+          "id" : "p0",
+          "name" : "Alice",
+          "stack" : 995,
+          "eliminated" : false,
+          "folded" : false,
+          "B" : 5,
+          "H" : 5,
+          "actedAt" : null,
+          "reopenAt" : 0
+        },
+        "callAdditional" : 5,
+        "minRaiseAdditional" : 15,
+        "maxAdditional" : 995,
+        "canRaise" : true,
+        "canCheck" : false,
+        "canCall" : true,
+        "reasonCode" : null
+      },
+      "settlementDraft" : null,
+      "recoveryRequests" : [ ]
+    }
+  }
+}

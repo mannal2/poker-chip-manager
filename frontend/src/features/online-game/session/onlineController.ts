@@ -1,0 +1,814 @@
+import type { GameEvent, WinnerSelection } from '../../../game/types';
+import { messageFor } from '../../gameplay/model/errorMessages';
+import { ApiOpenError, type ApiClient, type ApiResult } from '../api/client';
+import {
+  isCommandResponse,
+  isControlResponse,
+  isJoinResponse,
+  isOlderSnapshot,
+  isRecoveryRequestResponse,
+  isRoomSnapshot,
+  type RecoveryStatus,
+  type RoomSnapshot,
+  type ServerCommand,
+  type SnapshotMessage,
+} from '../api/types';
+import type { FinalMessage, RoomSocket, RoomSocketHandlers } from '../realtime/roomSocket';
+import type { KnownEvent } from '../model/eventNotices';
+import { EventMemory } from './eventMemory';
+import { RecoveryPoller } from './recoveryPoller';
+import {
+  clearTabControl,
+  forgetRecovery,
+  forgetRoom,
+  markTabControl,
+  rememberRecovery,
+  rememberRoom,
+  savedRecovery,
+  savedRoomId,
+  tabControls,
+} from './roomMemory';
+
+// 화면이 구독하는 온라인 상태
+export interface OnlineView {
+  phase: 'entry' | 'joining' | 'recovering' | 'room' | 'gone' | 'revoked' | 'incompatible';
+  snapshot: RoomSnapshot | null;
+  effectsFromVersion?: number | null;
+  connection: 'online' | 'syncing' | 'offline';
+  hasControl: boolean;
+  pending: boolean;
+  recovery: RecoveryStatus | null;
+  error: string | null;
+}
+// 컨트롤러가 쓰는 소켓 기능
+type SocketPort = Pick<RoomSocket, 'subscribe' | 'resync' | 'reconnect' | 'close'>;
+// 칩 효과 재생에 필요한 확정 변경
+type Confirmed = { events: SnapshotMessage['events']; previous: RoomSnapshot; next: RoomSnapshot };
+// 결과를 확인할 때까지 보관하는 요청
+type Request = {
+  path: string;
+  body: Record<string, unknown>;
+  kind: 'entry' | 'recovery' | 'control' | 'command';
+  draft: boolean;
+  scopeRevision?: number;
+  unresolved?: boolean;
+  limited?: boolean;
+};
+const CONNECTION_ERROR = '서버에 연결하지 못했습니다. 연결 상태를 확인해 주세요.';
+const UNKNOWN_RESULT = '요청 결과를 확인하지 못했습니다. 다시 확인해 주세요.';
+const TOO_MANY_SCREENS = '열린 화면이 너무 많습니다. 사용하지 않는 화면을 닫아 주세요.';
+const LOST_ROOM_CODES = ['NO_SESSION', 'ROOM_NOT_FOUND'];
+
+// 서버 상태와 요청 원장 및 화면 수명을 함께 관리한다
+export class OnlineController {
+  private view: OnlineView = {
+    phase: 'entry',
+    snapshot: null,
+    connection: 'offline',
+    hasControl: false,
+    pending: false,
+    recovery: null,
+    error: null,
+  };
+  private listeners = new Set<() => void>();
+  private confirmed = new Set<(value: Confirmed) => void>();
+  private observed = new Set<(events: GameEvent[]) => void>();
+  private eventMemory = new EventMemory();
+  private socket: SocketPort | null = null;
+  private grantedGeneration: number | null = null;
+  private sequence = 0;
+  private streamSequence = 0;
+  private epoch = 0;
+  private scopeRevision = 0;
+  private active = false;
+  private opened = false;
+  private opening: Promise<void> | null = null;
+  private closing: Promise<unknown> | null = null;
+  private request: Request | null = null;
+  private processing: Promise<boolean> | null = null;
+  private queuedDraft: { potIndex: number; winners: WinnerSelection } | null = null;
+  private sending = false;
+  private awaitingEvents: { previous: RoomSnapshot; version: number } | null = null;
+  private socketFailures = 0;
+  private probing = false;
+  private recoveryPoller: RecoveryPoller | null = null;
+  private refreshTimer: ReturnType<typeof setInterval> | undefined;
+
+  // API와 핸들러를 받는 소켓 생성자를 주입받는다
+  constructor(
+    private readonly api: Pick<
+      ApiClient,
+      'open' | 'streamId' | 'get' | 'post' | 'refresh' | 'closeStream'
+    >,
+    private readonly makeSocket: (handlers: RoomSocketHandlers) => SocketPort,
+  ) {}
+
+  // 외부 저장소가 같은 객체를 읽도록 현재 화면을 반환한다
+  getView = (): OnlineView => this.view;
+  // 서버 이벤트를 변형하지 않고 최근 이벤트의 표시 이름 메타데이터를 제공한다
+  getKnownEvents(): ReadonlyMap<string, KnownEvent> {
+    return this.eventMemory.events;
+  }
+  // API 인스턴스를 노출하지 않고 현재 방의 토너먼트 기록을 조회한다
+  async loadEvents(tournamentId: string, after: number, limit: number): Promise<GameEvent[]> {
+    const roomId = this.view.snapshot!.roomId;
+    const query = new URLSearchParams({ tournamentId, after: String(after), limit: String(limit) });
+    const result = await this.api.get<{ events: GameEvent[]; nextAfter: number }>(
+      `/api/rooms/${encodeURIComponent(roomId)}/history?${query}`,
+    );
+    if (!result.ok) {
+      if (!('unknown' in result) && result.status === 410) return [];
+      throw new Error('기록을 불러오지 못했습니다.');
+    }
+    return result.body.events;
+  }
+  // 방의 최신 상태를 다시 구독하여 연결을 복구한다
+  reconnect(): void {
+    if (this.active && this.view.phase === 'room') this.socket?.reconnect();
+  }
+  // 화면 변경 구독을 등록하고 해제 함수를 반환한다
+  subscribe = (listener: () => void): (() => void) => {
+    this.listeners.add(listener);
+    return () => this.listeners.delete(listener);
+  };
+  // 연속 확정 상태의 효과 구독을 등록한다
+  onConfirmed(listener: (value: Confirmed) => void): () => void {
+    this.confirmed.add(listener);
+    return () => this.confirmed.delete(listener);
+  }
+  // 서버 확정 이벤트의 알림을 상태 적용과 칩 효과 수명에서 분리하여 구독한다
+  onObserved(listener: (events: GameEvent[]) => void): () => void {
+    this.observed.add(listener);
+    return () => this.observed.delete(listener);
+  }
+  // 새 화면 값을 저장하고 모든 구독자에게 알린다
+  private update(patch: Partial<OnlineView>): void {
+    this.view = { ...this.view, ...patch };
+    this.listeners.forEach((listener) => listener());
+  }
+  // 활성 화면의 세션과 스트림을 한 번 준비한다
+  private async open(): Promise<boolean> {
+    if (this.opened) return true;
+    this.active = true;
+    const epoch = this.epoch;
+    try {
+      if (this.closing) await this.closing;
+      if (epoch !== this.epoch) return false;
+      const opening = this.api.open();
+      this.opening = opening;
+      await opening;
+      if (this.opening === opening) this.opening = null;
+    } catch (failure) {
+      if (epoch === this.epoch) {
+        this.opening = null;
+        const code =
+          failure instanceof ApiOpenError && 'code' in failure.result
+            ? failure.result.code
+            : undefined;
+        this.update({
+          phase: code === 'PROTOCOL_INCOMPATIBLE' ? 'incompatible' : 'entry',
+          pending: false,
+          error: code ? messageFor(code) : CONNECTION_ERROR,
+        });
+      }
+      return false;
+    }
+    if (epoch !== this.epoch) {
+      return false;
+    }
+    this.opened = true;
+    this.streamSequence = 0;
+    document.addEventListener('visibilitychange', this.onVisible);
+    this.refreshTimer = setInterval(
+      () => {
+        if (document.visibilityState === 'visible') void this.api.refresh();
+      },
+      6 * 60 * 60 * 1000,
+    );
+    return true;
+  }
+  // 화면 복귀 시 세션을 갱신한다
+  private onVisible = (): void => {
+    if (this.active && document.visibilityState === 'visible') void this.api.refresh();
+  };
+  // 스트림 원장의 공통 요청 필드를 만든다
+  private envelope(): Record<string, unknown> {
+    return {
+      protocolVersion: 1,
+      streamId: this.api.streamId,
+      requestId: crypto.randomUUID(),
+      sequence: ++this.streamSequence,
+    };
+  }
+  // 새 방을 생성한다
+  create(name: string): Promise<boolean> {
+    return this.enter('/api/rooms', { name }, 'entry');
+  }
+  // 방 코드와 이름으로 참가한다
+  join(code: string, name: string): Promise<boolean> {
+    return this.enter('/api/room-joins', { code, name }, 'entry');
+  }
+  // 기존 참가자 자리의 복구 승인을 요청한다
+  requestRecovery(code: string, name: string): Promise<boolean> {
+    return this.enter('/api/recovery-requests', { code, name }, 'recovery');
+  }
+  // 입장 요청을 보관하여 명시적 재시도에도 같은 본문을 사용한다
+  private async enter(path: string, payload: object, kind: 'entry' | 'recovery'): Promise<boolean> {
+    if (this.request || this.view.pending || this.view.phase === 'room') return false;
+    const epoch = this.epoch;
+    this.update({
+      phase: kind === 'recovery' ? 'recovering' : 'joining',
+      snapshot: null,
+      hasControl: false,
+      pending: true,
+      error: null,
+    });
+    if (!(await this.open()) || epoch !== this.epoch) {
+      return false;
+    }
+    this.request = { path, body: { ...this.envelope(), ...payload }, kind, draft: false };
+    return this.execute(false);
+  }
+  // 마지막 방을 조회하고 이 탭의 표시가 있을 때만 조작권을 인수한다
+  async resume(): Promise<boolean> {
+    if (this.view.pending || this.request || this.view.phase === 'room') return false;
+    const recovery = savedRecovery();
+    if (recovery) return this.resumeRecovery(recovery);
+    const roomId = savedRoomId();
+    if (!roomId) return false;
+    const epoch = this.epoch;
+    this.update({ phase: 'joining', pending: true });
+    if (!(await this.open()) || epoch !== this.epoch) return false;
+    const result = await this.api.get(`/api/rooms/${encodeURIComponent(roomId)}/state`);
+    if (epoch !== this.epoch) return false;
+    if (!result.ok || !isRoomSnapshot(result.body)) {
+      if (!result.ok && !('unknown' in result) && LOST_ROOM_CODES.includes(result.code ?? ''))
+        forgetRoom();
+      this.update({
+        phase: 'entry',
+        pending: false,
+        error: !result.ok && !('unknown' in result) ? messageFor(result.code) : CONNECTION_ERROR,
+      });
+      return false;
+    }
+    this.grantedGeneration = null;
+    this.apply(result.body);
+    this.update({ phase: 'room', pending: false, hasControl: false });
+    this.connect();
+    if (tabControls(roomId)) return this.takeControl();
+    return true;
+  }
+  // 새로고침 전에 보낸 복구 신청의 결과 조회를 이어간다
+  private async resumeRecovery(id: string): Promise<boolean> {
+    const epoch = this.epoch;
+    this.update({ phase: 'recovering', pending: true, recovery: null });
+    if (!(await this.open()) || epoch !== this.epoch) return false;
+    this.update({ pending: false, recovery: { recoveryRequestId: id, status: 'PENDING' } });
+    this.pollRecovery(id);
+    return true;
+  }
+  // 입장 응답의 세대와 저장 가능한 방 정보만 보관한다
+  private joined(body: unknown): boolean {
+    if (!isJoinResponse(body)) return false;
+    this.grantedGeneration = body.controlGeneration;
+    this.sequence = 0;
+    rememberRoom(body.roomId, body.code);
+    this.apply(body.state);
+    this.update({
+      phase: 'room',
+      pending: false,
+      recovery: null,
+      error: null,
+    });
+    this.connect();
+    return true;
+  }
+  // 현재 수명에 속한 소켓 콜백만 처리한다
+  private connect(): void {
+    this.socket?.close();
+    const epoch = this.epoch;
+    this.update({ connection: 'syncing' });
+    this.socket = this.makeSocket({
+      // 수신 상태를 적용한 뒤 연결 동기화를 확정한다
+      onSnapshot: (message) => {
+        if (epoch !== this.epoch || !this.active) return;
+        this.socketFailures = 0;
+        if (this.view.error === TOO_MANY_SCREENS) this.update({ error: null });
+        if (this.apply(message.state, message)) this.update({ connection: 'online' });
+        else if (this.view.connection === 'syncing') this.socket?.resync();
+      },
+      // 최종 메시지에 맞는 종료 단계를 설정한다
+      onFinal: (type) => {
+        if (epoch === this.epoch) this.finish(type);
+      },
+      // 화면보다 높은 서버 버전을 발견하면 동기화를 요청한다
+      onPing: (version) => {
+        if (epoch === this.epoch && version > (this.view.snapshot?.stateVersion ?? -1)) {
+          this.update({ connection: 'syncing' });
+          this.socket?.resync();
+        }
+      },
+      // 연결 한도로 거절된 화면에 재연결이 멈추지 않는 이유를 안내한다
+      onTooManyScreens: () => {
+        if (epoch === this.epoch) this.update({ error: TOO_MANY_SCREENS });
+      },
+      // 열린 소켓에서도 스냅샷을 받기 전에는 조작을 잠근다
+      onState: (state) => {
+        if (epoch !== this.epoch || !this.active) return;
+        this.queuedDraft = null;
+        this.update({ connection: state === 'waiting' ? 'offline' : 'syncing' });
+        if (state === 'waiting' && ++this.socketFailures >= 2) void this.probeRoom();
+        if (state === 'open' && this.request) {
+          const request = this.request;
+          // 재접속 전에 시작한 전송도 제한 시간 뒤에 같은 원장에서 조회한다
+          void Promise.resolve(this.processing).then(() => {
+            if (this.request === request && !request.limited && this.view.connection !== 'offline')
+              void this.retry();
+          });
+        }
+      },
+    });
+    this.socket.subscribe(this.view.snapshot!.roomId, this.view.snapshot!.stateVersion);
+  }
+  // 소켓 거절 사유는 브라우저가 알 수 없으므로 재연결이 이어지면 방과 세션을 HTTP로 확인한다
+  private async probeRoom(): Promise<void> {
+    const snapshot = this.view.snapshot;
+    if (this.probing || !snapshot) return;
+    const epoch = this.epoch;
+    this.probing = true;
+    const result = await this.api.get(`/api/rooms/${encodeURIComponent(snapshot.roomId)}/state`);
+    if (epoch !== this.epoch) return;
+    this.probing = false;
+    if (!result.ok && !('unknown' in result) && LOST_ROOM_CODES.includes(result.code ?? ''))
+      this.finish('ROOM_GONE');
+  }
+  // 토너먼트와 버전 쌍으로 상태 적용 및 효과 재생을 결정한다
+  private apply(next: RoomSnapshot, message?: SnapshotMessage, ownAction = false): boolean {
+    const previous = this.view.snapshot;
+    const same = previous?.tournamentId === next.tournamentId;
+    if (
+      previous?.roomId === next.roomId &&
+      previous.you.participantId === next.you.participantId &&
+      previous.you.controlGeneration > next.you.controlGeneration
+    )
+      return false;
+    if (previous && same && isOlderSnapshot(next, previous)) return false;
+    if (next.you.controlGeneration !== this.grantedGeneration) this.queuedDraft = null;
+    if (!same) {
+      ++this.scopeRevision;
+      this.eventMemory.clear();
+    }
+    const fresh = this.eventMemory.record(message?.events ?? [], next, previous);
+    if (fresh.length) this.observed.forEach((listener) => listener(fresh));
+    if (
+      previous &&
+      same &&
+      message &&
+      next.stateVersion === previous.stateVersion &&
+      next.draftVersion === previous.draftVersion &&
+      message.previousVersion !== null
+    ) {
+      // HTTP가 먼저 확정한 자기 행동은 이벤트가 도착한 지금 효과를 재생한다
+      const awaiting = this.awaitingEvents;
+      if (
+        fresh.length &&
+        !fresh.some((event) => event.type === 'UNDO') &&
+        awaiting?.version === next.stateVersion &&
+        awaiting.previous.stateVersion === message.previousVersion
+      ) {
+        this.awaitingEvents = null;
+        this.confirmed.forEach((listener) =>
+          listener({ events: fresh, previous: awaiting.previous, next }),
+        );
+        this.update({ snapshot: next });
+      }
+      return true;
+    }
+    const continuous =
+      previous &&
+      same &&
+      message?.previousVersion === previous.stateVersion &&
+      next.stateVersion > previous.stateVersion;
+    const confirmedByHttp =
+      !!previous && same && ownAction && next.stateVersion > previous.stateVersion;
+    this.awaitingEvents = confirmedByHttp ? { previous, version: next.stateVersion } : null;
+    try {
+      if (continuous)
+        this.confirmed.forEach((listener) => listener({ events: fresh, previous, next }));
+    } finally {
+      // 구독자가 이전 DOM에서 좌표를 준비한 뒤 확정 상태를 화면에 적용한다
+      this.update({
+        snapshot: next,
+        effectsFromVersion:
+          confirmedByHttp || (continuous && !fresh.some((event) => event.type === 'UNDO'))
+            ? previous!.stateVersion
+            : null,
+        hasControl: next.you.controlGeneration === this.grantedGeneration,
+      });
+    }
+    return true;
+  }
+  // 일반 명령 목록을 초안 뒤에서 순서대로 실행한다
+  async send(commands: ServerCommand[]): Promise<boolean> {
+    if (
+      this.sending ||
+      this.view.pending ||
+      this.view.connection !== 'online' ||
+      !this.view.hasControl ||
+      (this.request && !this.request.draft)
+    )
+      return false;
+    this.sending = true;
+    this.update({ pending: true });
+    const epoch = this.epoch;
+    try {
+      if (this.processing) await this.processing;
+      if (epoch !== this.epoch) return false;
+      while (this.queuedDraft && !this.request) await this.flushDraft();
+      if (this.request || epoch !== this.epoch) return false;
+      for (const command of commands) {
+        if (
+          epoch !== this.epoch ||
+          this.view.connection !== 'online' ||
+          !this.view.hasControl ||
+          !(await this.command(command, false))
+        )
+          return false;
+      }
+      return true;
+    } finally {
+      if (epoch === this.epoch) {
+        this.sending = false;
+        this.update({ pending: this.request !== null });
+      }
+    }
+  }
+  // 최신 승자 선택 한 건만 대기시킨다
+  sendDraft(potIndex: number, winners: WinnerSelection): void {
+    if (
+      this.view.connection !== 'online' ||
+      !this.view.hasControl ||
+      this.view.pending ||
+      this.sending ||
+      (this.request && !this.request.draft)
+    )
+      return;
+    this.queuedDraft = { potIndex, winners: structuredClone(winners) };
+    if (!this.request && !this.processing) void this.flushDraft();
+  }
+  // 대기 중인 최신 초안을 전송한다
+  private async flushDraft(): Promise<boolean> {
+    const draft = this.queuedDraft;
+    this.queuedDraft = null;
+    if (!this.active || this.view.connection !== 'online' || !this.view.hasControl) return false;
+    return draft
+      ? this.command({ type: 'SETTLEMENT_DRAFT', payload: draft, handScoped: true }, true)
+      : true;
+  }
+  // 최신 상태의 식별자로 세대별 명령을 만든다
+  private command(command: ServerCommand, draft: boolean): Promise<boolean> {
+    const state = this.view.snapshot!;
+    this.request = {
+      kind: 'command',
+      scopeRevision: this.scopeRevision,
+      draft,
+      path: `/api/rooms/${encodeURIComponent(state.roomId)}/commands`,
+      body: {
+        protocolVersion: 1,
+        requestId: crypto.randomUUID(),
+        sequence: ++this.sequence,
+        controlGeneration: this.grantedGeneration,
+        expectedStateVersion: state.stateVersion,
+        tournamentId: state.tournamentId,
+        ...(command.handScoped ? { handId: state.game?.hand?.id ?? null } : {}),
+        type: command.type,
+        ...(command.payload ? { payload: structuredClone(command.payload) } : {}),
+      },
+    };
+    return this.execute(false);
+  }
+  // 스트림 원장 순서로 새 조작 세대를 요청한다
+  async takeControl(): Promise<boolean> {
+    if (
+      this.request ||
+      !this.view.snapshot ||
+      this.view.pending ||
+      !this.active ||
+      this.view.phase !== 'room'
+    )
+      return false;
+    this.update({ pending: true });
+    this.request = {
+      path: `/api/rooms/${encodeURIComponent(this.view.snapshot.roomId)}/control`,
+      body: {
+        ...this.envelope(),
+        expectedControlGeneration: this.view.snapshot.you.controlGeneration,
+      },
+      kind: 'control',
+      scopeRevision: this.scopeRevision,
+      draft: false,
+    };
+    return this.execute(false);
+  }
+  // 결과 불명 요청을 보관된 식별자와 본문으로 해결한다
+  retry(): Promise<boolean> {
+    return this.processing ?? (this.request ? this.execute(true) : Promise.resolve(false));
+  }
+  // 결과 불명으로 종료되어 원장 확인이 필요한 요청만 재시도할 수 있다
+  canRetry(): boolean {
+    return this.request?.unresolved === true;
+  }
+  // 최초 요청을 보존하고 재시도 가능한 결과 불명 상태를 표시한다
+  private unknownResult(request: Request): false {
+    request.unresolved = true;
+    request.limited = false;
+    this.update({ pending: true, error: UNKNOWN_RESULT });
+    return false;
+  }
+  // 접수 전에 거절된 요청을 보존하고 사용자가 다시 보낼 때까지 자동 재전송을 막는다
+  private limitedResult(request: Request, code: string, retryAfter: number | undefined): false {
+    request.unresolved = true;
+    request.limited = true;
+    const wait = retryAfter === undefined ? '' : ` ${retryAfter}초 뒤에 가능합니다.`;
+    this.update({ pending: true, error: messageFor(code) + wait });
+    return false;
+  }
+  // 동시에 한 개의 HTTP 처리만 시작한다
+  private execute(lookup: boolean): Promise<boolean> {
+    const work = this.perform(lookup);
+    this.processing = work;
+    // 완료한 처리만 해제하고 최신 초안을 이어서 보낸다
+    void work.finally(() => {
+      if (this.processing === work) {
+        this.processing = null;
+        if (this.queuedDraft && !this.request && !this.sending && this.active)
+          void this.flushDraft();
+      }
+    });
+    return work;
+  }
+  // 원장 조회와 응답 검증으로 보관된 요청을 확정한다
+  private async perform(lookup: boolean): Promise<boolean> {
+    const request = this.request!;
+    const epoch = this.epoch;
+    let result: ApiResult<unknown>;
+    if (lookup && request.kind === 'command') {
+      result = await this.api.get(
+        `/api/rooms/${encodeURIComponent(this.view.snapshot!.roomId)}/requests/${encodeURIComponent(String(request.body.requestId))}`,
+      );
+      if (epoch !== this.epoch) return false;
+      if (
+        !result.ok &&
+        !('unknown' in result) &&
+        result.status === 404 &&
+        result.code === 'ROOM_NOT_FOUND' &&
+        request.body.type === 'LEAVE'
+      ) {
+        this.completeLeave();
+        return true;
+      }
+      if (!result.ok && !('unknown' in result) && result.code === 'REQUEST_NOT_FOUND')
+        result = await this.api.post(request.path, request.body);
+    } else result = await this.api.post(request.path, request.body);
+    if (epoch !== this.epoch) return false;
+    if ('unknown' in result)
+      return result.code
+        ? this.limitedResult(request, result.code, result.retryAfter)
+        : this.unknownResult(request);
+    const body = result.body;
+    if (request.kind === 'command' && isCommandResponse(body)) {
+      if (body.requestId !== request.body.requestId || body.sequence !== request.body.sequence) {
+        return this.unknownResult(request);
+      }
+      if (body.latestState && request.scopeRevision === this.scopeRevision)
+        this.apply(
+          body.latestState,
+          undefined,
+          body.outcome === 'APPLIED' && request.body.type !== 'UNDO',
+        );
+      this.request = null;
+      this.update({
+        pending: this.sending,
+        error: body.outcome === 'REJECTED' ? messageFor(body.code) : null,
+      });
+      if (body.outcome === 'REJECTED') {
+        await this.reject(body.code);
+        return false;
+      }
+      if (request.body.type === 'LEAVE') this.completeLeave();
+      return true;
+    }
+    if (!result.ok) {
+      if (result.code === 'NO_SESSION' && (request.kind === 'entry' || request.kind === 'recovery'))
+        return this.sessionExpired();
+      this.request = null;
+      this.update({
+        pending: this.sending,
+        error: messageFor(result.code),
+        ...(request.kind === 'entry' || request.kind === 'recovery'
+          ? { phase: 'entry' as const }
+          : {}),
+      });
+      if (
+        result.code !== 'ROOM_NOT_FOUND' ||
+        request.kind === 'command' ||
+        request.kind === 'control'
+      )
+        await this.reject(result.code);
+      return false;
+    }
+    if (request.kind === 'entry' && isJoinResponse(body)) {
+      this.request = null;
+      return this.joined(body);
+    }
+    if (request.kind === 'recovery' && isRecoveryRequestResponse(body)) {
+      this.request = null;
+      rememberRecovery(body.recoveryRequestId);
+      this.update({
+        pending: false,
+        error: null,
+        recovery: {
+          recoveryRequestId: body.recoveryRequestId,
+          status: body.status === 'APPROVED' ? 'PENDING' : body.status,
+        },
+      });
+      this.pollRecovery(body.recoveryRequestId);
+      return true;
+    }
+    if (
+      request.kind === 'control' &&
+      isControlResponse(body, request.body) &&
+      body.latestState.roomId === this.view.snapshot?.roomId &&
+      body.latestState.you.participantId === this.view.snapshot.you.participantId
+    ) {
+      this.request = null;
+      this.grantedGeneration = body.controlGeneration;
+      this.sequence = 0;
+      const sameScope = request.scopeRevision === this.scopeRevision;
+      if (sameScope) this.apply(body.latestState);
+      let snapshot = this.view.snapshot;
+      const observed = body.latestState.you.controlGeneration;
+      // 토너먼트가 바뀐 뒤의 응답에서는 같은 자리의 더 높은 조작 세대만 반영한다
+      if (!sameScope && observed > snapshot.you.controlGeneration)
+        snapshot = { ...snapshot, you: { ...snapshot.you, controlGeneration: observed } };
+      markTabControl(snapshot.roomId);
+      this.update({
+        snapshot,
+        pending: false,
+        hasControl: this.grantedGeneration === snapshot.you.controlGeneration,
+        error: null,
+      });
+      return true;
+    }
+    return this.unknownResult(request);
+  }
+  // 만료된 세션의 준비 상태를 버려 다음 입장이 새 세션을 열게 한다
+  private sessionExpired(): false {
+    this.stop();
+    this.update({ phase: 'entry', pending: false, error: messageFor('NO_SESSION') });
+    return false;
+  }
+  // 권한 상실과 순번 오류를 서버 동기화로 복구한다
+  private async reject(code: string | undefined): Promise<void> {
+    if (code === 'CONTROL_LOST') {
+      this.grantedGeneration = null;
+      this.queuedDraft = null;
+      this.update({ hasControl: false });
+    }
+    if (
+      ['SEQUENCE_GAP', 'REQUEST_CONFLICT', 'RESULT_EXPIRED'].includes(code ?? '') &&
+      this.view.snapshot
+    ) {
+      this.grantedGeneration = null;
+      this.update({ connection: 'syncing', pending: false, hasControl: false });
+      this.socket?.resync();
+      await this.takeControl();
+    }
+    if (LOST_ROOM_CODES.includes(code ?? '')) this.finish('ROOM_GONE');
+    if (code === 'PROTOCOL_INCOMPATIBLE') this.finish(code);
+  }
+  // 복구 신청의 결과 조회를 시작한다
+  private pollRecovery(id: string): void {
+    this.recoveryPoller = new RecoveryPoller(this.api, id, {
+      // 조회한 상태를 화면과 입장 흐름에 반영한다
+      onStatus: (status) => this.recoveryChanged(status),
+      // 방이나 신청이 사라지면 저장값을 지우고 입장 화면으로 돌아간다
+      onMissing: (code) => {
+        forgetRecovery();
+        this.update({
+          phase: 'entry',
+          pending: false,
+          recovery: null,
+          error: code === 'ROOM_NOT_FOUND' ? messageFor(code) : '복구 신청을 찾을 수 없습니다.',
+        });
+      },
+    });
+    void this.recoveryPoller.poll();
+  }
+  // 조회한 복구 상태에 따라 방에 들어가거나 입장 화면으로 돌아간다
+  private recoveryChanged(status: RecoveryStatus): void {
+    this.update({ recovery: status });
+    if (status.status === 'PENDING') return;
+    forgetRecovery();
+    if (status.status === 'APPROVED') {
+      this.joined(status);
+      return;
+    }
+    const reasons = {
+      REJECTED: '방장이 복구 신청을 거절했습니다.',
+      EXPIRED: '복구 신청이 만료되었습니다.',
+      SUPERSEDED: '다른 복구 신청으로 대체되었습니다.',
+    };
+    this.update({ phase: 'entry', pending: false, error: reasons[status.status] });
+  }
+  // 최종 메시지에 맞는 단계를 보관하고 모든 채널을 종료한다
+  private finish(type: FinalMessage): void {
+    if (type === 'ACCESS_REVOKED' && this.request?.body.type === 'LEAVE') {
+      this.completeLeave();
+      return;
+    }
+    this.stop();
+    if (type === 'ROOM_GONE') forgetRoom();
+    this.update({
+      phase: type === 'ROOM_GONE' ? 'gone' : type === 'ACCESS_REVOKED' ? 'revoked' : 'incompatible',
+      connection: 'offline',
+      hasControl: false,
+      pending: false,
+    });
+  }
+  // 확정된 탈퇴의 방 표시와 탭 자격을 삭제하고 입장 화면으로 돌아간다
+  private completeLeave(): void {
+    forgetRoom();
+    this.leaveRoomScreen();
+  }
+  // 현재 화면의 비동기 처리와 타이머 및 스트림을 무효화한다
+  private stop(): void {
+    ++this.epoch;
+    this.active = false;
+    this.opened = false;
+    this.grantedGeneration = null;
+    this.recoveryPoller?.stop();
+    this.recoveryPoller = null;
+    clearInterval(this.refreshTimer);
+    document.removeEventListener('visibilitychange', this.onVisible);
+    this.socket?.close();
+    this.socket = null;
+    this.request = null;
+    this.queuedDraft = null;
+    this.processing = null;
+    this.sending = false;
+    this.socketFailures = 0;
+    this.probing = false;
+    this.awaitingEvents = null;
+    if (!this.closing) {
+      this.closing = this.opening
+        ? this.opening.catch(() => {}).then(() => this.api.closeStream())
+        : this.api.closeStream();
+      const closing = this.closing;
+      // 삭제가 끝난 스트림만 해제하여 다음 준비 요청과 겹치지 않게 한다
+      void closing.finally(() => {
+        if (this.closing === closing) this.closing = null;
+      });
+    }
+  }
+  // 방 화면만 떠나고 다시 찾을 마지막 방 정보는 보관한다
+  leaveRoomScreen(): void {
+    this.stop();
+    clearTabControl();
+    forgetRecovery();
+    this.update({
+      phase: 'entry',
+      snapshot: null,
+      connection: 'offline',
+      hasControl: false,
+      pending: false,
+      recovery: null,
+      error: null,
+    });
+  }
+  // BFCache에서는 요청 원장을 유지하고 실제 문서 종료에서만 서버 스트림을 반환한다
+  suspend(persisted: boolean): void {
+    if (persisted) {
+      this.socket?.close();
+      this.socket = null;
+      this.update({ connection: 'offline' });
+      return;
+    }
+    this.stop();
+    this.update({ phase: 'entry', connection: 'offline', hasControl: false, pending: false });
+  }
+  // BFCache 복귀 시 기존 스트림과 결과 불명 요청으로 연결 및 원장 확인을 이어간다
+  restore(): void {
+    if (!this.active) return;
+    void this.api.refresh();
+    if (this.view.phase === 'room') this.connect();
+    else if (this.request && !this.request.limited) void this.retry();
+  }
+  // 컨트롤러의 외부 구독과 브라우저 자원을 모두 정리한다
+  dispose(): void {
+    this.stop();
+    this.listeners.clear();
+    this.confirmed.clear();
+    this.observed.clear();
+  }
+}

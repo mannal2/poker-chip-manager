@@ -1,3 +1,4 @@
+// 선택한 승자 수와 취소/WIN 버튼을 보여주는 정산 조작부
 export function SettlementPanel({
   count,
   busy,

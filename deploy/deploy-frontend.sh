@@ -8,8 +8,7 @@ cd "$project"
 target=${1:-}
 revision=${2:-}
 origin=${3:-}
-repository=ghcr.io/mannal2/poker-chip-manager-frontend
-[[ "$target" == "$repository"@sha256:* && "${target##*@sha256:}" =~ ^[a-f0-9]{64}$ ]] || {
+[[ "$target" =~ ^ghcr\.io/mannal2/poker-chip-manager-frontend@sha256:[a-f0-9]{64}$ ]] || {
   echo 'Supply the frontend image by sha256 digest.' >&2; exit 2;
 }
 [[ "$revision" =~ ^[a-f0-9]{40}$ ]] || { echo 'Supply the 40-character commit SHA.' >&2; exit 2; }
@@ -22,6 +21,9 @@ exec 9> "$state/lock"
 flock -n 9 || { echo 'Another deployment holds the lock.' >&2; exit 1; }
 [[ ! -e "$state/pending" ]] || {
   echo "RECOVERY_REQUIRED: inspect $state/pending before another deployment." >&2; exit 1;
+}
+[[ ! -e "$state/backend-pending" ]] || {
+  echo "RECOVERY_REQUIRED: run deploy/recover-backend.sh for $state/backend-pending first." >&2; exit 1;
 }
 
 compose() { env -u FRONTEND_IMAGE docker compose --project-directory "$project" "$@"; }

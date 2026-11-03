@@ -1,3 +1,4 @@
+// 홈 이동과 새 토너먼트 시작 메뉴
 export function ManagerMenu({ onHome, onNew }: { onHome: () => void; onNew: () => void }) {
   return (
     <div className="menu-actions">

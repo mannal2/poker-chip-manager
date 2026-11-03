@@ -1,3 +1,4 @@
+// 휠/키보드/제스처로 인한 화면 확대를 막는 리스너를 등록한다
 // Page lifetime listeners: preserve scrolling and editing, suppress zoom inputs only.
 export function installZoomPolicy() {
   document.addEventListener(

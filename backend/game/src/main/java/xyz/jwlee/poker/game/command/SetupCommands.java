@@ -15,10 +15,12 @@ import xyz.jwlee.poker.game.rule.Rules;
 import xyz.jwlee.poker.game.settings.SettingsValidation;
 import xyz.jwlee.poker.game.settings.SettingsValidator;
 
+// 토너먼트 시작과 설정 변경 명령을 처리한다
 /** START_TOURNAMENT and SETUP_UPDATE. */
 public final class SetupCommands {
     private SetupCommands() {}
 
+    // 설정을 확인하고 토너먼트를 시작해 첫 핸드를 연다
     public static final CommandHandler<GameCommand.StartTournament> START_TOURNAMENT = (s, cmd, c, events) -> {
         Rules.require(s.status == TournamentStatus.SETUP);
         Rules.require(SettingsValidator.validate(s.settings) instanceof SettingsValidation.Valid);
@@ -27,8 +29,10 @@ public final class SetupCommands {
         Round.startHand(s, c, events);
     };
 
+    // 설정 변경 명령의 핸들러
     public static final CommandHandler<GameCommand.SetupUpdate> SETUP_UPDATE = SetupCommands::setupUpdate;
 
+    // 새 설정으로 플레이어와 좌석 순서를 다시 구성한다
     private static void setupUpdate(
             GameState s, GameCommand.SetupUpdate cmd, TransitionContext c, List<GameEvent> events) {
         Rules.require(s.status == TournamentStatus.SETUP && cmd.settings() != null);

@@ -1,0 +1,16 @@
+{
+  "method" : "POST",
+  "path" : "/api/rooms/{roomId}/control",
+  "status" : 409,
+  "request" : {
+    "protocolVersion" : 1,
+    "streamId" : "00000000-0000-4000-8000-000000000002",
+    "requestId" : "screen-3",
+    "sequence" : 3,
+    "expectedControlGeneration" : 1
+  },
+  "response" : {
+    "code" : "CONTROL_LOST",
+    "message" : "조작 권한을 잃었습니다."
+  }
+}

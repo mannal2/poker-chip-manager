@@ -1,3 +1,4 @@
+// 저장 오류 기록 한 건
 /** Storage failures on this device, newest first; kept outside IndexedDB so they survive it failing. */
 export interface StorageErrorEntry {
   at: string;
@@ -12,6 +13,7 @@ export interface StorageErrorEntry {
 const key = 'poker-local:storage-errors';
 const limit = 10;
 
+// 이 기기에 남긴 저장 오류 기록을 읽는다
 export function readStorageErrors(): StorageErrorEntry[] {
   try {
     const saved = JSON.parse(localStorage.getItem(key) ?? '[]');
@@ -21,6 +23,7 @@ export function readStorageErrors(): StorageErrorEntry[] {
   }
 }
 
+// 저장 오류를 최근 10건까지 localStorage에 기록한다
 export function recordStorageError(phase: string, error: unknown) {
   const entry: StorageErrorEntry = {
     at: new Date().toISOString(),

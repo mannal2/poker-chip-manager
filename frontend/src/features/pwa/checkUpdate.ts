@@ -1,3 +1,4 @@
+// 서비스 워커의 새 버전이 설치되어 사용할 수 있는지 확인한다
 // An update check can resolve before the new worker finishes caching its files.
 export function checkForUpdate(
   ready: Promise<ServiceWorkerRegistration>,

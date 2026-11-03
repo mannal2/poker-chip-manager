@@ -5,7 +5,7 @@ plugins {
 
 rootProject.name = "poker-backend"
 
-include("game")
+include("game", "game-json", "server")
 
 dependencyResolutionManagement {
     repositories {

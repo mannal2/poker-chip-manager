@@ -9,9 +9,11 @@ import xyz.jwlee.poker.game.model.Phase;
 import xyz.jwlee.poker.game.model.Player;
 import xyz.jwlee.poker.game.model.TournamentStatus;
 
+// 상태가 항상 지켜야 하는 칩/플레이어/차례 불변식을 검사한다
 public final class Invariants {
     private Invariants() {}
 
+    // 칩 합계, 팟 장부, 중복 플레이어, 차례 유효성을 검사해 위반 시 예외를 던진다
     /** Throws {@link IllegalStateException} whose message is the TS invariant code. */
     public static void check(GameState s) {
         List<Integer> chips = new java.util.ArrayList<>(List.of(s.pot, s.initialTotal));

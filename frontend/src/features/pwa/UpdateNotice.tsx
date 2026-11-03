@@ -1,4 +1,5 @@
 import type { UpdateStatus } from './register';
+// 업데이트 상태에 맞는 안내와 버튼을 보여준다
 export function UpdateNotice({
   updateStatus,
   updateError,

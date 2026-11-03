@@ -1,0 +1,335 @@
+[
+  {
+    "id": "EV01",
+    "suite": "events",
+    "description": "3인: 블라인드 예약, 베팅 행동, 스트리트 전환, 미콜 반환, 정산, 다음 핸드 시작",
+    "initialState": {
+      "names": ["A", "B", "C"],
+      "initial": 1000,
+      "sb": 5,
+      "bb": 10,
+      "button": 0
+    },
+    "commands": [
+      {
+        "type": "START_TOURNAMENT"
+      },
+      {
+        "type": "SCHEDULE_BLINDS",
+        "sb": 10,
+        "bb": 20
+      },
+      {
+        "type": "RAISE",
+        "additional": 30
+      },
+      {
+        "type": "FOLD"
+      },
+      {
+        "type": "CALL"
+      },
+      {
+        "type": "CHECK"
+      },
+      {
+        "type": "BET",
+        "additional": 100
+      },
+      {
+        "type": "RAISE",
+        "additional": 200
+      },
+      {
+        "type": "FOLD"
+      }
+    ],
+    "context": {
+      "id": "EV01",
+      "at": "2026-10-18T00:00:00Z"
+    },
+    "expectedStateSubset": {
+      "status": "playing",
+      "pot": 30,
+      "hand": {
+        "number": 2
+      }
+    },
+    "expectedError": null,
+    "expectedEvents": [],
+    "expectedEventDetails": [
+      {
+        "type": "HAND_START",
+        "details": {
+          "buttonSeat": 0,
+          "sbSeat": 1,
+          "bbSeat": 2,
+          "sb": 5,
+          "bb": 10
+        }
+      },
+      {
+        "type": "BLINDS_SCHEDULED",
+        "details": {
+          "sb": 10,
+          "bb": 20
+        }
+      },
+      {
+        "type": "RAISE",
+        "details": {
+          "playerId": "p0",
+          "additional": 30
+        }
+      },
+      {
+        "type": "FOLD",
+        "details": {
+          "playerId": "p1",
+          "additional": 0
+        }
+      },
+      {
+        "type": "CALL",
+        "details": {
+          "playerId": "p2",
+          "additional": 20
+        }
+      },
+      {
+        "type": "REVEAL",
+        "details": {
+          "showdown": false
+        }
+      },
+      {
+        "type": "STREET",
+        "details": {
+          "street": 1
+        }
+      },
+      {
+        "type": "CHECK",
+        "details": {
+          "playerId": "p2",
+          "additional": 0
+        }
+      },
+      {
+        "type": "BET",
+        "details": {
+          "playerId": "p0",
+          "additional": 100
+        }
+      },
+      {
+        "type": "RAISE",
+        "details": {
+          "playerId": "p2",
+          "additional": 200
+        }
+      },
+      {
+        "type": "FOLD",
+        "details": {
+          "playerId": "p0",
+          "additional": 0
+        }
+      },
+      {
+        "type": "RETURN",
+        "details": {
+          "playerId": "p2",
+          "amount": 100
+        }
+      },
+      {
+        "type": "PAYOUT",
+        "details": {
+          "pot": 265,
+          "payouts": {
+            "p0": 0,
+            "p1": 0,
+            "p2": 265
+          }
+        }
+      },
+      {
+        "type": "HAND_START",
+        "details": {
+          "buttonSeat": 1,
+          "sbSeat": 2,
+          "bbSeat": 0,
+          "sb": 10,
+          "bb": 20
+        }
+      }
+    ]
+  },
+  {
+    "id": "EV02",
+    "suite": "events",
+    "description": "헤즈업: 올인·콜, 쇼다운 공개, 되돌리기, 정산으로 탈락과 토너먼트 종료",
+    "initialState": {
+      "names": ["A", "B"],
+      "initial": 1000,
+      "sb": 5,
+      "bb": 10,
+      "button": 0
+    },
+    "commands": [
+      {
+        "type": "START_TOURNAMENT"
+      },
+      {
+        "type": "ALL_IN"
+      },
+      {
+        "type": "CALL"
+      },
+      {
+        "type": "UNDO"
+      },
+      {
+        "type": "CALL"
+      },
+      {
+        "type": "SETTLE_HAND",
+        "winners": {
+          "pot0": ["p0"]
+        }
+      }
+    ],
+    "context": {
+      "id": "EV02",
+      "at": "2026-10-18T00:00:00Z"
+    },
+    "expectedStateSubset": {
+      "status": "ended",
+      "pot": 0,
+      "hand": {
+        "number": 1
+      }
+    },
+    "expectedError": null,
+    "expectedEvents": [],
+    "expectedEventDetails": [
+      {
+        "type": "HAND_START",
+        "details": {
+          "buttonSeat": 0,
+          "sbSeat": 0,
+          "bbSeat": 1,
+          "sb": 5,
+          "bb": 10
+        }
+      },
+      {
+        "type": "ALL_IN",
+        "details": {
+          "playerId": "p0",
+          "additional": 995
+        }
+      },
+      {
+        "type": "CALL",
+        "details": {
+          "playerId": "p1",
+          "additional": 990
+        }
+      },
+      {
+        "type": "REVEAL",
+        "details": {
+          "showdown": true
+        }
+      },
+      {
+        "type": "UNDO",
+        "details": {
+          "eventIds": ["EV02:0", "EV02:1"]
+        }
+      },
+      {
+        "type": "CALL",
+        "details": {
+          "playerId": "p1",
+          "additional": 990
+        }
+      },
+      {
+        "type": "REVEAL",
+        "details": {
+          "showdown": true
+        }
+      },
+      {
+        "type": "PAYOUT",
+        "details": {
+          "pot": 2000,
+          "payouts": {
+            "p0": 2000,
+            "p1": 0
+          }
+        }
+      },
+      {
+        "type": "ELIMINATED",
+        "details": {
+          "playerId": "p1"
+        }
+      },
+      {
+        "type": "TOURNAMENT_END",
+        "details": {
+          "winner": "p0"
+        }
+      }
+    ]
+  },
+  {
+    "id": "EV03",
+    "suite": "events",
+    "description": "헤즈업: 핸드 시작 직후 토너먼트 중단",
+    "initialState": {
+      "names": ["A", "B"],
+      "initial": 1000,
+      "sb": 5,
+      "bb": 10,
+      "button": 1
+    },
+    "commands": [
+      {
+        "type": "START_TOURNAMENT"
+      },
+      {
+        "type": "ABORT"
+      }
+    ],
+    "context": {
+      "id": "EV03",
+      "at": "2026-10-18T00:00:00Z"
+    },
+    "expectedStateSubset": {
+      "status": "aborted"
+    },
+    "expectedError": null,
+    "expectedEvents": [],
+    "expectedEventDetails": [
+      {
+        "type": "HAND_START",
+        "details": {
+          "buttonSeat": 1,
+          "sbSeat": 1,
+          "bbSeat": 0,
+          "sb": 5,
+          "bb": 10
+        }
+      },
+      {
+        "type": "ABORT",
+        "details": {}
+      }
+    ]
+  }
+]

@@ -1,0 +1,80 @@
+poker:
+  max-rooms: 10
+  client-ip-header: ""
+  build:
+    # The image sets POKER_BUILD_REVISION; a build outside the image reports the Gradle version.
+    revision: ""
+  deploy:
+    gate-file: ""
+  rate-limit:
+    session-per-second: 5
+    session-burst: 10
+    ip-per-minute: 60
+    ip-burst: 20
+    room-per-minute: 5
+    room-burst: 5
+    new-session-per-minute: 30
+    new-session-burst: 20
+    max-sessions: 2000
+  allowed-origins:
+    - http://localhost:5173
+    - http://127.0.0.1:5173
+
+spring:
+  threads:
+    virtual:
+      enabled: true
+
+server:
+  # The internal deployment paths trust the socket address, so no proxy header may rewrite it.
+  forward-headers-strategy: none
+  servlet:
+    session:
+      timeout: 7d
+      tracking-modes: cookie
+      cookie:
+        name: PCM_SESSION
+        http-only: true
+        same-site: lax
+        max-age: 7d
+
+---
+spring:
+  config:
+    activate:
+      on-profile: prod
+
+poker:
+  client-ip-header: X-Real-IP
+  deploy:
+    gate-file: /run/poker-gate/start-gate.json
+  allowed-origins:
+    - https://pcm.jwlee.xyz
+
+server:
+  servlet:
+    session:
+      cookie:
+        name: __Host-pcm-session
+        secure: true
+
+---
+spring:
+  config:
+    activate:
+      on-profile: e2e
+
+poker:
+  max-rooms: 200
+  # Games the earlier specs leave behind must end before the deployment gate spec can prepare on this server.
+  abandoned-room-seconds: 20
+  # Every test browser shares one address, and the suite opens far more rooms than one person would.
+  rate-limit:
+    ip-per-minute: 60000
+    ip-burst: 2000
+    room-per-minute: 60000
+    room-burst: 2000
+    new-session-per-minute: 60000
+    new-session-burst: 2000
+  allowed-origins:
+    - http://127.0.0.1:4174

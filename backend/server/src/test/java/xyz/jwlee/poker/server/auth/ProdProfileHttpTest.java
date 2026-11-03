@@ -1,0 +1,71 @@
+package xyz.jwlee.poker.server.auth;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpRequest.BodyPublishers;
+import java.net.http.HttpResponse;
+import java.net.http.HttpResponse.BodyHandlers;
+import org.junit.jupiter.api.Test;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.test.context.ActiveProfiles;
+import tools.jackson.databind.ObjectMapper;
+
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@ActiveProfiles("prod")
+class ProdProfileHttpTest {
+
+    private static final ObjectMapper MAPPER = new ObjectMapper();
+
+    @LocalServerPort
+    int port;
+
+    private final HttpClient client = HttpClient.newHttpClient();
+
+    @Test
+    void prodCookieIsHostPrefixedSecureAndOnlyTheProdOriginIsAllowed() throws Exception {
+        HttpResponse<String> r = client.send(
+                HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/api/session")).build(),
+                BodyHandlers.ofString());
+        String setCookie = r.headers().firstValue("Set-Cookie").orElseThrow();
+
+        assertThat(setCookie).startsWith("__Host-pcm-session=").contains("Path=/").contains("Secure")
+                .containsIgnoringCase("HttpOnly").containsIgnoringCase("SameSite=Lax").contains("Max-Age=604800")
+                .doesNotContainIgnoringCase("Domain=");
+
+        String cookie = setCookie.split(";", 2)[0];
+        String csrf = MAPPER.readTree(r.body()).get("csrfToken").asString();
+        assertThat(post(cookie, csrf, "https://pcm.jwlee.xyz")).isEqualTo(200);
+        assertThat(post(cookie, csrf, "http://localhost:5173")).isEqualTo(403);
+    }
+
+    // 세션 연장 응답에서 직접 생성한 쿠키에 운영 환경의 보안 속성과 유효 시간이 설정되는지 확인한다.
+    @Test
+    void refreshSendsTheHandBuiltCookieWithTheProdAttributes() throws Exception {
+        HttpResponse<String> opened = client.send(
+                HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/api/session")).build(),
+                BodyHandlers.ofString());
+        String cookie = opened.headers().firstValue("Set-Cookie").orElseThrow().split(";", 2)[0];
+        String csrf = MAPPER.readTree(opened.body()).get("csrfToken").asString();
+
+        HttpResponse<String> refreshed = client.send(
+                HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/api/session/refresh"))
+                        .header("Cookie", cookie).header("X-CSRF-TOKEN", csrf)
+                        .header("Origin", "https://pcm.jwlee.xyz").POST(BodyPublishers.noBody()).build(),
+                BodyHandlers.ofString());
+
+        assertThat(refreshed.statusCode()).isEqualTo(200);
+        assertThat(refreshed.headers().allValues("Set-Cookie")).singleElement().asString()
+                .startsWith(cookie + ";").contains("; Path=/").contains("; Max-Age=604800").contains("; Secure")
+                .contains("; HttpOnly").contains("; SameSite=Lax").doesNotContainIgnoringCase("Domain=");
+    }
+
+    private int post(String cookie, String csrf, String origin) throws Exception {
+        return client.send(HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/api/session/streams"))
+                .header("Cookie", cookie).header("X-CSRF-TOKEN", csrf).header("Origin", origin)
+                .POST(BodyPublishers.noBody()).build(), BodyHandlers.ofString()).statusCode();
+    }
+}

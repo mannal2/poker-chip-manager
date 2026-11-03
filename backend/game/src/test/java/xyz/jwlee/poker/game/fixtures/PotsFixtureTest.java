@@ -3,8 +3,8 @@ package xyz.jwlee.poker.game.fixtures;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.DynamicTest.dynamicTest;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.DynamicTest;
@@ -14,6 +14,7 @@ import xyz.jwlee.poker.game.Settlement;
 import xyz.jwlee.poker.game.event.EventDetails;
 import xyz.jwlee.poker.game.model.GameState;
 import xyz.jwlee.poker.game.model.Pot;
+import xyz.jwlee.poker.gamejson.GameJson;
 
 /** Mirrors {@code runPots} of the TS fixture runner. */
 class PotsFixtureTest {
@@ -23,19 +24,19 @@ class PotsFixtureTest {
     List<DynamicTest> potsCases() {
         List<DynamicTest> tests = new ArrayList<>();
         for (JsonNode c : FixtureFiles.load("pots")) {
-            tests.add(dynamicTest(c.get("id").asText() + " " + c.get("description").asText(), () -> run(c)));
+            tests.add(dynamicTest(c.get("id").asString() + " " + c.get("description").asString(), () -> run(c)));
         }
         assertThat(tests).hasSize(7);
         return tests;
     }
 
     private static void run(JsonNode f) {
-        GameState s = StateJson.read(f.get("initialState"));
+        GameState s = GameJson.readState(f.get("initialState"));
         JsonNode expected = f.get("expectedStateSubset");
         int total = s.pot;
         List<Pot> built = List.of();
         for (JsonNode command : f.get("commands")) {
-            switch (command.get("type").asText()) {
+            switch (command.get("type").asString()) {
                 case "RETURN_UNCALLED" -> {
                     EventDetails.UncalledReturned returned = Round.returnUncalled(s);
                     int amount = returned == null ? 0 : returned.amount();

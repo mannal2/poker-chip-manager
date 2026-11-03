@@ -2,13 +2,13 @@ plugins {
     `java-library`
 }
 
-// The rules module has no runtime dependencies (JDK only); test libraries stay test-scoped.
+// The rules module has no runtime dependencies (JDK only); test libraries and the JSON mapping stay test-scoped.
 dependencies {
     testImplementation(platform("org.junit:junit-bom:5.13.4"))
     testImplementation("org.junit.jupiter:junit-jupiter")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
     testImplementation("org.assertj:assertj-core:3.27.4")
-    testImplementation("com.fasterxml.jackson.core:jackson-databind:2.20.0")
+    testImplementation(project(":game-json"))
 }
 
 tasks.test {

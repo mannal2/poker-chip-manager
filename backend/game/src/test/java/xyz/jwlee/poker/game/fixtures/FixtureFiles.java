@@ -1,7 +1,7 @@
 package xyz.jwlee.poker.game.fixtures;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
@@ -13,7 +13,7 @@ import java.util.Set;
 /** Locates and loads the shared rule-case files in {@code shared/game-fixtures}. */
 public final class FixtureFiles {
     static final Set<String> SUITES =
-            Set.of("settings", "positions", "betting", "pots", "settlement", "lifecycle", "undo", "forfeit");
+            Set.of("settings", "positions", "betting", "pots", "settlement", "lifecycle", "undo", "forfeit", "events");
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 

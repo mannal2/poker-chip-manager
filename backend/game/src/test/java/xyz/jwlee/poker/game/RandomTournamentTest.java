@@ -9,7 +9,6 @@ import java.util.Map;
 import java.util.Random;
 import org.junit.jupiter.api.Test;
 import xyz.jwlee.poker.game.command.GameCommand;
-import xyz.jwlee.poker.game.fixtures.StateJson;
 import xyz.jwlee.poker.game.model.GameSettings;
 import xyz.jwlee.poker.game.model.GameState;
 import xyz.jwlee.poker.game.model.Phase;
@@ -17,6 +16,7 @@ import xyz.jwlee.poker.game.model.Player;
 import xyz.jwlee.poker.game.model.Pot;
 import xyz.jwlee.poker.game.model.TournamentStatus;
 import xyz.jwlee.poker.game.model.TransitionContext;
+import xyz.jwlee.poker.gamejson.GameJson;
 
 /**
  * Deterministic 2..10 player tournaments driven by random legal commands: folds, calls, all-ins,
@@ -49,14 +49,14 @@ class RandomTournamentTest {
                     assertThat(step++).as(label + " did not end within " + MAX_STEPS + " steps").isLessThan(MAX_STEPS);
                     GameCommand command = choose(s, rand);
                     String where = label + " step=" + step + " command=" + command;
-                    String before = StateJson.write(s).toString();
+                    String before = GameJson.writeState(s).toString();
                     TransitionResult r;
                     try {
                         r = GameEngine.transition(s, command, new TransitionContext(n + "-" + game + "-" + step, "test"));
                     } catch (RuntimeException e) {
                         throw new AssertionError(where + " threw " + e, e);
                     }
-                    assertThat(StateJson.write(s).toString()).as(where + " mutated its input").isEqualTo(before);
+                    assertThat(GameJson.writeState(s).toString()).as(where + " mutated its input").isEqualTo(before);
                     assertThat(r).as(where + " was rejected: " + r).isInstanceOf(TransitionResult.Applied.class);
                     s = ((TransitionResult.Applied) r).state();
                     try {
@@ -113,7 +113,7 @@ class RandomTournamentTest {
         // as one non-forfeited player remains to receive the stacks.
         List<Player> leavable = s.players.stream().filter(p -> !p.eliminated && !p.forfeited).toList();
         if (leavable.size() >= 2 && rand.nextDouble() < 0.04) {
-            return new GameCommand.Forfeit(leavable.get(rand.nextInt(leavable.size())).id);
+            return new GameCommand.Forfeit(leavable.get(rand.nextInt(leavable.size())).id, false);
         }
         if (s.undo != null && rand.nextDouble() < 0.05) {
             return new GameCommand.Undo();

@@ -3,6 +3,7 @@ package xyz.jwlee.poker.game.model;
 import java.util.ArrayList;
 import java.util.List;
 
+// 토너먼트 전체 상태(플레이어, 핸드, 팟, 되돌리기 스냅샷)
 public final class GameState {
     public String tournamentId;
     public int version;
@@ -20,6 +21,7 @@ public final class GameState {
 
     public GameState() {}
 
+    // 중첩 객체까지 모두 복제한 깊은 복사본을 만든다
     /** Deep copy: nested lists, players, hand and the undo snapshot are all duplicated. */
     public GameState copy() {
         GameState s = new GameState();

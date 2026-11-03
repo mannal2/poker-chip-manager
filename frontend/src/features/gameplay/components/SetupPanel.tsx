@@ -2,16 +2,19 @@ import { useState, useRef } from 'react';
 import type { GameSettings } from '../../../game/settings';
 import { validateSettings } from '../../../game/settings';
 import { messageFor } from '../model/errorMessages';
+// 시작 칩과 블라인드를 입력하고 게임을 시작하는 설정 패널
 export function SetupPanel({
   settings,
   busy,
   onSave,
   onStart,
+  validate = validateSettings,
 }: {
   settings: GameSettings;
   busy: boolean;
   onSave: (s: GameSettings) => void;
   onStart: (s: GameSettings) => void;
+  validate?: typeof validateSettings;
 }) {
   const [draft, setDraft] = useState({
       initial: String(settings.initial),
@@ -20,6 +23,7 @@ export function SetupPanel({
     }),
     [error, setError] = useState('');
   const composing = useRef(false);
+  // 입력 초안을 숫자로 바꾼 설정 값을 만든다
   function values() {
     return {
       ...settings,
@@ -28,10 +32,11 @@ export function SetupPanel({
       bb: Number(draft.bb),
     };
   }
+  // 입력을 검증해 바뀐 설정이면 저장을 요청한다
   function save() {
     if (composing.current) return;
     const s = values(),
-      v = validateSettings(s);
+      v = validate(s);
     setError(v.ok ? '' : messageFor(v.code));
     if (v.ok && JSON.stringify(s) !== JSON.stringify(settings)) onSave(v.settings);
   }
@@ -41,7 +46,7 @@ export function SetupPanel({
         id="setupForm"
         onSubmit={(e) => {
           e.preventDefault();
-          const v = validateSettings(values());
+          const v = validate(values());
           if (v.ok) {
             setError('');
             onStart(v.settings);

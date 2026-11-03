@@ -1,4 +1,6 @@
+// 인원 수별 테이블 좌석 위치(퍼센트 좌표)
 export const seatCoordinates: Record<number, number[][]> = {
+  1: [[50, 84]],
   2: [
     [50, 84],
     [50, 16],

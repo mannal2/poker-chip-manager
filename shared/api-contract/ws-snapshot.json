@@ -1,0 +1,186 @@
+{
+  "type" : "SNAPSHOT",
+  "previousVersion" : 9,
+  "events" : [ {
+    "id" : "00000000-0000-4000-8000-000000000014:0",
+    "at" : "2026-10-30T12:00:00Z",
+    "tournamentId" : "00000000-0000-4000-8000-000000000010",
+    "hand" : 1,
+    "type" : "CALL",
+    "details" : {
+      "playerId" : "p1",
+      "additional" : 990
+    },
+    "sequence" : 3
+  }, {
+    "id" : "00000000-0000-4000-8000-000000000014:1",
+    "at" : "2026-10-30T12:00:00Z",
+    "tournamentId" : "00000000-0000-4000-8000-000000000010",
+    "hand" : 1,
+    "type" : "REVEAL",
+    "details" : {
+      "showdown" : true
+    },
+    "sequence" : 4
+  } ],
+  "state" : {
+    "roomId" : "00000000-0000-4000-8000-000000000003",
+    "code" : "ABC234",
+    "roomPhase" : "PLAYING",
+    "stateVersion" : 10,
+    "draftVersion" : 0,
+    "deployPending" : false,
+    "tournamentId" : "00000000-0000-4000-8000-000000000010",
+    "settings" : {
+      "initial" : 1000,
+      "sb" : 5,
+      "bb" : 10,
+      "button" : 0
+    },
+    "hostId" : "00000000-0000-4000-8000-000000000004",
+    "hostTakeoverOpen" : false,
+    "participants" : [ {
+      "participantId" : "00000000-0000-4000-8000-000000000004",
+      "name" : "Alice",
+      "seat" : 0,
+      "playerId" : "p0",
+      "isHost" : true,
+      "connected" : true
+    }, {
+      "participantId" : "00000000-0000-4000-8000-000000000006",
+      "name" : "Bob",
+      "seat" : 1,
+      "playerId" : "p1",
+      "isHost" : false,
+      "connected" : true
+    } ],
+    "you" : {
+      "participantId" : "00000000-0000-4000-8000-000000000004",
+      "controlGeneration" : 1,
+      "canTakeHost" : false,
+      "capabilities" : {
+        "canAct" : false,
+        "canUndo" : true,
+        "canSettle" : true,
+        "canEditSetup" : false,
+        "canEditBlinds" : true
+      }
+    },
+    "game" : {
+      "tournamentId" : "00000000-0000-4000-8000-000000000010",
+      "version" : 3,
+      "status" : "playing",
+      "settings" : {
+        "names" : [ "Alice", "Bob" ],
+        "initial" : 1000,
+        "sb" : 5,
+        "bb" : 10,
+        "button" : 0
+      },
+      "initialTotal" : 2000,
+      "setupOrder" : [ "p0", "p1" ],
+      "players" : [ {
+        "id" : "p0",
+        "name" : "Alice",
+        "stack" : 0,
+        "eliminated" : false,
+        "folded" : false,
+        "B" : 1000,
+        "H" : 1000,
+        "actedAt" : 1000,
+        "reopenAt" : 1990
+      }, {
+        "id" : "p1",
+        "name" : "Bob",
+        "stack" : 0,
+        "eliminated" : false,
+        "folded" : false,
+        "B" : 1000,
+        "H" : 1000,
+        "actedAt" : 1000,
+        "reopenAt" : 1990
+      } ],
+      "hand" : {
+        "id" : "00000000-0000-4000-8000-000000000010:hand:1",
+        "number" : 1,
+        "street" : 0,
+        "phase" : "settlement",
+        "buttonSeat" : 0,
+        "sbSeat" : 0,
+        "bbSeat" : 1,
+        "sb" : 5,
+        "bb" : 10,
+        "actorId" : null,
+        "W" : 1000,
+        "R" : 990,
+        "pending" : [ ],
+        "showdown" : true
+      },
+      "pot" : 2000,
+      "pendingBlinds" : null,
+      "undo" : {
+        "tournamentId" : "00000000-0000-4000-8000-000000000010",
+        "version" : 2,
+        "status" : "playing",
+        "settings" : {
+          "names" : [ "Alice", "Bob" ],
+          "initial" : 1000,
+          "sb" : 5,
+          "bb" : 10,
+          "button" : 0
+        },
+        "initialTotal" : 2000,
+        "setupOrder" : [ "p0", "p1" ],
+        "players" : [ {
+          "id" : "p0",
+          "name" : "Alice",
+          "stack" : 0,
+          "eliminated" : false,
+          "folded" : false,
+          "B" : 1000,
+          "H" : 1000,
+          "actedAt" : 1000,
+          "reopenAt" : 1990
+        }, {
+          "id" : "p1",
+          "name" : "Bob",
+          "stack" : 990,
+          "eliminated" : false,
+          "folded" : false,
+          "B" : 10,
+          "H" : 10,
+          "actedAt" : null,
+          "reopenAt" : 0
+        } ],
+        "hand" : {
+          "id" : "00000000-0000-4000-8000-000000000010:hand:1",
+          "number" : 1,
+          "street" : 0,
+          "phase" : "betting",
+          "buttonSeat" : 0,
+          "sbSeat" : 0,
+          "bbSeat" : 1,
+          "sb" : 5,
+          "bb" : 10,
+          "actorId" : "p1",
+          "W" : 1000,
+          "R" : 990,
+          "pending" : [ "p1" ],
+          "showdown" : false
+        },
+        "pot" : 1010,
+        "pendingBlinds" : null,
+        "eventIds" : [ "00000000-0000-4000-8000-000000000014:0", "00000000-0000-4000-8000-000000000014:1" ]
+      }
+    },
+    "legal" : null,
+    "settlementDraft" : null,
+    "recoveryRequests" : [ {
+      "recoveryRequestId" : "00000000-0000-4000-8000-000000000013",
+      "participantId" : "00000000-0000-4000-8000-000000000006",
+      "name" : "Bob",
+      "requestedAt" : "2026-10-30T12:00:00Z",
+      "expiresAt" : "2026-10-30T12:05:00Z"
+    } ]
+  }
+}

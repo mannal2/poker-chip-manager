@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { registerSW } from 'virtual:pwa-register';
 import { checkForUpdate } from './checkUpdate';
+// 앱 업데이트 확인/적용 단계
 export type UpdateStatus =
   'idle' | 'checking' | 'available' | 'current' | 'error' | 'applyError' | 'applying';
+// 서비스 워커 등록, 오프라인 준비, 업데이트 확인/적용을 관리하는 훅
 export function useLocalPWA() {
   const [state, setState] = useState({
     offlineReady: false,
@@ -121,11 +123,13 @@ export function useLocalPWA() {
       controller?.abort();
     };
   }, []);
+  // 진행 중인 업데이트 확인을 취소한다
   function cancelCheck() {
     const controller = checkController.current;
     checkController.current = null;
     controller?.abort();
   }
+  // 새 버전이 있는지 확인하고 결과를 상태에 반영한다
   async function check() {
     if (applying.current) return;
     cancelCheck();
@@ -171,6 +175,7 @@ export function useLocalPWA() {
       if (checkController.current === controller) checkController.current = null;
     }
   }
+  // 대기 중인 새 서비스 워커를 활성화하고 앱을 다시 불러온다
   async function apply(beforeApply: () => Promise<unknown>) {
     if (applying.current) return;
     applying.current = true;

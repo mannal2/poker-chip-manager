@@ -52,15 +52,19 @@ test('루트 주소는 앱 홈으로 이동한다', async ({ page }) => {
 });
 
 test('온라인 화면은 로컬 코드를 받지 않고 서비스 워커 제어도 받지 않는다', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
   // Visit the local app first so its service worker is installed, then switch pages.
   await page.goto('/local/');
   await page.evaluate(() => navigator.serviceWorker.ready);
   const requested: string[] = [];
   page.on('request', (request) => requested.push(new URL(request.url()).pathname));
   await page.goto('/online/');
-  await expect(page.getByRole('heading', { name: '멀티플레이 모드 · 준비 중' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '멀티플레이 모드', exact: true })).toBeVisible();
   await expect(page.getByRole('link', { name: '앱 홈으로' })).toHaveAttribute('href', '/local/');
   expect(await page.evaluate(() => navigator.serviceWorker.controller)).toBeNull();
   expect(requested.filter((path) => /^\/assets\/(local|workbox)/.test(path))).toEqual([]);
   expect(requested.some((path) => /^\/assets\/online-/.test(path))).toBe(true);
+  expect(requested.filter((path) => /^\/(api|ws)(\/|$)/.test(path))).toEqual([]);
+  expect(errors).toEqual([]);
 });

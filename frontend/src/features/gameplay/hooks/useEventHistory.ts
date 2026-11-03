@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { GameEvent } from '../../../game/types';
 import { readAllEvents, type LoadEvents } from '../model/eventPages';
 
+// 토너먼트 이벤트 기록 전체를 불러와 상태로 제공하는 훅
 /** Loads the whole event history once per tournament; loadEvents may change identity freely. */
 export function useEventHistory(loadEvents: LoadEvents, tournamentId: string) {
   const [events, setEvents] = useState<GameEvent[]>([]),

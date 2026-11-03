@@ -7,12 +7,15 @@ import { validateStored } from './restore';
 import { storageDeadline } from './storageDeadline';
 import { recordStorageError } from './errorLog';
 import type { IDBPDatabase, IDBPTransaction } from 'idb';
+// IndexedDB 트랜잭션 모드
 type StoreMode = 'readonly' | 'readwrite';
+// 게임 슬롯/이벤트/조작권을 함께 다루는 트랜잭션 형식
 type Tx<M extends StoreMode = 'readwrite'> = IDBPTransaction<
   PokerDB,
   ('slot' | 'events' | 'control')[],
   M
 >;
+// 게임, 이벤트, 조작권을 IndexedDB에 저장하고 읽는 저장소
 export class LocalRepository {
   private db: Promise<IDBPDatabase<PokerDB>> | null = null;
   private invalid = false;
@@ -23,6 +26,7 @@ export class LocalRepository {
     private onBlocked: () => void = () => {},
     private onInvalidated: () => void = () => {},
   ) {}
+  // 데이터베이스 연결을 만들거나 기존 연결을 돌려준다
   private connect() {
     if (this.invalid || this.disposed)
       throw Error('저장 연결이 변경되었습니다. 앱을 다시 열어주세요.');
@@ -49,10 +53,12 @@ export class LocalRepository {
     }
     return this.db;
   }
+  // 데이터베이스 연결을 닫고 연결 무효 상태를 해제해 다음 작업에서 다시 연결할 수 있게 한다
   reconnect() {
     this.close();
     this.invalid = false;
   }
+  // 저장된 게임을 읽어 형식과 이벤트 개수를 검증한다
   private async checked(tx: Tx<StoreMode>): Promise<StoredGame | null> {
     const v = await tx.objectStore('slot').get('current');
     if (!v) return null;
@@ -68,6 +74,7 @@ export class LocalRepository {
     if (count !== v.eventSequence) throw Error('저장 기록 경계가 손상되었습니다.');
     return v;
   }
+  // 트랜잭션 작업에 시간 제한과 취소 처리를 적용하고, 실패하면 오류를 기록한다
   private async transaction<T, M extends StoreMode>(
     phase: string,
     mode: M,
@@ -111,6 +118,7 @@ export class LocalRepository {
       this.operations.delete(cancel);
     }
   }
+  // 저장된 게임을 읽기 전용으로 불러온다
   async load(): Promise<StoredGame | null> {
     // Read-only so a device that refuses writes (low storage) can still show the saved game.
     return this.transaction('게임 읽기', 'readonly', async (tx) => {
@@ -119,6 +127,7 @@ export class LocalRepository {
       return saved;
     });
   }
+  // 저장된 게임과 기록을 지우고 새 토너먼트와 조작권을 만든다
   // Explicit recovery only: replace unreadable state atomically after user confirmation.
   async restart(settings: GameSettings, screenId: string) {
     return this.transaction('새 토너먼트 저장', 'readwrite', async (tx) => {
@@ -138,6 +147,7 @@ export class LocalRepository {
       return { lease, state };
     });
   }
+  // 조작권 세대를 올려 이 화면이 조작권을 얻게 한다
   async takeControl(screenId: string): Promise<ControlLease> {
     return this.transaction('조작권 저장', 'readwrite', async (tx) => {
       await this.checked(tx);
@@ -153,6 +163,7 @@ export class LocalRepository {
       return { screenId, generation: control.generation };
     });
   }
+  // 조작권을 확인한 뒤 저장된 게임이 없으면 새 토너먼트를 만든다
   async initialize(settings: GameSettings, lease: ControlLease): Promise<void> {
     return this.transaction('게임 초기화', 'readwrite', async (tx) => {
       const c = await tx.objectStore('control').get('owner');
@@ -170,6 +181,7 @@ export class LocalRepository {
       await tx.done;
     });
   }
+  // 요청을 검증하고 규칙을 적용해 새 상태, 이벤트, 결과를 한 트랜잭션으로 저장한다
   async dispatch(r: Request): Promise<DispatchResult> {
     try {
       return await this.transaction('게임 저장', 'readwrite', async (tx) => {
@@ -298,6 +310,7 @@ export class LocalRepository {
       };
     }
   }
+  // 지정한 순번 이후의 이벤트를 최대 100개까지 읽는다
   async readEvents(id: string, after: number, limit: number): Promise<GameEvent[]> {
     return this.transaction('기록 읽기', 'readonly', async (tx) => {
       const events: GameEvent[] = [];
@@ -312,6 +325,7 @@ export class LocalRepository {
       return events;
     });
   }
+  // 저장된 조작권 기록을 읽는다
   async control(): Promise<ControlRecord | undefined> {
     return this.transaction('조작권 읽기', 'readonly', async (tx) => {
       const owner = await tx.objectStore('control').get('owner');
@@ -319,6 +333,7 @@ export class LocalRepository {
       return owner;
     });
   }
+  // 진행 중 작업을 취소하고 데이터베이스 연결을 닫는다
   close() {
     for (const cancel of this.operations) cancel();
     void this.db?.then(
@@ -327,6 +342,7 @@ export class LocalRepository {
     );
     this.db = null;
   }
+  // 저장소를 폐기 상태로 만들고 연결을 닫는다
   dispose() {
     this.disposed = true;
     this.close();

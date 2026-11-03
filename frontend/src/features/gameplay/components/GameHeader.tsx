@@ -1,3 +1,4 @@
+// 핸드 번호, 블라인드, 메뉴 버튼을 보여주는 상단 바
 export function GameHeader({
   handNumber,
   sb,

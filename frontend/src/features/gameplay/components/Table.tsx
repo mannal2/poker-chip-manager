@@ -1,8 +1,10 @@
 import { PlayerSeat, type CardPlayer } from './PlayerSeat';
 import { BoardCards } from './BoardCards';
+import type { GameSession } from '../session';
 import { useRef } from 'react';
 import { useFitText } from '../../../shared/hooks/useFitText';
 import { seatCoordinates } from '../model/seatLayout';
+// 설정 단계에서만 쓰는 테이블 편집 조작 모음
 export interface TableSetup {
   drag?: {
     order: string[];
@@ -13,11 +15,13 @@ export interface TableSetup {
   };
   editScope?: string;
   onRename?: (id: string, name: string) => boolean | Promise<boolean>;
+  canRename?: (id: string) => boolean;
   onNameEditing?: (id: string, editing: boolean, finish?: () => Promise<boolean>) => void;
   onAdd?: () => void;
   onRemove?: () => void;
   onRotate?: () => void;
 }
+// 팟, 공용 카드, 플레이어 좌석을 배치해 그리는 포커 테이블
 export function Table({
   players,
   pot,
@@ -32,6 +36,7 @@ export function Table({
   busy,
   setup,
   handKey,
+  boardReveal,
 }: {
   players: CardPlayer[];
   pot: number;
@@ -42,6 +47,7 @@ export function Table({
   /** Present only while the setup screen is editable; each control is optional per mode. */
   setup?: TableSetup;
   handKey?: string;
+  boardReveal?: GameSession['boardReveal'];
   viewSeat?: number;
   onSelect?: (id: string) => void;
   onPot?: () => void;
@@ -55,7 +61,8 @@ export function Table({
     unit: 'var(--u)',
     min: 7,
   });
-  const { drag, onAdd, onRemove, onRotate, onRename, onNameEditing, editScope } = setup ?? {};
+  const { drag, onAdd, onRemove, onRotate, onRename, canRename, onNameEditing, editScope } =
+    setup ?? {};
   return (
     <>
       <div ref={ref} className="table" aria-label="포커 테이블">
@@ -133,7 +140,12 @@ export function Table({
                 )}
               </div>
 
-              <BoardCards phase={phase} street={street} handKey={handKey} />
+              <BoardCards
+                phase={phase}
+                street={street}
+                handKey={handKey}
+                boardReveal={boardReveal}
+              />
             </>
           )}
         </div>
@@ -157,7 +169,7 @@ export function Table({
               handlers={drag?.handlers(p.id)}
               busy={busy}
               onSelect={onSelect}
-              onRename={onRename}
+              onRename={!canRename || canRename(p.id) ? onRename : undefined}
               onNameEditing={onNameEditing}
               editScope={editScope}
             />

@@ -1,6 +1,7 @@
 import { validateSettings, type GameSettings } from './settings';
 import type { GameState, TransitionContext } from './types';
 
+// 설정을 검증하고 플레이어가 배치된 설정 단계의 초기 상태를 만든다
 export function createTournament(settings: GameSettings, c: TransitionContext): GameState {
   const v = validateSettings(settings);
   if (!v.ok) throw Error(v.code);

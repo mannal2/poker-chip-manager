@@ -19,6 +19,33 @@ services:
         max-size: "10m"
         max-file: "3"
 
+  backend:
+    image: "${BACKEND_IMAGE:?BACKEND_IMAGE is required}"
+    platform: linux/amd64
+    restart: unless-stopped
+    mem_limit: "${BACKEND_MEM_LIMIT:?BACKEND_MEM_LIMIT is required}"
+    memswap_limit: "${BACKEND_MEM_LIMIT:?BACKEND_MEM_LIMIT is required}"
+    environment:
+      JAVA_TOOL_OPTIONS: "-Xmx${BACKEND_HEAP:?BACKEND_HEAP is required}"
+    volumes:
+      # An empty directory reads as an open gate, so Compose must never create a missing one.
+      - type: bind
+        source: ./.local/deploy/gate
+        target: /run/poker-gate
+        read_only: true
+        bind:
+          create_host_path: false
+    stop_grace_period: 30s
+    networks:
+      poker-edge:
+        aliases:
+          - poker-backend
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
 networks:
   poker-edge:
     external: true

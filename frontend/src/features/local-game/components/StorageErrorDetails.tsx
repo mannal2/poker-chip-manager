@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { readStorageErrors } from '../storage/errorLog';
 
+// 이 기기의 최근 저장 오류를 보여주고 복사할 수 있게 한다
 /** Recent storage failures on this device, so an intermittent error can be reported exactly. */
 export function StorageErrorDetails() {
   const [copied, setCopied] = useState(false);

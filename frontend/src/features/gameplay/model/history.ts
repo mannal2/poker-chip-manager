@@ -1,4 +1,5 @@
 import type { GameEvent } from '../../../game/types';
+// 베팅 행동 종류별 한국어 표시 이름
 const actions: Record<string, string> = {
   CHECK: '체크',
   CALL: '콜',
@@ -7,12 +8,14 @@ const actions: Record<string, string> = {
   ALL_IN: '올인',
   FOLD: '폴드',
 };
+// 기록 화면에 표시할 한 줄
 export interface HistoryRow {
   id: string;
   hand: number;
   text: string;
   kind: 'hand' | 'stage' | 'action';
 }
+// 이벤트(되돌려진 것 제외)를 핸드/단계/행동별 기록 행으로 바꾼다
 export function historyRows(
   events: GameEvent[],
   players: { id: string; name: string }[],
@@ -52,12 +55,17 @@ export function historyRows(
       payouts?: Record<string, number>;
       street?: number;
       showdown?: boolean;
+      auto?: boolean;
+      byHost?: boolean;
+      shares?: Record<string, number>;
     };
     if (
       !event.hand ||
       !(
         actions[event.type] ||
-        ['HAND_START', 'STREET', 'PAYOUT', 'RETURN'].includes(event.type) ||
+        ['HAND_START', 'STREET', 'PAYOUT', 'RETURN', 'FORFEIT', 'FORFEIT_SPLIT'].includes(
+          event.type,
+        ) ||
         (event.type === 'REVEAL' && d.showdown)
       )
     )
@@ -88,6 +96,23 @@ export function historyRows(
             text: `${name(id)} - ${chips(amount)} 획득`,
           });
       }
+    } else if (event.type === 'FORFEIT_SPLIT') {
+      for (const [id, amount] of Object.entries(d.shares ?? {})) {
+        if (amount > 0)
+          rows.push({
+            id: event.id + ':' + id,
+            hand,
+            kind: 'action',
+            text: `${name(id)} - 기권 칩 ${chips(amount)} 획득`,
+          });
+      }
+    } else if (event.type === 'FORFEIT' && d.playerId) {
+      rows.push({
+        id: event.id,
+        hand,
+        kind: 'action',
+        text: `${name(d.playerId)} - 기권${d.byHost ? '(방장 처리)' : ''}`,
+      });
     } else if (event.type === 'RETURN' && d.playerId) {
       rows.push({
         id: event.id,
@@ -101,7 +126,7 @@ export function historyRows(
         id: event.id,
         hand,
         kind: 'action',
-        text: `${name(d.playerId)} - ${actions[event.type]}${amount}`,
+        text: `${name(d.playerId)} - ${actions[event.type]}${d.auto ? '(자동)' : ''}${amount}`,
       });
     }
   }

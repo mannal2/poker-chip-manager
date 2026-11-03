@@ -1,5 +1,22 @@
 import { openLocal } from './helpers';
 import { test, expect, type Page } from '@playwright/test';
+// 설치 범위만 넓히고 실행 주소와 서비스 워커 범위는 유지하는지 확인한다
+test('온라인 경로까지 설치 범위를 넓히되 온라인 자산을 캐시하지 않는다', async ({ page }) => {
+  await page.goto('/local/');
+  await offlineReady(page);
+  const manifest = await (await page.request.get('/local/manifest.webmanifest')).json();
+  expect(manifest).toMatchObject({ scope: '/', id: '/local/', start_url: '/local/' });
+  const urls = await page.evaluate(async () => {
+    const result: string[] = [];
+    for (const name of await caches.keys())
+      for (const request of await (await caches.open(name)).keys()) result.push(request.url);
+    return result;
+  });
+  expect(urls.some((url) => /\/assets\/online-/.test(url))).toBe(false);
+  await page.goto('/online/');
+  await expect(page.getByRole('button', { name: '방 만들기', exact: true })).toBeVisible();
+  expect(await page.evaluate(() => navigator.serviceWorker.controller)).toBeNull();
+});
 async function offlineReady(page: Page) {
   await expect
     .poll(

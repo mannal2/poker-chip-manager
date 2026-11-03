@@ -1,6 +1,7 @@
 import type { StoredGame } from './types';
 import { assertInvariants } from '../../../game/invariants';
 import { validateSettings, validChips } from '../../../game/settings';
+// 저장된 게임의 형식, 설정, 핸드, 취소 스냅샷이 손상되지 않았는지 검증한다
 export function validateStored(value: StoredGame): void {
   if (value.schemaVersion !== 1)
     throw Error('지원하지 않는 저장 형식입니다. 원본을 보존하며 쓰기를 차단합니다.');

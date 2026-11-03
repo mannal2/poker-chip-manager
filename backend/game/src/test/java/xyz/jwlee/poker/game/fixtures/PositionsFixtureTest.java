@@ -3,7 +3,7 @@ package xyz.jwlee.poker.game.fixtures;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.DynamicTest.dynamicTest;
 
-import com.fasterxml.jackson.databind.JsonNode;
+import tools.jackson.databind.JsonNode;
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.DynamicTest;
@@ -17,7 +17,7 @@ class PositionsFixtureTest {
     List<DynamicTest> positionCases() {
         List<DynamicTest> tests = new ArrayList<>();
         for (JsonNode c : FixtureFiles.load("positions")) {
-            tests.add(dynamicTest(c.get("id").asText() + " " + c.get("description").asText(), () -> {
+            tests.add(dynamicTest(c.get("id").asString() + " " + c.get("description").asString(), () -> {
                 JsonNode init = c.get("initialState");
                 // INITIAL_BLIND_SEATS cases start from an empty state and never use it.
                 SeatPositions current = init.has("buttonSeat")
@@ -30,7 +30,7 @@ class PositionsFixtureTest {
                     boolean[] alive = alive(step.get("alive"));
                     JsonNode expected = step.get("expected");
                     if (step.has("type")) {
-                        assertThat(step.get("type").asText()).isEqualTo("INITIAL_BLIND_SEATS");
+                        assertThat(step.get("type").asString()).isEqualTo("INITIAL_BLIND_SEATS");
                         BlindSeats seats = Positions.initialBlindSeats(step.get("button").asInt(), alive);
                         assertThat(seats)
                                 .isEqualTo(new BlindSeats(

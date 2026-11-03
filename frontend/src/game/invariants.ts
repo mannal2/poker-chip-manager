@@ -1,4 +1,5 @@
 import type { GameState } from './types';
+// 칩 합계, 팟 장부, 중복 플레이어, 차례 유효성을 검사해 위반 시 예외를 던진다
 export function assertInvariants(s: GameState): void {
   const chips = [s.pot, s.initialTotal, ...s.players.flatMap((p) => [p.stack, p.B, p.H])];
   if (chips.some((n) => !Number.isSafeInteger(n) || n < 0 || n % 5 !== 0))

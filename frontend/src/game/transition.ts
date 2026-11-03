@@ -24,6 +24,7 @@ const handlers: { [K in GameCommand['type']]: CommandHandler<K> } = {
 /** Player actions and payouts that can be undone once. */
 const undoable = ['CHECK', 'CALL', 'BET', 'RAISE', 'FOLD', 'ALL_IN', 'SETTLE_HAND'];
 
+// 명령을 상태 복사본에 적용해 새 상태와 이벤트(또는 거절 코드)를 돌려준다
 export function transition(
   input: GameState,
   cmd: GameCommand,

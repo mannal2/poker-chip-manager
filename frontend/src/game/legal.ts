@@ -1,5 +1,6 @@
 import type { GameState, LegalActions } from './types';
 
+// 현재 차례 플레이어가 할 수 있는 행동과 금액 한도를 계산한다
 export function getLegalActions(s: GameState): LegalActions {
   const h = s.hand,
     p = s.players.find((p) => p.id === h?.actorId) ?? null;

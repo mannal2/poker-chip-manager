@@ -110,7 +110,7 @@
     "properties": {
       "id": {
         "type": "string",
-        "pattern": "^(D|B|P|W|S|LIF|UNDO|AUTO|SET|FF)[0-9]{2}$"
+        "pattern": "^(D|B|P|W|S|LIF|UNDO|AUTO|SET|FF|EV)[0-9]{2}$"
       },
       "suite": {
         "enum": [
@@ -121,7 +121,8 @@
           "settlement",
           "lifecycle",
           "undo",
-          "forfeit"
+          "forfeit",
+          "events"
         ]
       },
       "description": {
@@ -176,7 +177,7 @@
       },
       "expectedStateSubset": {
         "type": "object",
-        "description": "Suite-specific expectation. settlement: ok (bool), payouts (exact object compare), pots (expected output: must equal buildPots(initialState), exact compare, unlike the input key `pots`), allocations (subset match against previewSettlement's allocations)."
+        "description": "Suite-specific expectation. settings: ok (bool), plus names (the normalized names, when ok) or code (the settings error code, when not ok); settlement: ok (bool), payouts (exact object compare), pots (expected output: must equal buildPots(initialState), exact compare, unlike the input key `pots`), allocations (subset match against previewSettlement's allocations)."
       },
       "expectedError": {
         "type": ["string", "null"],
@@ -190,6 +191,23 @@
       },
       "expectedLegal": {
         "type": "object"
+      },
+      "expectedEventDetails": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": ["type", "details"],
+          "properties": {
+            "type": {
+              "type": "string"
+            },
+            "details": {
+              "type": "object"
+            }
+          },
+          "additionalProperties": false
+        },
+        "description": "events suite: every event the case's commands emit, in order across all commands; each runner compares the emitted event's type and details (exact compare) with this list. Hand-written from the TS emit arguments, not engine output."
       }
     },
     "allOf": [
@@ -216,7 +234,7 @@
         "if": {
           "properties": {
             "suite": {
-              "enum": ["lifecycle", "undo", "forfeit"]
+              "enum": ["lifecycle", "undo", "forfeit", "events"]
             }
           }
         },
@@ -322,5 +340,5 @@
       }
     ]
   },
-  "description": "Shared game-rule cases (format v2). Subset matching (expectedStateSubset, per-command expectedStateSubset, expectedLegal, allocations): an object matches when every listed key matches recursively; an array must have the same length and match element-wise; scalars compare by equality; an empty object {} also matches null, so a non-null value is written as an object with one real key, e.g. {\"status\": \"playing\"}. Conventions baked into the cases: state.version is 0 at creation and +1 per successful command (a rejected command changes nothing); players created by createTournament have ids p{i}; players added by SETUP_UPDATE get id {context.id}:p{i}; hand ids are {context.id}:hand:{number}; events are numbered {context.id}:{index} within one command. lifecycle/undo/forfeit suites: initialState is the settings {names, initial, sb, bb, button}; createTournament is called, then commands run in order. The forfeit suite (FORFEIT command, player field forfeited) is server-only: only the Java runner executes it; the TS runner only validates it against this schema."
+  "description": "Shared game-rule cases (format v2). Subset matching (expectedStateSubset, per-command expectedStateSubset, expectedLegal, allocations): an object matches when every listed key matches recursively; an array must have the same length and match element-wise; scalars compare by equality; an empty object {} also matches null, so a non-null value is written as an object with one real key, e.g. {\"status\": \"playing\"}. Conventions baked into the cases: state.version is 0 at creation and +1 per successful command (a rejected command changes nothing); players created by createTournament have ids p{i}; players added by SETUP_UPDATE get id {context.id}:p{i}; hand ids are {context.id}:hand:{number}; events are numbered {context.id}:{index} within one command. lifecycle/undo/forfeit/events suites: initialState is the settings {names, initial, sb, bb, button}; createTournament is called, then commands run in order. The forfeit suite (FORFEIT command, player field forfeited) is server-only: only the Java runner executes it; the TS runner only validates it against this schema. The events suite is run by both engines: the TS runner compares the emitted events' type and details with expectedEventDetails, and the Java side compares EventJson.write(event) type and details; event ids are {context.id}:{index} within one command, and an UNDO event lists the undone command's event ids. FORFEIT and FORFEIT_SPLIT event details are Java-only and covered by a Java test."
 }

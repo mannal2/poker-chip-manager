@@ -1,6 +1,7 @@
 import type { CSSProperties, HTMLAttributes } from 'react';
 import { InlineName } from './InlineName';
 
+// 좌석 카드에 표시할 플레이어 정보
 export interface CardPlayer {
   id: string;
   name: string;
@@ -13,8 +14,10 @@ export interface CardPlayer {
   folded?: boolean;
   pending?: boolean;
   eligible?: boolean;
+  disconnected?: boolean;
 }
 
+// 큰 칩 금액을 만/억 단위의 축약 문자열로 만든다
 // Shown only when the full amount cannot fit even at the smallest font. Rounds down so a
 // shortened amount never claims more chips than the player has.
 function shortChips(value: number) {
@@ -24,6 +27,7 @@ function shortChips(value: number) {
   return amount.toLocaleString('ko-KR', { maximumFractionDigits: 1 }) + label;
 }
 
+// 이름, 베팅액, 남은 칩을 보여주는 플레이어 좌석 카드
 export function PlayerSeat({
   player: p,
   phase,
@@ -60,7 +64,7 @@ export function PlayerSeat({
       data-player={p.id}
       className={`seat ${p.active ? 'active' : ''} ${p.selected ? 'selected' : ''} ${p.out || p.folded ? 'out' : ''} ${pressed ? 'pressing' : ''} ${dragReady ? 'drag-ready' : ''} ${dragging ? 'dragging' : ''}`}
       style={style}
-      aria-label={`${p.name}${p.active ? ' 현재 차례' : ''}${p.folded ? ' 폴드' : ''}${p.out ? ' 탈락' : ''}`}
+      aria-label={`${p.name}${p.active ? ' 현재 차례' : ''}${p.folded ? ' 폴드' : ''}${p.out ? ' 탈락' : ''}${p.disconnected ? ' 연결 끊김' : ''}`}
       aria-pressed={phase === 'settlement' ? !!p.selected : undefined}
       aria-disabled={phase === 'settlement' && !p.eligible}
       onContextMenu={(e) => {
@@ -71,6 +75,7 @@ export function PlayerSeat({
       {...handlers}
     >
       {p.roles && <span className="badge">{p.roles}</span>}
+      {p.disconnected && <span className="disconnected">연결 끊김</span>}
       <div className="name">
         {onRename ? (
           <InlineName

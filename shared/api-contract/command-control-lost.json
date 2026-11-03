@@ -1,0 +1,19 @@
+{
+  "method" : "POST",
+  "path" : "/api/rooms/{roomId}/commands",
+  "status" : 409,
+  "request" : {
+    "protocolVersion" : 1,
+    "requestId" : "command-06-2",
+    "sequence" : 2,
+    "controlGeneration" : 1,
+    "expectedStateVersion" : 11,
+    "type" : "CHECK",
+    "tournamentId" : "00000000-0000-4000-8000-000000000010",
+    "handId" : "00000000-0000-4000-8000-000000000010:hand:1"
+  },
+  "response" : {
+    "code" : "CONTROL_LOST",
+    "message" : "조작 권한을 잃었습니다."
+  }
+}

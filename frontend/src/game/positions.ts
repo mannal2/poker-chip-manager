@@ -1,3 +1,4 @@
+// 기준 좌석의 다음 자리부터 순환하며 참가 자격이 있는 첫 좌석을 찾는다
 export function nextSeat(from: number, eligible: boolean[]): number {
   for (let k = 1; k <= eligible.length; k++) {
     const i = (from + k) % eligible.length;
@@ -5,6 +6,7 @@ export function nextSeat(from: number, eligible: boolean[]): number {
   }
   throw Error('NO_ELIGIBLE_SEAT');
 }
+// 이전 핸드 기준으로 다음 핸드의 버튼과 블라인드 좌석을 정한다
 export function nextPositions(
   alive: boolean[],
   previous: { buttonSeat: number; sbSeat: number; bbSeat: number },
@@ -23,6 +25,7 @@ export function nextPositions(
   }
   return { buttonSeat, sbSeat, bbSeat };
 }
+// 첫 핸드의 스몰/빅블라인드 좌석을 버튼에서 계산한다
 /** Blind seats for the first hand from a chosen button; heads-up the button posts the SB. */
 export function initialBlindSeats(
   button: number,

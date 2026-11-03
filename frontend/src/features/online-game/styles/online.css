@@ -1,0 +1,83 @@
+.online-app {
+  width: min(100%, 390px);
+  height: 100%;
+  overflow-y: auto;
+  margin: 0 auto;
+  padding: 24px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.online-app h1 {
+  font-size: 24px;
+}
+.online-app label {
+  display: grid;
+  gap: 6px;
+}
+.online-app input {
+  width: 100%;
+  min-height: 44px;
+  padding: 8px;
+}
+.online-app button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.waiting-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: calc(4 * var(--u)) calc(12 * var(--u));
+}
+.waiting-bar button {
+  min-height: calc(36 * var(--u));
+  padding: calc(4 * var(--u)) calc(8 * var(--u));
+  font-size: calc(13 * var(--u));
+}
+.online-room {
+  position: relative;
+}
+.host-requests {
+  position: absolute;
+  z-index: 20;
+  top: calc(8 * var(--u));
+  left: calc(84 * var(--u));
+  right: calc(52 * var(--u));
+  display: flex;
+  justify-content: center;
+  gap: calc(6 * var(--u));
+}
+.host-requests.below-waiting-bar {
+  top: calc(60 * var(--u));
+}
+.host-requests:empty {
+  display: none;
+}
+.host-requests button {
+  min-width: 0;
+  min-height: calc(32 * var(--u));
+  padding: calc(4 * var(--u)) calc(8 * var(--u));
+  border-color: var(--gold);
+  font-size: calc(12 * var(--u));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.host-request {
+  padding: calc(8 * var(--u)) 0;
+}
+.host-request p {
+  margin: 0 0 calc(6 * var(--u));
+  font-size: calc(13 * var(--u));
+}
+.host-request-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: calc(8 * var(--u));
+}
+.deploy-notice {
+  margin: calc(4 * var(--u)) calc(12 * var(--u));
+  padding: calc(6 * var(--u)) calc(12 * var(--u));
+  text-align: center;
+}

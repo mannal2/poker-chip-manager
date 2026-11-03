@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import type { GameState } from '../../../game/types';
 import { legacyViewSeat, readViewSeat, viewSeatKey, writeViewSeat } from '../model/viewSeatStore';
 
+// 화면 하단에 그릴 좌석을 토너먼트별로 기억하고 회전시키는 훅
 /** Local screen rotation: which table slot is drawn at the bottom, remembered per tournament. */
 export function useLocalViewSeat(state: GameState | null) {
   const tournamentId = state?.tournamentId;
@@ -33,6 +34,7 @@ export function useLocalViewSeat(state: GameState | null) {
     window.addEventListener('storage', sync);
     return () => window.removeEventListener('storage', sync);
   }, [tournamentId, legacy]);
+  // 화면 기준 좌석을 한 자리 회전시키고 저장한다
   function rotate() {
     if (!tournamentId || !count) return;
     const next = (seat + count - 1) % count;

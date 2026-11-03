@@ -1,26 +1,13 @@
 name: Backend CI
 
+# CI and images calls this for every pull request and main push, so main can wait
+# for it before publishing.
 on:
-  pull_request:
-    branches: [main]
-    paths:
-      - "backend/**"
-      - "shared/game-fixtures/**"
-      - ".github/workflows/backend-ci.yml"
-  push:
-    branches: [main]
-    paths:
-      - "backend/**"
-      - "shared/game-fixtures/**"
-      - ".github/workflows/backend-ci.yml"
+  workflow_call:
   workflow_dispatch:
 
 permissions:
   contents: read
-
-concurrency:
-  group: backend-ci-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 defaults:
   run:
@@ -29,7 +16,7 @@ defaults:
 jobs:
   test:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
 
     steps:
       - name: Checkout
@@ -44,6 +31,21 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
 
-      - name: Test game rules
+      - name: Test backend
         working-directory: backend
-        run: ./gradlew :game:test
+        run: ./gradlew test
+
+      - name: Check deployment scripts
+        run: |
+          bash -n deploy/deploy-backend.sh
+          bash -n deploy/recover-backend.sh
+          bash -n deploy/backend-lib.sh
+          bash deploy/test-deploy-backend.sh
+
+      - name: Build production Docker image
+        run: |
+          docker build \
+            --platform linux/amd64 \
+            -f backend/Dockerfile \
+            --build-arg "REVISION=$GITHUB_SHA" \
+            -t poker-backend:ci backend

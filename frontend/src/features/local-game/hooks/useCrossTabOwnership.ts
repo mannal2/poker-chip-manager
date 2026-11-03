@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef } from 'react';
 
+// BroadcastChannel로 다른 탭의 변경 알림과 소유 여부 확인을 처리하는 훅
 /**
  * BroadcastChannel signals between tabs of the local game. Messages only prompt a re-read;
  * write permission is still checked against the IndexedDB control generation.
@@ -37,10 +38,12 @@ export function useCrossTabOwnership({
     };
   }, []);
 
+  // 다른 탭에 변경 또는 조작권 이동을 알린다
   const announce = useCallback((kind: 'changed' | 'control') => {
     channel.current?.postMessage(kind);
   }, []);
 
+  // 다른 탭이 게임을 소유 중인지 잠시 기다려 확인한다
   /** Asks other tabs whether one of them owns the game; no answer within 180ms means none. */
   function otherWindowOwnsGame() {
     const current = channel.current;

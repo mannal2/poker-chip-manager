@@ -3,6 +3,7 @@ package xyz.jwlee.poker.game.model;
 import java.util.ArrayList;
 import java.util.List;
 
+// 진행 중인 핸드 하나의 상태(좌석, 블라인드, 현재 베팅, 대기자)
 public final class Hand {
     public String id;
     public int number;
@@ -26,6 +27,7 @@ public final class Hand {
 
     public Hand() {}
 
+    // 핸드의 깊은 복사본을 만든다
     public Hand copy() {
         Hand h = new Hand();
         h.id = id;

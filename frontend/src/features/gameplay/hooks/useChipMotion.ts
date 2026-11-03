@@ -1,16 +1,20 @@
 import { useCallback, useEffect, useRef, type RefObject } from 'react';
 import type { ChipTransfer } from '../model/chipTransfer';
+// 화면 좌표 한 점
 type Point = { x: number; y: number };
+// 애니메이션 시작 전에 측정해 둔 이동 목록과 좌표
 type Prepared = {
   epoch: number;
   moves: ChipTransfer[];
   points: Map<string, Point>;
   size: number;
 };
+// 지금 칩 애니메이션을 재생해도 되는지 확인한다
 /** Chip flights are skipped while the page is hidden or the user prefers reduced motion. */
 export function canAnimate() {
   return !document.hidden && !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 }
+// 칩 이동 애니메이션을 준비/재생/정리하는 훅
 export function useChipMotion(screen: RefObject<HTMLElement | null>, scope: string) {
   const epoch = useRef(0);
   const active = useRef(new Set<HTMLElement>());

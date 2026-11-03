@@ -10,6 +10,7 @@ import { createCommandRunner } from '../../../shared/async/commandRunner';
 import { useCrossTabOwnership } from './useCrossTabOwnership';
 import { usePageResume } from './usePageResume';
 
+// 저장소 연결, 조작권, 명령 실행, 복구를 묶어 로컬 게임 세션을 관리하는 훅
 export function useLocalSession({
   restartOnMount,
   recoveryContext,
@@ -55,6 +56,7 @@ export function useLocalSession({
   const c = runtime.controller,
     s = app.game;
   const restoreVersion = useRef(0);
+  // 저장소에서 게임과 조작권 상태를 다시 읽어 화면 상태를 맞춘다
   const restore = useCallback(
     async (reconnect = false) => {
       const version = ++restoreVersion.current;
@@ -79,10 +81,12 @@ export function useLocalSession({
     },
     [c, runtime],
   );
+  // 진행 중인 복원 작업을 무효화하고 취소한다
   const cancelRestore = useCallback(() => {
     restoreVersion.current++;
     c.cancelRefresh();
   }, [c]);
+  // 저장 작업 중 페이지가 다시 표시되어 복원이 보류되었다면, 작업이 끝난 뒤 저장소에 다시 연결해 최신 상태를 읽는다
   const afterRun = useCallback(() => {
     if (resumeRequested.current) {
       resumeRequested.current = false;
@@ -126,10 +130,12 @@ export function useLocalSession({
     resumeRequested.current = false;
     void restore(true);
   });
+  // 복구 불가 상태에서 확인을 받은 뒤 새 토너먼트로 다시 시작한다
   async function restartAfterFailure() {
     if (await ask('현재 토너먼트와 전체 기록을 삭제하고 새 토너먼트를 시작할까요?'))
       onRecover(inGame.current, c.lease);
   }
+  // 명령을 저장소에 보내고 결과에 맞춰 화면 상태와 오류를 갱신한다
   async function dispatch(command: Request['command']) {
     const confirm = c.state ? prepareCommand(c.state, command) : null;
     const result = await c.dispatch(command);
@@ -163,6 +169,7 @@ export function useLocalSession({
     announce('changed');
     return true;
   }
+  // 저장 작업을 한 번에 하나씩 실행하고, 시작 시 저장 중 상태로, 실패 시 저장 오류 상태로 전환한다
   async function run(action: () => Promise<void>) {
     await runner.run(action, {
       onBusy: () => notify('저장 완료를 기다려주세요.'),
@@ -171,6 +178,7 @@ export function useLocalSession({
       onRelease: afterRun,
     });
   }
+  // 조작권을 얻고 저장된 게임이 없으면 새로 만든 뒤 게임 화면으로 들어간다
   async function activateLocal() {
     await c.takeControl();
     if (!c.state) {
@@ -181,13 +189,16 @@ export function useLocalSession({
     setApp({ game: c.state, status: 'ready', home: false, error: '' });
     announce('control');
   }
+  // 조작권을 잃은 창에서 조작권을 다시 가져와 게임을 이어간다
   async function continueGame() {
     if (!runner.isLocked()) await run(activateLocal);
   }
+  // 이 창에 조작권이 없을 때 다른 창이 게임을 소유 중인지 확인한다
   async function otherWindowOwnsGame() {
     if (c.lease) return false;
     return tabs.otherWindowOwnsGame();
   }
+  // 홈에서 게임에 진입할 때 다른 창이 조작 중이면 인수 안내를 표시하고, 그렇지 않으면 이 창이 조작권을 얻는다
   async function enterLocalGame() {
     await run(async () => {
       await c.refresh();
@@ -204,6 +215,7 @@ export function useLocalSession({
       await activateLocal();
     });
   }
+  // 확인을 받은 뒤 현재 토너먼트를 새 토너먼트로 교체한다
   async function newGame(onPrepared: () => void) {
     if (runner.isLocked() || c.pending) {
       await restartAfterFailure();
@@ -246,6 +258,7 @@ export function useLocalSession({
       announce('changed');
     });
   }
+  // 저장 결과가 불명확한 요청을 같은 요청으로 재시도하거나 상태를 다시 읽는다
   async function retryStorage(onUndoApplied: () => void) {
     await run(async () => {
       runtime.repo.reconnect();
@@ -284,6 +297,7 @@ export function useLocalSession({
       }
     });
   }
+  // 저장이 끝난 상태에서 홈 화면으로 나간다
   function goHome(onLeave: () => void) {
     if (['ready', 'controlLost'].includes(app.status) && !runner.isLocked() && !c.pending) {
       inGame.current = false;

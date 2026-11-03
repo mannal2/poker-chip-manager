@@ -3,8 +3,10 @@ import { requireRule, type CommandHandler } from '../rule';
 import { emit, pay, resolveRound } from '../round';
 import { inPlay } from './flow';
 
+// 베팅 계열 명령 종류
 type BettingType = 'CHECK' | 'CALL' | 'FOLD' | 'ALL_IN' | 'BET' | 'RAISE';
 
+// 베팅 행동 하나를 검증하고 칩을 지불한 뒤 라운드를 진행한다
 const bet: CommandHandler<BettingType> = (s, cmd, c, events) => {
   const h = inPlay(s);
   requireRule(h.phase === 'betting');
@@ -57,6 +59,7 @@ const bet: CommandHandler<BettingType> = (s, cmd, c, events) => {
   resolveRound(s, s.players.indexOf(p), c, events);
 };
 
+// 베팅 명령별 핸들러 모음
 export const bettingHandlers = {
   CHECK: bet,
   CALL: bet,

@@ -2,6 +2,7 @@ import type { previewSettlement } from '../../../game/settlement';
 import type { GameState, Pot, WinnerSelection } from '../../../game/types';
 import { messageFor } from '../model/errorMessages';
 
+// 선택한 승자 기준의 팟별 분배와 플레이어별 지급 결과를 보여준다
 export function PayoutPreview({
   state,
   pots,

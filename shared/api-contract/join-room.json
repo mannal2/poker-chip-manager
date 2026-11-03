@@ -1,0 +1,67 @@
+{
+  "method" : "POST",
+  "path" : "/api/room-joins",
+  "status" : 200,
+  "request" : {
+    "protocolVersion" : 1,
+    "streamId" : "00000000-0000-4000-8000-000000000002",
+    "requestId" : "screen-1",
+    "sequence" : 1,
+    "code" : "ABC234",
+    "name" : "Bob"
+  },
+  "response" : {
+    "roomId" : "00000000-0000-4000-8000-000000000003",
+    "code" : "ABC234",
+    "participantId" : "00000000-0000-4000-8000-000000000006",
+    "controlGeneration" : 1,
+    "state" : {
+      "roomId" : "00000000-0000-4000-8000-000000000003",
+      "code" : "ABC234",
+      "roomPhase" : "WAITING",
+      "stateVersion" : 2,
+      "draftVersion" : 0,
+      "deployPending" : false,
+      "tournamentId" : null,
+      "settings" : {
+        "initial" : 1000,
+        "sb" : 10,
+        "bb" : 20,
+        "button" : -1
+      },
+      "hostId" : "00000000-0000-4000-8000-000000000004",
+      "hostTakeoverOpen" : false,
+      "participants" : [ {
+        "participantId" : "00000000-0000-4000-8000-000000000004",
+        "name" : "Alice",
+        "seat" : 0,
+        "playerId" : null,
+        "isHost" : true,
+        "connected" : false
+      }, {
+        "participantId" : "00000000-0000-4000-8000-000000000006",
+        "name" : "Bob",
+        "seat" : 1,
+        "playerId" : null,
+        "isHost" : false,
+        "connected" : false
+      } ],
+      "you" : {
+        "participantId" : "00000000-0000-4000-8000-000000000006",
+        "controlGeneration" : 1,
+        "canTakeHost" : false,
+        "capabilities" : {
+          "canAct" : false,
+          "canUndo" : false,
+          "canSettle" : false,
+          "canEditSetup" : false,
+          "canEditBlinds" : false
+        }
+      },
+      "game" : null,
+      "legal" : null,
+      "settlementDraft" : null,
+      "recoveryRequests" : [ ]
+    }
+  }
+}

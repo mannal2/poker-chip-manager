@@ -1,0 +1,242 @@
+name: Deploy
+
+# Run by hand after HELD to deploy images that main already published. CI and images
+# calls the same job, so both share one concurrency group and one set of checks.
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Full commit SHA on main whose published images to deploy
+        required: true
+        type: string
+  workflow_call:
+    inputs:
+      ref:
+        required: true
+        type: string
+      backend_changed:
+        required: true
+        type: string
+      frontend_changed:
+        required: true
+        type: string
+      backend_image:
+        required: false
+        type: string
+        default: ""
+      frontend_image:
+        required: false
+        type: string
+        default: ""
+      require_latest:
+        required: false
+        type: boolean
+        default: false
+    secrets:
+      TS_OAUTH_CLIENT_ID:
+        required: true
+      TS_AUDIENCE:
+        required: true
+      DEPLOY_HOST:
+        required: true
+      DEPLOY_USER:
+        required: true
+      DEPLOY_SSH_KEY:
+        required: true
+      DEPLOY_HOST_KEY:
+        required: true
+    outputs:
+      backend:
+        description: deployed, held, failed, or empty when backend did not run
+        value: ${{ jobs.deploy.outputs.backend }}
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    # A deployment in progress is never cancelled by a newer request.
+    concurrency:
+      group: poker-deploy
+      cancel-in-progress: false
+
+    permissions:
+      contents: read
+      id-token: write
+      packages: read
+
+    outputs:
+      backend: ${{ steps.backend.outputs.backend }}
+
+    env:
+      BACKEND_ENABLED: ${{ vars.BACKEND_DEPLOY_ENABLED }}
+      TARGET: ${{ inputs.ref }}
+
+    steps:
+      - name: Checkout target commit and history
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ inputs.ref }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Check request
+        id: request
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BY_HAND: ${{ inputs.frontend_changed == '' }}
+          REQUIRE_LATEST: ${{ inputs.require_latest }}
+        run: |
+          set -euo pipefail
+
+          [[ "$TARGET" =~ ^[a-f0-9]{40}$ ]] || { echo 'ref must be a full commit SHA.' >&2; exit 1; }
+          if [[ "$BY_HAND" == true ]]; then
+            [[ "$BACKEND_ENABLED" == true ]] || { echo 'BACKEND_DEPLOY_ENABLED is not true.' >&2; exit 1; }
+            git merge-base --is-ancestor "$TARGET" origin/main || { echo 'ref is not on main.' >&2; exit 1; }
+          fi
+          if [[ "$REQUIRE_LATEST" == true ]]; then
+            latest=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')
+            if [[ "$latest" != "$TARGET" ]]; then
+              echo 'Skipping deployment: this run is no longer the latest main commit.'
+              echo 'stale=true' >> "$GITHUB_OUTPUT"
+            fi
+          fi
+
+      - name: Connect to Tailscale
+        if: steps.request.outputs.stale != 'true'
+        uses: tailscale/github-action@d1b6cd204f8dceda5b3eaad7f1f767be390056cd # v4
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          audience: ${{ secrets.TS_AUDIENCE }}
+          tags: tag:github-actions
+          ping: ${{ secrets.DEPLOY_HOST }}
+
+      - name: Read deployed revisions
+        id: deployed
+        if: steps.request.outputs.stale != 'true' && vars.BACKEND_DEPLOY_ENABLED == 'true'
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_HOST_KEY: ${{ secrets.DEPLOY_HOST_KEY }}
+        run: bash deploy/release-remote.sh read-revisions >> "$GITHUB_OUTPUT"
+
+      - name: Find published images
+        id: published
+        if: steps.request.outputs.stale != 'true' && inputs.frontend_changed == ''
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GHCR_USER: ${{ github.actor }}
+          FRONTEND_CURRENT: ${{ steps.deployed.outputs.frontend_current }}
+          BACKEND_CURRENT: ${{ steps.deployed.outputs.backend_current }}
+        run: |
+          set -euo pipefail
+
+          changes=$(bash deploy/check-revision.sh changed "$FRONTEND_CURRENT" "$BACKEND_CURRENT" "$TARGET")
+          printf '%s\n' "$changes" >> "$GITHUB_OUTPUT"
+
+          printf '%s' "$GHCR_TOKEN" |
+            docker login ghcr.io \
+              --username "$GHCR_USER" \
+              --password-stdin
+
+          for service in frontend backend; do
+            grep -qx "$service=true" <<< "$changes" || continue
+            image="ghcr.io/mannal2/poker-chip-manager-$service"
+            docker pull --platform linux/amd64 "$image:sha-$TARGET"
+            digest=$(docker image inspect --format '{{index .RepoDigests 0}}' "$image:sha-$TARGET")
+            [[ "$digest" == "$image"@sha256:* && "${digest##*@sha256:}" =~ ^[a-f0-9]{64}$ ]]
+            printf '%s_image=%s\n' "$service" "$digest" >> "$GITHUB_OUTPUT"
+          done
+
+      - name: Decide what to deploy
+        id: decide
+        if: steps.request.outputs.stale != 'true'
+        env:
+          BACKEND_CHANGED: ${{ inputs.backend_changed || steps.published.outputs.backend }}
+          FRONTEND_CHANGED: ${{ inputs.frontend_changed || steps.published.outputs.frontend }}
+          FRONTEND_CURRENT: ${{ steps.deployed.outputs.frontend_current }}
+          BACKEND_CURRENT: ${{ steps.deployed.outputs.backend_current }}
+        run: |
+          set -euo pipefail
+
+          if [[ "$BACKEND_ENABLED" != true ]]; then
+            # Until go-live the frontend flow stays as it was and backend is left alone.
+            printf 'backend_changed=false\nfrontend_changed=true\n' >> "$GITHUB_OUTPUT"
+            printf 'backend_action=skip\nfrontend_action=proceed\n' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          backend_action=skip
+          frontend_action=skip
+          if [[ "$BACKEND_CHANGED" == true ]]; then
+            backend_action=$(bash deploy/check-revision.sh ancestor "$BACKEND_CURRENT" "$TARGET")
+          fi
+          if [[ "$FRONTEND_CHANGED" == true ]]; then
+            frontend_action=$(bash deploy/check-revision.sh ancestor "$FRONTEND_CURRENT" "$TARGET")
+          fi
+          {
+            printf 'backend_changed=%s\nfrontend_changed=%s\n' "$BACKEND_CHANGED" "$FRONTEND_CHANGED"
+            printf 'backend_action=%s\nfrontend_action=%s\n' "$backend_action" "$frontend_action"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Deploy backend
+        id: backend
+        if: steps.decide.outputs.backend_action == 'proceed'
+        # The release plan below has to see a failure before this job reports it.
+        continue-on-error: true
+        env:
+          BACKEND_IMAGE: ${{ inputs.backend_image || steps.published.outputs.backend_image }}
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_HOST_KEY: ${{ secrets.DEPLOY_HOST_KEY }}
+        run: bash deploy/release-remote.sh backend "$BACKEND_IMAGE" "$TARGET"
+
+      - name: Plan frontend release
+        id: plan
+        if: steps.request.outputs.stale != 'true'
+        env:
+          BACKEND_ACTION: ${{ steps.decide.outputs.backend_action }}
+          BACKEND_RESULT: ${{ steps.backend.outputs.backend }}
+          BACKEND_CHANGED: ${{ steps.decide.outputs.backend_changed }}
+          FRONTEND_CHANGED: ${{ steps.decide.outputs.frontend_changed }}
+        run: |
+          set -euo pipefail
+
+          result=skipped
+          if [[ "$BACKEND_ACTION" == proceed ]]; then result=${BACKEND_RESULT:-failed}; fi
+          plan=$(bash deploy/plan-release.sh "$BACKEND_CHANGED" "$FRONTEND_CHANGED" "$result")
+          printf '%s\n' "$plan" >> "$GITHUB_OUTPUT"
+          if [[ "$plan" == frontend=hold ]]; then
+            printf '\nThe frontend was held too, because it may need this backend. A rerun deploys both.\n' \
+              >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Deploy frontend
+        if: steps.plan.outputs.frontend == 'deploy' && steps.decide.outputs.frontend_action == 'proceed'
+        env:
+          FRONTEND_IMAGE: ${{ inputs.frontend_image || steps.published.outputs.frontend_image }}
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_HOST_KEY: ${{ secrets.DEPLOY_HOST_KEY }}
+        run: bash deploy/release-remote.sh frontend "$FRONTEND_IMAGE" "$TARGET"
+
+      - name: Report backend failure
+        if: always() && steps.backend.outcome == 'failure'
+        run: |
+          echo 'The backend deployment failed; see the step above and the job summary.' >&2
+          exit 1
+
+      - name: Remove temporary SSH key
+        if: always()
+        run: rm -f "$RUNNER_TEMP/poker-ssh/id_ed25519"

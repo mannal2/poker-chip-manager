@@ -1,6 +1,7 @@
 import { validateSettings, type GameSettings } from '../../../game/settings';
 import type { GameState } from '../../../game/types';
 
+// 로컬 모드 전용 설정 조작(참가자 수 변경)을 제공하는 훅
 /** Local-only setup action: changing the player count (online seats come from the room). */
 export function useLocalSetupExtras({
   state: s,
@@ -13,6 +14,7 @@ export function useLocalSetupExtras({
   notify: (message: string) => void;
   saveSettings: (settings: GameSettings, order?: string[]) => void;
 }) {
+  // 참가자를 한 명 추가하거나 마지막에 추가된 한 명을 제거해 설정을 저장한다
   function changeCount(add: boolean) {
     if (!s || busy || s.status !== 'setup') return;
     const n = s.players.length;

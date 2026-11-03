@@ -576,3 +576,70 @@ A00~A11 단일 기기 구현과 자동 검증을 마쳤다. 멀티플레이·실
 - 수정: 불러오기 readonly(826f463), 저장 실패 진단 기록·"오류 정보" 표시/복사.
 - 검증: 단위 207 PASS, typecheck/lint PASS, 관련 E2E(tablet-recovery·stalled-save·storage·app-flow) Chromium/WebKit 46 PASS. 실기기 미검증.
 
+## 2026-10-31 — 계획 2A: 방·인증·REST 명령 서버 (C02·C03의 서버 REST 범위)
+- 계획: [2026-10-30-multiplayer-2a-rooms-and-api.md](docs/superpowers/plans/2026-10-30-multiplayer-2a-rooms-and-api.md). `multiplayer-server` 브랜치, 작업 1~10, 로컬 커밋만(push/PR/merge/배포 없음).
+- 구현: `backend/game-json`, `backend/server`(세션·CSRF·Origin·화면 스트림, 요청 장부, 방 레지스트리, 명령 파이프라인, 대기방·게임·결과 명령, 기록 조회, 조작 화면 인수). 방은 서버 메모리에만 있다.
+- 작업 10: `shared/api-contract/` 예시(실제 응답에서 생성)와 `ApiContractTest`, `FullTournamentHttpTest`(실제 HTTP, 세션 3개), `RoomConcurrencyTest`(스레드 20개), ARCHITECTURE·SYSTEM_SPEC·MULTIPLAYER_MODE 갱신.
+- 검증(2026-10-31): `backend/gradlew -p backend test --rerun-tasks` 416개 PASS(실패·건너뜀 0), `npm --prefix frontend test -- --run` PASS, `:server:bootRun` 후 `/api/health` UP 확인.
+- 범위 밖: WebSocket·연결 판정·자동 체크/폴드·방장 자동 이전·기기 복구·방 자동 삭제(2B), 온라인 화면 연결(계획 3), 요청 빈도 제한·서버 배포(계획 4). C02·C03 전체 완료가 아니라 서버 REST 부분만 끝났다.
+- 한계: `backend-ci.yml`은 GitHub에서 실행해 본 적이 없다. 프런트 E2E·브라우저·실기기 검증은 하지 않았고 TS 쪽 계약 검사는 없다(계획 3).
+
+## 2026-10-31: 계획 2B: 실시간 전달과 방 수명 (C04·C05의 서버 범위)
+- 계획: [2026-10-31-multiplayer-2b-realtime-and-lifecycle.md](docs/superpowers/plans/2026-10-31-multiplayer-2b-realtime-and-lifecycle.md). `multiplayer-server` 브랜치, 작업 1~8, 로컬 커밋만(push/PR/merge/배포 없음).
+- 구현: 엔진의 자동 체크·폴드와 방장 기권 표시, `Presence`(참가자별 구독 연결), `AutoPlay`, `RoomLifecycle`의 유예 5초·첫 연결 30초·방장 인수 60초·전원 미접속 30분·복구 신청 5분, `RoomPublisher`로 잠금 밖 발행, `realtime` 패키지(`/ws` 구독·SNAPSHOT·PING/PONG·RESYNC, 연결당 대기열, 생존 확인 15/45초, 전송 정체 10초, 일괄 점검 1초), 세션 만료 시 연결 회수, 방장 승인 기기 복구(`SeatBinding` 자격 교체).
+- 작업 8: `shared/api-contract/`의 소켓·복구 예시 7개, `FullTournamentHttpTest`를 실제 WebSocket으로 교체, `DisconnectedTournamentHttpTest` 추가, ARCHITECTURE·SYSTEM_SPEC·MULTIPLAYER_MODE·TECH_DECISIONS(T71~T75) 갱신.
+- 검증(2026-10-31): `backend/gradlew -p backend test --rerun-tasks` 627개 PASS(실패·건너뜀 0), 컴파일 경고 없음(-Werror). `DisconnectedTournamentHttpTest`는 `poker.sweep.enabled=true`로 시계만 진행시켜 실제 `SweepTask`·`HeartbeatTask`가 도는 것을 확인했다(PING 수신과 응답, 무응답 소켓 닫힘, 방장 인수 요청 열림). 관련 소켓 테스트는 고정 대기 없이 제한 시간 있는 메시지 대기만 쓴다. 프런트 코드를 바꾸지 않아 프런트 검증은 생략했다.
+- 범위 밖: 온라인 화면, 자동·기권 기록 문구와 TS 이벤트 타입, 취소 알림 문구, 재연결 간격, 세션 6시간 갱신, 복구 결과 조회 주기, TS 계약 검사, REST의 410 `ROOM_GONE`(계획 3). 요청 빈도 제한, 운영 쿠키, 서버 배포(계획 4). C04·C05 전체 완료가 아니라 서버 부분만 끝났다.
+- 한계: 실기기 검증과 부하 시험(10방, 서버 전체 500연결 실사용, 장시간 메모리)은 하지 않았다. 500연결 한도는 가짜 소켓으로 채워 시험했고, 실제 Tomcat 소켓의 전송 정체(10초)는 재현하지 않았다. GitHub CI는 이번에도 실행하지 않았다. 시간 값은 측정 전 초기안이다.
+
+## 2026-11-01: 계획 3: 온라인 화면 (C06·C07의 화면 범위)
+
+- 구현: `features/online-game`의 API 계약·REST·WebSocket·세션 컨트롤러·입장·기기 복구·대기방·베팅·정산 공유·확정 이벤트 효과·관리 메뉴·결과와 재준비를 공통 GameSession에 연결했다. `/online/`은 서비스 워커가 제어하지 않고 manifest scope는 `/`, start_url·id는 `/local/`을 유지한다.
+- Task 10: 실제 서버 재연결·두 탭·세 명의 전체 토너먼트 E2E를 추가했다. 오프라인 잠금·접속 끊김 카드·자동 체크, 실제 대기방 5초 유예 안팎, 확정 후 응답 유실 원장 확인(명령 POST 한 번), 차례 직후 새로고침·초안 폐기, 무응답 소켓의 화면 복귀, 조작권 인수·남은 탭의 연결, 열 번 새로고침, 정상 종료·재준비·두 번째 시작과 모든 화면의 총 칩을 검사한다.
+- 수정 근거: pagehide 정리가 없어 새로고침 여덟 번 뒤 스트림 한도에 도달하는 실패를 두 브라우저에서 재현했다. 실제 문서 종료에서는 keepalive 스트림 삭제를 요청한다. BFCache에서는 스트림과 메모리의 결과 불명 요청을 유지하고 소켓만 닫으며 복귀에서 같은 원장을 확인한다. 브라우저 offline 알림으로 조작을 즉시 잠그고 online 이전에는 재연결 시도를 열지 않는다. WebKit에서 offline 중에도 소켓이 재개되어 유예가 끝나지 않는 실패를 이 방식으로 고쳤다.
+- 검증: JDK 25로 `backend/gradlew.bat -p backend test` PASS(exit 0, 마지막 실행 52초). XML 합계 638개(game 176·game-json 7·server 455), 실패·오류·건너뜀 0. game·game-json 검사는 현재 소스의 UP-TO-DATE 결과를 사용했고 server 검사는 다시 실행했다. 프런트 lint·typecheck PASS, 전체 Vitest 39파일 353개 PASS(exit 0), 제품 build PASS.
+- 로컬 전체: `npm --prefix frontend run test:e2e`는 447개 PASS·기존 조건부 제외 3개, 실패 0(exit 0, 4.9분). 일반 단계 → chromium-serial → webkit-serial을 그대로 실행했다. 이 실행의 빌드는 마지막 주석 보완 전이며 주석만 보완한 뒤의 제품 JavaScript·CSS 해시는 같았다. 이후 온라인 알림 결함 수정과 최종 검증 범위는 아래에 별도로 기록한다.
+- 온라인 집중: `npm --prefix frontend run test:e2e:online -- two-tabs.spec.ts reconnect.spec.ts full-tournament.spec.ts --workers=1`은 두 브라우저 16개 PASS(exit 0, 55.8초). 기본 전체 온라인 최종 실행은 54개 PASS(exit 0, 2.0분, 기본 9 workers)였다. 전체 첫 실행의 실패와 수정은 아래에 기록한다.
+- 주석 검사: 계획 3 전 소스(b1d387c)를 기준으로 추가한 이름 있는 함수·컴포넌트·클래스·메서드·객체 콜백·getter와 테스트 308개를 TypeScript AST로 검사했다. 한글 역할 주석 누락 19곳을 보완한 뒤 누락 0개를 확인했다. 기존 코드의 무관한 주석은 수정하지 않았다.
+- 한계: 실기기 iPhone/Android, 설치 앱 안의 온라인 창·공유 시트·실제 OS BFCache와 강제 종료는 미검증이다. BFCache 자동 검사는 persisted pagehide/pageshow 이벤트와 단위 원장 보존 검사이며 실제 iPhone 탐색 기록 검증을 대신하지 않는다. Task 9의 앞선 WebKit 동일 화면 재참가 두 번 실패의 원인은 미확정이며 이후 진단 통과를 원인 해결로 간주하지 않는다. 서버 배포·운영 쿠키·요청 빈도 제한·온라인 CI·부하 검사는 계획 4로 남긴다. 로컬 커밋만 수행한다.
+
+- 전체 온라인 첫 실행은 53개 PASS·Chromium 자동 행동 알림 1개 FAIL(exit 1, 1.8분)이었다. HTTP가 먼저 상태를 확정하면 같은 tuple의 WebSocket 이벤트까지 버려 요청자 알림이 누락되는 실제 결함을 확인했다. onObserved로 이벤트 알림과 취소 입력 초기화를 칩 효과(onConfirmed)에서 분리했고, 낮은 tuple 무시·같은 tuple 상태 객체 유지·효과 미재생·중복 알림 방지와 gap 알림을 회귀 검사했다. HTTP 응답이 먼저 적용되도록 WebSocket을 보류한 실제 서버 검사에서 요청자와 관찰자 모두 자동·취소 문구를 확인했다.
+- 이 마지막 변경은 온라인 전용 controller·RoomPage 및 관련 검사에 한정된다. 앞선 로컬 전체 447개 통과 뒤 로컬·공통 UI 동작은 바꾸지 않았다. 최종 소스의 정산·재연결 14개는 PASS(exit 0, 1.1분), lint·typecheck·전체 단위 353개·제품 build도 다시 PASS했다. 제품 온라인 청크는 online-DjydbWNv.js이며 로컬·공통 청크 해시는 그대로다.
+
+- 최종 기본 `npm --prefix frontend run test:e2e:online`은 54개 전부 PASS(exit 0, 2.0분). Chromium·WebKit의 실제 60초 방장 인수와 Task 9의 결합·분리 동일 화면 재참가 검사를 모두 포함하며 skip·retry는 없다.
+
+### 2026-11-01 계획 3 최종 통합 검토 수정
+
+- 실제 서버에서 콜 차례인 Alice가 화면으로 복귀할 때 새 소켓의 구독을 지연시키자, 입력 없이 다음 행동자가 Bob으로 바뀌는 문제를 재현했다. 이제 새 구독이 확인될 때까지 기존 연결을 유지하며, 교체 중에는 입력을 잠근다. 추가 구독이 거절되면 기존 연결을 재확인한다. Chromium과 WebKit에서 복귀 도중 차례·팟·잔액이 유지되고 이후 콜이 한 번만 반영되는 것을 확인했다.
+- 지연된 HTTP 응답이 토너먼트나 조작 세대를 되돌리지 않도록 수정했다. HTTP 응답과 JSON 본문 수신에는 하나의 15초 제한을 적용한다. 재접속 후 원래 요청의 원장을 조회한다. 방 한도 거절, 복구 신청·방 소멸, 탈퇴 후 원장 404, 세션 버전 불일치를 각각 처리한다.
+- 블라인드 설정은 핸드·단계 변경 시 닫힌다. 취소 버튼은 베팅 차례와 독립적으로 잠기며 재시도는 결과 불명 요청에만 표시한다. 한 발행의 자동 행동·취소 알림을 함께 표시한다. 온라인 보드 효과는 화면에 표시된 버전에서 이어지는 경우에만 재생하고, 높은 PING은 RESYNC를 한 번만 보낸다.
+- 최종 프런트 단위 검사 39파일 380개, lint, typecheck, 제품 빌드가 통과했다. 로컬 브라우저 전체는 447개 통과·기존 조건부 제외 3개였다. 로컬 검사 시작 뒤 수정한 동작은 온라인 전용 PING 감시와 낮은 스냅샷 잠금 처리 두 가지다. 전후 제품 빌드의 로컬·공통 청크는 각각 `local-BQ2BHX-K.js`, `controls-KFhrHH6Y.js`로 동일했다.
+- 마지막 기본 온라인 E2E는 실제 서버와 Chromium·WebKit에서 56개 전부 통과했다(기본 9 workers, 재시도·제외 0, 2.0분). 백엔드 소스 변경은 없어 앞선 638개 검증 결과를 유지한다. 실기기·실제 OS BFCache는 미검증이며 이전 WebKit 재참가 실패의 최초 원인은 미확정이다.
+
+### 계획 3 통합 수정 후 추가 검증
+
+- 관전 탭의 인수가 게임 시작이나 재준비와 겹칠 때, 서버에서 발급한 세대와 화면에서 관찰한 세대를 구분한다. 이미 표시한 토너먼트 상태를 보존하면서 같은 자리의 새 조작 세대만 반영한다. 인수 응답 직후 이 탭에서 새 세대의 첫 명령을 보낼 수 있고, 다른 탭이 더 높은 세대를 받으면 조작권을 잃는다.
+- 연속 발행으로 시작한 플랍 카드 애니메이션은 같은 보드의 HTTP 확정이 도착해도 이어진다. 새로운 핸드, 카드 수 변경, 화면 종료 때 이전 효과를 정리한다. 빠진 스트리트를 복구할 때는 새 효과를 시작하지 않는다.
+- 최종 단위 검사 39파일 383개, lint·typecheck·제품 빌드가 통과했다. 마지막 공통 보드 수정 후 로컬 보드·게임 E2E 40개가 통과했다. 위의 로컬 전체 447개 통과·3개 조건부 제외는 이 추가 수정 전 결과다.
+- 실제 서버 집중 검사에서 WebKit 두 핸드 사이드 팟 시나리오가 전체 제한 30초를 넘겨 19개 통과·1개 실패였다. 추적 기록상 Bob의 차례와 체크 버튼 활성 검사가 통과했고, 클릭 시작 53ms 뒤 테스트 종료 처리가 시작됐다. 이 시나리오의 전체 제한만 90초로 늘렸다. 같은 추적 조건에서 20개 전부 통과했고 해당 시나리오는 1.1분이 걸렸다. 마지막 기본 전체 온라인 검사도 56개 전부 통과했다(2.0분, 재시도·제외 0).
+
+### 계획 3 전체 리뷰 수정 (2026-11-01)
+
+- 서버 재시작 뒤 화면이 `재연결 중`에 멈추는 문제를 실제 서버로 재현하고 고쳤다. 재연결이 두 번 실패하면 상태 조회로 방과 세션을 확인해 소실 화면으로 보내고, 방 코드를 채운 입장 링크를 보여 준다. 수정 뒤 같은 재현에서 소실 안내가 표시됐다. 세션 만료는 같은 코드 경로이며 단위 검사로만 확인했다.
+- HTTP가 소켓보다 먼저 확정한 자기 행동의 칩 효과와 보드 효과를 재생한다. 수정 전 폴드 20회 중 행동자 화면 19회, 수정 후 20회 재생을 측정했다.
+- 일시적 실패에서는 복귀할 방 정보를 지우지 않고, 복구 신청 ID를 탭에 보관해 새로고침 뒤 조회를 잇는다. 단독 자격 팟의 선택 인원, 복구 승인 영역 배치, 연결 한도 안내를 고쳤다.
+- `onlineController.ts`에서 저장소·이벤트 기록·복구 조회를 분리했고, 타입과 `GameSession` 필드의 주석, 주석 문체, Prettier, 권한 매핑 중복을 정리했다. 컨트롤러는 아직 약 790줄이다.
+- 검증: 백엔드 전체 PASS, lint·typecheck·build PASS, 단위 396개 PASS, 브라우저 E2E 447개 PASS·조건부 제외 3개, 온라인 E2E 56개 PASS. 재시작과 칩 효과 측정은 일회성 스크립트이며 저장소 테스트로는 단위 검사만 남겼다. 실기기·부하·GitHub CI는 미검증이다.
+
+### 복구 승인 영역을 한 줄 알림으로 변경 (2026-11-01)
+
+- 테이블을 덮던 복구 승인 영역을 헤더 줄의 한 줄 알림과 대화상자로 바꿨다. 신청이 여러 건이면 건수로 묶는다. `방장 맡기`도 같은 줄에 둔다.
+- 신청을 모두 처리한 뒤 다음 신청이 대화상자를 저절로 여는 결함을 캡처 중 발견해 고쳤다.
+- 검증: 단위 400개 PASS, 온라인 E2E 56개 PASS, lint·typecheck PASS. 375×667 화면에서 알림과 좌석이 겹치지 않음을 측정했다. 온라인 전용 변경이라 기존 브라우저 E2E는 다시 실행하지 않았다.
+
+## 2026-11-03: 계획 4: 백엔드 배포·운영 (C08)
+
+- 계획: [2026-11-01-multiplayer-4-backend-deploy.md](docs/superpowers/plans/2026-11-01-multiplayer-4-backend-deploy.md). `multiplayer-server` 브랜치, 작업 1~9, 커밋 34f48eb~(이번 문서 커밋). push는 Task 7의 사용자 단계에서 PR #16 검사를 위해 142ee2a까지 한 번 했고(PR 검사·브랜치 수동 실행 통과), 병합·서버 배포는 하지 않았다.
+- 구현: 서버 사양 확인(`deploy/check-host.sh`, x86_64·1907MiB, 스왑 2GiB는 사용자가 적용), 요청 빈도 제한과 서버 전체 세션 한도, 배포 시작 게이트(내부 `/internal/deploy/*`, 차단 파일, 종료 취소 거절)와 화면 안내, 백엔드 이미지·Compose 서비스·edge 라우팅, 백엔드 배포·복구·이미지 정리 스크립트, CI의 backend 검사·온라인 E2E·발행·배포(`BACKEND_DEPLOY_ENABLED`로 켬)와 수동 Deploy 워크플로, 서버 재시작 E2E와 부하 도구, 공개 절차 [deploy/GO_LIVE.md](deploy/GO_LIVE.md). 결정은 TECH_DECISIONS T79~T83, 명세와 다른 곳은 DEPLOYMENT_SPEC 9절이다.
+- 최종 검증(2026-11-03, Windows): `backend/gradlew -p backend test` PASS(706개, 실패 0, 건너뜀 1: Windows에서 읽기 권한을 뺄 수 없어 가정으로 건너뛰는 `GateFileTest.aFileWithoutReadPermissionIsClosed`). 프런트 lint·typecheck PASS, 단위 40파일 416개 PASS, 제품 build PASS, `test:e2e` 447개 PASS·조건부 제외 3개(5.9분), `test:e2e:online` 57개 PASS(2.7분, `deploy-gate` 포함), `test:e2e:restart` 1개 PASS(1.0분). `test-deploy-frontend.sh`·`test-plan-release.sh` PASS. `test-deploy-backend.sh`는 Git Bash에서 65개 PASS·1개 SKIP(flock이 없어 실제 잠금 경합 생략). Docker가 꺼져 있어 이번에는 Linux에서 다시 실행하지 않았다.
+- 한계: 실제 서버에서는 아무것도 실행하지 않았다. DEPLOYMENT_SPEC 8절 O01~O12는 모두 **대기**이며 사용자의 공개 절차(GO_LIVE) 실행 뒤에 기록한다. main의 `restart-e2e`·`plan`·`publish-backend`·`deploy`와 호출된 워크플로의 Tailscale OIDC는 GitHub에서 실행된 적이 없다. 10방 부하 메모리, 실기기 다중 접속(DEVICE_CHECKS "운영 서버 공개 확인")은 미검증이다.

@@ -636,3 +636,10 @@ A00~A11 단일 기기 구현과 자동 검증을 마쳤다. 멀티플레이·실
 - 테이블을 덮던 복구 승인 영역을 헤더 줄의 한 줄 알림과 대화상자로 바꿨다. 신청이 여러 건이면 건수로 묶는다. `방장 맡기`도 같은 줄에 둔다.
 - 신청을 모두 처리한 뒤 다음 신청이 대화상자를 저절로 여는 결함을 캡처 중 발견해 고쳤다.
 - 검증: 단위 400개 PASS, 온라인 E2E 56개 PASS, lint·typecheck PASS. 375×667 화면에서 알림과 좌석이 겹치지 않음을 측정했다. 온라인 전용 변경이라 기존 브라우저 E2E는 다시 실행하지 않았다.
+
+## 2026-11-03: 계획 4: 백엔드 배포·운영 (C08)
+
+- 계획: [2026-11-01-multiplayer-4-backend-deploy.md](docs/superpowers/plans/2026-11-01-multiplayer-4-backend-deploy.md). `multiplayer-server` 브랜치, 작업 1~9, 커밋 34f48eb~(이번 문서 커밋). push는 Task 7의 사용자 단계에서 PR #16 검사를 위해 142ee2a까지 한 번 했고(PR 검사·브랜치 수동 실행 통과), 병합·서버 배포는 하지 않았다.
+- 구현: 서버 사양 확인(`deploy/check-host.sh`, x86_64·1907MiB, 스왑 2GiB는 사용자가 적용), 요청 빈도 제한과 서버 전체 세션 한도, 배포 시작 게이트(내부 `/internal/deploy/*`, 차단 파일, 종료 취소 거절)와 화면 안내, 백엔드 이미지·Compose 서비스·edge 라우팅, 백엔드 배포·복구·이미지 정리 스크립트, CI의 backend 검사·온라인 E2E·발행·배포(`BACKEND_DEPLOY_ENABLED`로 켬)와 수동 Deploy 워크플로, 서버 재시작 E2E와 부하 도구, 공개 절차 [deploy/GO_LIVE.md](deploy/GO_LIVE.md). 결정은 TECH_DECISIONS T79~T83, 명세와 다른 곳은 DEPLOYMENT_SPEC 9절이다.
+- 최종 검증(2026-11-03, Windows): `backend/gradlew -p backend test` PASS(706개, 실패 0, 건너뜀 1: Windows에서 읽기 권한을 뺄 수 없어 가정으로 건너뛰는 `GateFileTest.aFileWithoutReadPermissionIsClosed`). 프런트 lint·typecheck PASS, 단위 40파일 416개 PASS, 제품 build PASS, `test:e2e` 447개 PASS·조건부 제외 3개(5.9분), `test:e2e:online` 57개 PASS(2.7분, `deploy-gate` 포함), `test:e2e:restart` 1개 PASS(1.0분). `test-deploy-frontend.sh`·`test-plan-release.sh` PASS. `test-deploy-backend.sh`는 Git Bash에서 65개 PASS·1개 SKIP(flock이 없어 실제 잠금 경합 생략). Docker가 꺼져 있어 이번에는 Linux에서 다시 실행하지 않았다.
+- 한계: 실제 서버에서는 아무것도 실행하지 않았다. DEPLOYMENT_SPEC 8절 O01~O12는 모두 **대기**이며 사용자의 공개 절차(GO_LIVE) 실행 뒤에 기록한다. main의 `restart-e2e`·`plan`·`publish-backend`·`deploy`와 호출된 워크플로의 Tailscale OIDC는 GitHub에서 실행된 적이 없다. 10방 부하 메모리, 실기기 다중 접속(DEVICE_CHECKS "운영 서버 공개 확인")은 미검증이다.

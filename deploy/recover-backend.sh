@@ -65,9 +65,10 @@ inspect_without_pending() {
   echo "RECOVERED opened-unowned-gate $holder"
   exit 0
 }
-# 복구 실패를 알리고 표시와 차단을 남긴 채 끝낸다
+# 복구 실패를 알리고 배포 기록을 남긴 채 끝낸다
 still_required() {
-  echo "RECOVERY_REQUIRED: $1 $pending and the gate were left in place." >&2
+  # The backend may already be stopped or restarted and the gate may read either way, so claim neither.
+  echo "RECOVERY_REQUIRED: $1 $pending was kept. Check the running backend and its status before rerunning." >&2
   exit 1
 }
 # 서버가 게이트 파일과 달리 열렸다고 읽히면 기록하지 않고 끝낸다
@@ -134,7 +135,8 @@ revision=$revision
 fi
 
 if [[ -z "$rollback" ]]; then
-  # A first deployment has nothing to return to. The closed gate file stays for the next attempt.
+  # A first deployment has nothing to return to. The gate file is left as it is, which may be
+  # COMPLETE after a releasing phase; the next deployment writes a closed file before it starts a backend.
   replace_is_safe || still_required 'NO_PREVIOUS_IMAGE: the backend cannot be proved free of games. Stop it first if that is acceptable.'
   if [[ -n "$running" ]]; then compose stop backend; fi
   rm -- "$pending"

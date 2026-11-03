@@ -46,6 +46,12 @@ flowchart TD
   Compose -. 구동 .-> Server["프런트엔드 Nginx 컨테이너"]
   Server -. 이미지 사용 .-> Image
   Edge["edge Nginx / HTTPS"] -. 프록시 .-> Server
+  CI -. 이미지 빌드 .-> BDocker["backend/Dockerfile"]
+  CI -. 배포 .-> BDeploy["deploy/deploy-backend.sh"]
+  BDeploy -. backend 교체·게이트 .-> Compose
+  Compose -. 구동 .-> Backend["백엔드 Spring Boot 컨테이너"]
+  Edge -. /api/·/ws .-> Backend
+  API -. HTTPS .-> Edge
 ```
 
 화면에서 사용하는 규칙 계산과 저장소에서 수행하는 최종 규칙 검증은 목적이 다르다.
@@ -63,8 +69,8 @@ flowchart TD
 | `frontend/` | 브라우저 앱·테스트·정적 이미지 빌드     | [package.json](frontend/package.json), [vite.config.ts](frontend/vite.config.ts), [Dockerfile](frontend/Dockerfile) |
 | `backend/`  | 서버 Gradle 프로젝트: 규칙 `game`, JSON 변환 `game-json`, 앱 `server`, 이미지 빌드 | [settings.gradle.kts](backend/settings.gradle.kts), [Dockerfile](backend/Dockerfile), `backend/game/`, `backend/game-json/`, `backend/server/` |
 | `shared/`   | 언어에 독립적인 규칙 테스트 입력·기대값과 API 예시 | `shared/game-fixtures/`, [schema.json](shared/game-fixtures/schema.json), [shared/api-contract/](shared/api-contract/README.md) |
-| `deploy/`   | 프런트엔드 교체·복구와 edge 구성        | [deploy-frontend.sh](deploy/deploy-frontend.sh), [README.md](deploy/README.md)                                      |
-| `.github/`  | 검사·이미지 발행·배포·연결 확인 자동화  | [ci-images.yml](.github/workflows/ci-images.yml), [backend-ci.yml](.github/workflows/backend-ci.yml), [check-server.yml](.github/workflows/check-server.yml) |
+| `deploy/`   | 프런트엔드·백엔드 교체·복구, 배포 판정, edge 구성, 공개 절차, 부하 도구 | [deploy-frontend.sh](deploy/deploy-frontend.sh), [deploy-backend.sh](deploy/deploy-backend.sh), [README.md](deploy/README.md), [GO_LIVE.md](deploy/GO_LIVE.md), `deploy/load/` |
+| `.github/`  | 검사·이미지 발행·배포·연결 확인 자동화  | [ci-images.yml](.github/workflows/ci-images.yml), [backend-ci.yml](.github/workflows/backend-ci.yml), [deploy.yml](.github/workflows/deploy.yml), [check-server.yml](.github/workflows/check-server.yml) |
 | `docs/`     | 책임별 리팩터링 계획과 검증 기록        | `docs/superpowers/plans/`                                                                                           |
 
 루트 `shared/`는 프런트엔드와 향후 서버가 함께 쓰는 규칙 사례이고, `frontend/src/shared/`는 프런트엔드 범용 코드다. 이름은 같지만 다른 것이다.
@@ -250,18 +256,18 @@ backend/gradlew -p backend :game:test
 ## 백엔드 서버 앱 (`backend/server`)
 
 Spring Boot 4·Spring MVC·가상 스레드 앱이다. 방은 서버 메모리에만 있다. 게임 변경은 REST로 받고(계획 2A), 상태 전달·연결 판정·방 수명·기기 복구는 WebSocket과 예약 작업이 맡는다(계획 2B).
-프런트엔드 온라인 화면은 이 서버에 연결되어 있다(계획 3). 서버 배포·운영 설정은 아직 없다(계획 4).
+프런트엔드 온라인 화면은 이 서버에 연결되어 있다(계획 3). 요청 빈도 제한, 배포 시작 게이트, 운영 프로필·이미지·배포 스크립트는 계획 4에서 더했다. 실제 서버 공개는 [deploy/GO_LIVE.md](deploy/GO_LIVE.md)의 사용자 절차로 남아 있다.
 패키지 `xyz.jwlee.poker.server` 아래 구조는 다음과 같다.
 
 | 위치 | 역할 한 줄 |
 | ---- | ---------- |
-| `api/` | `RoomController`(생성·참가·상태), `CommandController`(명령·요청 결과·조작 인수), `RecoveryController`(복구 신청·결과 조회), `HistoryController`, `HealthController`, 본문 크기 필터, `ApiExceptionHandler`·`ApiError`(코드·HTTP 상태·문구) |
-| `auth/` | `SecurityConfig`, `OriginFilter`, `SessionGuardFilter`, `SessionController`(세션·스트림), `SessionIdentity`(세션 속성·스트림 장부의 유일한 입구, 방별 `SeatBinding` 보관), `WebSocketHandshakeGuard`(핸드셰이크의 Origin·세션 검사) |
+| `api/` | `RoomController`(생성·참가·상태), `CommandController`(명령·요청 결과·조작 인수), `RecoveryController`(복구 신청·결과 조회), `HistoryController`, `HealthController`, 본문 크기 필터, `RateLimitFilter`·`RateLimitProperties`(빈도 제한), `ApiExceptionHandler`·`ApiError`(코드·HTTP 상태·문구) |
+| `auth/` | `SecurityConfig`, `OriginFilter`, `SessionGuardFilter`, `SessionController`(세션·스트림), `SessionIdentity`(세션 속성·스트림 장부의 유일한 입구, 방별 `SeatBinding` 보관), `WebSocketHandshakeGuard`(핸드셰이크의 Origin·세션 검사), `SessionLimitListener`(서버 전체 세션 수, 자리 없는 세션의 30분 유휴) |
 | `realtime/` | `RealtimeConfig`(`/ws` 등록), `RoomSocketHandler`(소켓 열림·닫힘, SUBSCRIBE·PONG·RESYNC), `ConnectionHub`(열린 연결 표, `RoomPublisher` 구현), `Connection`(소켓 하나의 전송 대기열), `HeartbeatTask`(1초 주기 PING·무응답·전송 정체·미구독 정리), `SweepTask`(1초 주기 방 점검), `SessionExpiryListener`(세션이 끝나면 연결 회수) |
 | `room/` | `Room`(방 상태·잠금), `CommandPipeline`(검사 순서와 명령 연결), `WaitingRoomCommands`·`GameCommands`·`ResultCommands`·`RecoveryCommands`, `RoomLifecycle`(연결 전환·시간 규칙), `Presence`(참가자별 구독 연결·끊김 시각), `AutoPlay`(끊긴 사람의 자동 체크·폴드), `RecoveryRequests`, `SeatBinding`(자리와 자격의 묶음), `StartConditions`, `StartGate`(배포 중 새 게임 차단), `Capabilities`, `RequestLedger`·`RequestOutcome`, `SnapshotWriter`, `PublicationBuilder`·`Publication`·`RoomPublisher`(방 변경을 수신자별 메시지로 모으는 경계) |
 | `registry/` | `RoomRegistry`(방 표·한도·코드·잠금 진입, 배포 준비), `RoomCodes` |
 | `ops/` | `DeployController`(내부 배포 경로), `LoopbackOnlyFilter`(내부 경로의 loopback 제한), `GateFile`(기동 때 시작 차단 파일 판정) |
-| `support/` | `IdGenerator`, `Clock` 빈, `Protocol` |
+| `support/` | `IdGenerator`, `Clock` 빈, `Protocol`, `TokenBuckets`(키별 토큰 버킷, 키 수 상한과 유휴 정리) |
 
 ### 의존 방향과 잠금
 
@@ -287,7 +293,7 @@ Spring Boot 4·Spring MVC·가상 스레드 앱이다. 방은 서버 메모리�
 | 경로 | 처리 |
 | ---- | ---- |
 | `GET /api/health` | 상태·프로토콜·빌드 버전 |
-| `POST /internal/deploy/prepare`, `GET /internal/deploy/status`, `POST /internal/deploy/release` | 배포 준비·상태·해제. loopback 전용이고 비loopback은 404, CSRF·Origin·세션 검사 없음 |
+| `POST /internal/deploy/prepare`, `GET /internal/deploy/status`, `POST /internal/deploy/release` | 배포 준비·상태·해제. loopback 전용이고 비loopback은 404, CSRF·Origin·세션 검사 없음. edge는 `/internal/`을 전달하지 않고 404로 답한다 |
 | `GET /api/session`, `POST /api/session/refresh`, `POST /api/session/streams`, `DELETE /api/session/streams/{streamId}` | 세션·CSRF 토큰, 쿠키 연장, 화면 스트림 |
 | `POST /api/rooms`, `POST /api/room-joins` | 방 생성, 코드로 참가 |
 | `GET /api/rooms/{roomId}/state` | 요청자별 스냅샷 |
@@ -300,6 +306,15 @@ Spring Boot 4·Spring MVC·가상 스레드 앱이다. 방은 서버 메모리�
 
 요청·응답·소켓 메시지의 실제 예시는 [shared/api-contract/](shared/api-contract/README.md)에 있고 [ApiContractTest](backend/server/src/test/java/xyz/jwlee/poker/server/api/ApiContractTest.java)가 실제 응답과 비교한다. 명세와 다른 곳은 [SYSTEM_SPEC.md](SYSTEM_SPEC.md) 6·14절의 2A·2B 항목에 표시했다.
 
+### 빈도 제한과 배포 게이트
+
+- `RateLimitFilter`는 보안 체인과 모든 요청 장부보다 앞에 있다. 거절된 요청은 흔적을 남기지 않으므로 같은 순번으로 다시 보낼 수 있다. 버킷은 넷이다: 세션별 명령(`commands`·`control`), 주소별 방 생성, 주소별 생성·참가·복구 신청, 주소별 새 세션 발급. 방 생성은 주소 버킷보다 먼저 검사한다. 주소는 `poker.client-ip-header`(운영 `X-Real-IP`)이고 없으면 소켓 주소다. 값과 근거는 [SYSTEM_SPEC.md](SYSTEM_SPEC.md) 15절, [TECH_DECISIONS.md](TECH_DECISIONS.md) T81이다.
+- `SessionLimitListener.tryOpen`은 세션 수 확인과 생성을 한 단계로 묶어 2,000개를 넘기지 않는다. 넘으면 `SessionController`가 503 `SESSION_LIMIT`을 낸다.
+- `StartGate`는 배포 중 새 게임 시작(`StartConditions`의 `DEPLOY_PENDING`)과 결과 화면의 종료 취소(`UNDO_DEPLOY_PENDING`)를 막는다. 닫힘은 deploymentId 하나가 소유하고 같은 ID만 연다. 방 스냅샷의 `deployPending`은 대기방·결과 화면 안내용이다.
+- `GateFile`은 기동 때 `poker.deploy.gate-file`(운영 `/run/poker-gate/start-gate.json`)을 읽는다. `COMPLETE` 기록이거나, 디렉터리는 있고 파일이 없으면 열고, 그 밖에는 닫는다. 디렉터리가 없거나 읽을 수 없으면 `unknown`으로 닫는다(R7). 설정이 비면(기본·e2e 프로필) 연다.
+- `DeployController`의 `processId`는 프로세스마다 새 UUID다. 스크립트는 prepare한 프로세스가 교체 직전에도 같은지, release할 프로세스가 맞는지 이 값으로 확인한다. `LoopbackOnlyFilter`는 가장 먼저 실행되며 소켓 주소만 본다. `server.forward-headers-strategy: none`이라 프록시 헤더가 주소를 바꾸지 못한다.
+- 운영 이미지([backend/Dockerfile](backend/Dockerfile))는 `prod` 프로필, 빌드 인자 `REVISION`(`/api/health`의 `version`), 비root 사용자 10001로 실행한다. [compose.yaml](compose.yaml)의 backend 서비스는 digest 이미지, `BACKEND_MEM_LIMIT`과 같은 `memswap_limit`, `JAVA_TOOL_OPTIONS=-Xmx${BACKEND_HEAP}`, 읽기 전용 게이트 디렉터리(`create_host_path: false`), 로그 10MiB×3을 쓰고 포트를 publish하지 않는다. edge는 [pcm.conf](deploy/edge/nginx/pcm.conf)에서 `/api/`·`/ws`를 Docker DNS로 다시 찾는 `poker-backend:8080`에 보낸다.
+
 ### 실행과 테스트
 
 - `FullTournamentHttpTest`: 실제 포트·쿠키·CSRF·Origin과 실제 WebSocket, 세션 3개로 토너먼트 전체와 재시작. 화면마다 마지막 SNAPSHOT이 `GET state`와 같은지 본다.
@@ -307,6 +322,7 @@ Spring Boot 4·Spring MVC·가상 스레드 앱이다. 방은 서버 메모리�
 - `RoomSocketHttpTest`·`RecoverySocketHttpTest`: 실제 포트의 핸드셰이크·구독·닫힘 코드·접근 회수.
 - `RoomConcurrencyTest`: 같은 상태 버전 스레드 20개에서 적용 1개, 나머지 `STALE_STATE`, 칩 총량 보존.
 - 그 밖의 API 테스트는 MockMvc, 쿠키·본문 크기 경계는 `RoomHttpTest`·`SessionSecurityHttpTest`의 실제 HTTP.
+- 빈도 제한은 `RateLimitFilterTest`·`RateLimitProdHttpTest`·`SessionLimitTest`, 게이트는 `StartGateTest`·`GateFileTest`·`DeployControllerTest`, 시작과 prepare의 경합(O03)은 `DeployPrepareRaceTest`가 검사한다.
 
 ```powershell
 backend/gradlew -p backend test
@@ -329,6 +345,7 @@ backend/gradlew -p backend :server:bootRun
 | PWA 설치·오프라인·업데이트         | [register.ts](frontend/src/features/pwa/register.ts), [usePwaPresentation.ts](frontend/src/features/pwa/usePwaPresentation.ts), [vite.config.ts](frontend/vite.config.ts)                                                                                                                            | `useLocalPWA`, `usePwaPresentation`, `useInstallPrompt`                   | [TECH_DECISIONS.md](TECH_DECISIONS.md), [UX_SPEC.md](UX_SPEC.md)         |
 | 화면 맞춤·입력 중 키보드·확대 정책 | [useScreenFit.ts](frontend/src/shared/hooks/useScreenFit.ts), [zoomPolicy.ts](frontend/src/shared/browser/zoomPolicy.ts)                                                                                                                                                                             | `useScreenFit`, `installZoomPolicy`                                       | [UX_SPEC.md](UX_SPEC.md)                                                 |
 | 이미지 빌드·프런트엔드 배포·복구   | [ci-images.yml](.github/workflows/ci-images.yml), [Dockerfile](frontend/Dockerfile), [deploy-frontend.sh](deploy/deploy-frontend.sh)                                                                                                                                                                 | `checks`, `publish`, `deploy`, `healthy`, `activate`                      | [DEPLOYMENT_SPEC.md](DEPLOYMENT_SPEC.md), [배포 안내](deploy/README.md)  |
+| 백엔드 배포·게이트·복구 | [deploy.yml](.github/workflows/deploy.yml), [release-remote.sh](deploy/release-remote.sh), [deploy-backend.sh](deploy/deploy-backend.sh), [recover-backend.sh](deploy/recover-backend.sh), [backend-lib.sh](deploy/backend-lib.sh), [DeployController.java](backend/server/src/main/java/xyz/jwlee/poker/server/ops/DeployController.java) | `check-revision.sh`, `plan-release.sh`, `replace_is_safe`, `healthy`, `open_gate`, `GateFile.read` | [DEPLOYMENT_SPEC.md](DEPLOYMENT_SPEC.md) 4·9절, [공개 절차](deploy/GO_LIVE.md) |
 
 ## 데이터·상태 흐름
 
@@ -415,6 +432,9 @@ backend/gradlew -p backend :server:bootRun
 | 기기 복구 변경 | [RecoveryCommands.java](backend/server/src/main/java/xyz/jwlee/poker/server/room/RecoveryCommands.java), [RecoveryController.java](backend/server/src/main/java/xyz/jwlee/poker/server/api/RecoveryController.java), `SeatBinding` | 옛 연결 회수, `RecoverySocketHttpTest`, `RecoveryApiTest` |
 | 세션·CSRF·Origin 변경 | [SecurityConfig.java](backend/server/src/main/java/xyz/jwlee/poker/server/auth/SecurityConfig.java), `OriginFilter`, `SessionIdentity` | `SessionSecurityHttpTest`, SYSTEM_SPEC 15절 |
 | CI·정적 자산 보존·배포 복구 변경        | [ci-images.yml](.github/workflows/ci-images.yml), [deploy-frontend.sh](deploy/deploy-frontend.sh)                                                                                                                                             | 이미지 digest·revision, 과거 자산 보존, 복구 마커                                                  |
+| 빈도 제한 값·대상 경로 변경 | [RateLimitFilter.java](backend/server/src/main/java/xyz/jwlee/poker/server/api/RateLimitFilter.java), `application.yaml`의 `poker.rate-limit` | 장부보다 앞이라는 순서, e2e 프로필 값, 같은 Wi-Fi 9명, `RateLimitFilterTest`, SYSTEM_SPEC 15절 |
+| 백엔드 배포 순서·복구 판단 변경 | [deploy-backend.sh](deploy/deploy-backend.sh), [recover-backend.sh](deploy/recover-backend.sh), [backend-lib.sh](deploy/backend-lib.sh) | 두 스크립트가 함께 쓰는 `replace_is_safe` 한 규칙, `test-deploy-backend.sh`, DEPLOYMENT_SPEC 9절 |
+| 배포할 서비스·보류 판단 변경 | [ci-images.yml](.github/workflows/ci-images.yml)의 `plan`, [deploy.yml](.github/workflows/deploy.yml), [check-revision.sh](deploy/check-revision.sh), [plan-release.sh](deploy/plan-release.sh) | `BACKEND_DEPLOY_ENABLED`, `test-plan-release.sh` |
 
 ## 불변 조건과 경계
 
@@ -488,6 +508,8 @@ backend/gradlew -p backend :server:bootRun
   열린 클라이언트의 이전 해시 URL을 유지하며 교체 실패 시 이전 이미지 복구를 시도한다.
 - 실패한 복구의 마커는 다음 배포를 막는다.
   [배포 안내](deploy/README.md)를 확인하지 않고 마커를 지워 재시작하는 방식으로 우회하지 않는다.
+  프런트 `pending`과 백엔드 `backend-pending`은 서로의 배포도 막고, 모든 배포·복구·이미지 정리는 `.local/deploy/lock` 하나를 쓴다.
+- 백엔드 교체·중지는 backend 컨테이너가 없거나, 상태가 `startsClosed:true`이고 진행 게임 0으로 읽힐 때만 한다. 시간이 지났다는 이유로 게이트를 열지 않는다.
 - 온라인 결과 확정과 권한 검증은 서버가 담당한다. 로컬 저장 Hook이나 클라이언트 규칙 예측으로 대신하지 않는다.
 
 ## 테스트·검증 위치
@@ -557,29 +579,40 @@ PWA 테스트는 생성된 서비스 워커 파일을 일시 변경하고 원복
 
 ### 배포 검사와 CI 범위
 
-[ci-images.yml](.github/workflows/ci-images.yml)의 PR 검사는 lint·단위 테스트·핵심 E2E 세 파일과 Docker 빌드를 실행한다.
-전체 E2E 명령과 CI에서 선택한 일부 파일은 같은 범위가 아니다.
-이미지 안의 실제 자산 복사와 컨테이너 응답도 검사한다.
-main 경로에서는 검사 후 이미지 발행과 배포 작업이 이어진다.
-[backend-ci.yml](.github/workflows/backend-ci.yml)은 `backend/**`·`shared/game-fixtures/**`·`shared/api-contract/**` 변경 때 Temurin 25로 `./gradlew test`를 실행한다.
-이 워크플로는 아직 GitHub에서 한 번도 실행되지 않았다. 로컬 결과로만 확인했다.
-[check-server.yml](.github/workflows/check-server.yml)은 별도 수동 SSH 연결 확인 작업이다.
+[ci-images.yml](.github/workflows/ci-images.yml) 하나가 PR과 main을 맡는다. 작업별 범위와 배포 판정은 [deploy/README.md](deploy/README.md)의 "GitHub Actions"가 기준이다.
+
+- `checks`: 프런트 배포·배포 판정 스크립트 시험, lint, 단위 테스트, 핵심 E2E 세 파일, 프런트 이미지와 자산 복사·컨테이너 응답. 전체 E2E 명령과 CI에서 선택한 일부 파일은 같은 범위가 아니다.
+- `backend`: [backend-ci.yml](.github/workflows/backend-ci.yml)을 호출한다. Temurin 25 `./gradlew test`, 백엔드 배포 스크립트 시험, 백엔드 이미지 빌드. 경로 필터 없이 모든 PR과 main push에서 실행된다.
+- `online-e2e`: PR은 Chromium 핵심(`@slow`·`deploy-gate` 제외), main과 수동 실행은 두 브라우저 전체.
+- `restart-e2e`: main에서만 서버 재시작 E2E.
+- `plan` → `publish`·`publish-backend` → `deploy`([deploy.yml](.github/workflows/deploy.yml) 호출): main에서 네 검사가 모두 통과한 뒤에만 실행한다. backend 쪽은 저장소 변수 `BACKEND_DEPLOY_ENABLED`가 `true`일 때만 움직인다.
+- [check-server.yml](.github/workflows/check-server.yml)은 별도 수동 SSH 연결 확인 작업이다.
+
+배포 판정 스크립트는 CI 러너에서 실행된다. [release-remote.sh](deploy/release-remote.sh)는 SSH로 서버의 배포 기록을 읽고 스크립트를 올려 transient systemd 유닛으로 실행한다. [check-revision.sh](deploy/check-revision.sh)는 바뀐 서비스(경로 비교)와 이력 조상 여부를, [plan-release.sh](deploy/plan-release.sh)는 backend 결과에 따른 프런트 배포·보류를 정한다.
 
 배포 스크립트 검사는 Bash 환경에서 저장소 루트 기준으로 실행한다.
 
 ```bash
-bash -n deploy/deploy-frontend.sh
+bash -n deploy/*.sh
 bash deploy/test-deploy-frontend.sh
+bash deploy/test-deploy-backend.sh
+bash deploy/test-plan-release.sh
 ```
 
-[test-deploy-frontend.sh](deploy/test-deploy-frontend.sh)는 Docker·HTTPS·시간·잠금 거절을 모의한다.
+[test-deploy-frontend.sh](deploy/test-deploy-frontend.sh)와 [test-deploy-backend.sh](deploy/test-deploy-backend.sh)는 Docker·HTTPS·시간·잠금·내부 API를 모의한다. [test-plan-release.sh](deploy/test-plan-release.sh)는 임시 Git 이력으로 배포 판정을 검사한다.
 [test-backend-image.sh](deploy/test-backend-image.sh)는 실제 Docker로 백엔드 이미지·Compose 값·edge 라우팅을 확인한다.
 [test-copy-frontend-assets.sh](deploy/test-copy-frontend-assets.sh)는 CI의 제품 이미지 안에서 실제 복사 명령을 검사한다.
 이 테스트 결과를 실제 서버·인증서·네트워크 상태 확인으로 간주하지 않는다.
-배포 절차와 복구 판단은 [deploy/README.md](deploy/README.md), 요구사항은 [DEPLOYMENT_SPEC.md](DEPLOYMENT_SPEC.md)를 따른다.
+배포 절차와 복구 판단은 [deploy/README.md](deploy/README.md), 처음 공개하는 순서는 [deploy/GO_LIVE.md](deploy/GO_LIVE.md), 요구사항은 [DEPLOYMENT_SPEC.md](DEPLOYMENT_SPEC.md)를 따른다.
 
 ### 온라인 실제 서버 E2E
 
-`npm --prefix frontend run test:e2e:online`은 `playwright.online.config.ts`로 Spring Boot e2e 프로필(8080)과 별도 preview(4174)를 시작하고 Chromium·WebKit에서 실행한다. 로컬 E2E와 별개이며 CI에는 아직 추가하지 않았다. JDK 25가 필요하다. `frontend/tests/online-game/`은 계약·변환·HTTP·소켓·컨트롤러·화면 단위 검사를 담당한다.
+`npm --prefix frontend run test:e2e:online`은 `playwright.online.config.ts`로 Spring Boot e2e 프로필(8080)과 별도 preview(4174)를 시작하고 Chromium·WebKit에서 실행한다. 서버 전체 게이트를 바꾸는 `deploy-gate.spec.ts`는 별도 `deploy-gate` 프로젝트로 두 브라우저 프로젝트가 끝난 뒤 혼자 실행한다. e2e 프로필은 방 한도 200, 주소별 빈도 한도를 크게 푼 값, 모두 끊긴 방 정리 20초를 쓴다. 로컬 E2E와 별개이며 CI의 `online-e2e` 작업이 실행한다. JDK 25가 필요하다. `frontend/tests/online-game/`은 계약·변환·HTTP·소켓·컨트롤러·화면 단위 검사를 담당한다.
 
 온라인 E2E는 입장·준비·베팅·정산·관리·복구·종료에 더해 실제 5초 유예, 응답 유실 후 원장 확인, 오프라인과 화면 복귀, 다중 탭 인수, 반복 새로고침, 세 명의 종료·재준비·두 번째 시작을 검사한다. 빌드 산출물 `dist/`를 공유하므로 로컬 E2E·빌드와 동시에 실행하지 않는다. 실제 iPhone과 설치 앱 동작은 DEVICE_CHECKS.md의 미검증 목록으로 관리한다.
+
+### 서버 재시작 E2E와 부하 도구
+
+`npm --prefix frontend run test:e2e:restart`는 [playwright.restart.config.ts](frontend/playwright.restart.config.ts)로 preview(4175)만 시작하고, spec이 [backendProcess.ts](frontend/e2e/restart/backendProcess.ts)로 boot jar를 8080에 직접 띄우고 강제 종료한다. Chromium 한 worker이며 온라인 E2E와 같은 8080을 쓰므로 동시에 실행하지 않는다. [server-restart.spec.ts](frontend/e2e/restart/server-restart.spec.ts)는 재시작을 시작한 때부터 45초 안에 두 화면이 소실 안내를 보이는지, 옛 쿠키·요청이 새 서버에서 실행되지 않는지, 새 방에서 다시 시작되는지 본다. CI에서는 main의 `restart-e2e`만 실행한다.
+
+[deploy/load/load-rooms.mjs](deploy/load/load-rooms.mjs)는 실제 쿠키·CSRF·Origin·WebSocket으로 여러 방 게임을 진행시키는 Node 24 도구다. 준비 단계의 429는 `Retry-After`만큼 기다려 `setupWaits`로 센다(R18). 사용법과 출력은 [deploy/load/README.md](deploy/load/README.md)에 있다.

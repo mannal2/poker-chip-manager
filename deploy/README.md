@@ -1,8 +1,10 @@
-# Frontend deployment on the current EC2 server
+# Deployment on the current EC2 server
 
-`deploy-frontend.sh` deploys the existing frontend only. It does not restart edge Nginx,
-change certificates, deploy a backend, delete images, or delete old assets.
-The separate `DEPLOYMENT_SPEC.md` remains the broader implementation plan.
+`deploy-frontend.sh` deploys the frontend and `deploy-backend.sh` the backend. Neither
+restarts edge Nginx, changes certificates, deletes images, or deletes old assets.
+`DEPLOYMENT_SPEC.md` holds the requirements and marks where this implementation
+differs. The one-time multiplayer go-live, in its fixed order, is
+[GO_LIVE.md](GO_LIVE.md); this file is the reference for each script.
 
 Prerequisites: Ubuntu with Bash, util-linux `flock`, curl, Docker Compose;
 the existing project at `/home/ubuntu/poker-chip-manager`, `.env`, a healthy
@@ -77,10 +79,10 @@ cd /home/ubuntu/poker-chip-manager
 bash deploy/check-host.sh
 ```
 
-The measured host has 1907MiB of memory and no swap, which is below the backend
-memory floor (see T79 in `TECH_DECISIONS.md`). The operator adds a 2GiB swap
-file on the server; this is a manual server step and is not run by any script
-here:
+The measured host has 1907MiB of memory and had no swap, which is below the backend
+memory floor (see T79 in `TECH_DECISIONS.md`). The operator added a 2GiB swap
+file on the server (verified: 2G, `vm.swappiness = 10`). This is a manual server
+step and is not run by any script here:
 
 ```bash
 set -e
@@ -96,8 +98,10 @@ sudo sysctl --system
 ```
 
 The block is safe to repeat: it skips creation while `/swapfile` is active and
-adds the `/etc/fstab` line only once. Run it in a fresh shell, since `set -e`
-would end an interactive session on failure.
+adds the `/etc/fstab` line only once. `set -e` ends the shell it runs in when a
+command fails, so type `bash` first to open a child shell, paste the block there,
+and `exit` afterwards. Pasted straight into the SSH login shell, a failure would
+close the session.
 
 Verify:
 
@@ -124,12 +128,21 @@ with a backend service until the variables exist, and refuses a missing gate
 directory, because an absent directory must never read as an open gate.
 
 1. Add `BACKEND_IMAGE`, `BACKEND_MEM_LIMIT=768m` and `BACKEND_HEAP=384m` to `.env`.
-   `BACKEND_IMAGE` must be the digest you are about to deploy.
+   For a manual run, `BACKEND_IMAGE` is the digest you are about to deploy. Before the
+   first deployment through Actions that digest does not exist yet, so put a
+   placeholder in the same form (`ghcr.io/mannal2/poker-chip-manager-backend@sha256:`
+   followed by 64 zeros). Nothing pulls or starts it: a first deployment has no
+   running backend to read it from, and the deployment rewrites the line.
 2. Create the gate directory: `sudo install -d -m 0755 .local/deploy/gate`
 3. Only then copy the new `compose.yaml` to the server. No script does this.
+4. Install the edge configuration that routes `/api/` and `/ws` to `poker-backend`
+   (`edge/nginx/pcm.conf`, `nginx -t` then graceful reload). The health check below
+   goes through edge, so a first deployment fails while edge still sends those
+   paths to the frontend.
 
 The production Origin in `application.yaml` must match the `<origin>` argument:
 the `/ws` health check is sent with that Origin and gets 403 otherwise.
+[GO_LIVE.md](GO_LIVE.md) gives the commands, checks and rollback for each step.
 
 ### Running it
 
@@ -183,6 +196,8 @@ does not answer, or one whose starts are closed with no marker.
 sudo bash deploy/recover-backend.sh
 ```
 
+After a deployment from Actions, run the copy in that run's directory instead (see
+**Failure** under GitHub Actions); the stable copy above is not refreshed by CI.
 It takes the same lock without waiting, so a live deployment is refused and left
 alone. It then reads the running image and `backend-pending`:
 
@@ -206,7 +221,7 @@ that does not answer always needs an operator to stop it first.
 | 0 | `NOTHING_TO_RECOVER` | No marker, and starts are open or no backend runs |
 | 0 | `RECOVERED ...` | Completed, rolled back, or the gate was opened |
 | 1 | `UNOWNED_GATE_CLOSED` | No marker, but this backend's starts are closed |
-| 1 | `RECOVERY_REQUIRED` | Unresolved; the marker stays and the backend was not replaced. Fix the cause and rerun |
+| 1 | `RECOVERY_REQUIRED` | Unresolved; the marker stays. Depending on where it stopped, the backend may have been stopped or restarted and starts may be open or closed, so check `docker compose ps backend` and status before rerunning |
 | 1 | `NO_PREVIOUS_IMAGE` | Failed first deployment stopped; starts stay closed |
 | 2 | | Invalid arguments |
 
@@ -255,24 +270,77 @@ removes only names in the two project repositories and the `poker-backend` and
 in use, and the script reports that and carries on. It does not touch volumes,
 assets or certificates, and it never runs `docker system prune`.
 
-## Local verification and remaining work
+## Operational checks
+
+Run on the server from `/home/ubuntu/poker-chip-manager`. None of these change
+anything, and none print cookies, keys or request bodies.
+
+```bash
+# Service state, restarts and OOM kills
+sudo docker compose ps
+id=$(sudo docker compose ps -q backend)
+sudo docker inspect --format '{{.State.Status}} restarts={{.RestartCount}} oom={{.State.OOMKilled}} started={{.State.StartedAt}}' "$id"
+
+# Running image against the deployment records
+sudo docker inspect --format '{{.Image}}' "$id"
+grep -E '^(BACKEND|FRONTEND)_IMAGE=' .env
+sudo cat .local/deploy/backend-current .local/deploy/current
+ls .local/deploy/            # backend-pending or pending means RECOVERY_REQUIRED
+
+# Version through edge, and rooms, games and the start gate inside the container
+curl -fsS https://pcm.jwlee.xyz/api/health
+sudo docker compose exec -T backend curl -fsS http://127.0.0.1:8080/internal/deploy/status
+
+# Recent errors
+sudo docker compose logs --since 1h --no-color backend | grep -E ' (ERROR|WARN) ' | tail -n 50
+
+# Memory against BACKEND_MEM_LIMIT=768m, and host swap
+sudo docker stats --no-stream --format '{{.Name}} {{.MemUsage}} {{.MemPerc}} {{.CPUPerc}}'
+free -m
+
+# Disk
+df -h /
+sudo docker system df
+
+# Certificate expiry and the renewal timer
+echo | openssl s_client -connect pcm.jwlee.xyz:443 -servername pcm.jwlee.xyz 2> /dev/null \
+  | openssl x509 -noout -enddate
+sudo systemctl list-timers poker-cert-renew.timer --no-pager
+sudo journalctl -u poker-cert-renew.service --no-pager -n 30
+```
+
+`/internal/deploy/status` answers only inside the container (edge returns 404 for
+`/internal/`). It reports `processId`, `startsClosed`, `deploymentId`,
+`activeTournaments` and `rooms`. `startsClosed:true` with no `backend-pending` is the
+unowned-gate case under Recovery. A restart or OOM kill loses every room; check
+memory and the logs around `started=` first.
+
+## Local verification
 
 ```bash
 bash -n deploy/*.sh
 bash deploy/test-deploy-frontend.sh
 bash deploy/test-deploy-backend.sh
+bash deploy/test-plan-release.sh
+bash deploy/test-backend-image.sh   # needs real Docker
 ```
 
 `test-deploy-backend.sh` simulates Docker, HTTPS, time and the internal API. Where
 `flock` is missing, as on Git Bash, it prints a `SKIP` for the one real-lock check
-and stubs lock refusal instead. File modes only bite on Linux, so run it there as
-well. It does not prove a real replacement; that needs a trial on the server.
+and stubs lock refusal instead; it is also slow there. File modes only bite on
+Linux, so run it there as well (CI does). It does not prove a real replacement;
+that needs the go-live run on the server.
 
-The tests simulate Docker, HTTPS, time and lock refusal. They cover successful
+The frontend tests simulate Docker, HTTPS, time and lock refusal. They cover successful
 deployment, lock refusal, interrupted state, pull failure, revision mismatch,
 replacement failure, HTTPS failure, incorrect HTTPS content, and rollback
-failure. They do not verify actual Docker behavior, kernel locking, systemd,
-or EC2 networking. Those require the server trial above.
+failure. None of these tests verify actual Docker behavior, kernel locking,
+systemd, or EC2 networking.
+
+`test-plan-release.sh` covers `plan-release.sh` and `check-revision.sh` on a
+temporary Git history: which service changed, the ancestor check, and when the
+frontend is held. `test-backend-image.sh` builds the backend image and runs it
+with Compose values and edge in real Docker.
 
 CI also runs `test-copy-frontend-assets.sh` inside the built Nginx image. This
 executes the deployment script's actual copy command with BusyBox and verifies
@@ -282,40 +350,87 @@ directory, so the script passes Vite's asset files individually instead.
 
 ## GitHub Actions
 
-`.github/workflows/ci-images.yml` runs checks for PRs. For main, successful
-checks are followed by image publishing and then deployment over Tailscale/SSH.
-PR checks also run the deployment script's syntax check and simulated tests.
-The publishing job passes the pushed image digest to the deployment job;
-deployment does not resolve the mutable `main` image tag again on the server.
-Only the latest main commit at the pre-deployment check is eligible. Rerunning
-an older commit skips deployment and does not update the main image tag.
-A push arriving after that check can still allow the already-starting deployment
-to complete; the next run deploys the newer commit. Main workflow runs are
-serialized without cancelling the running workflow, and the server script
-also takes a deployment lock.
+`.github/workflows/ci-images.yml` ("CI and images") runs on pull requests, pushes
+to main and by hand. Its jobs:
 
-Required repository Actions secrets (already used for the connection check):
-`TS_OAUTH_CLIENT_ID`, `TS_AUDIENCE`, `DEPLOY_HOST`, `DEPLOY_USER`,
-`DEPLOY_SSH_KEY`, `DEPLOY_HOST_KEY`. The deployment job needs OIDC token write
-permission for Tailscale; image publishing uses the built-in `GITHUB_TOKEN`.
-See [job outputs](https://docs.github.com/en/actions/how-tos/write-workflows/choose-what-workflows-do/pass-job-outputs)
+| Job | When | What |
+|---|---|---|
+| `checks` | always | frontend deployment and release-planning tests, lint, unit tests, three core browser specs, frontend image and asset copy |
+| `backend` | always | calls `backend-ci.yml`: Gradle tests, backend script tests, backend image build |
+| `online-e2e` | always | real-server browser suite. Pull requests: Chromium only, without `@slow` and the serial `deploy-gate` project. Elsewhere: both browsers, everything |
+| `restart-e2e` | main only | `test:e2e:restart` kills and restarts the backend; both screens must show the lost-room notice within 45 seconds |
+| `plan` | main only | after all four checks; compares main with the revisions recorded on the server |
+| `publish`, `publish-backend` | main only | build and push each changed service's image and pass on its digest; move the `main` tag only if still the latest commit |
+| `deploy` | main only | calls `deploy.yml` with the published digests |
+
+`plan` needs all four checks, so a failure in any of them stops every publish and
+deploy.
+
+**`BACKEND_DEPLOY_ENABLED`.** This repository variable gates the backend. Unless it
+is exactly `true`, `plan` reports `frontend=true backend=false` without contacting
+the server, `publish-backend` is skipped, and `deploy.yml` deploys the frontend as
+before and leaves the backend alone. Set it to `true` only after the server's
+`.env`, gate directory, `compose.yaml` and edge configuration are in place
+(see [GO_LIVE.md](GO_LIVE.md)).
+
+**Deciding what to deploy.** With the variable on, `plan` reads `revision=` from
+`.local/deploy/current` and `.local/deploy/backend-current` over SSH with
+`sudo -n bash -s` (`release-remote.sh read-revisions`). `check-revision.sh changed`
+then compares those commits with the target: `frontend/` and `shared/` for the
+frontend, `backend/` for the backend. A missing record (`absent`) or an unreadable
+one (`unknown`) makes both count as changed. In `deploy.yml`,
+`check-revision.sh ancestor` proceeds when the recorded commit is an ancestor of the
+target or nothing is recorded, skips an older target, and stops on diverged or
+unprovable history. If `sudo -n` fails for the deploy user, both revisions read
+`unknown`, so every enabled deployment stops at this check. `plan-release.sh`
+holds the frontend when the backend changed and came back `held` or `failed`,
+because that frontend may need the new backend.
+
+**Order on the server.** The backend goes first. `release-remote.sh backend`
+uploads `deploy-backend.sh`, `recover-backend.sh` and `backend-lib.sh` into
+`deploy/run-poker-backend-deploy-<run>-<attempt>/`, checks their syntax, and runs
+the deployment as the transient unit `poker-backend-deploy-<run>-<attempt>` with
+`<run>-<attempt>` as the deployment id. Exit 0 is `backend=deployed`, exit 3 is
+`backend=held` (not a failure), anything else is `backend=failed`, which fails the
+job after the frontend decision. The frontend script is uploaded as
+`deploy/deploy-frontend-poker-deploy-<run>-<attempt>.sh` and runs as
+`poker-deploy-<run>-<attempt>`. Run directories and script copies are kept for
+diagnosis and never pruned. Failed uploads stop the deployment.
+
+**HELD.** The job summary says a tournament was in progress, nothing was replaced,
+and names the commit. When the games end, open the Deploy workflow
+(`.github/workflows/deploy.yml`), choose Run workflow on main, and enter that full
+commit SHA as `ref`. It requires `BACKEND_DEPLOY_ENABLED` to be `true` and the commit
+to be on main, reads the deployed revisions again, pulls the already published
+`sha-<commit>` images and deploys only what still differs, backend first. A held
+frontend comes back the same way. Nothing is rebuilt. The CI run and the dispatch
+share the `poker-deploy` concurrency group, which never cancels a deployment in
+progress.
+
+**Failure.** The summary gives the exit code and, if the log says
+`RECOVERY_REQUIRED`, the recovery command inside that run's directory:
+
+```bash
+sudo bash /home/ubuntu/poker-chip-manager/deploy/run-poker-backend-deploy-<run>-<attempt>/recover-backend.sh
+```
+
+Use the copy from the run that failed, or from a later run, never an older one. The
+scripts find the project two levels up from a run directory. The workflow does not
+refresh the stable `deploy/recover-backend.sh`, so that copy is only as new as the
+last manual upload.
+
+Required repository Actions secrets: `TS_OAUTH_CLIENT_ID`, `TS_AUDIENCE`,
+`DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_SSH_KEY`, `DEPLOY_HOST_KEY`. The `plan` job
+and the `deploy` job inside the called `deploy.yml` need OIDC token write permission
+for Tailscale, so a Tailscale trust that pins the workflow file must accept
+`deploy.yml` as well. Image publishing uses the built-in `GITHUB_TOKEN`. The
+server's Ubuntu account must support noninteractive `sudo` (`sudo -n`) for `bash`,
+`systemd-run`, `journalctl` and the existing root Docker setup. See
+[job outputs](https://docs.github.com/en/actions/how-tos/write-workflows/choose-what-workflows-do/pass-job-outputs)
 and [workflow concurrency](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/control-workflow-concurrency).
 
-The server's Ubuntu account must support noninteractive `sudo` for systemd-run,
-journalctl, and the existing root Docker setup. Actions checks out the exact
-commit being deployed and uploads its deployment script over SCP before running
-it. Each run and attempt gets a separate script filename in the project's
-`deploy/` directory, so an already-running script is not overwritten. Failed
-uploads stop deployment. These small script files are retained for diagnosis.
-App code and deployment script updates therefore follow PR checks and main
-merge without a manual script upload. Compose, edge configuration and the
-initial server setup remain separately provisioned infrastructure.
-
-The first automated deployment must still be verified in Actions and in the
-browser after merging this workflow. The server script alone does not prove
-Git ancestry or reject an older valid commit supplied by a manual operator.
-Force-push and divergent-history protection are outside this initial workflow;
-protect main against force pushes in repository settings.
-It supports the current frontend's file paths; the shared volume preserves
-`/assets/` files. Migration to Oracle ARM requires a matching ARM image and
-verification on that server.
+Compose, edge configuration and the initial server setup remain separately
+provisioned infrastructure; no workflow copies `compose.yaml` or edge files.
+Ancestry is proved by the workflow, not by the server scripts, so a manual run of
+`deploy-backend.sh` with an older commit is not refused. Main has no branch
+protection today; [GO_LIVE.md](GO_LIVE.md) recommends what to turn on.

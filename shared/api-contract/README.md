@@ -47,6 +47,22 @@
 - 마지막 메시지(`ACCESS_REVOKED`·`ROOM_GONE`·`PROTOCOL_INCOMPATIBLE`) 뒤에는 1000, 메시지 없이 끊을 때는 1001로 닫는다. 재연결 여부는 코드가 아니라 마지막 메시지를 받았는지로 정한다.
 - 복구 결과 조회는 대기·거절·만료·대체면 `{recoveryRequestId, status}`만, 승인이면 생성·참가와 같은 필드를 함께 돌려준다.
 - 본문이 `{code}`뿐인 것은 `ORIGIN_REJECTED`·`CSRF_REJECTED`·`NO_SESSION`(필터 응답)과 `TOO_MANY_STREAMS`다. 본문 과대 413은 `{code, message}`다.
+- 스냅샷의 `deployPending`은 서버가 배포 준비로 새 게임 시작을 닫았는지다. 모든 예시에서는 `false`다.
+
+## 예시 파일이 없는 응답 (계획 4)
+
+아래 응답은 예시 파일 없이 서버 테스트(`RateLimitFilterTest`·`RateLimitProdHttpTest`·`SessionLimitTest`·`StartGateTest`·`DeployControllerTest`)와 프런트 `client.test.ts`가 검사한다.
+
+| 응답 | 언제 | 모양 |
+|---|---|---|
+| 429 `RATE_LIMITED` | 빈도 한도 초과. 명령·조작 인수(세션별), 방 생성·참가·복구 신청(주소별), 새 세션 발급(주소별) | `{code, message}`, `Retry-After` 초, `Cache-Control: no-store`. 장부보다 먼저 거절되어 순번을 쓰지 않으므로 같은 요청을 그대로 다시 보낸다 |
+| 503 `SESSION_LIMIT` | 서버 전체 세션 2,000개에서 새 세션 발급 | `{code, message}`, `Retry-After: 60` |
+| 503 `ROOM_LIMIT` | 방 10개에서 방 생성. 장부에 기록되는 확정 거절 | `{code, message}`, `Retry-After` 없음 |
+| 422 `DEPLOY_PENDING` | 게이트가 닫혀 있을 때 `START` | 명령 장부의 REJECTED 결과 |
+| 422 `UNDO_DEPLOY_PENDING` | 게이트가 닫혀 있을 때 결과 화면의 종료 취소(`UNDO`) | 명령 장부의 REJECTED 결과 |
+| 409 `DEPLOY_MISMATCH`, 409 `DEPLOY_IN_PROGRESS` | 내부 `/internal/deploy/release`의 프로세스·배포 식별 불일치, 다른 배포가 게이트를 쥔 채 `prepare` | `{code, message}`. loopback 전용 경로라 화면은 받지 않는다 |
+
+내부 배포 경로(`/internal/deploy/prepare`·`status`·`release`)는 공개 API가 아니며, 컨테이너 밖에서는 404다. 모양은 [deploy/README.md](../../deploy/README.md)에 있다.
 
 ## 검사와 갱신
 

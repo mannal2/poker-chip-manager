@@ -334,6 +334,29 @@ test_first_deploy_failure() {
   check 'gate open after retry' gate_open
   echo 'PASS first deployment failure'
 }
+# 기록까지 쓴 첫 배포가 해제에서 실패하면 운영자 정지 뒤 복구가 기록을 지운다
+test_first_deploy_release_failure() {
+  reset none
+  export SCENARIO=release-failure
+  run_deploy
+  check 'first release exit' [ "$result" = 1 ]
+  check 'first release recorded' grep -qx "revision=$revision" "$state/backend-current"
+  check 'first release pending' [ -e "$state/backend-pending" ]
+  echo none > "$fixture/running"
+  export SCENARIO=''
+  run_script recover-backend.sh
+  check 'first release recover exit' [ "$result" = 1 ]
+  check 'first release recover word' grep -q NO_PREVIOUS_IMAGE "$fixture/output"
+  check 'first release pending gone' [ ! -e "$state/backend-pending" ]
+  check 'first release current cleared' [ ! -e "$state/backend-current" ]
+  check 'first release lastHealthy cleared' [ ! -e "$state/backend-lastHealthy" ]
+  : > "$fixture/calls"
+  run_deploy deploy-2
+  check 'first release retry exit' [ "$result" = 0 ]
+  check 'first release retry started' grep -q 'up -d' "$fixture/calls"
+  check 'first release retry gate' gate_open
+  echo 'PASS failed first release clears records'
+}
 # 진행 게임이 있으면 HELD로 끝나고 아무것도 바꾸지 않는다
 test_held() {
   reset
@@ -961,6 +984,7 @@ test_success
 test_already_running
 test_first_deploy
 test_first_deploy_failure
+test_first_deploy_release_failure
 test_held
 test_gate_write_failure
 test_recheck_mismatch

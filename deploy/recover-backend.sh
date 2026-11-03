@@ -139,6 +139,10 @@ if [[ -z "$rollback" ]]; then
   # COMPLETE after a releasing phase; the next deployment writes a closed file before it starts a backend.
   replace_is_safe || still_required 'NO_PREVIOUS_IMAGE: the backend cannot be proved free of games. Stop it first if that is acceptable.'
   if [[ -n "$running" ]]; then compose stop backend; fi
+  # A releasing deployment may already have recorded the failed target; with no previous
+  # values these delete the records, so the next run deploys the backend again.
+  restore_record backend-current current
+  restore_record backend-lastHealthy healthy
   rm -- "$pending"
   echo 'NO_PREVIOUS_IMAGE: the failed first deployment was stopped and starts stay closed.' >&2
   exit 1

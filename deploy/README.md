@@ -210,7 +210,9 @@ alone. It then reads the running image and `backend-pending`:
   `backend-current` and `backend-lastHealthy`. If Docker cannot say what is
   running, recovery stops.
 - A first deployment has nothing to restore. The failed backend is stopped, starts
-  stay closed, and the next deployment may run.
+  stay closed, `backend-current` and `backend-lastHealthy` are removed, and the
+  next deployment may run. With no backend record, the next Actions run deploys
+  the backend again before the frontend.
 
 One rule covers every replacement or stop, in both scripts and every phase: no
 backend container is running, or status is readable with `startsClosed:true` and
@@ -223,7 +225,7 @@ that does not answer always needs an operator to stop it first.
 | 0 | `RECOVERED ...` | Completed, rolled back, or the gate was opened |
 | 1 | `UNOWNED_GATE_CLOSED` | No marker, but this backend's starts are closed |
 | 1 | `RECOVERY_REQUIRED` | Unresolved; the marker stays. Depending on where it stopped, the backend may have been stopped or restarted and starts may be open or closed, so check `docker compose ps backend` and status before rerunning |
-| 1 | `NO_PREVIOUS_IMAGE` | Failed first deployment stopped; starts stay closed |
+| 1 | `NO_PREVIOUS_IMAGE` | Failed first deployment stopped and its records removed; starts stay closed |
 | 2 | | Invalid arguments |
 
 **`GATE_MOUNT_BROKEN`.** The gate file is closed but the running new backend reads

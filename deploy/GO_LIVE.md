@@ -130,6 +130,21 @@ sudo docker compose ps                            # frontend만 실행 중, 재�
 
 [DOMAIN_SETUP.md](edge/DOMAIN_SETUP.md) 3절과 같은 방식이다. 새 `pcm.conf`는 `/api/`·`/ws`를 backend로 보내고, `/internal/`은 404로 막고, 클라이언트가 보낸 `X-Real-IP`·`X-Forwarded-*`를 덮어쓴다. `/ws`는 HTTP/1.1, Upgrade·Connection 전달, `proxy_read_timeout 75s`다. reload는 기존 연결을 끊지 않고, edge 컨테이너를 재시작하지 않는다.
 
+**먼저 할 일 — 이미지·edge 실제 검사(필수):** edge 라우팅, edge를 거친 `/internal/` 404, `X-Real-IP` 덮어쓰기를 실제로 확인하는 테스트는 `deploy/test-backend-image.sh` 하나뿐이고 CI에서는 돌지 않는다. edge를 바꾸기 전에 Linux에서 한 번 실행한다. 조건은 다음과 같다.
+
+- Docker Engine과 Compose 플러그인이 직접 도는 x86_64 Linux(Ubuntu PC·VM 등). 이미지를 `linux/amd64`로 만들고 실행한다.
+- PR 브랜치 전체 체크아웃. 스크립트가 저장소 루트로 이동해 `backend/`를 빌드하고 `compose.yaml`과 `deploy/edge/nginx/pcm.conf`를 읽는다. 서버에는 `backend/`가 없으므로 서버에서 하려면 저장소 전체를 따로 받아야 한다.
+- 인터넷 연결. `eclipse-temurin` 기반 이미지와 `nginx:stable-alpine`을 받고, 컨테이너 안에서 Gradle로 빌드한다. 서버(메모리 약 1.9GiB)에서는 빌드가 느리고 메모리를 많이 쓰므로 다른 Linux 기기를 권장한다.
+- 호스트 포트는 loopback의 임의 포트만 쓰고, 이 실행이 만든 컨테이너·네트워크·볼륨·테스트 이미지는 끝나면 지운다. 받은 기반 이미지는 남는다.
+
+```bash
+git switch multiplayer-server
+bash deploy/test-backend-image.sh
+# 마지막 줄: PASS: backend image, compose and edge checks
+```
+
+`FAIL:`로 끝나면 edge를 적용하지 않고 원인을 고친다.
+
 **할 일:** PowerShell에서 올린다.
 
 ```powershell
@@ -276,7 +291,7 @@ sudo docker compose exec -T backend curl -fsS http://127.0.0.1:8080/internal/dep
   sudo bash deploy/run-poker-backend-deploy-<실행>-<시도>/recover-backend.sh
   ```
 
-  `sudo journalctl -u poker-backend-deploy-<실행>-<시도> --no-pager`와 `sudo docker compose logs --no-color backend`로 원인을 고친 뒤 Deploy 워크플로를 main에서 같은 SHA로 수동 실행한다.
+  `NO_PREVIOUS_IMAGE`로 끝난 복구는 표시와 함께 `backend-current`·`backend-lastHealthy`도 지운다(첫 배포라 되돌릴 이전 값이 없다). `sudo ls .local/deploy/`에 `backend-pending`·`backend-current`·`backend-lastHealthy`가 모두 없는지 확인한다. 그래서 다음 실행은 backend 기록을 `absent`로 읽어 backend를 다시 배포하고, backend가 `DEPLOYED`일 때만 프런트를 배포한다. `sudo journalctl -u poker-backend-deploy-<실행>-<시도> --no-pager`와 `sudo docker compose logs --no-color backend`로 원인을 확인한다. 원인이 코드면 고친 커밋을 main에 병합하고, 환경(메모리·`.env`·edge 등)이면 고친 뒤 Deploy 워크플로를 main에서 같은 SHA로 수동 실행한다.
 - `HELD`는 첫 배포에서는 나오지 않는다(진행 중 게임이 없다).
 
 ## 7. HTTPS·WS 확인
@@ -316,7 +331,14 @@ sudo cat /home/ubuntu/poker-chip-manager/.local/deploy/current   # revision=병�
 
 프런트가 보류됐다면(요약의 `The frontend was held too`) backend를 고친 뒤 Deploy 워크플로를 main에서 병합 커밋으로 수동 실행한다. backend가 이미 배포됐으면 프런트만 남은 차이로 배포된다.
 
-**되돌리기:** 2단계에서 적어 둔 이전 프런트의 `image=`·`revision=`을 그대로 넣어 수동 배포한다. README의 "First manual deployment on EC2"는 `:main` 태그를 읽는데, 그 태그는 이미 병합 커밋의 새 프런트를 가리키므로 쓰지 않는다. 이전 이미지는 서버에 남아 있지만, 정리됐다면 digest로 다시 받는다.
+**되돌리기:** 먼저 저장소의 `deploy/deploy-frontend.sh`를 서버에 다시 올린다. 서버에 있던 파일은 backend 복구가 진행 중일 때(`backend-pending`이 있을 때) 멈추는 검사가 없는 이전 판일 수 있으므로, 있든 없든 매번 올린다. 이 스크립트는 다른 파일을 불러오지 않으므로 이 파일 하나면 된다. PowerShell에서 저장소 루트로 실행한다.
+
+```powershell
+ssh -i "$env:USERPROFILE\.ssh\poker-actions" "ubuntu@$deployHost" 'mkdir -p /home/ubuntu/poker-chip-manager/deploy'
+scp -i "$env:USERPROFILE\.ssh\poker-actions" ./deploy/deploy-frontend.sh "ubuntu@${deployHost}:/home/ubuntu/poker-chip-manager/deploy/"
+```
+
+그다음 2단계에서 적어 둔 이전 프런트의 `image=`·`revision=`을 그대로 넣어 수동 배포한다. README의 "First manual deployment on EC2"는 `:main` 태그를 읽는데, 그 태그는 이미 병합 커밋의 새 프런트를 가리키므로 쓰지 않는다. 이전 이미지는 서버에 남아 있지만, 정리됐다면 digest로 다시 받는다.
 
 ```bash
 cd /home/ubuntu/poker-chip-manager
@@ -331,7 +353,7 @@ sudo journalctl -u "$unit" --no-pager -n 100
 sudo cat .local/deploy/current        # revision=2단계의 값
 ```
 
-`deploy/deploy-frontend.sh`가 서버에 없거나 오래됐으면 저장소의 같은 파일을 먼저 올린다(README의 "Upload from Windows PowerShell"). 다음 main 실행이 다시 새 프런트를 배포하므로, 오래 유지하려면 버튼을 끄는 커밋을 main에 병합한다.
+다음 main 실행이 다시 새 프런트를 배포하므로, 오래 유지하려면 버튼을 끄는 커밋을 main에 병합한다.
 
 ## 9. 실기기 확인
 

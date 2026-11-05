@@ -117,6 +117,12 @@ final class GameCommands {
         run(room, new GameCommand.Abort(), env);
     }
 
+    // 중단과 재준비를 같은 방 잠금과 요청 원장 안에서 처리한다
+    static void abortAndReReady(Room room, Participant actor, CommandRequest request, RoomEnv env) {
+        abort(room, actor, request, env);
+        ResultCommands.reReady(room, actor, request, env);
+    }
+
     // 방장이 아닌 참가자가 자기 자리를 포기한다
     /** A person gives up their own seat. The host must hand the room over first (MULTIPLAYER_MODE section 10). */
     static void forfeit(Room room, Participant actor, CommandRequest request, RoomEnv env) {

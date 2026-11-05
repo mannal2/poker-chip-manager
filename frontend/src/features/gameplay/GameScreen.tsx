@@ -24,6 +24,7 @@ export function GameScreen({
   dialog,
   onDialog,
   menu,
+  headerNotice,
   onUndoApplied,
   ref,
 }: {
@@ -32,6 +33,7 @@ export function GameScreen({
   dialog: string;
   onDialog: (dialog: GameDialog | '') => void;
   menu: ReactNode;
+  headerNotice?: ReactNode;
   onUndoApplied?: () => void;
   ref?: Ref<GameScreenHandle>;
 }) {
@@ -115,6 +117,7 @@ export function GameScreen({
   return (
     <>
       <GameHeader
+        notice={headerNotice}
         handNumber={s.hand?.number ?? 1}
         sb={s.hand?.sb ?? s.settings.sb}
         bb={s.hand?.bb ?? s.settings.bb}
@@ -131,6 +134,7 @@ export function GameScreen({
           potIndex,
           winners,
           disconnectedIds: session.disconnectedIds,
+          hostPlayerId: session.hostPlayerId,
         })}
         viewSeat={session.viewSeat}
         boardReveal={session.boardReveal}
@@ -170,7 +174,7 @@ export function GameScreen({
           }
         }}
       >
-        {session.dockNotice && (
+        {session.dockNotice && !currentPot && (
           <div className="dock-notice" role="status">
             {session.dockNotice}
           </div>
@@ -186,6 +190,7 @@ export function GameScreen({
         )}
         {currentPot && (
           <SettlementPanel
+            label={session.dockNotice ?? undefined}
             count={winners[currentPot.id].length}
             canUndo={!!s.undo && can.canUndo}
             onUndo={undo}

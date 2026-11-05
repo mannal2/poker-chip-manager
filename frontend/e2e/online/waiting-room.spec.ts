@@ -57,7 +57,7 @@ test('shares waiting settings, own names, seats and dealer across three particip
       await expect(current.locator('.seat .name')).toHaveText(['Carol', 'Bobby', 'Anna']);
     await page.locator('.seat .card-values').last().click();
     for (const current of pages)
-      await expect(current.locator('.seat').last().locator('.badge')).toHaveText('D');
+      await expect(current.locator('.seat').last().locator('.badge')).toHaveText('방장 · D');
     await page.getByRole('button', { name: '초대 링크 복사' }).click();
     await expect(page.locator('.toast')).toHaveText(/복사/);
   } finally {

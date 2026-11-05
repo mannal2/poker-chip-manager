@@ -11,7 +11,7 @@ export function dockNoticeFor(snapshot: RoomSnapshot, viewerId: string): string 
     const pots = buildPots(snapshot.game!);
     const pot = pots[Math.min(draft?.potIndex ?? 0, pots.length - 1)];
     const selected = pot?.eligible.length === 1 ? 1 : (draft?.winners[pot?.id]?.length ?? 0);
-    return `방장이 승자를 선택하고 있습니다 · ${selected}명 선택`;
+    return `방장이 승자를 선택하고 있습니다. ${selected}명 선택`;
   }
   if (hand?.phase === 'betting') {
     const actor = snapshot.participants.find((p) => p.playerId === hand.actorId);

@@ -29,13 +29,16 @@ vi.mock('../../src/features/gameplay/GameScreen', () => ({
     dialog,
     onDialog,
     session,
+    headerNotice,
   }: {
     menu: ReactNode;
     dialog: string;
     onDialog: (value: string) => void;
     session: { resultActions: ReactNode };
+    headerNotice?: ReactNode;
   }) => (
     <>
+      <header>{headerNotice}</header>
       <button onClick={() => onDialog('menu')}>관리 메뉴</button>
       {dialog === 'menu' && menu}
       {session.resultActions}
@@ -216,6 +219,28 @@ async function mountRoom(
     },
   };
 }
+
+it.each([false, true])('copies only the room code and announces failure=%s', async (failure) => {
+  const x = await mountRoom();
+  const writeText = failure
+    ? vi.fn().mockRejectedValue(new Error('denied'))
+    : vi.fn().mockResolvedValue(undefined);
+  vi.stubGlobal('navigator', { clipboard: { writeText } });
+  try {
+    await x.click('관리 메뉴');
+    const label = `방코드:[${x.view.snapshot!.code}]`;
+    expect(x.host.querySelector('.menu-actions button')?.textContent).toBe(label);
+    await x.click(label);
+    expect(writeText).toHaveBeenCalledWith(x.view.snapshot!.code);
+    expect(x.host.querySelector('.menu-actions')).toBeNull();
+    expect(x.host.querySelector('.toast')?.textContent).toBe(
+      failure ? '방 코드를 복사하지 못했습니다.' : '방 코드를 복사했습니다.',
+    );
+    expect(x.send).not.toHaveBeenCalled();
+  } finally {
+    await x.close();
+  }
+});
 
 // 서버가 명령을 거절하면 메뉴를 닫아 오류 안내를 확인할 수 있게 한다
 it('closes a menu after a server rejection and shows its reason', async () => {

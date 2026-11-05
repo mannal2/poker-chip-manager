@@ -6,6 +6,14 @@ import { fixtureState, ctx } from '../game/helpers';
 
 const emptyDrafts = { draftAmount: 0, pots: [], potIndex: 0, winners: {} };
 
+it('방장 배지는 기존 역할과 함께 표시하고 방장 변경을 따른다', () => {
+  const state = createTournament({ ...defaultSettings, button: 1 }, ctx);
+  const first = buildTableView(state, { ...emptyDrafts, hostPlayerId: state.players[1].id });
+  expect(first.players.map((p) => p.roles)).toEqual(['BB', '방장 · D · SB']);
+  const next = buildTableView(state, { ...emptyDrafts, hostPlayerId: state.players[0].id });
+  expect(next.players.map((p) => p.roles)).toEqual(['방장 · BB', 'D · SB']);
+});
+
 it('딜러 미선택 준비 화면에는 역할·행동자·승자 표시가 없다', () => {
   const state = createTournament(defaultSettings, ctx);
   const view = buildTableView(state, emptyDrafts);

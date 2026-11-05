@@ -12,7 +12,7 @@ import xyz.jwlee.poker.game.model.GameSettings;
 
 // 테이블 설정(이름, 칩, 블라인드, 버튼)을 검증한다
 public final class SettingsValidator {
-    private static final Pattern NAME = Pattern.compile("^[가-힣a-zA-Z0-9 ]{1,10}$");
+    private static final Pattern NAME = Pattern.compile("^[가-힣ㄱ-ㅣa-zA-Z0-9 ]{1,10}$");
     private static final int MAX_CHIPS = 1_000_000;
 
     private SettingsValidator() {}
@@ -24,7 +24,7 @@ public final class SettingsValidator {
     }
 
     // 이름의 앞뒤 공백을 제거하고 NFC로 정규화한 뒤 이름 규칙을 만족하는지 검사한다
-    /** A name trimmed and NFC-normalized, or empty when it breaks the name rule (1-10 Hangul, Latin, digit or space). */
+    /** A name trimmed and NFC-normalized, or empty when it breaks the name rule (1-10 Hangul syllables or modern jamo, Latin, digit or space). */
     public static Optional<String> normalizeName(String raw) {
         if (raw == null) {
             return Optional.empty();

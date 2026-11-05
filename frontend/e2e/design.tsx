@@ -3,31 +3,86 @@ import { SettlementPanel } from '../src/features/gameplay/components/SettlementP
 import { createRoot } from 'react-dom/client';
 import { Table } from '../src/features/gameplay/components/Table';
 import { BetControls } from '../src/features/gameplay/components/BetControls';
+import { GameHeader } from '../src/features/gameplay/components/GameHeader';
+import { HostRequests } from '../src/features/online-game/components/HostRequests';
+import { WaitingBar } from '../src/features/online-game/components/WaitingBar';
+import { OnlineMenu } from '../src/features/online-game/components/OnlineMenu';
+import type { RoomSnapshot } from '../src/features/online-game/api/types';
+import { Dialog } from '../src/shared/ui/Dialog';
+import playing from '../../shared/api-contract/snapshot-playing.json';
 import '../src/shared/styles/tokens.css';
 import '../src/shared/styles/base.css';
 import '../src/features/gameplay/styles/header.css';
 import '../src/features/gameplay/styles/table.css';
 import '../src/features/gameplay/styles/controls.css';
+import '../src/features/online-game/styles/online.css';
 const q = new URLSearchParams(location.search),
   n = Number(q.get('n') || 6),
   phase = q.get('phase') || 'betting';
 const names = ['지우', '민준', '서연', '도윤', '하린', '유진', '지호', '수빈', '준서'],
   actor = n === 2 ? 1 : 2;
+const snapshot = structuredClone(playing.response) as RoomSnapshot;
+snapshot.you.participantId = q.has('guest')
+  ? snapshot.participants.find((p) => p.participantId !== snapshot.hostId)!.participantId
+  : snapshot.hostId;
+snapshot.roomPhase = phase === 'setup' ? 'WAITING' : phase === 'result' ? 'RESULT' : 'PLAYING';
+if (q.get('request') === 'takeover') {
+  snapshot.you.participantId = snapshot.participants.find(
+    (p) => p.participantId !== snapshot.hostId,
+  )!.participantId;
+  snapshot.hostTakeoverOpen = true;
+  snapshot.you.canTakeHost = true;
+} else if (q.has('request')) {
+  snapshot.recoveryRequests = Array.from(
+    { length: q.get('request') === 'multiple' ? 2 : 1 },
+    (_, i) => ({
+      recoveryRequestId: `r${i}`,
+      participantId: `p${i}`,
+      name: '가나다라마바사아자차',
+      requestedAt: '2026-11-05T00:00:00Z',
+      expiresAt: '2026-11-05T00:05:00Z',
+    }),
+  );
+}
 createRoot(document.getElementById('root')!).render(
-  <main className="phone">
-    <header className="meta">
-      <div className="meta-info">
-        <span>
-          HAND <strong>01</strong>
-        </span>
-        <span id="blinds">
-          <strong>5 / 10</strong>
-        </span>
-      </div>
-      <button id="menu" aria-label="관리 메뉴">
-        ☰
-      </button>
-    </header>
+  <main className="phone online-room">
+    {q.has('menu') && (
+      <Dialog title="관리 메뉴" dismissOutside onClose={() => {}}>
+        <OnlineMenu snapshot={snapshot} choose={() => {}} home={() => {}} notify={() => {}} />
+      </Dialog>
+    )}
+    {q.has('request') && phase === 'setup' && <WaitingBar code={snapshot.code} notify={() => {}} />}
+    {q.has('request') ? (
+      <GameHeader
+        notice={
+          q.has('request') ? (
+            <HostRequests snapshot={snapshot} busy={false} send={() => {}} />
+          ) : undefined
+        }
+        handNumber={1}
+        sb={5}
+        bb={10}
+        pendingBlinds={q.has('pending') ? { sb: 10, bb: 20 } : null}
+        canEditBlinds={false}
+        onHistory={() => {}}
+        onBlinds={() => {}}
+        onMenu={() => {}}
+      />
+    ) : (
+      <header className="meta">
+        <div className="meta-info">
+          <span>
+            HAND <strong>01</strong>
+          </span>
+          <span id="blinds">
+            <strong>5 / 10</strong>
+          </span>
+        </div>
+        <button id="menu" aria-label="관리 메뉴">
+          ☰
+        </button>
+      </header>
+    )}
     <Table
       players={Array.from({ length: n }, (_, i) => ({
         id: `p${i}`,
@@ -35,18 +90,21 @@ createRoot(document.getElementById('root')!).render(
         name: q.has('stress') ? '가나다라마바사아자차' : names[i],
         stack: q.has('stress') ? 9000000 : phase === 'setup' || i === actor ? 1000 : 990,
         contribution: q.has('stress') ? 9000000 : phase === 'setup' || i === actor ? 0 : 10,
+        disconnected: q.has('disconnected') && i === 0,
         roles:
-          n === 2
-            ? i === 1
-              ? 'D · SB'
-              : 'BB'
-            : i === n - 1
-              ? 'D'
-              : i === 0
-                ? 'SB'
-                : i === 1
-                  ? 'BB'
-                  : '',
+          q.has('disconnected') && i === 0
+            ? '방장 · D · SB'
+            : n === 2
+              ? i === 1
+                ? 'D · SB'
+                : 'BB'
+              : i === n - 1
+                ? 'D'
+                : i === 0
+                  ? 'SB'
+                  : i === 1
+                    ? 'BB'
+                    : '',
         active: phase === 'betting' && i === actor,
         selected: phase === 'settlement' && q.has('selected') && i === 0,
       }))}
@@ -59,7 +117,12 @@ createRoot(document.getElementById('root')!).render(
       {phase === 'betting' ? (
         <BetControls call={10} />
       ) : phase === 'settlement' ? (
-        <SettlementPanel count={q.has('selected') ? 1 : 0} busy={false} onWin={() => {}} />
+        <SettlementPanel
+          count={q.has('selected') ? 1 : 0}
+          label={q.has('guest') ? '방장이 승자를 선택하고 있습니다. 0명 선택' : undefined}
+          busy={false}
+          onWin={() => {}}
+        />
       ) : phase === 'setup' ? (
         <SetupPanel
           settings={{

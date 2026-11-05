@@ -221,6 +221,14 @@ it('adapts authoritative permissions, live guards and own rename without grantin
     expect(result.session.legal).toBe(snapshot.legal);
     expect(result.session.scope).toBe(snapshot.you.controlGeneration);
     expect(result.session.viewSeat).toBe(1);
+    expect(result.session.hostPlayerId).toBe(snapshot.hostId);
+    snapshot.game = structuredClone(playing.response.game) as RoomSnapshot['game'];
+    await act(() => root.render(<Harness />));
+    expect(result.session.hostPlayerId).toBe(
+      snapshot.participants.find((p) => p.participantId === snapshot.hostId)!.playerId,
+    );
+    snapshot.game = null;
+    await act(() => root.render(<Harness />));
     expect(result.setup.rotate).toBeUndefined();
     expect(result.setup.changeCount).toBeUndefined();
     expect(result.session.canRename!(snapshot.hostId)).toBe(false);

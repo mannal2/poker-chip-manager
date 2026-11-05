@@ -26,6 +26,8 @@ export interface GameSession {
   canRename?: (id: string) => boolean;
   // 끊김 표시를 붙일 플레이어
   disconnectedIds?: ReadonlySet<string>;
+  // 온라인 방장의 카드 식별자
+  hostPlayerId?: string;
   // 하단 조작부 위의 안내 문구
   dockNotice?: string | null;
   // 부족한 권한에 맞는 거절 문구를 만든다

@@ -119,6 +119,7 @@ dialog li {
   gap: calc(8 * var(--u));
 }
 .menu-actions button {
+  width: 100%;
   text-align: center;
 }
 .fields {

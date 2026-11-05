@@ -89,6 +89,7 @@ public final class CommandPipeline {
             case "FORFEIT" -> plain(false, GameCommands::forfeit);
             case "FORFEIT_DISCONNECTED" -> plain(true, GameCommands::forfeitDisconnected);
             case "ABORT" -> plain(true, GameCommands::abort);
+            case "ABORT_AND_RE_READY" -> plain(true, GameCommands::abortAndReReady);
             case "RE_READY" -> plain(true, ResultCommands::reReady);
             case "RECOVERY_APPROVE" -> plain(true, RecoveryCommands::approve);
             case "RECOVERY_REJECT" -> plain(true, RecoveryCommands::reject);

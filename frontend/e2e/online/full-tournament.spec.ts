@@ -68,7 +68,13 @@ test('three participants complete a tournament and start another with conserved 
     await confirm(page, '다시 준비하기');
     for (const current of pages) {
       await expect(current.locator('.seat .stack')).toHaveText(['1,000', '1,000', '1,000']);
-      await expect(current.locator('.seat .badge')).toHaveCount(0);
+      await expect(current.locator('.seat .badge')).toHaveText(['방장']);
+      await expect(
+        current
+          .locator('.seat')
+          .filter({ has: current.locator('.name', { hasText: 'Alice' }) })
+          .locator('.badge'),
+      ).toHaveText('방장');
     }
     await startRoom(page, 3);
     for (const current of pages) {

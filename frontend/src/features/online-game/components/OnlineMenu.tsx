@@ -61,9 +61,9 @@ export function menuItems(snapshot: RoomSnapshot, connectedIds: ReadonlySet<stri
     if (snapshot.roomPhase === 'PLAYING')
       items.push({
         label: '토너먼트 중단',
-        command: { type: 'ABORT', handScoped: false },
+        command: { type: 'ABORT_AND_RE_READY', handScoped: false },
         confirm:
-          '중단하면 재개·베팅·정산을 할 수 없습니다. 미정산 팟은 보존됩니다. 토너먼트를 중단하시겠습니까?',
+          '현재 게임과 기록, 미정산 팟을 삭제하고 준비 화면으로 돌아갑니다. 토너먼트를 중단하시겠습니까?',
       });
     if (snapshot.roomPhase === 'RESULT')
       items.push({
@@ -80,18 +80,30 @@ export function OnlineMenu({
   snapshot,
   choose,
   home,
+  notify,
 }: {
   snapshot: RoomSnapshot;
   choose: (item: MenuItem, target?: RoomParticipant) => void;
   home: () => void;
+  notify: (message: string) => void;
 }) {
   const [expanded, setExpanded] = useState('');
   const items = menuItems(
     snapshot,
     new Set(snapshot.participants.filter((p) => p.connected).map((p) => p.participantId)),
   );
+  // 초대 링크 대신 방 코드만 복사한다
+  async function copyCode() {
+    try {
+      await navigator.clipboard.writeText(snapshot.code);
+      notify('방 코드를 복사했습니다.');
+    } catch {
+      notify('방 코드를 복사하지 못했습니다.');
+    }
+  }
   return (
     <div className="menu-actions">
+      <button onClick={() => void copyCode()}>방코드:[{snapshot.code}]</button>
       {items.map((item) => (
         <div key={item.label}>
           <button

@@ -47,7 +47,7 @@ test('shares side-pot navigation and automatically selects the sole eligible win
     await expect(page.locator('.seat')).toHaveCount(3);
     await expect(page.locator('.seat .disconnected')).toHaveCount(0);
     await page.locator('.seat .card-values').first().click();
-    await expect(page.locator('.seat').first().locator('.badge')).toHaveText('D');
+    await expect(page.locator('.seat').first().locator('.badge')).toHaveText('방장 · D');
     await page.getByRole('button', { name: '게임 시작', exact: true }).click();
     await bet(page, 'Alice', [50, 10, 10]);
     await action(bob, 'Bob', '콜 60');
@@ -134,9 +134,10 @@ test('shares winners, restores host picks, confirms WIN and clears picks on undo
       await expect(page.locator('.seat.active .name')).toHaveText('Alice');
       await page.getByRole('button', { name: '체크', exact: true }).click();
     }
-    await expect(guest.locator('.dock-notice')).toHaveText(
-      '방장이 승자를 선택하고 있습니다 · 0명 선택',
+    await expect(guest.locator('.settlement-count')).toHaveText(
+      '방장이 승자를 선택하고 있습니다. 0명 선택',
     );
+    await expect(guest.locator('.dock-notice')).toHaveCount(0);
     await page
       .locator('.seat')
       .filter({ has: page.locator('.name', { hasText: 'Alice' }) })

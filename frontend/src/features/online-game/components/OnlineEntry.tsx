@@ -1,6 +1,11 @@
 import { useState } from 'react';
 import type { OnlineController, OnlineView } from '../session/onlineController';
 
+// 영문과 숫자만 남긴 뒤 소문자를 대문자로 바꾼다
+function normalizeCode(value: string) {
+  return value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+}
+
 // 방 생성과 참가 및 기존 자리 복구 입력을 제공한다
 export function OnlineEntry({
   view,
@@ -10,7 +15,9 @@ export function OnlineEntry({
   controller: OnlineController;
 }) {
   const [name, setName] = useState('');
-  const [code, setCode] = useState(() => new URLSearchParams(location.search).get('code') ?? '');
+  const [code, setCode] = useState(() =>
+    normalizeCode(new URLSearchParams(location.search).get('code') ?? ''),
+  );
   if (view.phase === 'recovering' && view.recovery?.status === 'PENDING')
     return <p role="status">방장의 승인을 기다리고 있습니다</p>;
   return (
@@ -36,7 +43,7 @@ export function OnlineEntry({
         <input
           name="code"
           value={code}
-          onChange={(event) => setCode(event.target.value)}
+          onChange={(event) => setCode(normalizeCode(event.target.value))}
           disabled={view.pending}
           autoCapitalize="characters"
         />

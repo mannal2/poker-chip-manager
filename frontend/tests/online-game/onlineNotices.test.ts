@@ -23,7 +23,7 @@ it('announces host settlement and result preparation only to guests', () => {
     potIndex: 0,
     winners: { pot1: ['p1'], pot0: ['p0', 'p1'] },
   };
-  expect(dockNoticeFor(s, guest.participantId)).toBe('방장이 승자를 선택하고 있습니다 · 2명 선택');
+  expect(dockNoticeFor(s, guest.participantId)).toBe('방장이 승자를 선택하고 있습니다. 2명 선택');
   expect(dockNoticeFor(s, s.hostId)).toBeNull();
   s.roomPhase = 'RESULT';
   expect(dockNoticeFor(s, guest.participantId)).toBe('방장이 다음 게임을 준비하고 있습니다');
@@ -36,5 +36,5 @@ it('counts the automatically selected winner of a sole-eligible pot', () => {
   const guest = s.participants.find((p) => p.participantId !== s.hostId)!;
   s.game!.players[1].folded = true;
   s.settlementDraft = null;
-  expect(dockNoticeFor(s, guest.participantId)).toBe('방장이 승자를 선택하고 있습니다 · 1명 선택');
+  expect(dockNoticeFor(s, guest.participantId)).toBe('방장이 승자를 선택하고 있습니다. 1명 선택');
 });

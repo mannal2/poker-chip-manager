@@ -53,7 +53,13 @@ function session(overrides: Partial<GameSession> = {}): GameSession {
   };
 }
 // 실제 화면을 같은 루트에 렌더링하여 외부 갱신을 검증한다
-async function render(s: GameSession, dialog = '', ref?: React.Ref<GameScreenHandle>, onDialog = vi.fn()) {
+async function render(
+  s: GameSession,
+  dialog = '',
+  ref?: React.Ref<GameScreenHandle>,
+  onDialog = vi.fn(),
+  headerNotice?: React.ReactNode,
+) {
   const setup: SetupControls = {
     scope: 'test',
     drag: {
@@ -86,11 +92,17 @@ async function render(s: GameSession, dialog = '', ref?: React.Ref<GameScreenHan
         dialog={dialog}
         onDialog={onDialog}
         menu={null}
+        headerNotice={headerNotice}
       />,
     ),
   );
   return setup;
 }
+
+it('places the optional online notice inside the game header', async () => {
+  await render(session(), '', undefined, vi.fn(), <button>방장 맡기</button>);
+  expect(host.querySelector('.meta .header-notice')?.textContent).toBe('방장 맡기');
+});
 // 다른 탭이 재준비하거나 새 토너먼트로 넘어가면 블라인드 설정을 닫는다
 it('closes an open blinds dialog when the tournament or phase changes', async () => {
   const playing = session();
@@ -258,6 +270,28 @@ it('shows a disconnected marker on the supplied player', async () => {
   await render(session({ disconnectedIds: new Set(['p1']) }));
   expect(host.querySelector('[data-player="p1"]')?.textContent).toContain('연결 끊김');
   expect(host.querySelector('[data-player="p0"]')?.textContent).not.toContain('연결 끊김');
+});
+
+it('passes the host identity to the player card badges', async () => {
+  await render(session({ hostPlayerId: 'p1' }));
+  expect(host.querySelector('[data-player="p1"] .badge')?.textContent).toBe('방장 · SB');
+  expect(host.querySelector('[data-player="p0"] .badge')?.textContent).toBe('D');
+});
+
+it('uses the guest notice as the only settlement label and follows updates', async () => {
+  const state = fixtureState(3);
+  state.hand!.phase = 'settlement';
+  state.hand!.actorId = null;
+  const s = session({ state, capabilities: { ...fullCapabilities, canSettle: false } });
+  for (const count of [0, 2]) {
+    const dockNotice = `방장이 승자를 선택하고 있습니다. ${count}명 선택`;
+    await render({ ...s, dockNotice });
+    expect(host.querySelector('.settlement-count')?.textContent).toBe(dockNotice);
+    expect(host.querySelector('.dock-notice')).toBeNull();
+    expect(host.textContent!.split(dockNotice)).toHaveLength(2);
+  }
+  await render({ ...s, dockNotice: null });
+  expect(host.querySelector('.settlement-count')?.textContent).toBe('승자 선택');
 });
 
 // 외부 팟과 승자는 재렌더링을 따르며 편집과 탐색은 콜백만 보낸다

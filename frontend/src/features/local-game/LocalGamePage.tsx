@@ -19,6 +19,7 @@ import { useSetupEditing } from '../gameplay/hooks/useSetupEditing';
 import { useLocalSetupExtras } from './hooks/useLocalSetupExtras';
 import { useLocalViewSeat } from './hooks/useLocalViewSeat';
 import { useLocalSession } from './hooks/useLocalSession';
+import { useLocalNavigation } from './hooks/useLocalNavigation';
 import '../../shared/styles/tokens.css';
 import '../../shared/styles/base.css';
 import '../gameplay/styles/header.css';
@@ -141,6 +142,12 @@ function LocalGame({
           }
         : undefined,
   };
+  const returnHome = useLocalNavigation(app.home, enterLocalGame, () =>
+    goHome(() => {
+      setup.clearEditing();
+      setDialog('');
+    }),
+  );
   const session: GameSession | null = s && {
     state: s,
     busy,
@@ -223,12 +230,7 @@ function LocalGame({
             onUndoApplied={toast.clear}
             menu={
               <ManagerMenu
-                onHome={() => {
-                  goHome(() => {
-                    setup.clearEditing();
-                    setDialog('');
-                  });
-                }}
+                onHome={returnHome}
                 onNew={() => void newGame(() => setDialog(''))}
               />
             }

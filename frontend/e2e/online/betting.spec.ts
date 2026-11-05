@@ -19,7 +19,7 @@ test('only the actor bets and every participant receives confirmed balances', as
     await expect(page.locator('.seat')).toHaveCount(2);
     await expect(page.locator('.seat .disconnected')).toHaveCount(0);
     await page.locator('.seat .card-values').first().click();
-    await expect(page.locator('.seat').first().locator('.badge')).toHaveText('D · SB');
+    await expect(page.locator('.seat').first().locator('.badge')).toHaveText('방장 · D · SB');
     await page.getByRole('button', { name: '게임 시작', exact: true }).click();
     await expect(page.locator('.seat.active .name')).toHaveText('Alice');
     await expect(page.getByRole('button', { name: '콜 10', exact: true })).toHaveAttribute(

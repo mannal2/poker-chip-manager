@@ -39,11 +39,26 @@ afterEach(async () => {
   host.remove();
   vi.unstubAllGlobals();
 });
+// React가 변경을 감지하도록 입력 값을 바꾸고 input 이벤트를 보낸다
+function type(input: HTMLInputElement, value: string) {
+  Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(input, value);
+  input.dispatchEvent(new Event('input', { bubbles: true }));
+}
 // 초대 코드 입력과 세션의 지연 시작을 확인한다
 it('prefills the invite code without contacting the server', async () => {
   await act(() => root.render(<OnlineApp />));
-  expect(host.querySelector<HTMLInputElement>('[name="code"]')?.value).toBe('abc234');
+  expect(host.querySelector<HTMLInputElement>('[name="code"]')?.value).toBe('ABC234');
   expect(fetch).not.toHaveBeenCalled();
+});
+it('keeps only ASCII letters and digits in invite and edited codes', async () => {
+  history.replaceState(null, '', '/online/?code=a%20b-한ß23!4');
+  await act(() => root.render(<OnlineApp />));
+  const input = host.querySelector<HTMLInputElement>('[name="code"]')!;
+  expect(input.value).toBe('AB234');
+  await act(() => type(input, 'c d-한ß56!7'));
+  expect(input.value).toBe('CD567');
+  await act(() => type(input, ''));
+  expect(input.value).toBe('');
 });
 // 이름 거절이 입장 화면으로 돌아와도 유지되는지 확인한다
 it('keeps an invalid name rejection visible on the entry form', async () => {
@@ -51,6 +66,22 @@ it('keeps an invalid name rejection visible on the entry form', async () => {
   await act(() => host.querySelector<HTMLButtonElement>('button')!.click());
   expect(host.textContent).toContain('이름은 한글, 영문, 숫자, 공백으로 1~10자여야 합니다.');
   expect(host.querySelector('input')).not.toBeNull();
+  expect(fetch).not.toHaveBeenCalled();
+});
+
+it('validates recovery name and code on the entry form without contacting the server', async () => {
+  history.replaceState(null, '', '/online/');
+  await act(() => root.render(<OnlineApp />));
+  const recover = host.querySelectorAll<HTMLButtonElement>('button')[2];
+  await act(() => recover.click());
+  expect(host.querySelector('[role="alert"]')?.textContent).toBe('정확한 이름을 입력해주세요.');
+  await act(() => type(host.querySelector<HTMLInputElement>('[name="name"]')!, 'Alice'));
+  await act(() => recover.click());
+  expect(host.querySelector('[role="alert"]')?.textContent).toBe('정확한 방코드를 입력해주세요.');
+  await act(() => type(host.querySelector<HTMLInputElement>('[name="code"]')!, 'ABC123'));
+  await act(() => recover.click());
+  expect(host.querySelector('[role="alert"]')?.textContent).toBe('정확한 방코드를 입력해주세요.');
+  expect(fetch).not.toHaveBeenCalled();
 });
 // 승인 대기 중에 중복 복구 신청이나 새 입장을 제공하지 않는지 확인한다
 it('shows only approval guidance while recovery is pending', async () => {
@@ -113,6 +144,7 @@ it.each([
     }),
   );
   await act(() => root.render(<OnlineApp />));
+  await act(() => type(host.querySelector<HTMLInputElement>('[name="name"]')!, 'Alice'));
   await act(() => host.querySelectorAll<HTMLButtonElement>('button')[2].click());
   expect(host.querySelector('[role="alert"]')?.textContent).toBe(reason);
   expect(host.querySelector<HTMLInputElement>('[name="code"]')).not.toBeNull();

@@ -147,6 +147,9 @@ export function useOnlineGameSession(view: OnlineView, controller: OnlineControl
       snapshot.participants.filter((p) => !p.connected).map((p) => p.playerId ?? p.participantId),
     ),
     dockNotice: dockNoticeFor(snapshot, snapshot.you.participantId),
+    hostPlayerId: snapshot.game
+      ? snapshot.participants.find((p) => p.participantId === snapshot.hostId)?.playerId ?? undefined
+      : snapshot.hostId,
     // 부족한 권한에 맞는 화면 안내를 반환한다
     denied: (need) =>
       need === 'canAct'

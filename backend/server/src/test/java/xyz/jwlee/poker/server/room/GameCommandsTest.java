@@ -420,6 +420,30 @@ class GameCommandsTest {
         assertRejected(f, f.send("a", "CHECK", null), "INVALID_ACTION");
     }
 
+    @Test
+    void abortAndReReadyReturnsEveryoneToWaitingInOneCommand() {
+        GameFixture f = GameFixture.started(3, 0);
+        String tournament = f.room.game().tournamentId;
+        long version = f.room.version();
+        assertRejected(f, f.send("b", "ABORT_AND_RE_READY", "{}"), "FORBIDDEN");
+        assertRejected(f, f.sendScoped("a", "ABORT_AND_RE_READY", "{}", "old", null), "TOURNAMENT_CHANGED");
+        CommandRequest request = f.request("a", "ABORT_AND_RE_READY", "{}", tournament, null);
+        f.check(f.base.pipeline.execute(f.room, "a", request));
+        assertThat(f.room.phase()).isEqualTo(RoomPhase.WAITING);
+        assertThat(f.room.version()).isEqualTo(version + 1);
+        assertThat(f.room.game()).isNull();
+        assertThat(f.room.events()).isEmpty();
+        assertThat(f.room.settlementDraft()).isNull();
+        assertThat(f.room.settings()).isEqualTo(new RoomSettings(1000, 5, 10, -1));
+        assertThat(f.room.hostId()).isEqualTo("a");
+        assertThat(f.room.participants()).extracting(Participant::name).containsExactly("Alice", "Bob", "Carol");
+        f.check(f.base.pipeline.execute(f.room, "a", request));
+        assertThat(f.room.version()).isEqualTo(version + 1);
+        f.check(f.send("a", "SET_DEALER", "{\"participantId\":\"b\"}"));
+        f.check(f.send("a", "START", "{}"));
+        assertThat(f.room.game().tournamentId).isNotEqualTo(tournament);
+    }
+
     // ---- forfeit and host handover ----
 
     @Test

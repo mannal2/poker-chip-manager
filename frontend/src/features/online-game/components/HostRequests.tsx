@@ -45,18 +45,10 @@ export function HostRequests({
       </section>
       {open && requests.length > 0 && (
         <Dialog title="복구 신청" onClose={() => setOpen(false)}>
-          <p>
-            실제 사람이 맞는지 직접 확인한 뒤 승인하세요. 승인하면 기존 기기의 참가 권한이
-            회수됩니다.
-          </p>
           {requests.map((request) => (
             <div className="host-request" key={request.recoveryRequestId}>
-              <p>
-                {request.name}{' '}
-                <time dateTime={request.requestedAt}>
-                  {new Date(request.requestedAt).toLocaleString('ko-KR')}
-                </time>
-              </p>
+              <p>{request.name}</p>
+              <p>기존 플레이어가 맞는지 확인 후 승인하세요.</p>
               <div className="host-request-actions">
                 <button
                   aria-disabled={busy}

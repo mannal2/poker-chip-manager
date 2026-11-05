@@ -57,7 +57,11 @@ it('shows one line until the host opens the recovery dialog', () => {
   expect(host.querySelector('section')?.textContent).toBe('Bob 복구 신청 · 확인');
   expect(button(host, '복구 승인')).toBeUndefined();
   act(() => button(host, 'Bob 복구 신청 · 확인')!.click());
-  expect(host.querySelector('[role="dialog"]')?.textContent).toContain('실제 사람이 맞는지');
+  expect([...host.querySelectorAll('.host-request p')].map((p) => p.textContent)).toEqual([
+    'Bob',
+    '기존 플레이어가 맞는지 확인 후 승인하세요.',
+  ]);
+  expect(host.querySelector('time')).toBeNull();
   act(() => button(host, '복구 승인')!.click());
   expect(send).toHaveBeenCalledWith({
     type: 'RECOVERY_APPROVE',
@@ -71,6 +75,9 @@ it('groups several requests and decides them separately', () => {
   const { host, send } = render(hostSnapshot([request('r1', 'Bob'), request('r2', 'Carol')]));
   expect(host.querySelector('section')?.textContent).toBe('복구 신청 2건 · 확인');
   act(() => button(host, '복구 신청 2건 · 확인')!.click());
+  expect(
+    [...host.querySelectorAll('.host-request')].map((item) => item.querySelector('p')?.textContent),
+  ).toEqual(['Bob', 'Carol']);
   act(() => host.querySelectorAll<HTMLButtonElement>('.host-request-actions button')[3].click());
   expect(send).toHaveBeenCalledWith({
     type: 'RECOVERY_REJECT',

@@ -148,6 +148,10 @@ export function RoomPage({ view, controller }: { view: OnlineView; controller: O
         onDialog={setDialog}
         menu={
           <OnlineMenu
+            notify={(message) => {
+              setDialog('');
+              notify(message);
+            }}
             snapshot={view.snapshot!}
             choose={(item, target) => {
               void choose(item, target);

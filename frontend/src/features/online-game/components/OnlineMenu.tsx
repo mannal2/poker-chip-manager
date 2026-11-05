@@ -80,18 +80,30 @@ export function OnlineMenu({
   snapshot,
   choose,
   home,
+  notify,
 }: {
   snapshot: RoomSnapshot;
   choose: (item: MenuItem, target?: RoomParticipant) => void;
   home: () => void;
+  notify: (message: string) => void;
 }) {
   const [expanded, setExpanded] = useState('');
   const items = menuItems(
     snapshot,
     new Set(snapshot.participants.filter((p) => p.connected).map((p) => p.participantId)),
   );
+  // 초대 링크 대신 방 코드만 복사한다
+  async function copyCode() {
+    try {
+      await navigator.clipboard.writeText(snapshot.code);
+      notify('방 코드를 복사했습니다.');
+    } catch {
+      notify('방 코드를 복사하지 못했습니다.');
+    }
+  }
   return (
     <div className="menu-actions">
+      <button onClick={() => void copyCode()}>방코드:[{snapshot.code}]</button>
       {items.map((item) => (
         <div key={item.label}>
           <button

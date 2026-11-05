@@ -25,7 +25,7 @@ createRoot(document.getElementById('root')!).render(
   <main className="phone">
     {q.has('menu') && (
       <Dialog title="관리 메뉴" dismissOutside onClose={() => {}}>
-        <OnlineMenu snapshot={snapshot} choose={() => {}} home={() => {}} />
+        <OnlineMenu snapshot={snapshot} choose={() => {}} home={() => {}} notify={() => {}} />
       </Dialog>
     )}
     <header className="meta">

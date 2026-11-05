@@ -1714,3 +1714,23 @@ it('shows the too-many-screens notice until a snapshot arrives', async () => {
   x.h.onSnapshot({ type: 'SNAPSHOT', previousVersion: null, events: [], state: x.entry.state });
   expect(x.c.getView().error).toBeNull();
 });
+
+it.each([false, true])('blocks reload until a pending draft=%s request settles', async (draft) => {
+  const x = setup();
+  await x.enter();
+  expect(x.c.canReload()).toBe(true);
+  let finish!: (value: unknown) => void;
+  x.api.post.mockReturnValueOnce(
+    new Promise((resolve) => {
+      finish = resolve;
+    }),
+  );
+  const work = draft
+    ? x.c.sendDraft(0, { pot0: ['p0'] })
+    : x.c.send([{ type: 'CHECK', handScoped: true }]);
+  expect(x.c.canReload()).toBe(false);
+  finish({ ok: false, status: 400, code: 'INVALID_ACTION' });
+  await work;
+  await new Promise((resolve) => setTimeout(resolve));
+  expect(x.c.canReload()).toBe(true);
+});

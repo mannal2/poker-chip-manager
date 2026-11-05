@@ -3,10 +3,12 @@ import { OnlineEntry } from './components/OnlineEntry';
 import { OnlineFatal } from './components/OnlineFatal';
 import { useOnlineController } from './hooks/useOnlineController';
 import { RoomPage } from './RoomPage';
+import { useOnlineUpdate } from './hooks/useOnlineUpdate';
 
 // 연결 상태와 컨트롤러 단계에 따라 온라인 진입 화면을 선택한다
 export function OnlineApp() {
   const { view, controller } = useOnlineController();
+  const available = useOnlineUpdate();
   const [online, setOnline] = useState(navigator.onLine);
   useEffect(() => {
     // 브라우저가 알린 네트워크 연결 여부를 화면에 반영한다
@@ -19,11 +21,24 @@ export function OnlineApp() {
     };
   }, []);
   const fatal = ['gone', 'revoked', 'incompatible'].includes(view.phase);
+  const updateNotice = available && (
+    <div className="online-update">
+      <button
+        disabled={!controller.canReload()}
+        onClick={() => {
+          if (controller.canReload()) location.reload();
+        }}
+      >
+        새버전 새로고침
+      </button>
+    </div>
+  );
   if (view.phase === 'room' && view.snapshot)
-    return <RoomPage view={view} controller={controller} />;
+    return <RoomPage view={view} controller={controller} updateNotice={updateNotice} />;
   return (
     <main className="online-app">
       <h1>멀티플레이 모드</h1>
+      {updateNotice}
       {!online ? (
         <p role="status">멀티플레이 모드를 이용하려면 인터넷 연결이 필요합니다.</p>
       ) : fatal ? (

@@ -98,6 +98,11 @@ jobs:
             http://127.0.0.1:4180/local/ \
             -o /dev/null
 
+          for path in /online/ /online/index.html /local/ /local/sw.js; do
+            headers=$(curl --fail --silent --show-error -I "http://127.0.0.1:4180$path")
+            grep -qi '^Cache-Control: no-cache' <<< "$headers"
+          done
+
       - name: Container logs on failure
         if: failure()
         run: docker logs poker-ci || true

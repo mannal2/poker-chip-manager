@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { GameScreen } from '../gameplay/GameScreen';
 import type { GameScreenHandle } from '../gameplay/session';
 import { useScreenFit } from '../../shared/hooks/useScreenFit';
@@ -18,7 +18,15 @@ import '../gameplay/styles/table.css';
 import '../gameplay/styles/controls.css';
 
 // 온라인 방의 연결 안내와 공통 게임 화면 및 토스트를 조립한다
-export function RoomPage({ view, controller }: { view: OnlineView; controller: OnlineController }) {
+export function RoomPage({
+  view,
+  controller,
+  updateNotice,
+}: {
+  view: OnlineView;
+  controller: OnlineController;
+  updateNotice?: ReactNode;
+}) {
   const screen = useRef<HTMLElement>(null);
   useScreenFit(screen);
   const [dialog, setDialog] = useState('');
@@ -118,6 +126,7 @@ export function RoomPage({ view, controller }: { view: OnlineView; controller: O
   );
   return (
     <main ref={screen} className="phone online-room" aria-busy={view.pending}>
+      {updateNotice}
       <ConnectionBanner view={view} controller={controller} />
       {view.snapshot!.roomPhase === 'WAITING' && (
         <WaitingBar code={view.snapshot!.code} notify={session.notify} />

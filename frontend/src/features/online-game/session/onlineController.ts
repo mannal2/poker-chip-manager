@@ -544,6 +544,10 @@ export class OnlineController {
   canRetry(): boolean {
     return this.request?.unresolved === true;
   }
+  // 미확정 조작이나 전송 대기 중인 승자 선택이 있으면 새로고침하지 않는다
+  canReload(): boolean {
+    return !this.view.pending && !this.request && !this.queuedDraft && !this.sending;
+  }
   // 최초 요청을 보존하고 재시도 가능한 결과 불명 상태를 표시한다
   private unknownResult(request: Request): false {
     request.unresolved = true;

@@ -11,6 +11,18 @@
 .online-app h1 {
   font-size: 24px;
 }
+.online-update {
+  display: flex;
+  justify-content: center;
+  flex-shrink: 0;
+  margin: calc(4 * var(--u)) calc(12 * var(--u));
+}
+.online-update button {
+  min-height: calc(32 * var(--u));
+  padding: calc(4 * var(--u)) calc(8 * var(--u));
+  font-size: calc(12 * var(--u));
+  border-color: var(--gold);
+}
 .online-app label {
   display: grid;
   gap: 6px;

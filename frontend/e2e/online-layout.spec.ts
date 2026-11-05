@@ -1,6 +1,21 @@
 import { test, expect } from '@playwright/test';
 
 for (const width of [320, 390, 430]) {
+  for (const guest of [false, true]) {
+    test(`관리 메뉴 버튼이 전체 너비를 채운다 ${width}px guest=${guest}`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 844 });
+      await page.goto(`/e2e/design.html?menu=1${guest ? '&guest=1' : ''}`);
+      const menu = page.locator('.menu-actions');
+      await expect(menu).toBeVisible();
+      if (!guest) await menu.getByRole('button', { name: '방장 넘기기', exact: true }).click();
+      const menuBounds = await menu.boundingBox();
+      for (const button of await menu.getByRole('button').all()) {
+        const bounds = await button.boundingBox();
+        expect(bounds!.width).toBeCloseTo(menuBounds!.width, 0);
+        await expect(button).toHaveCSS('text-align', 'center');
+      }
+    });
+  }
   test(`승자 선택 안내가 버튼과 겹치지 않는다 ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 844 });
     await page.goto('/e2e/design.html?phase=settlement&guest=1');

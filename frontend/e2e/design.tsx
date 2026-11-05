@@ -3,6 +3,10 @@ import { SettlementPanel } from '../src/features/gameplay/components/SettlementP
 import { createRoot } from 'react-dom/client';
 import { Table } from '../src/features/gameplay/components/Table';
 import { BetControls } from '../src/features/gameplay/components/BetControls';
+import { OnlineMenu } from '../src/features/online-game/components/OnlineMenu';
+import type { RoomSnapshot } from '../src/features/online-game/api/types';
+import { Dialog } from '../src/shared/ui/Dialog';
+import playing from '../../shared/api-contract/snapshot-playing.json';
 import '../src/shared/styles/tokens.css';
 import '../src/shared/styles/base.css';
 import '../src/features/gameplay/styles/header.css';
@@ -13,8 +17,17 @@ const q = new URLSearchParams(location.search),
   phase = q.get('phase') || 'betting';
 const names = ['지우', '민준', '서연', '도윤', '하린', '유진', '지호', '수빈', '준서'],
   actor = n === 2 ? 1 : 2;
+const snapshot = structuredClone(playing.response) as RoomSnapshot;
+snapshot.you.participantId = q.has('guest')
+  ? snapshot.participants.find((p) => p.participantId !== snapshot.hostId)!.participantId
+  : snapshot.hostId;
 createRoot(document.getElementById('root')!).render(
   <main className="phone">
+    {q.has('menu') && (
+      <Dialog title="관리 메뉴" dismissOutside onClose={() => {}}>
+        <OnlineMenu snapshot={snapshot} choose={() => {}} home={() => {}} />
+      </Dialog>
+    )}
     <header className="meta">
       <div className="meta-info">
         <span>

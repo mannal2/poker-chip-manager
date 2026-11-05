@@ -47,8 +47,18 @@ function type(input: HTMLInputElement, value: string) {
 // 초대 코드 입력과 세션의 지연 시작을 확인한다
 it('prefills the invite code without contacting the server', async () => {
   await act(() => root.render(<OnlineApp />));
-  expect(host.querySelector<HTMLInputElement>('[name="code"]')?.value).toBe('abc234');
+  expect(host.querySelector<HTMLInputElement>('[name="code"]')?.value).toBe('ABC234');
   expect(fetch).not.toHaveBeenCalled();
+});
+it('keeps only ASCII letters and digits in invite and edited codes', async () => {
+  history.replaceState(null, '', '/online/?code=a%20b-한ß23!4');
+  await act(() => root.render(<OnlineApp />));
+  const input = host.querySelector<HTMLInputElement>('[name="code"]')!;
+  expect(input.value).toBe('AB234');
+  await act(() => type(input, 'c d-한ß56!7'));
+  expect(input.value).toBe('CD567');
+  await act(() => type(input, ''));
+  expect(input.value).toBe('');
 });
 // 이름 거절이 입장 화면으로 돌아와도 유지되는지 확인한다
 it('keeps an invalid name rejection visible on the entry form', async () => {

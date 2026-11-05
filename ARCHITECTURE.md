@@ -169,6 +169,7 @@ HTML마다 자기 진입점을 로드한다. `local/index.html`은 [main.local.t
 내부 `LocalGame`은 세션·준비 편집·PWA·알림을 `GameSession`으로 묶어 `GameScreen`에 넘긴다.
 로딩·복원 오류 화면, 로컬 오류 배너, 홈, 업데이트 대화상자와 토스트 표시는 이 페이지에 남는다.
 `useLocalSession`은 세션 실행 중 저장소·컨트롤러와 실행 잠금을 관리한다.
+`useLocalNavigation`은 단일 기기 게임 진입을 같은 `/local/` 주소의 방문 이력에 기록한다. 뒤로가기는 앱 홈으로, 앞으로가기는 게임 진입으로 연결하며 저장 중에는 기존 홈 이동 검사를 통해 게임 화면을 유지한다.
 탭 사이 알림은 `useCrossTabOwnership`, 페이지 복귀 감지는 `usePageResume`이 맡는다.
 실행 잠금은 [commandRunner.ts](frontend/src/shared/async/commandRunner.ts)의 `createCommandRunner`이며, 삭제 확인 창은 페이지가 `ask` 콜백으로 넘긴다.
 저장소의 요청·결과·조작권 타입은 [types.ts](frontend/src/features/local-game/storage/types.ts)에 있다.

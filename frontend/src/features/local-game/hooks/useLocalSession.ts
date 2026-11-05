@@ -303,7 +303,10 @@ export function useLocalSession({
       inGame.current = false;
       onLeave();
       setApp({ home: true, status: 'ready', error: '' });
-    } else notify('저장 완료를 기다려주세요.');
+      return true;
+    }
+    notify('저장 완료를 기다려주세요.');
+    return false;
   }
   return {
     app,

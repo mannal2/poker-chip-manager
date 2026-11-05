@@ -129,7 +129,8 @@ test('takes host after a real 60 second disconnection', { tag: '@slow' }, async 
     await guest.getByRole('button', { name: '방장 맡기', exact: true }).click();
     await menu(guest, '토너먼트 중단');
     await confirm(guest, '토너먼트 중단');
-    await expect(guest.locator('.summary')).toContainText('토너먼트 중단');
+    await expect(guest.getByTestId('room-code')).toBeVisible();
+    await expect(guest.locator('.summary')).toHaveCount(0);
   } finally {
     await hostContext.close();
     await guestContext.close();

@@ -61,9 +61,9 @@ export function menuItems(snapshot: RoomSnapshot, connectedIds: ReadonlySet<stri
     if (snapshot.roomPhase === 'PLAYING')
       items.push({
         label: '토너먼트 중단',
-        command: { type: 'ABORT', handScoped: false },
+        command: { type: 'ABORT_AND_RE_READY', handScoped: false },
         confirm:
-          '중단하면 재개·베팅·정산을 할 수 없습니다. 미정산 팟은 보존됩니다. 토너먼트를 중단하시겠습니까?',
+          '현재 게임과 기록, 미정산 팟을 삭제하고 준비 화면으로 돌아갑니다. 토너먼트를 중단하시겠습니까?',
       });
     if (snapshot.roomPhase === 'RESULT')
       items.push({

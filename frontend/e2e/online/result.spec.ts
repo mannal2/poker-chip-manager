@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { createRoom, joinRoom, startRoom, menu, confirm } from './managementSupport';
 
-// 중단 결과를 공통 요약에 표시하고 재준비 때 이름·좌석·시작 설정과 빈 딜러를 확인한다
+// 중단 즉시 이름·좌석·시작 설정을 유지한 준비 화면으로 돌아간다
 test('aborts and resets while keeping names and seats and restoring initial settings', async ({
   page,
   browser,
@@ -18,16 +18,13 @@ test('aborts and resets while keeping names and seats and restoring initial sett
     await page.getByRole('button', { name: '예약', exact: true }).click();
     await menu(page, '토너먼트 중단');
     await confirm(page, '토너먼트 중단');
-    for (const current of [page, guest])
-      await expect(current.locator('.summary')).toHaveText('토너먼트 중단 · 미정산 팟 30 보존');
-    await expect(guest.locator('.dock-notice')).toHaveText('방장이 다음 게임을 준비하고 있습니다');
-    await expect(guest.getByRole('button', { name: '다시 준비하기', exact: true })).toHaveCount(0);
-    await page.getByRole('button', { name: '다시 준비하기', exact: true }).click();
-    await confirm(page, '다시 준비하기');
     for (const current of [page, guest]) {
+      await expect(current.getByTestId('room-code')).toHaveText(code);
+      await expect(current.locator('.summary')).toHaveCount(0);
+      await expect(current.getByRole('button', { name: '다시 준비하기', exact: true })).toHaveCount(0);
       await expect(current.locator('.seat .name')).toHaveText(['Alice', 'Bob']);
       await expect(current.locator('.seat .stack')).toHaveText(['1,000', '1,000']);
-      await expect(current.locator('.seat .badge')).toHaveCount(0);
+      await expect(current.locator('.seat .badge')).toHaveText(['방장']);
       await expect(current.getByLabel('SB', { exact: true })).toHaveValue('10');
       await expect(current.getByLabel('BB', { exact: true })).toHaveValue('20');
     }

@@ -27,6 +27,14 @@ test('kicks a waiting participant and transfers the host', async ({ page, browse
     await guest.getByRole('button', { name: '방 참가', exact: true }).click();
     await expect(page.locator('.seat')).toHaveCount(2);
     await menu(page, '방장 넘기기', 'Bob');
+    for (const current of [page, guest]) {
+      await expect(
+        current.locator('.seat').filter({ hasText: 'Bob' }).locator('.badge'),
+      ).toHaveText('방장');
+      await expect(
+        current.locator('.seat').filter({ hasText: 'Alice' }).locator('.badge'),
+      ).toHaveCount(0);
+    }
     await expect(guest.getByRole('button', { name: '게임 시작', exact: true })).toHaveAttribute(
       'aria-disabled',
       'false',

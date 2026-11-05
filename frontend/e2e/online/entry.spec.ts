@@ -13,7 +13,7 @@ test('creates a room and joins with a lowercase invite code', async ({ page, bro
   try {
     const guest = await context.newPage();
     await guest.goto(`/online/?code=${code!.toLowerCase()}`);
-    await expect(guest.getByLabel('방 코드', { exact: true })).toHaveValue(code!.toLowerCase());
+    await expect(guest.getByLabel('방 코드', { exact: true })).toHaveValue(code!);
     await guest.getByLabel('이름', { exact: true }).fill('Bob');
     await guest.getByRole('button', { name: '방 참가', exact: true }).click();
     await expect(guest.getByTestId('room-code')).toHaveText(code!);

@@ -68,6 +68,21 @@ it('keeps an invalid name rejection visible on the entry form', async () => {
   expect(host.querySelector('input')).not.toBeNull();
   expect(fetch).not.toHaveBeenCalled();
 });
+
+it('validates recovery name and code on the entry form without contacting the server', async () => {
+  history.replaceState(null, '', '/online/');
+  await act(() => root.render(<OnlineApp />));
+  const recover = host.querySelectorAll<HTMLButtonElement>('button')[2];
+  await act(() => recover.click());
+  expect(host.querySelector('[role="alert"]')?.textContent).toBe('정확한 이름을 입력해주세요.');
+  await act(() => type(host.querySelector<HTMLInputElement>('[name="name"]')!, 'Alice'));
+  await act(() => recover.click());
+  expect(host.querySelector('[role="alert"]')?.textContent).toBe('정확한 방코드를 입력해주세요.');
+  await act(() => type(host.querySelector<HTMLInputElement>('[name="code"]')!, 'ABC123'));
+  await act(() => recover.click());
+  expect(host.querySelector('[role="alert"]')?.textContent).toBe('정확한 방코드를 입력해주세요.');
+  expect(fetch).not.toHaveBeenCalled();
+});
 // 승인 대기 중에 중복 복구 신청이나 새 입장을 제공하지 않는지 확인한다
 it('shows only approval guidance while recovery is pending', async () => {
   const view: OnlineView = {

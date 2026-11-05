@@ -213,8 +213,23 @@ export class OnlineController {
   }
   // 기존 참가자 자리의 복구 승인을 요청한다
   requestRecovery(code: string, name: string): Promise<boolean> {
-    if (this.rejectsName(name)) return Promise.resolve(false);
-    return this.enter('/api/recovery-requests', { code, name }, 'recovery');
+    if (this.request || this.view.pending || this.view.phase === 'room')
+      return Promise.resolve(false);
+    const normalizedName = normalizeName(name);
+    if (normalizedName === null) {
+      this.update({ error: '정확한 이름을 입력해주세요.' });
+      return Promise.resolve(false);
+    }
+    // 서버가 생성하는 코드와 같은 문자 집합과 길이를 확인한다
+    if (!/^[ABCDEFGHJKMNPQRSTUVWXYZ2-9]{6}$/i.test(code.trim())) {
+      this.update({ error: '정확한 방코드를 입력해주세요.' });
+      return Promise.resolve(false);
+    }
+    return this.enter(
+      '/api/recovery-requests',
+      { code: code.trim().toUpperCase(), name: normalizedName },
+      'recovery',
+    );
   }
   // 서버 이름 규칙에 맞지 않는 이름은 빈도 한도를 쓰지 않도록 요청 전에 입장 화면에서 거절한다
   private rejectsName(name: string): boolean {
@@ -615,7 +630,10 @@ export class OnlineController {
       this.request = null;
       this.update({
         pending: this.sending,
-        error: messageFor(result.code),
+        error:
+          request.kind === 'recovery' && result.code === 'RECOVERY_TARGET_NOT_FOUND'
+            ? `해당 게임방에 ${String(request.body.name)}플레이어가 존재하지 않습니다.`
+            : messageFor(result.code),
         ...(request.kind === 'entry' || request.kind === 'recovery'
           ? { phase: 'entry' as const }
           : {}),

@@ -222,7 +222,7 @@ it.each(['ROOM_NOT_FOUND', 'REQUEST_NOT_FOUND'])(
     x.api.get
       .mockResolvedValueOnce({ ok: false, unknown: true })
       .mockResolvedValueOnce({ ok: false, status: 404, code });
-    await x.c.requestRecovery('CODE', 'Alice');
+    await x.c.requestRecovery('ABC234', 'Alice');
     expect(x.c.getView().phase).toBe('recovering');
     await vi.advanceTimersByTimeAsync(3000);
     expect(x.c.getView()).toMatchObject({
@@ -764,16 +764,59 @@ it.each(['', '   ', 'a!', '가나다라마바사아자차카'])(
     const x = setup();
     expect(await x.c.create(name)).toBe(false);
     expect(await x.c.join('ABC123', name)).toBe(false);
-    expect(await x.c.requestRecovery('ABC123', name)).toBe(false);
+    expect(x.c.getView().error).toBe('이름은 한글, 영문, 숫자, 공백으로 1~10자여야 합니다.');
+    expect(await x.c.requestRecovery('ABC234', name)).toBe(false);
     expect(x.api.open).not.toHaveBeenCalled();
     expect(x.api.post).not.toHaveBeenCalled();
     expect(x.c.getView()).toMatchObject({
       phase: 'entry',
       pending: false,
-      error: '이름은 한글, 영문, 숫자, 공백으로 1~10자여야 합니다.',
+      error: '정확한 이름을 입력해주세요.',
     });
   },
 );
+
+it.each([
+  '',
+  '   ',
+  'ABC23',
+  'ABC2345',
+  'ABC123',
+  'ABO234',
+  'ABI234',
+  'ABL234',
+  'AB한234',
+  'AB!234',
+])('rejects invalid recovery code %j before any request', async (code) => {
+  const x = setup();
+  expect(await x.c.requestRecovery(code, 'Alice')).toBe(false);
+  expect(x.api.open).not.toHaveBeenCalled();
+  expect(x.api.post).not.toHaveBeenCalled();
+  expect(x.c.getView().error).toBe('정확한 방코드를 입력해주세요.');
+});
+
+it('checks the recovery name before the room code', async () => {
+  const x = setup();
+  expect(await x.c.requestRecovery('', '')).toBe(false);
+  expect(x.api.open).not.toHaveBeenCalled();
+  expect(x.c.getView().error).toBe('정확한 이름을 입력해주세요.');
+});
+
+it.each([
+  ['RECOVERY_TARGET_NOT_FOUND', '해당 게임방에 Alice플레이어가 존재하지 않습니다.'],
+  ['ROOM_NOT_FOUND', '방을 찾을 수 없습니다.'],
+  ['ALREADY_PARTICIPANT', '이미 이 방에 참가하고 있습니다.'],
+  ['RECOVERY_LIMIT', '이 자리의 복구 신청이 너무 많습니다. 잠시 뒤 다시 시도해 주세요.'],
+])('shows recovery-specific guidance for %s', async (code, message) => {
+  const x = setup();
+  x.api.post.mockResolvedValueOnce({ ok: false, status: 404, code, body: {} });
+  expect(await x.c.requestRecovery(' abc234 ', ' Alice ')).toBe(false);
+  expect(x.api.post).toHaveBeenCalledWith(
+    '/api/recovery-requests',
+    expect.objectContaining({ code: 'ABC234', name: 'Alice' }),
+  );
+  expect(x.c.getView()).toMatchObject({ phase: 'entry', pending: false, error: message });
+});
 
 // 방 입장 요청도 제한되면 보관한 본문을 사용자가 재시도할 때만 다시 보낸다
 it('keeps a rate limited entry until the person retries', async () => {
@@ -795,7 +838,7 @@ it('keeps a rate limited entry until the person retries', async () => {
 it('clears the limit notice when a retried recovery request is accepted', async () => {
   const x = setup();
   x.api.post.mockResolvedValueOnce(rateLimited);
-  expect(await x.c.requestRecovery('ABC123', 'Alice')).toBe(false);
+  expect(await x.c.requestRecovery('ABC234', 'Alice')).toBe(false);
   x.api.post.mockResolvedValueOnce({
     ok: true,
     status: 200,
@@ -814,7 +857,7 @@ it.each(['create', 'recovery'] as const)(
     localStorage.setItem('online.lastRoom', JSON.stringify({ roomId: 'r', code: 'c' }));
     // 입장 종류에 맞는 요청을 보낸다
     const attempt = () =>
-      kind === 'create' ? x.c.create('Alice') : x.c.requestRecovery('ABC123', 'Alice');
+      kind === 'create' ? x.c.create('Alice') : x.c.requestRecovery('ABC234', 'Alice');
     x.api.post.mockResolvedValueOnce({ ok: false, status: 401, code: 'NO_SESSION' });
     expect(await attempt()).toBe(false);
     expect(x.c.getView()).toMatchObject({

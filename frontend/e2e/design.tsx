@@ -35,18 +35,21 @@ createRoot(document.getElementById('root')!).render(
         name: q.has('stress') ? '가나다라마바사아자차' : names[i],
         stack: q.has('stress') ? 9000000 : phase === 'setup' || i === actor ? 1000 : 990,
         contribution: q.has('stress') ? 9000000 : phase === 'setup' || i === actor ? 0 : 10,
+        disconnected: q.has('disconnected') && i === 0,
         roles:
-          n === 2
-            ? i === 1
-              ? 'D · SB'
-              : 'BB'
-            : i === n - 1
-              ? 'D'
-              : i === 0
-                ? 'SB'
-                : i === 1
-                  ? 'BB'
-                  : '',
+          q.has('disconnected') && i === 0
+            ? '방장 · D · SB'
+            : n === 2
+              ? i === 1
+                ? 'D · SB'
+                : 'BB'
+              : i === n - 1
+                ? 'D'
+                : i === 0
+                  ? 'SB'
+                  : i === 1
+                    ? 'BB'
+                    : '',
         active: phase === 'betting' && i === actor,
         selected: phase === 'settlement' && q.has('selected') && i === 0,
       }))}

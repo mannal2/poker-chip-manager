@@ -378,6 +378,9 @@ button.card-values {
   font-size: calc(10 * var(--u));
   white-space: nowrap;
 }
+.badge + .disconnected {
+  bottom: calc(100% + 9px + 4 * var(--u));
+}
 .dock-notice {
   position: absolute;
   bottom: calc(100% + 2 * var(--u));

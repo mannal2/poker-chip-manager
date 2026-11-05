@@ -260,6 +260,12 @@ it('shows a disconnected marker on the supplied player', async () => {
   expect(host.querySelector('[data-player="p0"]')?.textContent).not.toContain('연결 끊김');
 });
 
+it('passes the host identity to the player card badges', async () => {
+  await render(session({ hostPlayerId: 'p1' }));
+  expect(host.querySelector('[data-player="p1"] .badge')?.textContent).toBe('방장 · SB');
+  expect(host.querySelector('[data-player="p0"] .badge')?.textContent).toBe('D');
+});
+
 // 외부 팟과 승자는 재렌더링을 따르며 편집과 탐색은 콜백만 보낸다
 it('uses controlled winners and pot index without optimistic edits', async () => {
   const state = fixtureState(3);

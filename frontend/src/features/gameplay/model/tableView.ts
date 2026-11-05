@@ -10,12 +10,14 @@ export function buildTableView(
     potIndex,
     winners,
     disconnectedIds,
+    hostPlayerId,
   }: {
     draftAmount: number;
     pots: Pot[];
     potIndex: number;
     winners: WinnerSelection;
     disconnectedIds?: ReadonlySet<string>;
+    hostPlayerId?: string;
   },
 ) {
   const button = state.hand?.buttonSeat ?? state.settings.button ?? 0;
@@ -38,6 +40,7 @@ export function buildTableView(
       contribution: p.H + (state.hand?.actorId === p.id ? draftAmount : 0),
       pending: state.hand?.actorId === p.id && draftAmount > 0,
       roles: [
+        p.id === hostPlayerId ? '방장' : '',
         i === button ? 'D' : '',
         button >= 0 && i === sb && !p.eliminated ? 'SB' : '',
         button >= 0 && i === bb ? 'BB' : '',

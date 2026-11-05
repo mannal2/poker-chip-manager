@@ -131,6 +131,7 @@ export function GameScreen({
           potIndex,
           winners,
           disconnectedIds: session.disconnectedIds,
+          hostPlayerId: session.hostPlayerId,
         })}
         viewSeat={session.viewSeat}
         boardReveal={session.boardReveal}

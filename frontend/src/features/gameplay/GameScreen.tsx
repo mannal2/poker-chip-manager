@@ -171,7 +171,7 @@ export function GameScreen({
           }
         }}
       >
-        {session.dockNotice && (
+        {session.dockNotice && !currentPot && (
           <div className="dock-notice" role="status">
             {session.dockNotice}
           </div>
@@ -187,6 +187,7 @@ export function GameScreen({
         )}
         {currentPot && (
           <SettlementPanel
+            label={session.dockNotice ?? undefined}
             count={winners[currentPot.id].length}
             canUndo={!!s.undo && can.canUndo}
             onUndo={undo}

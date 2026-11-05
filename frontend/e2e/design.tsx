@@ -62,7 +62,12 @@ createRoot(document.getElementById('root')!).render(
       {phase === 'betting' ? (
         <BetControls call={10} />
       ) : phase === 'settlement' ? (
-        <SettlementPanel count={q.has('selected') ? 1 : 0} busy={false} onWin={() => {}} />
+        <SettlementPanel
+          count={q.has('selected') ? 1 : 0}
+          label={q.has('guest') ? '방장이 승자를 선택하고 있습니다. 0명 선택' : undefined}
+          busy={false}
+          onWin={() => {}}
+        />
       ) : phase === 'setup' ? (
         <SetupPanel
           settings={{

@@ -1,12 +1,14 @@
 // 선택한 승자 수와 취소/WIN 버튼을 보여주는 정산 조작부
 export function SettlementPanel({
   count,
+  label,
   busy,
   onWin,
   canUndo = false,
   onUndo = () => {},
 }: {
   count: number;
+  label?: string;
   busy: boolean;
   onWin: () => void;
   canUndo?: boolean;
@@ -15,7 +17,7 @@ export function SettlementPanel({
   return (
     <div className="settlement-controls">
       <div className="settlement-count" aria-live="polite">
-        {count > 0 ? `${count}명 선택` : '승자 선택'}
+        {label ?? (count > 0 ? `${count}명 선택` : '승자 선택')}
       </div>
       <div className="bet-top">
         <button aria-disabled={busy || !canUndo} data-unavailable={!canUndo} onClick={onUndo}>

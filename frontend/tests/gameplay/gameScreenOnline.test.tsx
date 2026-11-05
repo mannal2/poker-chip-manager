@@ -266,6 +266,22 @@ it('passes the host identity to the player card badges', async () => {
   expect(host.querySelector('[data-player="p0"] .badge')?.textContent).toBe('D');
 });
 
+it('uses the guest notice as the only settlement label and follows updates', async () => {
+  const state = fixtureState(3);
+  state.hand!.phase = 'settlement';
+  state.hand!.actorId = null;
+  const s = session({ state, capabilities: { ...fullCapabilities, canSettle: false } });
+  for (const count of [0, 2]) {
+    const dockNotice = `방장이 승자를 선택하고 있습니다. ${count}명 선택`;
+    await render({ ...s, dockNotice });
+    expect(host.querySelector('.settlement-count')?.textContent).toBe(dockNotice);
+    expect(host.querySelector('.dock-notice')).toBeNull();
+    expect(host.textContent!.split(dockNotice)).toHaveLength(2);
+  }
+  await render({ ...s, dockNotice: null });
+  expect(host.querySelector('.settlement-count')?.textContent).toBe('승자 선택');
+});
+
 // 외부 팟과 승자는 재렌더링을 따르며 편집과 탐색은 콜백만 보낸다
 it('uses controlled winners and pot index without optimistic edits', async () => {
   const state = fixtureState(3);

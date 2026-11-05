@@ -3,6 +3,9 @@ import { SettlementPanel } from '../src/features/gameplay/components/SettlementP
 import { createRoot } from 'react-dom/client';
 import { Table } from '../src/features/gameplay/components/Table';
 import { BetControls } from '../src/features/gameplay/components/BetControls';
+import { GameHeader } from '../src/features/gameplay/components/GameHeader';
+import { HostRequests } from '../src/features/online-game/components/HostRequests';
+import { WaitingBar } from '../src/features/online-game/components/WaitingBar';
 import { OnlineMenu } from '../src/features/online-game/components/OnlineMenu';
 import type { RoomSnapshot } from '../src/features/online-game/api/types';
 import { Dialog } from '../src/shared/ui/Dialog';
@@ -12,6 +15,7 @@ import '../src/shared/styles/base.css';
 import '../src/features/gameplay/styles/header.css';
 import '../src/features/gameplay/styles/table.css';
 import '../src/features/gameplay/styles/controls.css';
+import '../src/features/online-game/styles/online.css';
 const q = new URLSearchParams(location.search),
   n = Number(q.get('n') || 6),
   phase = q.get('phase') || 'betting';
@@ -21,26 +25,64 @@ const snapshot = structuredClone(playing.response) as RoomSnapshot;
 snapshot.you.participantId = q.has('guest')
   ? snapshot.participants.find((p) => p.participantId !== snapshot.hostId)!.participantId
   : snapshot.hostId;
+snapshot.roomPhase = phase === 'setup' ? 'WAITING' : phase === 'result' ? 'RESULT' : 'PLAYING';
+if (q.get('request') === 'takeover') {
+  snapshot.you.participantId = snapshot.participants.find(
+    (p) => p.participantId !== snapshot.hostId,
+  )!.participantId;
+  snapshot.hostTakeoverOpen = true;
+  snapshot.you.canTakeHost = true;
+} else if (q.has('request')) {
+  snapshot.recoveryRequests = Array.from(
+    { length: q.get('request') === 'multiple' ? 2 : 1 },
+    (_, i) => ({
+      recoveryRequestId: `r${i}`,
+      participantId: `p${i}`,
+      name: '가나다라마바사아자차',
+      requestedAt: '2026-11-05T00:00:00Z',
+      expiresAt: '2026-11-05T00:05:00Z',
+    }),
+  );
+}
 createRoot(document.getElementById('root')!).render(
-  <main className="phone">
+  <main className="phone online-room">
     {q.has('menu') && (
       <Dialog title="관리 메뉴" dismissOutside onClose={() => {}}>
         <OnlineMenu snapshot={snapshot} choose={() => {}} home={() => {}} notify={() => {}} />
       </Dialog>
     )}
-    <header className="meta">
-      <div className="meta-info">
-        <span>
-          HAND <strong>01</strong>
-        </span>
-        <span id="blinds">
-          <strong>5 / 10</strong>
-        </span>
-      </div>
-      <button id="menu" aria-label="관리 메뉴">
-        ☰
-      </button>
-    </header>
+    {q.has('request') && phase === 'setup' && <WaitingBar code={snapshot.code} notify={() => {}} />}
+    {q.has('request') ? (
+      <GameHeader
+        notice={
+          q.has('request') ? (
+            <HostRequests snapshot={snapshot} busy={false} send={() => {}} />
+          ) : undefined
+        }
+        handNumber={1}
+        sb={5}
+        bb={10}
+        pendingBlinds={q.has('pending') ? { sb: 10, bb: 20 } : null}
+        canEditBlinds={false}
+        onHistory={() => {}}
+        onBlinds={() => {}}
+        onMenu={() => {}}
+      />
+    ) : (
+      <header className="meta">
+        <div className="meta-info">
+          <span>
+            HAND <strong>01</strong>
+          </span>
+          <span id="blinds">
+            <strong>5 / 10</strong>
+          </span>
+        </div>
+        <button id="menu" aria-label="관리 메뉴">
+          ☰
+        </button>
+      </header>
+    )}
     <Table
       players={Array.from({ length: n }, (_, i) => ({
         id: `p${i}`,

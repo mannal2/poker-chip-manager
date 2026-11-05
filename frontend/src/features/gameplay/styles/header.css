@@ -1,5 +1,6 @@
 /* Game header: tournament info, blinds and the manager menu button. */
 .meta {
+  position: relative;
   display: flex;
   justify-content: space-between;
   padding: calc(7 * var(--u)) calc(12 * var(--u));
@@ -8,6 +9,20 @@
   font-size: calc(13 * var(--u));
   color: var(--muted);
   align-items: center;
+}
+.header-notice {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc(var(--header-notice-inset, calc(84 * var(--u))) + 8 * var(--u));
+  right: calc(var(--header-notice-inset, calc(84 * var(--u))) + 8 * var(--u));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+.header-notice > * {
+  pointer-events: auto;
 }
 .meta-info {
   display: flex;

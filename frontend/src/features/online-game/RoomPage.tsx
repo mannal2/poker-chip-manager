@@ -119,13 +119,6 @@ export function RoomPage({ view, controller }: { view: OnlineView; controller: O
   return (
     <main ref={screen} className="phone online-room" aria-busy={view.pending}>
       <ConnectionBanner view={view} controller={controller} />
-      <HostRequests
-        snapshot={view.snapshot!}
-        busy={session.busy}
-        send={(command) => {
-          void send(command);
-        }}
-      />
       {view.snapshot!.roomPhase === 'WAITING' && (
         <WaitingBar code={view.snapshot!.code} notify={session.notify} />
       )}
@@ -141,6 +134,15 @@ export function RoomPage({ view, controller }: { view: OnlineView; controller: O
         </div>
       )}
       <GameScreen
+        headerNotice={
+          <HostRequests
+            snapshot={view.snapshot!}
+            busy={session.busy}
+            send={(command) => {
+              void send(command);
+            }}
+          />
+        }
         ref={game}
         session={session}
         setup={setup}

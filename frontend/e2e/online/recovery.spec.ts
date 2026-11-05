@@ -20,6 +20,7 @@ test('approves recovery with seat and chips preserved and revokes the old screen
     await recovery.getByLabel('이름', { exact: true }).fill('Bob');
     await recovery.getByRole('button', { name: '기존 참가자로 복구', exact: true }).click();
     await expect(page.getByRole('region', { name: '방 관리 요청' })).toContainText('Bob');
+    await expect(page.locator('.meta .host-requests')).toContainText('Bob');
     await page.reload();
     await page.getByRole('button', { name: 'Bob 복구 신청 확인', exact: true }).click();
     await expect(page.locator('dialog time')).toHaveCount(0);

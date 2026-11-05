@@ -53,7 +53,13 @@ function session(overrides: Partial<GameSession> = {}): GameSession {
   };
 }
 // 실제 화면을 같은 루트에 렌더링하여 외부 갱신을 검증한다
-async function render(s: GameSession, dialog = '', ref?: React.Ref<GameScreenHandle>, onDialog = vi.fn()) {
+async function render(
+  s: GameSession,
+  dialog = '',
+  ref?: React.Ref<GameScreenHandle>,
+  onDialog = vi.fn(),
+  headerNotice?: React.ReactNode,
+) {
   const setup: SetupControls = {
     scope: 'test',
     drag: {
@@ -86,11 +92,17 @@ async function render(s: GameSession, dialog = '', ref?: React.Ref<GameScreenHan
         dialog={dialog}
         onDialog={onDialog}
         menu={null}
+        headerNotice={headerNotice}
       />,
     ),
   );
   return setup;
 }
+
+it('places the optional online notice inside the game header', async () => {
+  await render(session(), '', undefined, vi.fn(), <button>방장 맡기</button>);
+  expect(host.querySelector('.meta .header-notice')?.textContent).toBe('방장 맡기');
+});
 // 다른 탭이 재준비하거나 새 토너먼트로 넘어가면 블라인드 설정을 닫는다
 it('closes an open blinds dialog when the tournament or phase changes', async () => {
   const playing = session();

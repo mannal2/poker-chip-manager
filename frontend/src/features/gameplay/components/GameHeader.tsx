@@ -1,3 +1,5 @@
+import { useLayoutEffect, useRef, type ReactNode } from 'react';
+
 // 핸드 번호, 블라인드, 메뉴 버튼을 보여주는 상단 바
 export function GameHeader({
   handNumber,
@@ -8,6 +10,7 @@ export function GameHeader({
   onHistory,
   onBlinds,
   onMenu,
+  notice,
 }: {
   handNumber: number;
   sb: number;
@@ -17,9 +20,32 @@ export function GameHeader({
   onHistory: () => void;
   onBlinds: () => void;
   onMenu: () => void;
+  notice?: ReactNode;
 }) {
+  const ref = useRef<HTMLElement>(null);
+  const hasNotice = !!notice;
+  useLayoutEffect(() => {
+    if (!hasNotice) return;
+    const header = ref.current!;
+    const info = header.querySelector<HTMLElement>('.meta-info')!;
+    const menu = header.querySelector<HTMLElement>('#menu')!;
+    // 양쪽 정보 중 더 넓은 쪽만큼 대칭 여백을 확보한다
+    const fitNotice = () => {
+      const bounds = header.getBoundingClientRect();
+      const inset = Math.max(
+        info.getBoundingClientRect().right - bounds.left,
+        bounds.right - menu.getBoundingClientRect().left,
+      );
+      header.style.setProperty('--header-notice-inset', `${inset}px`);
+    };
+    const observer = new ResizeObserver(fitNotice);
+    observer.observe(header);
+    observer.observe(info);
+    fitNotice();
+    return () => observer.disconnect();
+  }, [hasNotice]);
   return (
-    <header className="meta">
+    <header ref={ref} className="meta">
       <div className="meta-info">
         <button className="meta-link" aria-label="현재 토너먼트 기록" onClick={onHistory}>
           HAND <strong>{String(handNumber).padStart(2, '0')}</strong>
@@ -43,6 +69,7 @@ export function GameHeader({
           )}
         </button>
       </div>
+      {notice && <div className="header-notice">{notice}</div>}
       <button id="menu" aria-label="관리 메뉴" onClick={onMenu}>
         ☰
       </button>

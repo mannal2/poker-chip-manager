@@ -29,13 +29,16 @@ vi.mock('../../src/features/gameplay/GameScreen', () => ({
     dialog,
     onDialog,
     session,
+    headerNotice,
   }: {
     menu: ReactNode;
     dialog: string;
     onDialog: (value: string) => void;
     session: { resultActions: ReactNode };
+    headerNotice?: ReactNode;
   }) => (
     <>
+      <header>{headerNotice}</header>
       <button onClick={() => onDialog('menu')}>관리 메뉴</button>
       {dialog === 'menu' && menu}
       {session.resultActions}

@@ -24,6 +24,7 @@ export function GameScreen({
   dialog,
   onDialog,
   menu,
+  headerNotice,
   onUndoApplied,
   ref,
 }: {
@@ -32,6 +33,7 @@ export function GameScreen({
   dialog: string;
   onDialog: (dialog: GameDialog | '') => void;
   menu: ReactNode;
+  headerNotice?: ReactNode;
   onUndoApplied?: () => void;
   ref?: Ref<GameScreenHandle>;
 }) {
@@ -115,6 +117,7 @@ export function GameScreen({
   return (
     <>
       <GameHeader
+        notice={headerNotice}
         handNumber={s.hand?.number ?? 1}
         sb={s.hand?.sb ?? s.settings.sb}
         bb={s.hand?.bb ?? s.settings.bb}

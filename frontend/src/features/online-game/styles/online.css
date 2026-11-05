@@ -39,17 +39,11 @@
   position: relative;
 }
 .host-requests {
-  position: absolute;
-  z-index: 20;
-  top: calc(8 * var(--u));
-  left: calc(84 * var(--u));
-  right: calc(52 * var(--u));
+  width: 100%;
   display: flex;
+  align-items: center;
   justify-content: center;
   gap: calc(6 * var(--u));
-}
-.host-requests.below-waiting-bar {
-  top: calc(60 * var(--u));
 }
 .host-requests:empty {
   display: none;

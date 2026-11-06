@@ -4,6 +4,12 @@ import type { GameSession } from '../session';
 import { useRef } from 'react';
 import { useFitText } from '../../../shared/hooks/useFitText';
 import { seatCoordinates } from '../model/seatLayout';
+// 온라인 관리 작업에서 선택할 수 있는 카드와 확인 중인 카드를 표시한다
+export interface CardSelection {
+  eligibleIds: ReadonlySet<string>;
+  selectedId?: string;
+  onSelect: (id: string) => void;
+}
 // 설정 단계에서만 쓰는 테이블 편집 조작 모음
 export interface TableSetup {
   drag?: {
@@ -37,6 +43,7 @@ export function Table({
   setup,
   handKey,
   boardReveal,
+  selection,
 }: {
   players: CardPlayer[];
   pot: number;
@@ -48,6 +55,7 @@ export function Table({
   setup?: TableSetup;
   handKey?: string;
   boardReveal?: GameSession['boardReveal'];
+  selection?: CardSelection;
   viewSeat?: number;
   onSelect?: (id: string) => void;
   onPot?: () => void;
@@ -62,10 +70,14 @@ export function Table({
     min: 7,
   });
   const { drag, onAdd, onRemove, onRotate, onRename, canRename, onNameEditing, editScope } =
-    setup ?? {};
+    (selection ? undefined : setup) ?? {};
   return (
     <>
-      <div ref={ref} className="table" aria-label="포커 테이블">
+      <div
+        ref={ref}
+        className={`table${selection ? ' selecting-player' : ''}`}
+        aria-label="포커 테이블"
+      >
         <div className="felt" />
         <div className={`table-center ${phase === 'setup' ? 'setup-center' : ''}`}>
           {phase === 'setup' ? (
@@ -168,7 +180,22 @@ export function Table({
               dragging={drag?.position?.id === p.id}
               handlers={drag?.handlers(p.id)}
               busy={busy}
-              onSelect={onSelect}
+              targetState={
+                selection
+                  ? !selection.eligibleIds.has(p.id)
+                    ? 'disabled'
+                    : selection.selectedId === p.id
+                      ? 'selected'
+                      : 'eligible'
+                  : undefined
+              }
+              onSelect={
+                selection
+                  ? (id) => {
+                      if (!busy && selection.eligibleIds.has(id)) selection.onSelect(id);
+                    }
+                  : onSelect
+              }
               onRename={!canRename || canRename(p.id) ? onRename : undefined}
               onNameEditing={onNameEditing}
               editScope={editScope}

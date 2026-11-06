@@ -59,6 +59,7 @@ async function render(
   ref?: React.Ref<GameScreenHandle>,
   onDialog = vi.fn(),
   headerNotice?: React.ReactNode,
+  selection?: React.ComponentProps<typeof GameScreen>['selection'],
 ) {
   const setup: SetupControls = {
     scope: 'test',
@@ -93,6 +94,7 @@ async function render(
         onDialog={onDialog}
         menu={null}
         headerNotice={headerNotice}
+        selection={selection}
       />,
     ),
   );
@@ -102,6 +104,33 @@ async function render(
 it('places the optional online notice inside the game header', async () => {
   await render(session(), '', undefined, vi.fn(), <button>방장 맡기</button>);
   expect(host.querySelector('.meta .header-notice')?.textContent).toBe('방장 맡기');
+});
+
+it('isolates management card selection from setup and betting controls', async () => {
+  const onSelect = vi.fn();
+  const state = createTournament(defaultSettings, ctx);
+  const selection = {
+    eligibleIds: new Set(['p1']),
+    label: '내보낼 플레이어를 선택하세요.',
+    onSelect,
+    onCancel: vi.fn(),
+  };
+  const setup = await render(session({ state }), '', undefined, vi.fn(), undefined, selection);
+  expect(host.querySelector('.setup-fields')).toBeNull();
+  expect(host.querySelector('.inline-name')).toBeNull();
+  expect(host.querySelector<HTMLButtonElement>('[data-player="p0"]')?.disabled).toBe(true);
+  expect(host.querySelector<HTMLButtonElement>('[data-player="p1"]')?.disabled).toBe(false);
+  await click('[data-player="p1"] .card-values');
+  expect(onSelect).toHaveBeenCalledWith('p1');
+  expect(setup.rename).not.toHaveBeenCalled();
+  await click('.participant-selection-controls button');
+  expect(selection.onCancel).toHaveBeenCalledOnce();
+  await render(session({ busy: true }), '', undefined, vi.fn(), undefined, selection);
+  expect(host.querySelector('.bet-top')).toBeNull();
+  expect(host.querySelector<HTMLButtonElement>('[data-player="p1"]')?.disabled).toBe(true);
+  expect(
+    host.querySelector<HTMLButtonElement>('.participant-selection-controls button')?.disabled,
+  ).toBe(true);
 });
 // 다른 탭이 재준비하거나 새 토너먼트로 넘어가면 블라인드 설정을 닫는다
 it('closes an open blinds dialog when the tournament or phase changes', async () => {

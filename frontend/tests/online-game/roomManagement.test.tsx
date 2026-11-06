@@ -30,18 +30,45 @@ vi.mock('../../src/features/gameplay/GameScreen', () => ({
     onDialog,
     session,
     headerNotice,
+    selection,
   }: {
     menu: ReactNode;
     dialog: string;
     onDialog: (value: string) => void;
-    session: { resultActions: ReactNode };
+    session: {
+      resultActions: ReactNode;
+      state: { players: { id: string; name: string }[] };
+      busy: boolean;
+    };
     headerNotice?: ReactNode;
+    selection?: {
+      eligibleIds: ReadonlySet<string>;
+      label: string;
+      onSelect: (id: string) => void;
+      onCancel: () => void;
+    };
   }) => (
     <>
       <header>{headerNotice}</header>
       <button onClick={() => onDialog('menu')}>관리 메뉴</button>
       {dialog === 'menu' && menu}
-      {session.resultActions}
+      {selection ? (
+        <div className="participant-selection-controls">
+          <p>{selection.label}</p>
+          {session.state.players.map((p) => (
+            <button
+              key={p.id}
+              disabled={session.busy || !selection.eligibleIds.has(p.id)}
+              onClick={() => selection.onSelect(p.id)}
+            >
+              {p.name}
+            </button>
+          ))}
+          <button onClick={selection.onCancel}>취소</button>
+        </div>
+      ) : (
+        session.resultActions
+      )}
     </>
   ),
 }));
@@ -151,6 +178,48 @@ it('explains why a result reset is unavailable', async () => {
   }
 });
 
+it.each(['host', 'hand phase'])(
+  'returns to card selection after dismissing confirmation and exits when %s changes',
+  async (changed) => {
+    const x = await mountRoom();
+    try {
+      await x.click('관리 메뉴');
+      await x.click('방장 넘기기');
+      expect(x.host.querySelector('.menu-actions')).toBeNull();
+      await x.click('Bob');
+      await x.click('닫기');
+      expect(x.host.querySelector('.participant-selection-controls')).not.toBeNull();
+      expect(x.send).not.toHaveBeenCalled();
+      if (changed === 'host')
+        x.view.snapshot!.hostId = x.view.snapshot!.participants.find(
+          (p) => p.name === 'Bob',
+        )!.participantId;
+      else x.view.snapshot!.game!.hand!.phase = 'settlement';
+      await x.rerender();
+      expect(x.host.querySelector('.participant-selection-controls')).toBeNull();
+      expect(x.send).not.toHaveBeenCalled();
+    } finally {
+      await x.close();
+    }
+  },
+);
+
+it('does not enter an empty card selection', async () => {
+  const x = await mountRoom();
+  try {
+    const bob = x.view.snapshot!.participants.find((p) => p.name === 'Bob')!;
+    x.view.snapshot!.game!.players.find((p) => p.id === bob.playerId)!.eliminated = true;
+    await x.rerender();
+    await x.click('관리 메뉴');
+    await x.click('방장 넘기기');
+    expect(x.host.querySelector('.participant-selection-controls')).toBeNull();
+    expect(x.host.textContent).toContain('대상 참가자가 없습니다.');
+    expect(x.send).not.toHaveBeenCalled();
+  } finally {
+    await x.close();
+  }
+});
+
 // 실제 세션 훅과 페이지에 필요한 최소 컨트롤러 경계를 제공한다
 async function mountRoom(
   phase: 'WAITING' | 'PLAYING' | 'RESULT' = 'PLAYING',
@@ -251,6 +320,7 @@ it('closes a menu after a server rejection and shows its reason', async () => {
     x.view.error = '대상 상태가 변경되었습니다.';
     x.send.mockResolvedValueOnce(false);
     await x.click('Bob');
+    await x.click('확인');
     expect(x.host.querySelector('.menu-actions')).toBeNull();
     expect(x.host.textContent).toContain('대상 상태가 변경되었습니다.');
   } finally {

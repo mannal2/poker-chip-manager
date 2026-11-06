@@ -7,7 +7,7 @@ import { GameHistoryPanel } from './components/GameHistoryPanel';
 import { PayoutPreview } from './components/PayoutPreview';
 import { SettlementPanel } from './components/SettlementPanel';
 import { SetupPanel } from './components/SetupPanel';
-import { Table } from './components/Table';
+import { Table, type CardSelection } from './components/Table';
 import { useBettingDraft } from './hooks/useBettingDraft';
 import { useSettlementSelection } from './hooks/useSettlementSelection';
 import { permits, requiredCapability, type GameCapabilities } from './model/capabilities';
@@ -25,6 +25,7 @@ export function GameScreen({
   onDialog,
   menu,
   headerNotice,
+  selection,
   onUndoApplied,
   ref,
 }: {
@@ -34,6 +35,7 @@ export function GameScreen({
   onDialog: (dialog: GameDialog | '') => void;
   menu: ReactNode;
   headerNotice?: ReactNode;
+  selection?: CardSelection & { label: string; onCancel: () => void };
   onUndoApplied?: () => void;
   ref?: Ref<GameScreenHandle>;
 }) {
@@ -128,6 +130,7 @@ export function GameScreen({
         onMenu={() => onDialog('menu')}
       />
       <Table
+        selection={selection}
         {...buildTableView(s, {
           draftAmount,
           pots,
@@ -140,9 +143,9 @@ export function GameScreen({
         boardReveal={session.boardReveal}
         onSelect={currentPot && can.canSettle ? selectWinner : undefined}
         onPot={() => {
-          if (currentPot) onDialog('payout');
+          if (currentPot && !selection) onDialog('payout');
         }}
-        navigation={navigation}
+        navigation={selection ? undefined : navigation}
         busy={busy}
         setup={
           s.status === 'setup'
@@ -164,6 +167,7 @@ export function GameScreen({
         // 전체 설정 권한이 없는 시작 버튼 입력을 차단하고 이유를 알린다
         onClickCapture={(event) => {
           if (
+            !selection &&
             s.status === 'setup' &&
             !can.canEditSetup &&
             (event.target as HTMLElement).closest('button')
@@ -174,81 +178,94 @@ export function GameScreen({
           }
         }}
       >
-        {session.dockNotice && !currentPot && (
-          <div className="dock-notice" role="status">
-            {session.dockNotice}
+        {selection ? (
+          <div className="participant-selection-controls">
+            <p role="status">{selection.label}</p>
+            <button disabled={busy} onClick={selection.onCancel}>
+              취소
+            </button>
           </div>
-        )}
-        {s.status === 'ended' && (
-          <button
-            aria-disabled={busy || !s.undo || !can.canUndo}
-            data-unavailable={!s.undo || !can.canUndo}
-            onClick={undo}
-          >
-            취소
-          </button>
-        )}
-        {currentPot && (
-          <SettlementPanel
-            label={session.dockNotice ?? undefined}
-            count={winners[currentPot.id].length}
-            canUndo={!!s.undo && can.canUndo}
-            onUndo={undo}
-            busy={busy || !can.canSettle}
-            onWin={() => {
-              if (busy) return notify('저장 완료 또는 재시도를 기다려주세요.');
-              if (!can.canSettle) return deny('canSettle');
-              if (!preview?.ok)
-                return notify(preview?.error ? messageFor(preview.error) : '승자를 선택하세요.');
-              void run(async () => {
-                await dispatch({ type: 'SETTLE_HAND', winners });
-              });
-            }}
-          />
-        )}
-        {s.status === 'ended' && (
-          <div className="summary">
-            토너먼트 종료 · {s.players.find((p) => !p.eliminated)?.name} 우승
-          </div>
-        )}
-        {s.status === 'aborted' && (
-          <div className="summary">
-            토너먼트 중단 · 미정산 팟 {s.pot.toLocaleString('ko-KR')} 보존
-          </div>
-        )}
-        {(s.status === 'ended' || s.status === 'aborted') && session.resultActions}
-        {s.status === 'playing' && s.hand?.phase === 'betting' && (
-          <BetControls
-            call={legal?.callAdditional}
-            canUndo={!!s.undo && can.canUndo}
-            busy={busy}
-            canBet={can.canAct}
-            draftAmount={draftAmount}
-            maxAdditional={legal?.maxAdditional}
-            submitAllowed={submitAllowed}
-            onAction={bettingAction}
-            onUndo={undo}
-          />
-        )}{' '}
-        {s.status === 'setup' && (
-          <SetupPanel
-            key={
-              s.tournamentId +
-              ':' +
-              scope +
-              ':' +
-              s.settings.initial +
-              ':' +
-              s.settings.sb +
-              ':' +
-              s.settings.bb
-            }
-            settings={s.settings}
-            validate={setup.validateSettings}
-            busy={busy || !can.canEditSetup}
-            onSave={setup.saveSettings}
-            onStart={setup.start}
-          />
+        ) : (
+          <>
+            {session.dockNotice && !currentPot && (
+              <div className="dock-notice" role="status">
+                {session.dockNotice}
+              </div>
+            )}
+            {s.status === 'ended' && (
+              <button
+                aria-disabled={busy || !s.undo || !can.canUndo}
+                data-unavailable={!s.undo || !can.canUndo}
+                onClick={undo}
+              >
+                취소
+              </button>
+            )}
+            {currentPot && (
+              <SettlementPanel
+                label={session.dockNotice ?? undefined}
+                count={winners[currentPot.id].length}
+                canUndo={!!s.undo && can.canUndo}
+                onUndo={undo}
+                busy={busy || !can.canSettle}
+                onWin={() => {
+                  if (busy) return notify('저장 완료 또는 재시도를 기다려주세요.');
+                  if (!can.canSettle) return deny('canSettle');
+                  if (!preview?.ok)
+                    return notify(
+                      preview?.error ? messageFor(preview.error) : '승자를 선택하세요.',
+                    );
+                  void run(async () => {
+                    await dispatch({ type: 'SETTLE_HAND', winners });
+                  });
+                }}
+              />
+            )}
+            {s.status === 'ended' && (
+              <div className="summary">
+                토너먼트 종료 · {s.players.find((p) => !p.eliminated)?.name} 우승
+              </div>
+            )}
+            {s.status === 'aborted' && (
+              <div className="summary">
+                토너먼트 중단 · 미정산 팟 {s.pot.toLocaleString('ko-KR')} 보존
+              </div>
+            )}
+            {(s.status === 'ended' || s.status === 'aborted') && session.resultActions}
+            {s.status === 'playing' && s.hand?.phase === 'betting' && (
+              <BetControls
+                call={legal?.callAdditional}
+                canUndo={!!s.undo && can.canUndo}
+                busy={busy}
+                canBet={can.canAct}
+                draftAmount={draftAmount}
+                maxAdditional={legal?.maxAdditional}
+                submitAllowed={submitAllowed}
+                onAction={bettingAction}
+                onUndo={undo}
+              />
+            )}{' '}
+            {s.status === 'setup' && (
+              <SetupPanel
+                key={
+                  s.tournamentId +
+                  ':' +
+                  scope +
+                  ':' +
+                  s.settings.initial +
+                  ':' +
+                  s.settings.sb +
+                  ':' +
+                  s.settings.bb
+                }
+                settings={s.settings}
+                validate={setup.validateSettings}
+                busy={busy || !can.canEditSetup}
+                onSave={setup.saveSettings}
+                onStart={setup.start}
+              />
+            )}
+          </>
         )}
       </section>
       {dialog === 'payout' && (

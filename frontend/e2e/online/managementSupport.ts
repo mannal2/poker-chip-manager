@@ -33,9 +33,10 @@ export async function menu(page: Page, label: string, target?: string) {
   await page.getByRole('dialog').getByRole('button', { name: label, exact: true }).click();
   if (target)
     await page
-      .getByRole('group', { name: `${label} 대상` })
-      .getByRole('button', { name: target, exact: true })
+      .locator('.seat')
+      .filter({ has: page.locator('.name', { hasText: target }) })
       .click();
+  if (target && ['방장 넘기기', '참가자 내보내기'].includes(label)) await confirm(page, label);
 }
 
 // 공통 확인 대화상자에서 관리 명령을 확정한다

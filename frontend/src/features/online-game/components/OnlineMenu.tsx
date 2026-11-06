@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import type { RoomParticipant, RoomSnapshot, ServerCommand } from '../api/types';
 
 // 관리 메뉴 항목 하나
@@ -75,7 +74,7 @@ export function menuItems(snapshot: RoomSnapshot, connectedIds: ReadonlySet<stri
   return items;
 }
 
-// 공통 관리 대화상자 안에서 메뉴와 대상 선택만 표시한다
+// 공통 관리 대화상자 안에서 메뉴와 방 코드 복사 조작을 표시한다
 export function OnlineMenu({
   snapshot,
   choose,
@@ -83,11 +82,10 @@ export function OnlineMenu({
   notify,
 }: {
   snapshot: RoomSnapshot;
-  choose: (item: MenuItem, target?: RoomParticipant) => void;
+  choose: (item: MenuItem) => void;
   home: () => void;
   notify: (message: string) => void;
 }) {
-  const [expanded, setExpanded] = useState('');
   const items = menuItems(
     snapshot,
     new Set(snapshot.participants.filter((p) => p.connected).map((p) => p.participantId)),
@@ -106,27 +104,9 @@ export function OnlineMenu({
       <button onClick={() => void copyCode()}>방코드:[{snapshot.code}]</button>
       {items.map((item) => (
         <div key={item.label}>
-          <button
-            onClick={() =>
-              item.label === '앱 홈'
-                ? home()
-                : item.targets
-                  ? setExpanded(item.label)
-                  : choose(item)
-            }
-          >
+          <button onClick={() => (item.label === '앱 홈' ? home() : choose(item))}>
             {item.label}
           </button>
-          {expanded === item.label && item.targets && (
-            <div role="group" aria-label={`${item.label} 대상`}>
-              {item.targets.length === 0 && <p>대상 참가자가 없습니다.</p>}
-              {item.targets.map((target) => (
-                <button key={target.participantId} onClick={() => choose(item, target)}>
-                  {target.name}
-                </button>
-              ))}
-            </div>
-          )}
         </div>
       ))}
     </div>

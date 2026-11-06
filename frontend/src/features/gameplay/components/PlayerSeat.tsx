@@ -41,6 +41,7 @@ export function PlayerSeat({
   onRename,
   onNameEditing,
   editScope,
+  targetState,
 }: {
   player: CardPlayer;
   phase: string;
@@ -54,6 +55,7 @@ export function PlayerSeat({
   onRename?: (id: string, name: string) => boolean | Promise<boolean>;
   onNameEditing?: (id: string, editing: boolean, finish?: () => Promise<boolean>) => void;
   editScope?: string;
+  targetState?: 'eligible' | 'selected' | 'disabled';
 }) {
   const Card = onRename ? 'div' : 'button';
   const Values = onRename ? 'button' : 'div';
@@ -62,11 +64,16 @@ export function PlayerSeat({
       type="button"
       role={onRename ? 'group' : undefined}
       data-player={p.id}
-      className={`seat ${p.active ? 'active' : ''} ${p.selected ? 'selected' : ''} ${p.out || p.folded ? 'out' : ''} ${pressed ? 'pressing' : ''} ${dragReady ? 'drag-ready' : ''} ${dragging ? 'dragging' : ''}`}
+      className={`seat ${p.active ? 'active' : ''} ${p.selected ? 'selected' : ''} ${p.out || p.folded ? 'out' : ''} ${pressed ? 'pressing' : ''} ${dragReady ? 'drag-ready' : ''} ${dragging ? 'dragging' : ''} ${targetState ? `target-${targetState}` : ''}`}
       style={style}
       aria-label={`${p.name}${p.active ? ' 현재 차례' : ''}${p.folded ? ' 폴드' : ''}${p.out ? ' 탈락' : ''}${p.disconnected ? ' 연결 끊김' : ''}`}
-      aria-pressed={phase === 'settlement' ? !!p.selected : undefined}
-      aria-disabled={phase === 'settlement' && !p.eligible}
+      disabled={targetState ? targetState === 'disabled' || busy : undefined}
+      aria-pressed={
+        targetState ? targetState === 'selected' : phase === 'settlement' ? !!p.selected : undefined
+      }
+      aria-disabled={
+        targetState ? targetState === 'disabled' || busy : phase === 'settlement' && !p.eligible
+      }
       onContextMenu={(e) => {
         if (!(e.target as HTMLElement).closest('input, textarea, [contenteditable="true"]'))
           e.preventDefault();

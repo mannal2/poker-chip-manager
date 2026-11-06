@@ -76,6 +76,30 @@
 .seat.out {
   opacity: 0.45;
 }
+.selecting-player > .felt,
+.selecting-player > .table-center {
+  opacity: 0.25;
+  pointer-events: none;
+}
+.selecting-player .seat {
+  box-shadow: none;
+}
+.selecting-player .seat.target-disabled {
+  opacity: 0.25;
+}
+.selecting-player .seat.target-eligible,
+.selecting-player .seat.target-selected {
+  opacity: 1;
+  border-color: var(--gold);
+  outline: calc(2 * var(--u)) solid var(--gold);
+  outline-offset: calc(3 * var(--u));
+}
+.selecting-player .seat.target-selected {
+  background: #344334;
+}
+.selecting-player .turn {
+  display: none;
+}
 .seat .name {
   height: calc(29 * var(--u));
   display: flex;

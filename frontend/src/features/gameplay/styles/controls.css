@@ -119,6 +119,16 @@
   font-size: calc(13 * var(--u));
   color: var(--muted);
 }
+.participant-selection-controls {
+  width: 100%;
+  text-align: center;
+}
+.participant-selection-controls p {
+  margin: 0 0 calc(8 * var(--u));
+}
+.participant-selection-controls button {
+  width: 100%;
+}
 .summary {
   text-align: center;
   font-size: calc(13 * var(--u));

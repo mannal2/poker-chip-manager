@@ -7,7 +7,6 @@ for (const width of [320, 390, 430]) {
       await page.goto(`/e2e/design.html?menu=1${guest ? '&guest=1' : ''}`);
       const menu = page.locator('.menu-actions');
       await expect(menu).toBeVisible();
-      if (!guest) await menu.getByRole('button', { name: '방장 넘기기', exact: true }).click();
       const menuBounds = await menu.boundingBox();
       for (const button of await menu.getByRole('button').all()) {
         const bounds = await button.boundingBox();

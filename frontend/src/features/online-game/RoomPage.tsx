@@ -12,10 +12,36 @@ import { Dialog } from '../../shared/ui/Dialog';
 import { OnlineMenu, menuItems, type MenuItem } from './components/OnlineMenu';
 import { HostRequests } from './components/HostRequests';
 import { ResultActions } from './components/ResultActions';
-import type { RoomParticipant, ServerCommand } from './api/types';
+import type { RoomParticipant, RoomSnapshot, ServerCommand } from './api/types';
 import '../gameplay/styles/header.css';
 import '../gameplay/styles/table.css';
 import '../gameplay/styles/controls.css';
+
+const selectionLabels: Record<string, string> = {
+  '방장 넘기기': '방장을 넘길 플레이어를 선택하세요.',
+  '기권 처리': '기권 처리할 플레이어를 선택하세요.',
+  '참가자 내보내기': '내보낼 플레이어를 선택하세요.',
+};
+
+// 다른 방장·핸드·조작 세대에서 이전 대상 선택을 재사용하지 않는다
+function selectionScope(snapshot: RoomSnapshot) {
+  return [
+    snapshot.roomId,
+    snapshot.tournamentId,
+    snapshot.game?.hand?.id,
+    snapshot.game?.hand?.phase,
+    snapshot.roomPhase,
+    snapshot.hostId,
+    snapshot.you.participantId,
+    snapshot.you.controlGeneration,
+  ].join('/');
+}
+
+function cardId(snapshot: RoomSnapshot, participant: RoomParticipant) {
+  return snapshot.game
+    ? (participant.playerId ?? participant.participantId)
+    : participant.participantId;
+}
 
 // 온라인 방의 연결 안내와 공통 게임 화면 및 토스트를 조립한다
 export function RoomPage({
@@ -30,6 +56,9 @@ export function RoomPage({
   const screen = useRef<HTMLElement>(null);
   useScreenFit(screen);
   const [dialog, setDialog] = useState('');
+  const [targetSelection, setTargetSelection] = useState<{ label: string; scope: string } | null>(
+    null,
+  );
   const [confirmation, setConfirmation] = useState<{
     item: MenuItem;
     target?: RoomParticipant;
@@ -37,6 +66,34 @@ export function RoomPage({
   const game = useRef<GameScreenHandle>(null);
   const { session, setup, toast, resetSelection } = useOnlineGameSession(view, controller);
   const notify = toast.show;
+  const snapshot = view.snapshot!;
+  const selectedItem = targetSelection
+    ? menuItems(
+        snapshot,
+        new Set(snapshot.participants.filter((p) => p.connected).map((p) => p.participantId)),
+      ).find((item) => item.label === targetSelection.label)
+    : undefined;
+  const targets = selectedItem?.targets ?? [];
+  const validSelection =
+    !!targetSelection &&
+    targetSelection.scope === selectionScope(snapshot) &&
+    targets.length > 0 &&
+    view.connection === 'online' &&
+    view.hasControl;
+  const validConfirmation =
+    !confirmation?.target ||
+    targets.some((p) => p.participantId === confirmation.target!.participantId);
+  useEffect(() => {
+    if (!targetSelection || view.pending) return;
+    if (!validSelection) {
+      setTargetSelection(null);
+      setConfirmation(null);
+      notify('대상 또는 상태가 변경되었습니다. 다시 확인하세요.');
+    } else if (!validConfirmation) {
+      setConfirmation(null);
+      notify('대상 또는 상태가 변경되었습니다. 다시 확인하세요.');
+    }
+  }, [targetSelection, view.pending, validSelection, validConfirmation, notify]);
   // 최신 연결 상태와 조작권을 확인하고 서버 관리 명령을 보낸다
   async function send(command: ServerCommand) {
     const blocked = session.guard();
@@ -64,7 +121,7 @@ export function RoomPage({
       notify(controller.getView().error ?? '명령을 처리하지 못했습니다. 최신 상태를 확인하세요.');
     return ok;
   }
-  // 메뉴를 연 뒤 대상 상태가 바뀌어도 최신 서버 스냅샷으로 확인한다
+  // 메뉴와 카드 선택에서 최신 서버 스냅샷으로 대상과 권한을 확인한다
   async function choose(item: MenuItem, target?: RoomParticipant, confirmed = false) {
     const blocked = session.guard();
     if (blocked) return notify(blocked);
@@ -75,17 +132,34 @@ export function RoomPage({
     ).find((i) => i.label === item.label);
     if (
       !valid ||
+      (targetSelection && targetSelection.scope !== selectionScope(current)) ||
       (target && !valid.targets?.some((p) => p.participantId === target.participantId))
     ) {
       setConfirmation(null);
+      setTargetSelection(null);
       setDialog('');
       return notify('대상 또는 상태가 변경되었습니다. 다시 확인하세요.');
     }
     if (item.command?.type === 'FORFEIT' && current.hostId === current.you.participantId)
       return notify('먼저 방장을 넘겨주세요');
-    if (item.confirm && !confirmed) {
+    if (valid.targets && !target) {
+      if (!valid.targets.length) return notify('대상 참가자가 없습니다.');
+      setup.clearEditing();
+      setTargetSelection({ label: valid.label, scope: selectionScope(current) });
       setDialog('');
-      setConfirmation({ item, target });
+      return;
+    }
+    const latestTarget =
+      target && valid.targets?.find((p) => p.participantId === target.participantId);
+    const warning =
+      latestTarget && valid.label === '방장 넘기기'
+        ? `${latestTarget.name}님에게 방장을 넘기시겠습니까?`
+        : latestTarget && valid.label === '참가자 내보내기'
+          ? `${latestTarget.name}님을 방에서 내보내시겠습니까?`
+          : valid.confirm;
+    if (warning && !confirmed) {
+      setDialog('');
+      setConfirmation({ item: { ...valid, confirm: warning }, target: latestTarget || undefined });
       return;
     }
     const command = {
@@ -93,7 +167,7 @@ export function RoomPage({
       ...(target ? { payload: { participantId: target.participantId } } : {}),
     };
     setConfirmation(null);
-    await send(command);
+    if (await send(command)) setTargetSelection(null);
     setDialog('');
   }
   // 참가 자격은 보존하고 화면 자원을 해제한 뒤 앱 홈으로 문서 이동한다
@@ -143,20 +217,47 @@ export function RoomPage({
         </div>
       )}
       <GameScreen
+        selection={
+          validSelection
+            ? {
+                eligibleIds: new Set(targets.map((p) => cardId(snapshot, p))),
+                selectedId: confirmation?.target
+                  ? cardId(snapshot, confirmation.target)
+                  : undefined,
+                label: selectionLabels[targetSelection!.label],
+                onCancel: () => {
+                  if (!session.busy) setTargetSelection(null);
+                },
+                onSelect: (id) => {
+                  const target = targets.find((p) => cardId(snapshot, p) === id);
+                  if (target && selectedItem) void choose(selectedItem, target);
+                },
+              }
+            : undefined
+        }
         headerNotice={
-          <HostRequests
-            snapshot={view.snapshot!}
-            busy={session.busy}
-            send={(command) => {
-              void send(command);
-            }}
-          />
+          !targetSelection && (
+            <HostRequests
+              snapshot={view.snapshot!}
+              busy={session.busy}
+              send={(command) => {
+                void send(command);
+              }}
+            />
+          )
         }
         ref={game}
         session={session}
         setup={setup}
         dialog={dialog}
-        onDialog={setDialog}
+        onDialog={(next) => {
+          if (targetSelection && session.busy) return;
+          if (next) {
+            setTargetSelection(null);
+            setConfirmation(null);
+          }
+          setDialog(next);
+        }}
         menu={
           <OnlineMenu
             notify={(message) => {
@@ -164,15 +265,19 @@ export function RoomPage({
               notify(message);
             }}
             snapshot={view.snapshot!}
-            choose={(item, target) => {
-              void choose(item, target);
+            choose={(item) => {
+              void choose(item);
             }}
             home={home}
           />
         }
       />
       {confirmation && (
-        <Dialog title={confirmation.item.label} onClose={() => setConfirmation(null)}>
+        <Dialog
+          title={confirmation.item.label}
+          closeDisabled={session.busy}
+          onClose={() => setConfirmation(null)}
+        >
           {confirmation.target && <p>{confirmation.target.name}</p>}
           <p>{confirmation.item.confirm}</p>
           <button

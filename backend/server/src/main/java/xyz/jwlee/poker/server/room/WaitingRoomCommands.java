@@ -77,12 +77,12 @@ final class WaitingRoomCommands {
     static void rename(Room room, Participant actor, JsonNode payload) {
         requireWaiting(room);
         String raw = string(object(payload), "name");
-        String name = SettingsValidator.normalizeName(raw).orElseThrow(() -> new RoomException("INVALID_NAME"));
+        String name = SettingsValidator.normalizeName(raw).orElseThrow(() -> new RoomException(ErrorCode.INVALID_NAME));
         String lowered = name.toLowerCase(Locale.ROOT);
         boolean taken = room.participants().stream().anyMatch(p -> !p.participantId().equals(actor.participantId())
                 && p.name().toLowerCase(Locale.ROOT).equals(lowered));
         if (taken) {
-            throw new RoomException("DUPLICATE_NAME");
+            throw new RoomException(ErrorCode.DUPLICATE_NAME);
         }
         room.rename(actor.participantId(), name);
     }
@@ -113,7 +113,7 @@ final class WaitingRoomCommands {
         JsonNode payload = request.payload();
         requireEmpty(payload);
         if (room.phase() == RoomPhase.PLAYING && room.isHost(actor.participantId())) {
-            throw new RoomException("TRANSFER_HOST_FIRST");
+            throw new RoomException(ErrorCode.TRANSFER_HOST_FIRST);
         }
         requireOutOfThePlay(room, actor.participantId());
         room.removeParticipant(actor.participantId(), env.now());
@@ -122,7 +122,7 @@ final class WaitingRoomCommands {
     // 진행 중이면 대상이 이미 탈락했거나 기권했는지 확인한다
     private static void requireOutOfThePlay(Room room, String participantId) {
         if (room.phase() == RoomPhase.PLAYING && GameCommands.canHoldRoom(room, participantId)) {
-            throw new RoomException("NOT_ELIMINATED");
+            throw new RoomException(ErrorCode.NOT_ELIMINATED);
         }
     }
 
@@ -151,10 +151,10 @@ final class WaitingRoomCommands {
     static void takeHost(Room room, Participant actor, JsonNode payload) {
         requireEmpty(payload);
         if (!room.hostTakeoverOpen()) {
-            throw new RoomException("HOST_TAKEOVER_CLOSED");
+            throw new RoomException(ErrorCode.HOST_TAKEOVER_CLOSED);
         }
         if (!Capabilities.canTakeHost(room, actor.participantId())) {
-            throw new RoomException("FORBIDDEN");
+            throw new RoomException(ErrorCode.FORBIDDEN);
         }
         room.setHost(actor.participantId());
     }
@@ -162,7 +162,7 @@ final class WaitingRoomCommands {
     // 방이 대기 단계인지 확인한다
     private static void requireWaiting(Room room) {
         if (room.phase() != RoomPhase.WAITING) {
-            throw new RoomException("NOT_WAITING");
+            throw new RoomException(ErrorCode.NOT_WAITING);
         }
     }
 

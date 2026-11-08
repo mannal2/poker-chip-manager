@@ -18,6 +18,7 @@ import xyz.jwlee.poker.game.settings.SettingsValidator;
 import xyz.jwlee.poker.server.auth.SessionIdentity;
 import xyz.jwlee.poker.server.registry.RoomCodes;
 import xyz.jwlee.poker.server.registry.RoomRegistry;
+import xyz.jwlee.poker.server.room.ErrorCode;
 import xyz.jwlee.poker.server.room.Fingerprint;
 import xyz.jwlee.poker.server.room.Participant;
 import xyz.jwlee.poker.server.room.RequestLedger;
@@ -60,7 +61,7 @@ class RoomController {
         String code = f.string("code");
         String name = f.string("name");
         return bind(request, f, "join\n" + code + "\n" + name, 200, identity -> {
-            String canonical = RoomCodes.normalize(code).orElseThrow(() -> new RoomException("ROOM_NOT_FOUND"));
+            String canonical = RoomCodes.normalize(code).orElseThrow(() -> new RoomException(ErrorCode.ROOM_NOT_FOUND));
             return registry.join(canonical, name, identity::bindingIn, identity::bind, RoomController::normalized);
         });
     }
@@ -70,11 +71,11 @@ class RoomController {
     ResponseEntity<ObjectNode> state(@PathVariable String roomId, HttpServletRequest request) {
         HttpSession session = request.getSession(false);
         if (session == null) {
-            throw new RoomException("NO_SESSION");
+            throw new RoomException(ErrorCode.NO_SESSION);
         }
         // Not bound, or bound to a seat this session no longer holds: both look like a missing room.
         SeatBinding binding = SessionIdentity.from(session).bindingIn(roomId)
-                .orElseThrow(() -> new RoomException("ROOM_NOT_FOUND"));
+                .orElseThrow(() -> new RoomException(ErrorCode.ROOM_NOT_FOUND));
         RoomSnapshot snapshot = registry.withRoom(roomId,
                 room -> SnapshotWriter.snapshot(room, member(room.seatOf(binding))));
         return ResponseEntity.ok().header(HttpHeaders.CACHE_CONTROL, "no-store").body(snapshot.json());
@@ -88,7 +89,7 @@ class RoomController {
         String fingerprint = Fingerprint.sha256(payload);
         HttpSession session = request.getSession(false);
         if (session == null) {
-            throw new RoomException("NO_SESSION");
+            throw new RoomException(ErrorCode.NO_SESSION);
         }
         SessionIdentity identity = SessionIdentity.from(session);
         return identity.ledgerFor(f.streamId).runOnce(f.requestId, f.sequence, fingerprint, () -> {
@@ -100,7 +101,7 @@ class RoomController {
 
     // 세션이 지금 들고 있는 자리로 응답을 만든다
     private ResponseEntity<ObjectNode> respond(int status, String roomId, SessionIdentity identity) {
-        SeatBinding binding = identity.bindingIn(roomId).orElseThrow(() -> new RoomException("ROOM_NOT_FOUND"));
+        SeatBinding binding = identity.bindingIn(roomId).orElseThrow(() -> new RoomException(ErrorCode.ROOM_NOT_FOUND));
         ObjectNode body = registry.withRoom(roomId, room -> entry(room, member(room.seatOf(binding))));
         return ResponseEntity.status(status).header(HttpHeaders.CACHE_CONTROL, "no-store").body(body);
     }
@@ -119,12 +120,12 @@ class RoomController {
 
     // 참가자가 없으면 방을 찾을 수 없다는 예외를 던진다
     private static Participant member(Optional<Participant> p) {
-        return p.orElseThrow(() -> new RoomException("ROOM_NOT_FOUND"));
+        return p.orElseThrow(() -> new RoomException(ErrorCode.ROOM_NOT_FOUND));
     }
 
     // 이름을 정규화하고 규칙에 어긋나면 예외를 던진다
     private static String normalized(String name) {
-        return SettingsValidator.normalizeName(name).orElseThrow(() -> new RoomException("INVALID_NAME"));
+        return SettingsValidator.normalizeName(name).orElseThrow(() -> new RoomException(ErrorCode.INVALID_NAME));
     }
 
     // 생성/입장 요청의 공통 필드(스트림, 요청 id, 순번)를 검증해 담는다

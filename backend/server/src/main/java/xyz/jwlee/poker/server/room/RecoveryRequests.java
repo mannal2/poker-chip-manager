@@ -41,7 +41,7 @@ public final class RecoveryRequests {
         long waiting = requests.values().stream().filter(r -> r.participantId().equals(participantId)
                 && r.statusAt(now) == Status.PENDING).count();
         if (waiting >= MAX_PER_SEAT) {
-            throw new RoomException("RECOVERY_LIMIT");
+            throw new RoomException(ErrorCode.RECOVERY_LIMIT);
         }
         Request request = new Request(id, participantId, now, now.plus(RoomLifecycle.RECOVERY_REQUEST_LIFETIME),
                 Status.PENDING, null, null);

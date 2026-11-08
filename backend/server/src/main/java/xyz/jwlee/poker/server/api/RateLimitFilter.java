@@ -12,6 +12,7 @@ import java.time.Duration;
 import java.util.Objects;
 import java.util.regex.Pattern;
 import org.springframework.web.filter.OncePerRequestFilter;
+import xyz.jwlee.poker.server.room.ErrorCode;
 import xyz.jwlee.poker.server.support.TokenBuckets;
 
 // 명령과 입장 시도와 새 세션의 빈도를 세어 한도를 넘으면 429로 거절하는 필터
@@ -87,7 +88,7 @@ final class RateLimitFilter extends OncePerRequestFilter {
 
     // 429 본문과 다시 시도할 시각을 쓴다
     private static void refuse(HttpServletResponse response, long retryAfterSeconds) throws IOException {
-        ApiError error = ApiError.of("RATE_LIMITED");
+        ApiError error = ApiError.of(ErrorCode.RATE_LIMITED);
         response.setStatus(429);
         response.setContentType("application/json");
         response.setCharacterEncoding(StandardCharsets.UTF_8.name());

@@ -1,6 +1,7 @@
 package xyz.jwlee.poker.server.api;
 
 import tools.jackson.databind.JsonNode;
+import xyz.jwlee.poker.server.room.ErrorCode;
 import xyz.jwlee.poker.server.room.RoomException;
 import xyz.jwlee.poker.server.support.Protocol;
 
@@ -25,7 +26,7 @@ final class Envelope {
             throw invalid();
         }
         if (version.asInt() != Protocol.VERSION) {
-            throw new RoomException("PROTOCOL_INCOMPATIBLE");
+            throw new RoomException(ErrorCode.PROTOCOL_INCOMPATIBLE);
         }
         return version.asInt();
     }
@@ -57,6 +58,6 @@ final class Envelope {
 
     // 입력 형식 오류 예외를 만든다
     static RoomException invalid() {
-        return new RoomException("INVALID_INPUT");
+        return new RoomException(ErrorCode.INVALID_INPUT);
     }
 }

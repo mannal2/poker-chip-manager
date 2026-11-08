@@ -91,7 +91,7 @@ class RequestLedgerTest {
     @Test
     void runOnceRecordsARejectionAndRethrows() {
         var ledger = new RequestLedger();
-        var refusal = new RoomException("ROOM_FULL");
+        var refusal = new RoomException(ErrorCode.ROOM_FULL);
 
         assertThatThrownBy(() -> ledger.runOnce("a", 1, "f", () -> {
             throw refusal;

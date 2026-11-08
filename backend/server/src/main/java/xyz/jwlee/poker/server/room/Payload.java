@@ -98,6 +98,6 @@ final class Payload {
 
     // 입력 형식 오류 예외를 만든다
     static RoomException invalid() {
-        return new RoomException("INVALID_INPUT");
+        return new RoomException(ErrorCode.INVALID_INPUT);
     }
 }

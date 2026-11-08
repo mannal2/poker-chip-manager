@@ -16,6 +16,7 @@ import tools.jackson.databind.json.JsonMapper;
 import xyz.jwlee.poker.server.auth.SessionIdentity;
 import xyz.jwlee.poker.server.auth.WebSocketHandshakeGuard;
 import xyz.jwlee.poker.server.registry.RoomRegistry;
+import xyz.jwlee.poker.server.room.ErrorCode;
 import xyz.jwlee.poker.server.room.Participant;
 import xyz.jwlee.poker.server.room.Room;
 import xyz.jwlee.poker.server.room.RoomEnv;
@@ -204,7 +205,7 @@ class RoomSocketHandler extends TextWebSocketHandler {
 
     // 방이 없다는 거절이 아니면 그대로 다시 던진다
     private static void requireGone(RoomException e) {
-        if (!"ROOM_NOT_FOUND".equals(e.code())) {
+        if (!ErrorCode.ROOM_NOT_FOUND.name().equals(e.code())) {
             throw e;
         }
     }

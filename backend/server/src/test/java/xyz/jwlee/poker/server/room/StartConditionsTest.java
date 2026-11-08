@@ -9,12 +9,12 @@ class StartConditionsTest {
 
     @Test
     void aRoomOfOneNeedsMorePlayers() {
-        assertThat(StartConditions.blockReason(new CommandFixture(1).room, new StartGate())).contains("PLAYER_COUNT");
+        assertThat(StartConditions.blockReason(new CommandFixture(1).room, new StartGate())).contains(ErrorCode.PLAYER_COUNT);
     }
 
     @Test
     void aRoomWithoutADealerIsBlocked() {
-        assertThat(StartConditions.blockReason(new CommandFixture(2).room, new StartGate())).contains("NO_DEALER");
+        assertThat(StartConditions.blockReason(new CommandFixture(2).room, new StartGate())).contains(ErrorCode.NO_DEALER);
     }
 
     @Test
@@ -44,7 +44,7 @@ class StartConditionsTest {
         f.send("a", "SET_DEALER", "{\"participantId\":\"b\"}");
         f.room.replaceSettings(new RoomSettings(1000, 30, 20, f.room.settings().button()));
 
-        assertThat(StartConditions.blockReason(f.room, new StartGate())).contains("INVALID_SETTINGS");
+        assertThat(StartConditions.blockReason(f.room, new StartGate())).contains(ErrorCode.INVALID_SETTINGS);
     }
 
     @Test
@@ -52,7 +52,7 @@ class StartConditionsTest {
         CommandFixture f = new CommandFixture(2);
         f.room.setPhase(RoomPhase.PLAYING);
 
-        assertThat(StartConditions.blockReason(f.room, new StartGate())).contains("NOT_WAITING");
+        assertThat(StartConditions.blockReason(f.room, new StartGate())).contains(ErrorCode.NOT_WAITING);
     }
 
     // 끊긴 참가자가 있으면 시작할 수 없다.
@@ -62,7 +62,7 @@ class StartConditionsTest {
         f.send("a", "SET_DEALER", "{\"participantId\":\"b\"}");
         f.room.presence().detach("conn-b", Instant.EPOCH);
 
-        assertThat(StartConditions.blockReason(f.room, new StartGate())).contains("NOT_CONNECTED");
+        assertThat(StartConditions.blockReason(f.room, new StartGate())).contains(ErrorCode.NOT_CONNECTED);
     }
 
     // 한 번도 접속하지 않은 참가자도 시작을 막는다.
@@ -72,6 +72,6 @@ class StartConditionsTest {
         f.send("a", "SET_DEALER", "{\"participantId\":\"b\"}");
         f.room.addParticipant("c", "Carol", "cred", Instant.EPOCH);
 
-        assertThat(StartConditions.blockReason(f.room, new StartGate())).contains("NOT_CONNECTED");
+        assertThat(StartConditions.blockReason(f.room, new StartGate())).contains(ErrorCode.NOT_CONNECTED);
     }
 }

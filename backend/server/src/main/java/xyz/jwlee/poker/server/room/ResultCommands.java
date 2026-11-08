@@ -24,8 +24,8 @@ final class ResultCommands {
         JsonNode payload = request.payload();
         Payload.requireEmpty(payload);
         switch (room.phase()) {
-            case PLAYING -> throw new RoomException("ABORT_FIRST");
-            case WAITING -> throw new RoomException("INVALID_ACTION");
+            case PLAYING -> throw new RoomException(ErrorCode.ABORT_FIRST);
+            case WAITING -> throw new RoomException(ErrorCode.INVALID_ACTION);
             case RESULT -> {
                 room.returnToWaiting();
                 room.presence().restartAbsence(env.now());

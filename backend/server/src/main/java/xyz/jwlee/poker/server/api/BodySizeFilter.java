@@ -14,6 +14,7 @@ import java.io.InputStreamReader;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import org.springframework.web.filter.OncePerRequestFilter;
+import xyz.jwlee.poker.server.room.ErrorCode;
 
 // 요청 본문이 크기 한도를 넘으면 413으로 거절하는 필터
 /**
@@ -36,7 +37,7 @@ final class BodySizeFilter extends OncePerRequestFilter {
             throws ServletException, IOException {
         long declared = request.getContentLengthLong();
         if (declared > MAX_BYTES) {
-            error(response, 413, "BODY_TOO_LARGE");
+            error(response, 413, ErrorCode.BODY_TOO_LARGE);
             return;
         }
         if (declared >= 0) {
@@ -48,18 +49,18 @@ final class BodySizeFilter extends OncePerRequestFilter {
             body = request.getInputStream().readNBytes(MAX_BYTES + 1);
         } catch (IOException e) {
             // A truncated or malformed chunked body is the client's error.
-            error(response, 400, "INVALID_INPUT");
+            error(response, 400, ErrorCode.INVALID_INPUT);
             return;
         }
         if (body.length > MAX_BYTES) {
-            error(response, 413, "BODY_TOO_LARGE");
+            error(response, 413, ErrorCode.BODY_TOO_LARGE);
             return;
         }
         chain.doFilter(new ReplayedBody(request, body), response);
     }
 
     // 오류 본문을 JSON으로 직접 써서 응답한다
-    private static void error(HttpServletResponse response, int status, String code) throws IOException {
+    private static void error(HttpServletResponse response, int status, ErrorCode code) throws IOException {
         ApiError error = ApiError.of(code);
         response.setStatus(status);
         response.setContentType("application/json");

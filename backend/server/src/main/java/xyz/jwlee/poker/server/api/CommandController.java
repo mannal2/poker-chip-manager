@@ -16,6 +16,7 @@ import tools.jackson.databind.node.JsonNodeFactory;
 import tools.jackson.databind.node.ObjectNode;
 import xyz.jwlee.poker.server.auth.SessionIdentity;
 import xyz.jwlee.poker.server.registry.RoomRegistry;
+import xyz.jwlee.poker.server.room.ErrorCode;
 import xyz.jwlee.poker.server.room.CommandPipeline;
 import xyz.jwlee.poker.server.room.CommandRequest;
 import xyz.jwlee.poker.server.room.CommandResult;
@@ -68,7 +69,7 @@ class CommandController {
         SeatBinding binding = bindingIn(roomId, request);
         return registry.withRoom(roomId, room -> {
             RequestOutcome outcome = room.findRequest(seat(room, binding), requestId)
-                    .orElseThrow(() -> new RoomException("REQUEST_NOT_FOUND"));
+                    .orElseThrow(() -> new RoomException(ErrorCode.REQUEST_NOT_FOUND));
             return respond(outcome, room, binding);
         });
     }
@@ -91,7 +92,7 @@ class CommandController {
         String fingerprint = Fingerprint.sha256("control\n" + roomId + "\n" + expected);
         HttpSession session = request.getSession(false);
         if (session == null) {
-            throw new RoomException("NO_SESSION");
+            throw new RoomException(ErrorCode.NO_SESSION);
         }
         return SessionIdentity.from(session).ledgerFor(streamId).runOnce(requestId, sequence, fingerprint, () -> {
             SeatBinding binding = bindingIn(roomId, request);
@@ -115,7 +116,7 @@ class CommandController {
         return registry.withRoom(roomId, room -> {
             Participant me = seat(room, binding);
             if (!outcome.issuedTo().equals(me.participantId())) {
-                throw new RoomException("ROOM_NOT_FOUND");
+                throw new RoomException(ErrorCode.ROOM_NOT_FOUND);
             }
             ObjectNode o = JsonNodeFactory.instance.objectNode();
             o.put("requestId", outcome.requestId());
@@ -130,18 +131,18 @@ class CommandController {
 
     // 방 잠금 안에서 세션의 자격이 여는 자리를 찾는다
     private static Participant seat(Room room, SeatBinding binding) {
-        return room.seatOf(binding).orElseThrow(() -> new RoomException("ROOM_NOT_FOUND"));
+        return room.seatOf(binding).orElseThrow(() -> new RoomException(ErrorCode.ROOM_NOT_FOUND));
     }
 
     // 세션이 이 방에 들고 있는 자리 자격을 찾는다
     private static SeatBinding bindingIn(String roomId, HttpServletRequest request) {
         HttpSession session = request.getSession(false);
         if (session == null) {
-            throw new RoomException("NO_SESSION");
+            throw new RoomException(ErrorCode.NO_SESSION);
         }
         // Not bound: a missing room. Whether the binding still opens a seat is checked under the room lock.
         return SessionIdentity.from(session).bindingIn(roomId)
-                .orElseThrow(() -> new RoomException("ROOM_NOT_FOUND"));
+                .orElseThrow(() -> new RoomException(ErrorCode.ROOM_NOT_FOUND));
     }
 
     // 명령 처리 결과와 최신 방 상태를 응답 본문으로 만든다
@@ -160,7 +161,7 @@ class CommandController {
             o.putNull("latestState");
         }
         int status = outcome.outcome() == RequestOutcome.Outcome.APPLIED
-                ? 200 : ApiExceptionHandler.rejectionStatus(outcome.code());
+                ? 200 : ErrorCode.recordedStatus(outcome.code());
         return ResponseEntity.status(status).header(HttpHeaders.CACHE_CONTROL, "no-store").body(o);
     }
 

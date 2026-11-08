@@ -58,7 +58,7 @@ final class GameCommands {
         try {
             created = Tournament.create(new GameSettings(names, s.initial(), s.sb(), s.bb(), s.button()), ctx);
         } catch (IllegalArgumentException e) {
-            throw new RoomException("INVALID_SETTINGS");
+            throw new RoomException(ErrorCode.INVALID_SETTINGS);
         }
         TransitionResult.Applied applied =
                 applied(GameEngine.transition(created, new GameCommand.StartTournament(), ctx));
@@ -77,7 +77,7 @@ final class GameCommands {
             case "FOLD" -> {
                 // Folding when nothing is owed is almost always a mis-tap, so the server refuses it.
                 if (Legal.of(game).callAdditional() == 0) {
-                    throw new RoomException("INVALID_ACTION");
+                    throw new RoomException(ErrorCode.INVALID_ACTION);
                 }
                 yield new GameCommand.Fold(playerId);
             }
@@ -93,11 +93,11 @@ final class GameCommands {
     static void undo(Room room, Participant actor, CommandRequest request, RoomEnv env) {
         GameState game = requireGame(room);
         if (room.hasPlayerLeft()) {
-            throw new RoomException("UNDO_LOCKED");
+            throw new RoomException(ErrorCode.UNDO_LOCKED);
         }
         // Undoing the end of a tournament brings a game back to life, so it is a start in all but name.
         if (game.status == TournamentStatus.ENDED && env.gate().isClosed()) {
-            throw new RoomException("UNDO_DEPLOY_PENDING");
+            throw new RoomException(ErrorCode.UNDO_DEPLOY_PENDING);
         }
         run(room, new GameCommand.Undo(), env);
     }
@@ -135,11 +135,11 @@ final class GameCommands {
         requirePlaying(room);
         requireEmpty(request.payload());
         if (room.isHost(actor.participantId())) {
-            throw new RoomException("TRANSFER_HOST_FIRST");
+            throw new RoomException(ErrorCode.TRANSFER_HOST_FIRST);
         }
         String playerId = room.playerIds().get(actor.participantId());
         if (playerId == null) {
-            throw new RoomException("INVALID_ACTION");
+            throw new RoomException(ErrorCode.INVALID_ACTION);
         }
         run(room, new GameCommand.Forfeit(playerId, false), env);
     }
@@ -170,7 +170,7 @@ final class GameCommands {
         GameState game = requirePlaying(room);
         Hand hand = game.hand;
         if (hand == null || hand.phase != Phase.SETTLEMENT) {
-            throw new RoomException("INVALID_ACTION");
+            throw new RoomException(ErrorCode.INVALID_ACTION);
         }
         JsonNode body = object(request.payload());
         int potIndex = integer(body, "potIndex");
@@ -222,14 +222,14 @@ final class GameCommands {
     private static TransitionResult.Applied applied(TransitionResult result) {
         return switch (result) {
             case TransitionResult.Applied a -> a;
-            case TransitionResult.Rejected r -> throw new RoomException(r.code().name());
+            case TransitionResult.Rejected r -> throw RoomException.rule(r.code());
         };
     }
 
     // 게임이 있는지 확인하고 돌려준다
     private static GameState requireGame(Room room) {
         if (room.game() == null) {
-            throw new RoomException("INVALID_ACTION");
+            throw new RoomException(ErrorCode.INVALID_ACTION);
         }
         return room.game();
     }
@@ -239,7 +239,7 @@ final class GameCommands {
     private static GameState requirePlaying(Room room) {
         GameState game = requireGame(room);
         if (room.phase() != RoomPhase.PLAYING || game.status != TournamentStatus.PLAYING) {
-            throw new RoomException("INVALID_ACTION");
+            throw new RoomException(ErrorCode.INVALID_ACTION);
         }
         return game;
     }
@@ -248,7 +248,7 @@ final class GameCommands {
     private static String requireTurn(Room room, Participant actor, GameState game) {
         String playerId = room.playerIds().get(actor.participantId());
         if (playerId == null || game.hand == null || !playerId.equals(game.hand.actorId)) {
-            throw new RoomException("NOT_YOUR_TURN");
+            throw new RoomException(ErrorCode.NOT_YOUR_TURN);
         }
         return playerId;
     }

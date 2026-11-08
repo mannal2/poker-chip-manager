@@ -14,6 +14,7 @@ import org.springframework.security.web.csrf.CsrfException;
 import org.springframework.security.web.csrf.CsrfFilter;
 import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
 import org.springframework.security.web.csrf.HttpSessionCsrfTokenRepository;
+import xyz.jwlee.poker.server.room.ErrorCode;
 
 // 로그인 없이 세션 쿠키, CSRF, Origin 검사로 요청을 보호하는 보안 설정
 /**
@@ -55,9 +56,9 @@ class SecurityConfig {
                 .addFilterBefore(new OriginFilter(Set.copyOf(props.allowedOrigins())), CsrfFilter.class)
                 .addFilterBefore(new SessionGuardFilter(), CsrfFilter.class)
                 .exceptionHandling(e -> e
-                        .authenticationEntryPoint((req, res, ex) -> JsonErrors.write(res, 401, "NO_SESSION"))
+                        .authenticationEntryPoint((req, res, ex) -> JsonErrors.write(res, 401, ErrorCode.NO_SESSION))
                         .accessDeniedHandler((req, res, ex) -> JsonErrors.write(
-                                res, 403, ex instanceof CsrfException ? "CSRF_REJECTED" : "FORBIDDEN")));
+                                res, 403, ex instanceof CsrfException ? ErrorCode.CSRF_REJECTED : ErrorCode.FORBIDDEN)));
         return http.build();
     }
 

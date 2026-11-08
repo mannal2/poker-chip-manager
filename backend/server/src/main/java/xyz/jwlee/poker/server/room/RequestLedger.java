@@ -62,9 +62,9 @@ public final class RequestLedger {
     public java.util.Optional<RequestOutcome> replayOf(String requestId, long sequence, String fingerprint) {
         return switch (check(requestId, sequence, fingerprint)) {
             case Check.Replay replay -> java.util.Optional.of(replay.outcome());
-            case Check.Conflict c -> throw new RoomException("REQUEST_CONFLICT");
-            case Check.Expired e -> throw new RoomException("RESULT_EXPIRED");
-            case Check.Gap g -> throw new RoomException("SEQUENCE_GAP");
+            case Check.Conflict c -> throw new RoomException(ErrorCode.REQUEST_CONFLICT);
+            case Check.Expired e -> throw new RoomException(ErrorCode.RESULT_EXPIRED);
+            case Check.Gap g -> throw new RoomException(ErrorCode.SEQUENCE_GAP);
             case Check.New n -> java.util.Optional.empty();
         };
     }
@@ -103,7 +103,7 @@ public final class RequestLedger {
             if (replay.isPresent()) {
                 RequestOutcome first = replay.get();
                 if (first.outcome() == RequestOutcome.Outcome.REJECTED) {
-                    throw new RoomException(first.code());
+                    throw RoomException.replayed(first.code());
                 }
                 return respond.apply(first);
             }

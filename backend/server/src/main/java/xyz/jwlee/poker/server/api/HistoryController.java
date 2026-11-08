@@ -16,6 +16,7 @@ import tools.jackson.databind.node.ObjectNode;
 import xyz.jwlee.poker.game.event.GameEvent;
 import xyz.jwlee.poker.server.auth.SessionIdentity;
 import xyz.jwlee.poker.server.registry.RoomRegistry;
+import xyz.jwlee.poker.server.room.ErrorCode;
 import xyz.jwlee.poker.server.room.EventView;
 import xyz.jwlee.poker.server.room.Room;
 import xyz.jwlee.poker.server.room.RoomException;
@@ -48,22 +49,22 @@ class HistoryController {
             @RequestParam(defaultValue = "" + DEFAULT_LIMIT) int limit,
             HttpServletRequest request) {
         if (after < 0 || limit < 1) {
-            throw new RoomException("INVALID_INPUT");
+            throw new RoomException(ErrorCode.INVALID_INPUT);
         }
         int page = Math.min(limit, MAX_LIMIT);
         HttpSession session = request.getSession(false);
         if (session == null) {
-            throw new RoomException("NO_SESSION");
+            throw new RoomException(ErrorCode.NO_SESSION);
         }
         SeatBinding binding = SessionIdentity.from(session).bindingIn(roomId)
-                .orElseThrow(() -> new RoomException("ROOM_NOT_FOUND"));
+                .orElseThrow(() -> new RoomException(ErrorCode.ROOM_NOT_FOUND));
         return registry.withRoom(roomId, room -> {
             if (room.seatOf(binding).isEmpty()) {
-                throw new RoomException("ROOM_NOT_FOUND");
+                throw new RoomException(ErrorCode.ROOM_NOT_FOUND);
             }
             if (room.game() == null || !room.game().tournamentId.equals(tournamentId)) {
                 return ResponseEntity.status(410).header(HttpHeaders.CACHE_CONTROL, "no-store")
-                        .body(ApiError.of("TOURNAMENT_CHANGED"));
+                        .body(ApiError.of(ErrorCode.TOURNAMENT_CHANGED));
             }
             return ResponseEntity.ok().header(HttpHeaders.CACHE_CONTROL, "no-store").body(page(room, after, page));
         });

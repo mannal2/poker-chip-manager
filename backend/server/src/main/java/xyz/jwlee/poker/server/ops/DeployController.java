@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 import tools.jackson.databind.JsonNode;
 import xyz.jwlee.poker.server.registry.RoomRegistry;
+import xyz.jwlee.poker.server.room.ErrorCode;
 import xyz.jwlee.poker.server.room.RoomException;
 
 // 배포 스크립트가 쓰는 내부 준비·상태·해제 경로
@@ -55,7 +56,7 @@ class DeployController {
     Map<String, Object> release(@RequestBody(required = false) JsonNode body) {
         String deploymentId = identity(body, "deploymentId");
         if (!processId.equals(identity(body, "processId")) || !registry.releaseDeployment(deploymentId)) {
-            throw new RoomException("DEPLOY_MISMATCH");
+            throw new RoomException(ErrorCode.DEPLOY_MISMATCH);
         }
         return Map.of("result", "RELEASED", "processId", processId);
     }
@@ -65,7 +66,7 @@ class DeployController {
         JsonNode value = body == null ? null : body.get(field);
         if (value == null || !value.isString() || value.asString().isBlank()
                 || value.asString().length() > MAX_ID_LENGTH) {
-            throw new RoomException("INVALID_INPUT");
+            throw new RoomException(ErrorCode.INVALID_INPUT);
         }
         return value.asString();
     }

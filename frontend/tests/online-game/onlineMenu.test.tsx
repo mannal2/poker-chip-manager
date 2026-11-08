@@ -5,12 +5,12 @@ import { fixture } from './fixtures';
 
 // 실제 계약 스냅샷으로 역할과 단계별 관리 메뉴를 확인한다
 it.each([
-  ['WAITING', true, ['앱 홈', '방 나가기', '방장 넘기기', '참가자 내보내기']],
-  ['WAITING', false, ['앱 홈', '방 나가기']],
-  ['PLAYING', true, ['앱 홈', '기권', '방장 넘기기', '토너먼트 중단']],
-  ['PLAYING', false, ['앱 홈', '기권']],
-  ['RESULT', true, ['앱 홈', '방 나가기', '방장 넘기기', '다시 준비하기']],
-  ['RESULT', false, ['앱 홈', '방 나가기']],
+  ['WAITING', true, ['홈', '방 나가기', '방장 넘기기', '참가자 내보내기']],
+  ['WAITING', false, ['홈', '방 나가기']],
+  ['PLAYING', true, ['홈', '기권', '방장 넘기기', '토너먼트 중단']],
+  ['PLAYING', false, ['홈', '기권']],
+  ['RESULT', true, ['홈', '방 나가기', '방장 넘기기', '다시 준비하기']],
+  ['RESULT', false, ['홈', '방 나가기']],
 ] as const)('maps %s host=%s', (phase, host, expected) => {
   const snapshot = fixture('snapshot-playing');
   if (!isRoomSnapshot(snapshot)) throw Error('fixture');
@@ -52,5 +52,5 @@ it.each(['eliminated', 'forfeited'] as const)('hides self forfeit for %s players
   const target = snapshot.participants.find((p) => p.participantId !== snapshot.hostId)!;
   snapshot.you.participantId = target.participantId;
   snapshot.game.players.find((p) => p.id === target.playerId)![flag] = true;
-  expect(menuItems(snapshot, new Set()).map((i) => i.label)).toEqual(['앱 홈']);
+  expect(menuItems(snapshot, new Set()).map((i) => i.label)).toEqual(['홈']);
 });

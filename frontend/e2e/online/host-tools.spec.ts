@@ -23,6 +23,8 @@ test('kicks a waiting participant and transfers the host', async ({ page, browse
     await expect(guest.getByRole('alert', { name: '' })).toBeVisible();
     await expect(page.locator('.seat')).toHaveCount(1);
     await guest.goto(`/online/?code=${code}`);
+    // 이전 참가 자격의 자동 복귀가 끝난 뒤 신규 참가 정보를 입력한다
+    await expect(guest.getByRole('alert')).toHaveText('방을 찾을 수 없습니다.');
     await guest.getByLabel('이름', { exact: true }).fill('Bob');
     await guest.getByRole('button', { name: '방 참가', exact: true }).click();
     await expect(page.locator('.seat')).toHaveCount(2);
@@ -40,7 +42,7 @@ test('kicks a waiting participant and transfers the host', async ({ page, browse
       'false',
     );
     await menu(guest, '방장 넘기기', 'Alice');
-    await menu(page, '앱 홈');
+    await menu(page, '홈');
     await expect(page).toHaveURL(/\/local\/$/);
     await page.goto('/online/');
     await expect(page.locator('.seat')).toHaveCount(2);
@@ -196,6 +198,7 @@ test('rejoins from the same kicked browser screen', async ({ page, browser }, te
         });
     });
     await guest.goto(`/online/?code=${code}`);
+    await expect(guest.getByRole('alert')).toHaveText('방을 찾을 수 없습니다.');
     await guest.getByLabel('이름', { exact: true }).fill('Bob');
     await guest.getByRole('button', { name: '방 참가', exact: true }).click();
     try {

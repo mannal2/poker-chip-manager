@@ -3,6 +3,7 @@ import type { RoomParticipant, RoomSnapshot, ServerCommand } from '../api/types'
 // 관리 메뉴 항목 하나
 export interface MenuItem {
   label: string;
+  home?: boolean;
   command?: ServerCommand;
   targets?: RoomParticipant[];
   confirm?: string;
@@ -24,7 +25,7 @@ export function menuItems(snapshot: RoomSnapshot, connectedIds: ReadonlySet<stri
   const others = snapshot.participants.filter(
     (p) => p.participantId !== snapshot.you.participantId,
   );
-  const items: MenuItem[] = [{ label: '앱 홈' }];
+  const items: MenuItem[] = [{ label: '홈', home: true }];
   if (snapshot.roomPhase !== 'PLAYING')
     items.push({ label: '방 나가기', command: { type: 'LEAVE', handScoped: false } });
   if (snapshot.roomPhase === 'PLAYING') {
@@ -104,7 +105,7 @@ export function OnlineMenu({
       <button onClick={() => void copyCode()}>방코드:[{snapshot.code}]</button>
       {items.map((item) => (
         <div key={item.label}>
-          <button onClick={() => (item.label === '앱 홈' ? home() : choose(item))}>
+          <button onClick={() => (item.home ? home() : choose(item))}>
             {item.label}
           </button>
         </div>

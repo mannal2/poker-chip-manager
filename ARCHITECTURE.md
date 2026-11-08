@@ -93,7 +93,7 @@ HTML마다 자기 진입점을 로드한다. `local/index.html`은 [main.local.t
 `/local/`은 앱 홈과 단일 기기 게임을 조합하는 `LocalGamePage`, `/online/`은 `OnlineApp`이며 `/`는 `/local/`로 문서 이동한다. 모드를 고르는 앱 홈은 `/local/`에 있다.
 온라인의 `useOnlineUpdate`는 서버 HTML을 `no-cache`로 조회해 현재 화면의 JS·CSS 목록과 비교한다. 최초 진입·화면 복귀·1분 주기로 확인하고, 새 배포가 있으면 `새버전 새로고침` 버튼을 표시한다. 미확정 요청과 전송 대기 초안이 있을 때는 `OnlineController.canReload`가 새로고침을 막는다. 프런트엔드 Nginx는 HTML과 로컬 서비스 워커에 `Cache-Control: no-cache`를 설정한다.
 진입점이 나뉘어 온라인 번들에는 로컬 저장소·PWA 등록 코드가 들어가지 않는다. 온라인은 공통 게임 화면을 사용하고 라우터 라이브러리 없이 방 수명을 관리한다.
-온라인 관리 작업의 카드 선택 상태와 권한 검사는 `RoomPage`에서 관리한다. `GameScreen`의 선택 표시 슬롯이 하단 조작부를 대체하고, `Table`·`PlayerSeat`는 대상 카드만 강조하고 입력을 받는다. 공통 게임 규칙과 단일 기기 조작에는 관리 선택 상태를 저장하지 않는다.
+온라인 관리 작업의 카드 선택 상태와 권한 검사는 `RoomPage`에서 관리한다. `GameScreen`의 선택 표시 슬롯이 하단 조작부를 대체하고, `Table`·`PlayerSeat`는 대상 카드만 강조하고 입력을 받는다. 공통 게임 규칙과 단일 기기 조작에는 관리 선택 상태를 저장하지 않는다. 기권과 기권 처리는 `RoomPage`의 두 단계 확인(실행 확인 → 방에 남기·나가기)을 거친 뒤 명령을 순서대로 보낸다.
 
 게임 설정은 [settings.ts](frontend/src/game/settings.ts)의 `GameSettings`와 `validateSettings`에서 시작한다.
 턴과 딜러 위치는 [positions.ts](frontend/src/game/positions.ts)의 `nextSeat`, `nextPositions`가 계산한다.

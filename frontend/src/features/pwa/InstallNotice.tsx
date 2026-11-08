@@ -23,7 +23,11 @@ export function InstallNotice({ install }: { install: ReturnType<typeof useInsta
           선택하세요.
         </p>
       ) : null}
-      <div className="install-actions">
+      {install.pending && <p role="status">설치 창에서 선택해주세요.</p>}
+      <div className="dialog-actions">
+        <button disabled={install.pending} onClick={install.close}>
+          나중에
+        </button>
         {install.canPrompt && (
           <button
             className="primary"
@@ -33,10 +37,6 @@ export function InstallNotice({ install }: { install: ReturnType<typeof useInsta
             앱 설치
           </button>
         )}
-        {install.pending && <p role="status">설치 창에서 선택해주세요.</p>}
-        <button disabled={install.pending} onClick={install.close}>
-          나중에
-        </button>
       </div>
     </Dialog>
   );

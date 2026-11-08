@@ -204,14 +204,6 @@ fieldset {
   margin-top: calc(6 * var(--u));
 }
 
-.install-actions {
-  display: flex;
-  gap: calc(8 * var(--u));
-}
-.install-actions > * {
-  flex: 1;
-}
-
 .settlement-controls {
   position: absolute;
   top: calc(10 * var(--u));

@@ -211,11 +211,4 @@ class WaitingRoomCommandsTest {
         rejected("NOT_WAITING", "a", "RENAME", "{\"name\":\"Zed\"}");
         ok("b", "LEAVE", "{}");
     }
-
-    @Test
-    void leaveIsRefusedWhilePlaying() {
-        f.room.setPhase(RoomPhase.PLAYING);
-
-        rejected("NOT_WAITING", "b", "LEAVE", "{}");
-    }
 }

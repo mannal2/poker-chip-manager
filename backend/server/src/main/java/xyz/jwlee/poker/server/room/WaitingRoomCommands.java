@@ -81,26 +81,44 @@ final class WaitingRoomCommands {
     }
 
     // 본인이 아닌 참가자를 방에서 내보낸다
+    /**
+     * In the waiting room anyone else; while a game runs only someone already out of it (eliminated or
+     * forfeited), so a player with chips leaves the game only through a forfeit first.
+     */
     static void kick(Room room, Participant actor, CommandRequest request, RoomEnv env) {
-        requireWaiting(room);
+        if (room.phase() != RoomPhase.PLAYING) {
+            requireWaiting(room);
+        }
         String target = existing(room, string(object(request.payload()), "participantId"));
         if (target.equals(actor.participantId())) {
             throw invalid();
         }
+        requireOutOfThePlay(room, target);
         room.removeParticipant(target, env.now());
     }
 
-    // 게임이 진행 중이 아닐 때 요청자가 방을 떠난다
-    /** Allowed in the waiting room and on the result screen, not while a game runs. */
+    // 요청자가 방을 떠난다
+    /**
+     * Allowed in the waiting room and on the result screen; while a game runs only for someone already out of
+     * it, and never for the host, who hands the room over first.
+     */
     static void leave(Room room, Participant actor, CommandRequest request, RoomEnv env) {
         JsonNode payload = request.payload();
-        if (room.phase() == RoomPhase.PLAYING) {
-            throw new RoomException("NOT_WAITING");
-        }
         if (payload != null && !payload.isNull() && !(payload.isObject() && payload.isEmpty())) {
             throw invalid();
         }
+        if (room.phase() == RoomPhase.PLAYING && room.isHost(actor.participantId())) {
+            throw new RoomException("TRANSFER_HOST_FIRST");
+        }
+        requireOutOfThePlay(room, actor.participantId());
         room.removeParticipant(actor.participantId(), env.now());
+    }
+
+    // 진행 중이면 대상이 이미 탈락했거나 기권했는지 확인한다
+    private static void requireOutOfThePlay(Room room, String participantId) {
+        if (room.phase() == RoomPhase.PLAYING && GameCommands.canHoldRoom(room, participantId)) {
+            throw new RoomException("NOT_ELIMINATED");
+        }
     }
 
     // 방장 자리를 다른 참가자에게 넘긴다

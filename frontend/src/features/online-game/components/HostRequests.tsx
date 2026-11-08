@@ -48,6 +48,7 @@ export function HostRequests({
               <p>기존 플레이어가 맞는지 확인 후 승인하세요.</p>
               <div className="host-request-actions">
                 <button
+                  className="primary"
                   aria-disabled={busy}
                   onClick={() => decide('RECOVERY_APPROVE', request.recoveryRequestId)}
                 >

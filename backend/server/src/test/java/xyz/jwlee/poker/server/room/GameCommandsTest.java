@@ -481,12 +481,22 @@ class GameCommandsTest {
                 .isEqualTo(new xyz.jwlee.poker.game.event.EventDetails.PlayerForfeited("p2", true)));
     }
 
-    // 접속 중이거나 게임에 없는 대상, 방장 본인은 기권시킬 수 없고 방장이 아니면 거절되는지 확인한다.
+    // 방장은 접속 중인 참가자도 연결 여부와 관계없이 기권 처리할 수 있는지 확인한다.
     @Test
-    void forfeitingADisconnectedParticipantIsRefusedOutsideItsRules() {
+    void theHostForfeitsAConnectedParticipantToo() {
         GameFixture f = GameFixture.started(3, 0);
 
-        assertRejected(f, f.send("a", "FORFEIT_DISCONNECTED", "{\"participantId\":\"c\"}"), "TARGET_CONNECTED");
+        f.check(f.send("a", "FORFEIT_DISCONNECTED", "{\"participantId\":\"c\"}"));
+
+        assertThat(f.room.game().players.get(2).forfeited).isTrue();
+        assertThat(f.room.hasParticipant("c")).isTrue();
+    }
+
+    // 게임에 없는 대상, 방장 본인은 기권시킬 수 없고 방장이 아니면 거절되는지 확인한다.
+    @Test
+    void forfeitingAParticipantIsRefusedOutsideItsRules() {
+        GameFixture f = GameFixture.started(3, 0);
+
         assertRejected(f, f.send("a", "FORFEIT_DISCONNECTED", "{\"participantId\":\"zzz\"}"), "INVALID_INPUT");
         assertRejected(f, f.send("a", "FORFEIT_DISCONNECTED", "{\"participantId\":\"a\"}"), "INVALID_INPUT");
         f.room.presence().detach("conn-c", java.time.Instant.EPOCH);
@@ -523,12 +533,71 @@ class GameCommandsTest {
         assertThat(f.room.hostId()).isEqualTo("c");
     }
 
+    // 진행 중에는 아직 게임에 남은 사람의 나가기와 내보내기를 거절하는지 확인한다.
     @Test
-    void leaveAndKickStayRefusedWhilePlaying() {
+    void leaveAndKickAreRefusedForSomeoneStillInTheGame() {
         GameFixture f = GameFixture.started(3, 0);
 
-        assertRejected(f, f.send("b", "LEAVE", "{}"), "NOT_WAITING");
-        assertRejected(f, f.send("a", "KICK", "{\"participantId\":\"b\"}"), "NOT_WAITING");
+        assertRejected(f, f.send("b", "LEAVE", "{}"), "NOT_ELIMINATED");
+        assertRejected(f, f.send("a", "KICK", "{\"participantId\":\"b\"}"), "NOT_ELIMINATED");
+        assertThat(f.room.hasParticipant("b")).isTrue();
+    }
+
+    // 기권한 사람은 진행 중에도 나갈 수 있고, 게임 좌석은 남은 채 무르기가 잠기는지 확인한다.
+    @Test
+    void aForfeitedParticipantLeavesWhilePlaying() {
+        GameFixture f = GameFixture.started(3, 0);
+        f.check(f.send("b", "FORFEIT", "{}"));
+
+        f.check(f.send("b", "LEAVE", "{}"));
+
+        assertThat(f.room.hasParticipant("b")).isFalse();
+        assertThat(f.room.phase()).isEqualTo(RoomPhase.PLAYING);
+        assertThat(f.room.game().players.get(1).forfeited).isTrue();
+        assertThat(f.room.playerIds()).containsEntry("b", "p1");
+        assertThat(f.room.hasPlayerLeft()).isTrue();
+    }
+
+    // 방장이 기권 처리 후 바로 내보내도 남은 두 사람의 게임이 이어지는지 확인한다.
+    @Test
+    void theHostForfeitsAndKicksAParticipantAndThePlayGoesOn() {
+        GameFixture f = GameFixture.started(3, 0);
+
+        f.check(f.send("a", "FORFEIT_DISCONNECTED", "{\"participantId\":\"c\"}"));
+        f.check(f.send("a", "KICK", "{\"participantId\":\"c\"}"));
+
+        assertThat(f.room.hasParticipant("c")).isFalse();
+        assertThat(f.room.phase()).isEqualTo(RoomPhase.PLAYING);
+        assertThat(f.room.game().hand).isNotNull();
+        String actor = f.room.game().hand.actorId;
+        assertThat(actor).isIn("p0", "p1");
+        f.check(f.send(actor.equals("p0") ? "a" : "b", "FOLD", null));
+        assertThat(f.room.game().players.stream().mapToInt(p -> p.stack).sum() + f.room.game().pot).isEqualTo(3000);
+    }
+
+    // 방장 자신은 진행 중에 나가려면 먼저 방장을 넘겨야 하고, 넘긴 뒤 기권하면 나갈 수 있는지 확인한다.
+    @Test
+    void theHostHandsTheRoomOverBeforeLeavingWhilePlaying() {
+        GameFixture f = GameFixture.started(3, 0);
+
+        assertRejected(f, f.send("a", "LEAVE", "{}"), "TRANSFER_HOST_FIRST");
+        f.check(f.send("a", "TRANSFER_HOST", "{\"participantId\":\"c\"}"));
+        f.check(f.send("a", "FORFEIT", "{}"));
+        f.check(f.send("a", "LEAVE", "{}"));
+        assertThat(f.room.hasParticipant("a")).isFalse();
+        assertThat(f.room.hostId()).isEqualTo("c");
+    }
+
+    // 진행 중 내보내기는 방장 본인과 다른 방장 아닌 사람의 요청을 거절하는지 확인한다.
+    @Test
+    void kickingWhilePlayingKeepsItsOtherRules() {
+        GameFixture f = GameFixture.started(3, 0);
+        f.check(f.send("b", "FORFEIT", "{}"));
+
+        assertRejected(f, f.send("c", "KICK", "{\"participantId\":\"b\"}"), "FORBIDDEN");
+        assertRejected(f, f.send("a", "KICK", "{\"participantId\":\"a\"}"), "INVALID_INPUT");
+        f.check(f.send("a", "KICK", "{\"participantId\":\"b\"}"));
+        assertThat(f.room.hasParticipant("b")).isFalse();
     }
 
     // ---- undo after someone left ----

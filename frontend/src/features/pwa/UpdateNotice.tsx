@@ -36,16 +36,23 @@ export function UpdateNotice({
       )}
       {updateStatus === 'applying' && <p>잠시 후 앱이 다시 열립니다.</p>}
       {(updateStatus === 'error' || updateStatus === 'applyError') && <p>{updateError}</p>}
-      {updateStatus === 'available' && (
-        <div className="actions">
-          <button className="primary" disabled={!canApply} onClick={onApply}>
-            {automatic ? '업데이트' : '업데이트하기'}
-          </button>
+      {(updateStatus === 'available' ||
+        updateStatus === 'error' ||
+        updateStatus === 'applyError' ||
+        (automatic && updateStatus !== 'applying')) && (
+        <div className="dialog-actions">
+          {automatic && <button onClick={onLater}>나중에</button>}
+          {updateStatus === 'available' && (
+            <button className="primary" disabled={!canApply} onClick={onApply}>
+              {automatic ? '업데이트' : '업데이트하기'}
+            </button>
+          )}
+          {(updateStatus === 'error' || updateStatus === 'applyError') && (
+            <button className="primary" onClick={onCheck}>
+              다시 시도
+            </button>
+          )}
         </div>
-      )}
-      {automatic && updateStatus !== 'applying' && <button onClick={onLater}>나중에</button>}
-      {(updateStatus === 'error' || updateStatus === 'applyError') && (
-        <button onClick={onCheck}>다시 시도</button>
       )}
     </>
   );

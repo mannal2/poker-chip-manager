@@ -236,9 +236,9 @@ class DisconnectedTournamentHttpTest {
         assertChipsKept(alice.screenInSync());
     }
 
-    // 접속 중인 사람은 거절하고 끊긴 사람을 기권 처리해 토너먼트를 끝내는 흐름을 검사한다
+    // 접속 중인 사람과 끊긴 사람을 차례로 기권 처리해 토너먼트를 끝내는 흐름을 검사한다
     @Test
-    void forfeitingTheDisconnectedEndsTheTournament() throws Exception {
+    void forfeitingConnectedAndDisconnectedPlayersEndsTheTournament() throws Exception {
         RealBrowser[] all = startedGame();
         RealBrowser alice = all[0];
         RealBrowser bob = all[1];
@@ -246,14 +246,11 @@ class DisconnectedTournamentHttpTest {
         String forfeitBob = "{\"participantId\":\"" + bob.participantId + "\"}";
         String forfeitCarol = "{\"participantId\":\"" + carol.participantId + "\"}";
 
-        JsonNode refused = alice.command("FORFEIT_DISCONNECTED", forfeitBob, 422);
-        assertThat(refused.get("code").asString()).isEqualTo("TARGET_CONNECTED");
+        alice.command("FORFEIT_DISCONNECTED", forfeitBob, 200);
 
         syncScreens(alice);
-        bob.screen.abort();
         carol.screen.abort();
-        alice.screen.awaitState(s -> bob.absentIn(s) && carol.absentIn(s));
-        alice.command("FORFEIT_DISCONNECTED", forfeitBob, 200);
+        alice.screen.awaitState(carol::absentIn);
         alice.command("FORFEIT_DISCONNECTED", forfeitCarol, 200);
 
         JsonNode result = alice.screenInSync();

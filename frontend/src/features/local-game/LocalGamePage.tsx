@@ -7,7 +7,7 @@ import { usePwaPresentation } from '../pwa/usePwaPresentation';
 import { InstallNotice } from '../pwa/InstallNotice';
 import { ManagerMenu } from './components/ManagerMenu';
 import { StorageErrorDetails } from './components/StorageErrorDetails';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { ControlLease } from './storage/types';
 import { GameScreen } from '../gameplay/GameScreen';
 import type { GameScreenHandle, GameSession } from '../gameplay/session';
@@ -64,6 +64,25 @@ function LocalGame({
   useScreenFit(screen);
   const pwa = useLocalPWA();
   const [dialog, setDialog] = useState('');
+  const [confirmation, setConfirmation] = useState<{
+    message: string;
+    resolve: (accepted: boolean) => void;
+  } | null>(null);
+  const pendingConfirmation = useRef<((accepted: boolean) => void) | null>(null);
+  useEffect(() => () => pendingConfirmation.current?.(false), []);
+  function ask(message: string): Promise<boolean> {
+    pendingConfirmation.current?.(false);
+    setDialog('');
+    return new Promise((resolve) => {
+      pendingConfirmation.current = resolve;
+      setConfirmation({ message, resolve });
+    });
+  }
+  function answer(accepted: boolean) {
+    pendingConfirmation.current = null;
+    setConfirmation(null);
+    confirmation?.resolve(accepted);
+  }
   const toast = useToast();
   const notify = toast.show;
   const game = useRef<GameScreenHandle>(null);
@@ -88,7 +107,7 @@ function LocalGame({
     recoveryContext,
     onRecover,
     notify,
-    ask: (message) => Promise.resolve(window.confirm(message)),
+    ask,
     prepareCommand: (state, command) => {
       const prepared = motion.prepare(state, command);
       return () => motion.play(prepared);
@@ -167,6 +186,19 @@ function LocalGame({
     notify,
     loadEvents: (tournamentId, after, limit) => repository.readEvents(tournamentId, after, limit),
   };
+  const confirmationDialog = confirmation && (
+    <Dialog
+      title="확인"
+      onClose={() => answer(false)}
+      actions={
+        <button className="primary" onClick={() => answer(true)}>
+          확인
+        </button>
+      }
+    >
+      <p>{confirmation.message}</p>
+    </Dialog>
+  );
   if (app.status === 'loading')
     return (
       <main ref={screen} className="phone home" role="status">
@@ -181,6 +213,7 @@ function LocalGame({
         <button onClick={() => void restore(true)}>다시 시도</button>
         <button onClick={() => void restartAfterFailure()}>새 토너먼트 시작</button>
         <StorageErrorDetails />
+        {confirmationDialog}
       </main>
     );
   return (
@@ -255,6 +288,7 @@ function LocalGame({
         </Dialog>
       )}
       <InstallNotice install={install} />
+      {confirmationDialog}
       {toast.message && (
         <div className="toast" role="status">
           {toast.message}

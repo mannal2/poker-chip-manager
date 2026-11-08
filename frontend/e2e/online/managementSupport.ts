@@ -36,7 +36,7 @@ export async function menu(page: Page, label: string, target?: string) {
       .locator('.seat')
       .filter({ has: page.locator('.name', { hasText: target }) })
       .click();
-  if (target && ['방장 넘기기', '참가자 내보내기'].includes(label)) await confirm(page, label);
+  if (target && ['방장 넘기기', '참가자 내보내기', '내보내기'].includes(label)) await confirm(page, label);
 }
 
 // 공통 확인 대화상자에서 관리 명령을 확정한다
@@ -44,5 +44,13 @@ export async function confirm(page: Page, title: string) {
   await page
     .getByRole('dialog', { name: title, exact: true })
     .getByRole('button', { name: '확인', exact: true })
+    .click();
+}
+
+// 기권 확인 뒤 두 번째 창에서 방에 남을지 나갈지 고른다
+export async function afterForfeit(page: Page, choice: string) {
+  await page
+    .getByRole('dialog', { name: '기권 후 방 선택', exact: true })
+    .getByRole('button', { name: choice, exact: true })
     .click();
 }

@@ -1,7 +1,7 @@
 # 백엔드 리팩터링 (우선순위 높음 3항목)
 
 작성일: 2026-11-08
-상태: 계획. 구현 전.
+상태: 구현 완료(2026-11-08).
 범위: `backend/server`만 수정한다. `backend/game`과 `backend/game-json`은 프런트엔드 규칙 모듈과 1:1 대응을 유지하기 위해 손대지 않는다.
 
 ## 목표와 원칙
@@ -187,7 +187,7 @@ public <T> T runOnce(String requestId, long sequence, String fingerprint,
 
 서버 코드와 프런트엔드 `errorMessages.ts`가 어긋나지 않는지 자동으로 검사한다.
 
-- `shared/api-contract/error-codes.json`에 서버가 보낼 수 있는 오류 코드 목록을 둔다. `ErrorCode` 전체와 규칙 모듈 enum 세 개의 이름이 들어간다.
+- `shared/error-codes.json`에 서버가 보낼 수 있는 오류 코드 목록을 둔다. (구현 메모: `shared/api-contract/`는 `ApiContractTest`가 모든 `.json`을 예시로 읽으므로 한 단계 위에 두었다. 화면이 따로 처리하는 `notShown` 코드를 목록에 함께 두고, 빠져 있던 화면 문구 8개를 추가했다.) `ErrorCode` 전체와 규칙 모듈 enum 세 개의 이름이 들어간다.
 - 백엔드 `ErrorCodeContractTest`: 실제 enum들의 이름 집합과 파일 목록이 같은지 확인한다.
 - 프런트엔드 `tests/gameplay/errorMessages.test.ts`: 파일의 모든 코드가 `messageFor`에서 기본 문구("처리할 수 없습니다. (코드)")가 아닌 전용 문구를 갖는지 확인한다. 화면에 오지 않는 코드(`HTTP_ERROR`, `INTERNAL_ERROR`, `CSRF_REJECTED` 등)는 예외 목록으로 명시한다.
 - 이 검사로 빠진 문구가 발견되면, 합니다체·"플레이어" 원칙에 맞춰 문구를 추가한다.

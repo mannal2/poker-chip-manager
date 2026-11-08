@@ -279,6 +279,9 @@ Spring Boot 4·Spring MVC·가상 스레드 앱이다. 방은 서버 메모리�
 - 배포 준비는 공용 잠금 안에서 게이트를 먼저 닫고 방 잠금으로 진행 여부를 확인한다. START와 결과 화면 UNDO는 방 잠금 안에서 게이트를 읽는다. 근거는 `RoomRegistry.prepareDeployment` 주석이 기준이다. 스냅샷의 `deployPending`은 방 필드이고 공용 잠금을 푼 뒤 `update`로 바뀌어 버전과 함께 움직인다.
 - 명령 검사 순서는 `CommandPipeline` 주석이 기준이다: 형식 → 방 → 참가자 → 조작 세대 → 중복 → 권한 → 토너먼트·핸드 → 상태 버전 → 규칙.
 - 생성·참가·인수는 세션 스트림 장부, 게임 명령은 참가자·조작 세대별 장부를 쓴다. 세대 장부는 현재와 직전만 보관한다.
+- 생성·참가·복구 신청·인수의 "확인 → 실행 → 기록"은 `RequestLedger.runOnce` 한 곳에 있다. 재시도는 처음 결과로 답하고, 결과는 응답을 만들기 전에 기록한다. 게임 명령은 거절도 결과로 기록하는 `CommandPipeline.execute`가 따로 처리한다.
+- 입력 형식 검사는 두 곳에 모여 있다. 요청 봉투(프로토콜 버전·id·순번)는 `api/Envelope`, 명령 payload는 `room/Payload`다. 형식이 틀리면 INVALID_INPUT이다.
+- 서버 오류 코드는 `room/ErrorCode` enum 하나에 코드·예외 HTTP 상태·메시지를 함께 둔다. 원장에 기록된 거절의 상태는 `ErrorCode.recordedStatus`가 정한다. 규칙 모듈의 거절은 `RoomException.rule`로 enum 이름을 그대로 싣는다. [shared/error-codes.json](shared/error-codes.json)은 서버·규칙 코드 목록이며, `ErrorCodeContractTest`(백엔드)와 `errorMessages.test.ts`(프런트엔드)가 enum과 화면 문구에 맞는지 확인한다.
 - 명령의 CONTROL_LOST(세대 장부)는 순번을 소진하지 않는 유일한 비즈니스 거절이다. `/control`의 CONTROL_LOST는 세션 스트림 장부에 기록되어 순번을 소진한다. 인수는 room version을 올리지 않는다. 승자 초안도 room version 대신 자기 `draftVersion`을 쓰므로 상태 버전 검사를 건너뛴다. 핸드 범위 검사는 받는다.
 - 세션 스트림은 `DELETE /api/session/streams/{streamId}`로 닫는다. `StartConditions`의 전원 연결은 `Presence`의 실제 판정이다.
 
@@ -425,7 +428,7 @@ backend/gradlew -p backend :server:bootRun
 | 서버 규칙(베팅·팟·정산·무르기) 변경 | `backend/game/.../game/`의 `command/BettingCommands`, `Legal`, `Settlement`, `Round`, `command/FlowCommands` | 같은 TS 파일(위 대응표)과 `shared/game-fixtures/` 기대값. 두 엔진이 모두 통과해야 한다 |
 | 서버 전용 기권 규칙 변경 | [ForfeitCommand.java](backend/game/src/main/java/xyz/jwlee/poker/game/command/ForfeitCommand.java), 주인 없는 층 반환은 `Round.returnOwnerless` | `shared/game-fixtures/forfeit.json`(Java 전용), MULTIPLAYER_MODE.md 10절 |
 | 서버 불변식·무작위 검사 변경 | [Invariants.java](backend/game/src/main/java/xyz/jwlee/poker/game/Invariants.java), `RandomTournamentTest` | 프런트 `invariants.ts`와 같은 코드 이름 |
-| 서버 명령 추가·검사 순서 변경 | [CommandPipeline.java](backend/server/src/main/java/xyz/jwlee/poker/server/room/CommandPipeline.java), `room/`의 명령 처리 클래스 | `handlerFor` 한 곳, HTTP 상태는 `ApiExceptionHandler`, SYSTEM_SPEC 7절 |
+| 서버 명령 추가·검사 순서 변경 | [CommandPipeline.java](backend/server/src/main/java/xyz/jwlee/poker/server/room/CommandPipeline.java), `room/`의 명령 처리 클래스 | `handlerFor` 한 곳, 오류 코드와 HTTP 상태는 `ErrorCode`(새 코드는 `shared/error-codes.json`과 프런트엔드 문구도 추가), SYSTEM_SPEC 7절 |
 | 서버 응답 모양 변경 | [SnapshotWriter.java](backend/server/src/main/java/xyz/jwlee/poker/server/room/SnapshotWriter.java), `api/`의 컨트롤러 | `shared/api-contract/` 예시를 다시 만들고 diff 검토, 프런트 타입과의 일치 |
 | 방 한도·잠금·방 삭제 변경 | [RoomRegistry.java](backend/server/src/main/java/xyz/jwlee/poker/server/registry/RoomRegistry.java) | 공용 → 방 잠금 순서, `Room.close`, `RoomDeletionRaceTest` |
 | 소켓 메시지·구독·닫힘 코드 변경 | [RoomSocketHandler.java](backend/server/src/main/java/xyz/jwlee/poker/server/realtime/RoomSocketHandler.java), [Connection.java](backend/server/src/main/java/xyz/jwlee/poker/server/realtime/Connection.java) | `RoomSocketHttpTest`, `shared/api-contract/ws-*.json`, 구독과 닫힘의 순서 주석 |

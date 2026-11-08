@@ -27,7 +27,6 @@ import xyz.jwlee.poker.server.room.RoomException;
 import xyz.jwlee.poker.server.room.RoomSnapshot;
 import xyz.jwlee.poker.server.room.SeatBinding;
 import xyz.jwlee.poker.server.room.SnapshotWriter;
-import xyz.jwlee.poker.server.support.Protocol;
 
 // 방 생성, 입장, 상태 조회를 처리하는 컨트롤러
 /**
@@ -38,8 +37,6 @@ import xyz.jwlee.poker.server.support.Protocol;
  */
 @RestController
 class RoomController {
-
-    private static final int MAX_ID_LENGTH = 128;
 
     private final RoomRegistry registry;
 
@@ -148,46 +145,20 @@ class RoomController {
 
         // 본문과 프로토콜 버전, 공통 필드를 검증해 Fields를 만든다
         static Fields parse(JsonNode node) {
-            if (node == null || !node.isObject()) {
-                throw invalid();
-            }
-            JsonNode version = node.get("protocolVersion");
-            if (version == null || !version.isIntegralNumber() || !version.canConvertToInt()) {
-                throw invalid();
-            }
-            if (version.asInt() != Protocol.VERSION) {
-                throw new RoomException("PROTOCOL_INCOMPATIBLE");
-            }
-            String streamId = id(node, "streamId");
-            String requestId = id(node, "requestId");
-            JsonNode seq = node.get("sequence");
-            if (seq == null || !seq.isIntegralNumber() || !seq.canConvertToLong() || seq.asLong() < 1) {
-                throw invalid();
-            }
-            return new Fields(node, streamId, requestId, seq.asLong());
+            Envelope.requireProtocol(node);
+            String streamId = Envelope.text(node, "streamId", Envelope.MAX_ID_LENGTH, true);
+            String requestId = Envelope.text(node, "requestId", Envelope.MAX_ID_LENGTH, true);
+            long sequence = Envelope.number(node, "sequence", 1);
+            return new Fields(node, streamId, requestId, sequence);
         }
 
         // 문자열 필드를 읽고 형식이 틀리면 예외를 던진다
         String string(String field) {
             JsonNode v = node.get(field);
             if (v == null || !v.isString()) {
-                throw invalid();
+                throw Envelope.invalid();
             }
             return v.asString();
-        }
-
-        // 비어 있지 않고 길이 제한을 지키는 id 문자열을 읽는다
-        private static String id(JsonNode node, String field) {
-            JsonNode v = node.get(field);
-            if (v == null || !v.isString() || v.asString().isEmpty() || v.asString().length() > MAX_ID_LENGTH) {
-                throw invalid();
-            }
-            return v.asString();
-        }
-
-        // 입력 형식 오류 예외를 만든다
-        private static RoomException invalid() {
-            return new RoomException("INVALID_INPUT");
         }
     }
 }

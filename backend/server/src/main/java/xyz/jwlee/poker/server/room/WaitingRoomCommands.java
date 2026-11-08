@@ -1,5 +1,12 @@
 package xyz.jwlee.poker.server.room;
 
+import static xyz.jwlee.poker.server.room.Payload.integer;
+import static xyz.jwlee.poker.server.room.Payload.invalid;
+import static xyz.jwlee.poker.server.room.Payload.object;
+import static xyz.jwlee.poker.server.room.Payload.requireEmpty;
+import static xyz.jwlee.poker.server.room.Payload.string;
+import static xyz.jwlee.poker.server.room.Payload.strings;
+
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -104,9 +111,7 @@ final class WaitingRoomCommands {
      */
     static void leave(Room room, Participant actor, CommandRequest request, RoomEnv env) {
         JsonNode payload = request.payload();
-        if (payload != null && !payload.isNull() && !(payload.isObject() && payload.isEmpty())) {
-            throw invalid();
-        }
+        requireEmpty(payload);
         if (room.phase() == RoomPhase.PLAYING && room.isHost(actor.participantId())) {
             throw new RoomException("TRANSFER_HOST_FIRST");
         }
@@ -144,9 +149,7 @@ final class WaitingRoomCommands {
     // 열린 인수 요청을 받아 요청자 본인이 방장이 된다
     /** The first valid acceptance wins: {@code setHost} closes the request, so a later one is HOST_TAKEOVER_CLOSED. */
     static void takeHost(Room room, Participant actor, JsonNode payload) {
-        if (payload != null && !payload.isNull() && !(payload.isObject() && payload.isEmpty())) {
-            throw invalid();
-        }
+        requireEmpty(payload);
         if (!room.hostTakeoverOpen()) {
             throw new RoomException("HOST_TAKEOVER_CLOSED");
         }
@@ -171,50 +174,8 @@ final class WaitingRoomCommands {
         return participantId;
     }
 
-    // payload가 객체인지 확인한다
-    private static JsonNode object(JsonNode payload) {
-        if (payload == null || !payload.isObject()) {
-            throw invalid();
-        }
-        return payload;
-    }
 
-    // 문자열 필드를 꺼내고 형식이 틀리면 예외를 던진다
-    private static String string(JsonNode body, String field) {
-        JsonNode v = body.get(field);
-        if (v == null || !v.isString()) {
-            throw invalid();
-        }
-        return v.asString();
-    }
 
-    // 정수 필드를 꺼내고 형식이 틀리면 예외를 던진다
-    private static int integer(JsonNode body, String field) {
-        JsonNode v = body.get(field);
-        if (v == null || !v.isIntegralNumber() || !v.canConvertToInt()) {
-            throw invalid();
-        }
-        return v.asInt();
-    }
 
-    // 문자열 배열 필드를 꺼내고 형식이 틀리면 예외를 던진다
-    private static List<String> strings(JsonNode body, String field) {
-        JsonNode v = body.get(field);
-        if (v == null || !v.isArray()) {
-            throw invalid();
-        }
-        List<String> out = new ArrayList<>();
-        for (JsonNode e : v) {
-            if (!e.isString()) {
-                throw invalid();
-            }
-            out.add(e.asString());
-        }
-        return out;
-    }
 
-    // 입력 형식 오류 예외를 만든다
-    private static RoomException invalid() {
-        return new RoomException("INVALID_INPUT");
-    }
 }

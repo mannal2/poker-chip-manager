@@ -47,11 +47,8 @@ public final class RecoveryCommands {
 
     // payload가 가리키는 신청이 아직 대기 중인지 확인해 돌려준다
     private static Request pending(Room room, JsonNode payload, Instant now) {
-        JsonNode id = payload == null || !payload.isObject() ? null : payload.get("recoveryRequestId");
-        if (id == null || !id.isString()) {
-            throw new RoomException("INVALID_INPUT");
-        }
-        return room.recoveryRequests().find(id.asString()).filter(r -> r.statusAt(now) == Status.PENDING)
+        String id = Payload.string(Payload.object(payload), "recoveryRequestId");
+        return room.recoveryRequests().find(id).filter(r -> r.statusAt(now) == Status.PENDING)
                 .orElseThrow(() -> new RoomException("RECOVERY_NOT_PENDING"));
     }
 

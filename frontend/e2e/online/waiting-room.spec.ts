@@ -36,7 +36,7 @@ test('shares waiting settings, own names, seats and dealer across three particip
       const own = current.locator('.seat').filter({ hasText: ['Anna', 'Bob', 'Carol'][i] });
       expect(await own.evaluate((el) => (el as HTMLElement).style.top)).toBe('87%');
       await expect(current.locator('.seat .name button')).toHaveCount(1);
-      await expect(current.getByRole('button', { name: '참가자 추가' })).toHaveCount(0);
+      await expect(current.getByRole('button', { name: '플레이어 추가' })).toHaveCount(0);
     }
     await expect(guests[0].getByLabel('시작 칩', { exact: true })).toBeDisabled();
     await guests[0].locator('.seat .name button').click();

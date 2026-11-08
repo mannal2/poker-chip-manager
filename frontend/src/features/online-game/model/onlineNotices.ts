@@ -4,7 +4,7 @@ import type { RoomSnapshot } from '../api/types';
 // 서버 단계와 보는 사람에 맞는 하단 안내를 반환한다
 export function dockNoticeFor(snapshot: RoomSnapshot, viewerId: string): string | null {
   const guest = viewerId !== snapshot.hostId;
-  if (snapshot.roomPhase === 'RESULT') return guest ? '방장이 다음 게임을 준비하고 있습니다' : null;
+  if (snapshot.roomPhase === 'RESULT') return guest ? '방장이 다음 게임을 준비하고 있습니다.' : null;
   const hand = snapshot.game?.hand;
   if (hand?.phase === 'settlement' && guest) {
     const draft = snapshot.settlementDraft;
@@ -15,7 +15,7 @@ export function dockNoticeFor(snapshot: RoomSnapshot, viewerId: string): string 
   }
   if (hand?.phase === 'betting') {
     const actor = snapshot.participants.find((p) => p.playerId === hand.actorId);
-    if (actor && actor.participantId !== viewerId) return `${actor.name} 차례입니다`;
+    if (actor && actor.participantId !== viewerId) return `${actor.name} 차례입니다.`;
   }
   return null;
 }

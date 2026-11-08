@@ -25,7 +25,7 @@ export function HostRequests({
   }
   return (
     <>
-      <section className="host-requests" aria-label="방 관리 요청">
+      <section className="host-requests" aria-label="방장 알림">
         {takeover && (
           <button
             aria-disabled={busy}
@@ -35,8 +35,8 @@ export function HostRequests({
           </button>
         )}
         {requests.length > 0 && (
-          <button aria-label={`${label} 확인`} onClick={() => setOpen(true)}>
-            {label} · 확인
+          <button aria-label={`${label} 보기`} onClick={() => setOpen(true)}>
+            {label} 보기
           </button>
         )}
       </section>

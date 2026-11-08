@@ -23,17 +23,17 @@ export function noticesFor(events: GameEvent[], known: ReadonlyMap<string, Known
       const original = ids
         ?.map((id) => known.get(id))
         .find((item) => item && actions[item.event.type] && !item.event.details.auto);
-      if (!original?.actorName) notices.push('방장이 직전 행동을 취소했습니다');
+      if (!original?.actorName) notices.push('방장이 직전 행동을 취소했습니다.');
       else {
         const { type, details } = original.event;
         const amount = ['CHECK', 'FOLD'].includes(type) ? '' : ` ${details.additional}`;
         const particle = !amount && ['CHECK', 'FOLD'].includes(type) ? '를' : '을';
         notices.push(
-          `방장이 ${original.actorName}의 ${actions[type]}${amount}${particle} 취소했습니다`,
+          `방장이 ${original.actorName}의 ${actions[type]}${amount}${particle} 취소했습니다.`,
         );
       }
     } else if (event.details.auto && ['CHECK', 'FOLD'].includes(event.type)) {
-      const name = known.get(event.id)?.actorName ?? '참가자';
+      const name = known.get(event.id)?.actorName ?? '플레이어';
       notices.push(`${name} - ${actions[event.type]}(자동)`);
     }
   }

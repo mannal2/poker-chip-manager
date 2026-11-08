@@ -2,13 +2,13 @@ import { openLocal } from './helpers';
 import { test, expect, type Page } from '@playwright/test';
 
 const rotate = (page: Page) =>
-  page.getByRole('button', { name: '화면 기준 한 자리 회전', exact: true }).click();
+  page.getByRole('button', { name: '자리 돌리기', exact: true }).click();
 const firstSeat = (page: Page) => page.locator('.seat').first().getAttribute('style');
 
 test('화면 회전은 저장 없이 바로 반영되고 새로고침 뒤에도 유지된다', async ({ page }) => {
   await page.goto('/local/');
   await openLocal(page);
-  await page.getByRole('button', { name: '참가자 추가', exact: true }).click();
+  await page.getByRole('button', { name: '플레이어 추가', exact: true }).click();
   await expect(page.locator('main')).toHaveAttribute('aria-busy', 'false');
   const unrotated = await firstSeat(page);
   await rotate(page);
@@ -32,7 +32,7 @@ test('새 토너먼트는 회전하지 않은 화면에서 시작한다', async 
   await page.getByRole('button', { name: '관리 메뉴', exact: true }).click();
   await page.getByRole('button', { name: '새 토너먼트', exact: true }).click();
   await page
-    .getByRole('dialog', { name: '확인', exact: true })
+    .getByRole('dialog', { name: '새 토너먼트', exact: true })
     .getByRole('button', { name: '확인', exact: true })
     .click();
   await expect(page.locator('main')).toHaveAttribute('aria-busy', 'false');

@@ -38,10 +38,10 @@ test('explains a pending server update and refuses to start until it is released
     expect(body.result).toBe('READY');
     processId = body.processId;
 
-    const notice = '서버 업데이트 중입니다. 방이 사라질 수 있습니다';
+    const notice = '서버 업데이트 중입니다. 방이 사라질 수 있습니다.';
     for (const current of [page, guest]) await expect(current.getByText(notice)).toBeVisible();
     await page.getByRole('button', { name: '게임 시작', exact: true }).click();
-    await expect(page.getByRole('alert')).toHaveText('서버 업데이트가 끝나면 시작할 수 있습니다');
+    await expect(page.getByRole('alert')).toHaveText('서버 업데이트가 끝나면 시작할 수 있습니다.');
     await expect(page.locator('.seat.active')).toHaveCount(0);
 
     const released = await request.post(`${BACKEND}/internal/deploy/release`, {

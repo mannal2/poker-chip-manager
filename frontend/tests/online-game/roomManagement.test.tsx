@@ -76,7 +76,7 @@ vi.mock('../../src/features/gameplay/GameScreen', () => ({
 // 하나의 서버 발행에서 확인한 모든 행동을 같은 토스트에 순서대로 표시한다
 it.each([
   ['CHECK', '체크(자동)'],
-  ['UNDO', '방장이 직전 행동을 취소했습니다'],
+  ['UNDO', '방장이 직전 행동을 취소했습니다.'],
 ])('displays %s and the following automatic fold together', async (type, first) => {
   const x = await mountRoom();
   try {
@@ -114,8 +114,8 @@ it.each([false, true])(
 );
 // 최신 조작 상태가 잠기면 열려 있던 메뉴에서도 요청하지 않고 이유를 안내한다
 it.each([
-  [{ pending: true }, '서버 응답을 기다려주세요.'],
-  [{ connection: 'offline' as const }, '연결이 끊겼습니다'],
+  [{ pending: true }, '처리 중입니다. 잠시만 기다려 주세요.'],
+  [{ connection: 'offline' as const }, '연결이 끊겼습니다.'],
   [{ hasControl: false }, '다른 화면에서 조작 중입니다.'],
 ])('guards an already-open menu with %s', async (patch, message) => {
   const x = await mountRoom();
@@ -142,7 +142,7 @@ it('rejects a target who left the play at confirmation time', async () => {
     x.view.snapshot!.game!.players.find((p) => p.id === bob.playerId)!.forfeited = true;
     await x.click('확인');
     expect(x.send).not.toHaveBeenCalled();
-    expect(x.host.textContent).toContain('대상 또는 상태가 변경되었습니다. 다시 확인하세요.');
+    expect(x.host.textContent).toContain('상황이 바뀌어 취소했습니다. 다시 선택해 주세요.');
   } finally {
     await x.close();
   }
@@ -154,7 +154,7 @@ it.each([
   ['RESULT', true],
   ['PLAYING', false],
 ] as const)('shows the server update notice in %s only when pending: %s', async (phase, shown) => {
-  const notice = '서버 업데이트 중입니다. 방이 사라질 수 있습니다';
+  const notice = '서버 업데이트 중입니다. 방이 사라질 수 있습니다.';
   const x = await mountRoom(phase);
   try {
     expect(x.host.textContent).not.toContain(notice);
@@ -214,7 +214,7 @@ it('does not enter an empty card selection', async () => {
     await x.click('관리 메뉴');
     await x.click('방장 넘기기');
     expect(x.host.querySelector('.participant-selection-controls')).toBeNull();
-    expect(x.host.textContent).toContain('대상 참가자가 없습니다.');
+    expect(x.host.textContent).toContain('선택할 수 있는 플레이어가 없습니다.');
     expect(x.send).not.toHaveBeenCalled();
   } finally {
     await x.close();
@@ -285,7 +285,7 @@ it('warns when forfeiting a connected participant', async () => {
     await x.click('관리 메뉴');
     await x.click('기권 처리');
     await x.click('Bob');
-    expect(x.host.querySelector('dialog')?.textContent).toContain('접속 중인 참가자입니다.');
+    expect(x.host.querySelector('dialog')?.textContent).toContain('접속 중인 플레이어입니다.');
   } finally {
     await x.close();
   }
@@ -305,7 +305,7 @@ it('explains a forfeit whose leave failed', async () => {
     await x.click('Bob');
     await x.click('확인');
     await x.click('방에서 내보내기');
-    expect(x.host.textContent).toContain('기권 처리는 되었지만 방에서 내보내지 못했습니다.');
+    expect(x.host.textContent).toContain('기권은 됐지만 내보내지 못했습니다.');
   } finally {
     await x.close();
   }
@@ -387,7 +387,7 @@ it.each([false, true])('copies only the room code and announces failure=%s', asy
   vi.stubGlobal('navigator', { clipboard: { writeText } });
   try {
     await x.click('관리 메뉴');
-    const label = `방코드:[${x.view.snapshot!.code}]`;
+    const label = `방 코드 ${x.view.snapshot!.code} 복사`;
     expect(x.host.querySelector('.menu-actions button')?.textContent).toBe(label);
     await x.click(label);
     expect(writeText).toHaveBeenCalledWith(x.view.snapshot!.code);
@@ -429,7 +429,7 @@ it('rechecks host authority before confirming abort', async () => {
     )!.participantId;
     await x.click('확인');
     expect(x.send).not.toHaveBeenCalled();
-    expect(x.host.textContent).toContain('대상 또는 상태가 변경되었습니다. 다시 확인하세요.');
+    expect(x.host.textContent).toContain('상황이 바뀌어 취소했습니다. 다시 선택해 주세요.');
   } finally {
     await x.close();
   }

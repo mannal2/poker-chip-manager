@@ -36,7 +36,7 @@ export async function menu(page: Page, label: string, target?: string) {
       .locator('.seat')
       .filter({ has: page.locator('.name', { hasText: target }) })
       .click();
-  if (target && ['방장 넘기기', '참가자 내보내기', '내보내기'].includes(label)) await confirm(page, label);
+  if (target && ['방장 넘기기', '플레이어 내보내기', '내보내기'].includes(label)) await confirm(page, label);
 }
 
 // 공통 확인 대화상자에서 관리 명령을 확정한다

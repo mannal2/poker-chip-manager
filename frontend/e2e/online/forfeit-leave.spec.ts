@@ -77,7 +77,7 @@ test('the host forfeits a connected player who stays and later leaves', async ({
     await startThree(page);
 
     await menu(page, '기권 처리', 'Carol');
-    await expect(page.getByRole('dialog')).toContainText('접속 중인 참가자입니다.');
+    await expect(page.getByRole('dialog')).toContainText('접속 중인 플레이어입니다.');
     await confirm(page, '기권 처리');
     await afterForfeit(page, '방에 남기기');
     await expect(seat(carol, 'Carol')).toHaveClass(/out/);
@@ -121,7 +121,7 @@ test('the host forfeits and removes a player, then kicks an eliminated one', asy
     await menu(page, '기권 처리', 'Carol');
     await confirm(page, '기권 처리');
     await afterForfeit(page, '방에서 내보내기');
-    await expect(carol.getByRole('alert')).toHaveText('이 화면의 참가 권한이 회수되었습니다.');
+    await expect(carol.getByRole('alert')).toHaveText('이 화면에서는 더 이상 참가할 수 없습니다. 방장이 내보냈거나 다른 기기에서 자리를 복구했습니다.');
     await expect(seat(page, 'Carol')).toHaveClass(/out/);
 
     await menu(page, '기권 처리', 'Dave');
@@ -138,7 +138,7 @@ test('the host forfeits and removes a player, then kicks an eliminated one', asy
     await page.getByRole('dialog').press('Escape');
 
     await menu(page, '내보내기', 'Dave');
-    await expect(dave.getByRole('alert')).toHaveText('이 화면의 참가 권한이 회수되었습니다.');
+    await expect(dave.getByRole('alert')).toHaveText('이 화면에서는 더 이상 참가할 수 없습니다. 방장이 내보냈거나 다른 기기에서 자리를 복구했습니다.');
     await expect(page.locator('.summary')).toHaveCount(0);
     await expect(bob.locator('.seat.active')).toHaveCount(1);
   } finally {

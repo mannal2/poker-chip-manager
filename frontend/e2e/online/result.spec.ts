@@ -77,7 +77,7 @@ test('shows a normal winner and permits host undo from the result', async ({ pag
     for (const current of [page, guest])
       await expect(current.locator('.summary')).toHaveText('토너먼트 종료 · Alice 우승');
     await guest.getByRole('button', { name: '취소', exact: true }).dispatchEvent('click');
-    await expect(guest.locator('.toast')).toHaveText('방장만 취소할 수 있습니다');
+    await expect(guest.locator('.toast')).toHaveText('방장만 취소할 수 있습니다.');
     await page.getByRole('button', { name: '취소', exact: true }).click();
     for (const current of [page, guest]) {
       await expect(current.locator('.summary')).toHaveCount(0);

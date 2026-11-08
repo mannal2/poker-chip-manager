@@ -4,7 +4,7 @@ async function start(page: Page, count = 2) {
   await page.goto('/local/');
   await openLocal(page);
   if (count === 3) {
-    await page.getByRole('button', { name: '참가자 추가', exact: true }).click();
+    await page.getByRole('button', { name: '플레이어 추가', exact: true }).click();
     await idle(page);
   }
   await page.getByRole('group', { name: 'P1', exact: true }).locator('.card-values').click();

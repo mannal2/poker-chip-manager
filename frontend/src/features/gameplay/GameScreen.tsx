@@ -209,7 +209,7 @@ export function GameScreen({
                 onUndo={undo}
                 busy={busy || !can.canSettle}
                 onWin={() => {
-                  if (busy) return notify('저장 완료 또는 재시도를 기다려주세요.');
+                  if (busy) return notify('처리 중입니다. 잠시만 기다려 주세요.');
                   if (!can.canSettle) return deny('canSettle');
                   if (!preview?.ok)
                     return notify(
@@ -307,7 +307,7 @@ export function GameScreen({
               initialBB={initialBlinds.bb}
               busy={busy || !can.canEditBlinds}
               onSave={(sb, bb) => {
-                if (busy) return notify('저장 완료를 기다려주세요.');
+                if (busy) return notify('처리 중입니다. 잠시만 기다려 주세요.');
                 void run(async () => {
                   if (await dispatch({ type: 'SCHEDULE_BLINDS', sb, bb })) close();
                 });

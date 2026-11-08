@@ -220,6 +220,6 @@ test('L07 실제 versionchange는 구 연결을 닫고 쓰기를 차단한다', 
     }
     return { message, before };
   });
-  expect(result.message).toContain('연결이 변경');
+  expect(result.message).toContain('저장에 문제가 생겼습니다.');
   expect(result.before?.state.status).toBe('setup');
 });

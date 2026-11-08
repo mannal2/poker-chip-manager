@@ -37,7 +37,7 @@ export function historyRows(
       }
     } else active.push(event);
   }
-  const name = (id: string) => players.find((p) => p.id === id)?.name ?? '참가자';
+  const name = (id: string) => players.find((p) => p.id === id)?.name ?? '플레이어';
   const chips = (n: number) => n.toLocaleString('ko-KR') + '칩';
   const rows: HistoryRow[] = [];
   let hand = -1,
@@ -118,7 +118,7 @@ export function historyRows(
         id: event.id,
         hand,
         kind: 'action',
-        text: `${name(d.playerId)} - 미콜 ${chips(d.amount!)} 반환`,
+        text: `${name(d.playerId)} - ${chips(d.amount!)} 돌려받음`,
       });
     } else if (actions[event.type] && d.playerId) {
       const amount = ['CHECK', 'FOLD'].includes(event.type) ? '' : ' ' + chips(d.additional!);

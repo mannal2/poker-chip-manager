@@ -90,10 +90,10 @@ export function RoomPage({
     if (!validSelection) {
       setTargetSelection(null);
       setConfirmation(null);
-      notify('대상 또는 상태가 변경되었습니다. 다시 확인하세요.');
+      notify('상황이 바뀌어 취소했습니다. 다시 선택해 주세요.');
     } else if (!validConfirmation) {
       setConfirmation(null);
-      notify('대상 또는 상태가 변경되었습니다. 다시 확인하세요.');
+      notify('상황이 바뀌어 취소했습니다. 다시 선택해 주세요.');
     }
   }, [targetSelection, view.pending, validSelection, validConfirmation, notify]);
   // 최신 연결 상태와 조작권을 확인하고 서버 관리 명령을 보낸다
@@ -106,7 +106,7 @@ export function RoomPage({
     const current = controller.getView().snapshot!;
     const command = commands[0];
     if (command.type === 'TAKE_HOST' && (!current.hostTakeoverOpen || !current.you.canTakeHost)) {
-      notify('방장 인수 요청이 종료되었습니다.');
+      notify('다른 플레이어가 이미 방장을 맡았습니다.');
       return false;
     }
     if (command.type.startsWith('RECOVERY_')) {
@@ -121,7 +121,7 @@ export function RoomPage({
     }
     const ok = await controller.send(commands);
     if (!ok)
-      notify(controller.getView().error ?? '명령을 처리하지 못했습니다. 최신 상태를 확인하세요.');
+      notify(controller.getView().error ?? '처리하지 못했습니다. 다시 시도해 주세요.');
     return ok;
   }
   // 메뉴와 카드 선택에서 최신 서버 스냅샷으로 대상과 권한을 확인한다
@@ -138,12 +138,12 @@ export function RoomPage({
       setConfirmation(null);
       setTargetSelection(null);
       setDialog('');
-      return notify('대상 또는 상태가 변경되었습니다. 다시 확인하세요.');
+      return notify('상황이 바뀌어 취소했습니다. 다시 선택해 주세요.');
     }
     if (item.command?.type === 'FORFEIT' && current.hostId === current.you.participantId)
-      return notify('먼저 방장을 넘겨주세요');
+      return notify('방장을 다른 플레이어에게 넘긴 뒤에 할 수 있습니다.');
     if (valid.targets && !target) {
-      if (!valid.targets.length) return notify('대상 참가자가 없습니다.');
+      if (!valid.targets.length) return notify('선택할 수 있는 플레이어가 없습니다.');
       setup.clearEditing();
       setTargetSelection({ label: valid.label, scope: selectionScope(current) });
       setDialog('');
@@ -157,7 +157,7 @@ export function RoomPage({
         : latestTarget && valid.command?.type === 'KICK'
           ? `${latestTarget.name}님을 방에서 내보내시겠습니까?`
           : latestTarget?.connected && valid.command?.type === 'FORFEIT_DISCONNECTED'
-            ? `접속 중인 참가자입니다. ${valid.confirm}`
+            ? `접속 중인 플레이어입니다. ${valid.confirm}`
             : valid.confirm;
     if (warning && !answer) {
       setDialog('');
@@ -191,8 +191,8 @@ export function RoomPage({
       setTargetSelection(null);
       notify(
         target
-          ? '기권 처리는 되었지만 방에서 내보내지 못했습니다. 메뉴의 내보내기로 다시 시도하세요.'
-          : '기권은 처리되었지만 방에서 나가지 못했습니다. 메뉴의 방 나가기로 다시 시도하세요.',
+          ? '기권은 됐지만 내보내지 못했습니다. 메뉴에서 다시 시도하세요.'
+          : '기권은 됐지만 나가지 못했습니다. 메뉴에서 다시 시도하세요.',
       );
     }
     setDialog('');
@@ -241,13 +241,13 @@ export function RoomPage({
       )}
       {view.snapshot!.deployPending && view.snapshot!.roomPhase !== 'PLAYING' && (
         <div className="notice deploy-notice" role="status">
-          서버 업데이트 중입니다. 방이 사라질 수 있습니다
+          서버 업데이트 중입니다. 방이 사라질 수 있습니다.
         </div>
       )}
       {view.error && (
         <div className="notice" role="alert">
           {view.error}
-          {controller.canRetry() && <button onClick={() => void controller.retry()}>재시도</button>}
+          {controller.canRetry() && <button onClick={() => void controller.retry()}>다시 시도</button>}
         </div>
       )}
       <GameScreen
@@ -331,8 +331,8 @@ export function RoomPage({
         >
           <p>
             {confirmation.target
-              ? `${confirmation.target.name}님을 기권 처리한 뒤 방에 남길지, 방에서 내보낼지 선택하세요. 내보내면 이 게임에 다시 들어올 수 없습니다.`
-              : '기권한 뒤 이 방에 남아 게임을 관전할지, 방에서 나갈지 선택하세요. 방에서 나가면 이 게임에 다시 들어올 수 없습니다.'}
+              ? `${confirmation.target.name}님을 방에 남길까요? 내보내면 이 게임에 다시 들어올 수 없습니다.`
+              : '방에 남아 관전할까요? 나가면 이 게임에 다시 들어올 수 없습니다.'}
           </p>
         </Dialog>
       )}

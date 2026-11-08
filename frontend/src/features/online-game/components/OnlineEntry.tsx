@@ -19,7 +19,7 @@ export function OnlineEntry({
     normalizeCode(new URLSearchParams(location.search).get('code') ?? ''),
   );
   if (view.phase === 'recovering' && view.recovery?.status === 'PENDING')
-    return <p role="status">방장의 승인을 기다리고 있습니다</p>;
+    return <p role="status">방장의 승인을 기다리고 있습니다.</p>;
   return (
     <>
       <label>
@@ -52,10 +52,10 @@ export function OnlineEntry({
         방 참가
       </button>
       <button disabled={view.pending} onClick={() => void controller.requestRecovery(code, name)}>
-        기존 참가자로 복구
+        기존 플레이어로 복구
       </button>
-      {view.phase === 'joining' && <p role="status">방에 연결하고 있습니다</p>}
-      {view.phase === 'recovering' && <p role="status">방장의 승인을 기다리고 있습니다</p>}
+      {view.phase === 'joining' && <p role="status">방에 연결하고 있습니다.</p>}
+      {view.phase === 'recovering' && <p role="status">방장의 승인을 기다리고 있습니다.</p>}
       {view.pending && view.error && (
         <button onClick={() => void controller.retry()}>다시 시도</button>
       )}

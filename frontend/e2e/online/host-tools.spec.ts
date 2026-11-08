@@ -19,7 +19,7 @@ test('kicks a waiting participant and transfers the host', async ({ page, browse
         });
     });
     await joinRoom(guest, code);
-    await menu(page, '참가자 내보내기', 'Bob');
+    await menu(page, '플레이어 내보내기', 'Bob');
     await expect(guest.getByRole('alert', { name: '' })).toBeVisible();
     await expect(page.locator('.seat')).toHaveCount(1);
     await guest.goto(`/online/?code=${code}`);
@@ -75,7 +75,7 @@ test('forfeits self after host transfer and distributes chips at hand end', asyn
     await joinRoom(guest, code);
     await startRoom(page);
     await menu(page, '기권');
-    await expect(page.locator('.toast')).toHaveText('먼저 방장을 넘겨주세요');
+    await expect(page.locator('.toast')).toHaveText('방장을 다른 플레이어에게 넘긴 뒤에 할 수 있습니다.');
     await page.getByRole('dialog').press('Escape');
     await menu(page, '방장 넘기기', 'Bob');
     await menu(page, '기권');
@@ -189,8 +189,8 @@ test('rejoins from the same kicked browser screen', async ({ page, browser }, te
   try {
     const guest = await context.newPage();
     await joinRoom(guest, code);
-    await menu(page, '참가자 내보내기', 'Bob');
-    await expect(guest.getByRole('alert')).toHaveText('이 화면의 참가 권한이 회수되었습니다.');
+    await menu(page, '플레이어 내보내기', 'Bob');
+    await expect(guest.getByRole('alert')).toHaveText('이 화면에서는 더 이상 참가할 수 없습니다. 방장이 내보냈거나 다른 기기에서 자리를 복구했습니다.');
     const responses: { url: string; status: number; body: unknown }[] = [];
     guest.on('response', async (response) => {
       if (response.url().includes('/api/'))

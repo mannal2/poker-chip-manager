@@ -311,7 +311,7 @@ it('distinguishes transport failure from a disconnected participant rejection', 
   await x.enter();
   x.api.post.mockResolvedValueOnce({ ok: false, status: 422, code: 'NOT_CONNECTED' });
   await x.c.send([{ type: 'START', handScoped: false }]);
-  expect(x.c.getView().error).toBe('접속하지 않은 참가자가 있습니다.');
+  expect(x.c.getView().error).toBe('연결이 끊긴 플레이어가 있어 시작할 수 없습니다.');
 });
 
 // LEAVE 결과를 잃은 뒤 원장에서 방을 찾지 못하면 자격 표식을 지우고 입장으로 돌아간다
@@ -771,7 +771,7 @@ it.each(['', '   ', 'a!', '가나다라마바사아자차카'])(
     expect(x.c.getView()).toMatchObject({
       phase: 'entry',
       pending: false,
-      error: '정확한 이름을 입력해주세요.',
+      error: '이름을 정확히 입력해 주세요.',
     });
   },
 );
@@ -792,18 +792,18 @@ it.each([
   expect(await x.c.requestRecovery(code, 'Alice')).toBe(false);
   expect(x.api.open).not.toHaveBeenCalled();
   expect(x.api.post).not.toHaveBeenCalled();
-  expect(x.c.getView().error).toBe('정확한 방코드를 입력해주세요.');
+  expect(x.c.getView().error).toBe('방 코드를 정확히 입력해 주세요.');
 });
 
 it('checks the recovery name before the room code', async () => {
   const x = setup();
   expect(await x.c.requestRecovery('', '')).toBe(false);
   expect(x.api.open).not.toHaveBeenCalled();
-  expect(x.c.getView().error).toBe('정확한 이름을 입력해주세요.');
+  expect(x.c.getView().error).toBe('이름을 정확히 입력해 주세요.');
 });
 
 it.each([
-  ['RECOVERY_TARGET_NOT_FOUND', '해당 게임방에 Alice플레이어가 존재하지 않습니다.'],
+  ['RECOVERY_TARGET_NOT_FOUND', "이 방에 'Alice' 플레이어가 없습니다."],
   ['ROOM_NOT_FOUND', '방을 찾을 수 없습니다.'],
   ['ALREADY_PARTICIPANT', '이미 이 방에 참가하고 있습니다.'],
   ['RECOVERY_LIMIT', '이 자리의 복구 신청이 너무 많습니다. 잠시 뒤 다시 시도해 주세요.'],
@@ -863,7 +863,7 @@ it.each(['create', 'recovery'] as const)(
     expect(x.c.getView()).toMatchObject({
       phase: 'entry',
       pending: false,
-      error: '세션이 만료되었습니다. 다시 시도해 주세요.',
+      error: '접속이 만료되었습니다. 다시 입장해 주세요.',
     });
     expect(x.api.closeStream).toHaveBeenCalledTimes(1);
     expect(x.c.canRetry()).toBe(false);

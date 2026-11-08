@@ -33,7 +33,7 @@ export function useSetupEditing({
   const finishName = useRef<{ key: string; finish: () => Promise<boolean> } | null>(null);
   // 설정을 저장하는 명령을 실행하고, 좌석 순서가 전달되면 함께 저장한다
   function saveSettings(settings: GameSettings, order?: string[]) {
-    if (busy) return notify('저장 완료를 기다려주세요.');
+    if (busy) return notify('처리 중입니다. 잠시만 기다려 주세요.');
     void run(async () => {
       await dispatch({ type: 'SETUP_UPDATE', settings, order });
     });
@@ -101,8 +101,8 @@ export function useSetupEditing({
   // 설정을 검증하고 필요하면 저장한 뒤 토너먼트를 시작한다
   function start(settings: GameSettings) {
     if (renameId.startsWith(draftScope + ':'))
-      return notify('이름 입력을 Enter로 저장하거나 다른 곳을 눌러 완료하세요.');
-    if (busy) return notify('저장 완료를 기다려주세요.');
+      return notify('이름 입력을 먼저 마쳐 주세요.');
+    if (busy) return notify('처리 중입니다. 잠시만 기다려 주세요.');
     const v = validateSettings(settings);
     if (!v.ok) return notify(messageFor(v.code));
     if (settings.button < 0) return notify('첫 딜러로 시작할 플레이어 카드를 선택하세요.');

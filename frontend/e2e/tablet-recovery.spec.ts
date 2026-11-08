@@ -68,11 +68,11 @@ test('앱 복귀는 조작권을 재확인하고 다른 창의 게임을 자동 
     };
   });
   await other.getByRole('button', { name: '단일 기기 모드', exact: true }).click();
-  await other.getByRole('button', { name: '이 창에서 조작하기', exact: true }).click();
+  await other.getByRole('button', { name: '이 창에서 이어하기', exact: true }).click();
   await expect(other.locator('.seat')).toHaveCount(2);
   await page.bringToFront();
   await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
-  await expect(page.getByRole('button', { name: '이 창에서 조작하기', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: '이 창에서 이어하기', exact: true })).toBeVisible();
 });
 
 test('resume 이벤트 후 저장 연결을 다시 열고 진행 게임 복원', async ({ page }) => {

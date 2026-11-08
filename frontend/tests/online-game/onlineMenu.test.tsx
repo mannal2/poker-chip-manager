@@ -29,7 +29,7 @@ function guestPlayer(snapshot: ReturnType<typeof playing>) {
 
 // 실제 계약 스냅샷으로 역할과 단계별 관리 메뉴를 확인한다
 it.each([
-  ['WAITING', true, ['홈', '방 나가기', '방장 넘기기', '참가자 내보내기']],
+  ['WAITING', true, ['홈', '방 나가기', '방장 넘기기', '플레이어 내보내기']],
   ['WAITING', false, ['홈', '방 나가기']],
   ['PLAYING', true, ['홈', '기권', '기권 처리', '방장 넘기기', '토너먼트 중단']],
   ['PLAYING', false, ['홈', '기권']],

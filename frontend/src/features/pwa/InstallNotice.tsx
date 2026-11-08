@@ -7,11 +7,11 @@ export function InstallNotice({ install }: { install: ReturnType<typeof useInsta
   return (
     <Dialog
       dismissOutside
-      title="앱으로 설치해서 사용하세요"
+      title="앱으로 설치하기"
       onClose={install.close}
       closeDisabled={install.pending}
     >
-      <p>홈 화면에서 바로 실행할 수 있어요.</p>
+      <p>설치하면 인터넷 없이도 사용할 수 있습니다.</p>
       {install.error && <p role="alert">{install.error}</p>}
       {install.mode === 'ios' ? (
         <p>
@@ -23,7 +23,7 @@ export function InstallNotice({ install }: { install: ReturnType<typeof useInsta
           선택하세요.
         </p>
       ) : null}
-      {install.pending && <p role="status">설치 창에서 선택해주세요.</p>}
+      {install.pending && <p role="status">설치 창에서 선택해 주세요.</p>}
       <div className="dialog-actions">
         <button disabled={install.pending} onClick={install.close}>
           나중에

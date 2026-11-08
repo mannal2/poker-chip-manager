@@ -178,8 +178,8 @@ function LocalGame({
     guard: () =>
       busy || isLocked()
         ? app.status === 'controlLost'
-          ? '다른 화면에서 조작 중입니다.'
-          : '저장 완료 또는 재시도를 기다려주세요.'
+          ? '다른 창에서 이 게임을 열었습니다.'
+          : '저장 중입니다. 잠시만 기다려 주세요.'
         : null,
     run,
     dispatch,
@@ -188,7 +188,7 @@ function LocalGame({
   };
   const confirmationDialog = confirmation && (
     <Dialog
-      title="확인"
+      title="새 토너먼트"
       onClose={() => answer(false)}
       actions={
         <button className="primary" onClick={() => answer(true)}>
@@ -208,8 +208,9 @@ function LocalGame({
   if (app.status === 'restoreError')
     return (
       <main ref={screen} className="phone home">
-        <p role="alert">저장 정보를 불러오지 못했습니다.</p>
-        <p>{app.error}</p>
+        <p role="alert">저장된 게임을 불러오지 못했습니다.</p>
+        {app.error && <p>{app.error}</p>}
+        <p>먼저 다시 시도를 눌러 보세요. 새 토너먼트를 시작하면 저장된 게임과 기록이 지워집니다.</p>
         <button onClick={() => void restore(true)}>다시 시도</button>
         <button onClick={() => void restartAfterFailure()}>새 토너먼트 시작</button>
         <StorageErrorDetails />
@@ -230,11 +231,11 @@ function LocalGame({
                 })
               }
             >
-              재시도
+              다시 시도
             </button>
           )}
           {app.status === 'controlLost' && (
-            <button onClick={() => void continueGame()}>이 창에서 조작하기</button>
+            <button onClick={() => void continueGame()}>이 창에서 이어하기</button>
           )}
           {app.status === 'storageError' && <StorageErrorDetails />}
         </div>

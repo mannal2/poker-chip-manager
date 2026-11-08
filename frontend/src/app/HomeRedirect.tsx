@@ -6,5 +6,5 @@ export function HomeRedirect() {
   useEffect(() => {
     location.replace('/local/');
   }, []);
-  return <main className="phone home">앱 홈을 여는 중…</main>;
+  return <main className="phone home">홈을 여는 중…</main>;
 }

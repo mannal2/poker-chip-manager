@@ -106,7 +106,7 @@ test('waiting-room reconnection preserves the seat only within the five-second g
     await expect(page.locator('.seat .disconnected')).toHaveCount(1);
     await expect(page.locator('.seat .name')).toHaveText(['Alice'], { timeout: 10_000 });
     await context.setOffline(false);
-    await expect(guest.getByRole('alert')).toHaveText('이 화면의 참가 권한이 회수되었습니다.');
+    await expect(guest.getByRole('alert')).toHaveText('이 화면에서는 더 이상 참가할 수 없습니다. 방장이 내보냈거나 다른 기기에서 자리를 복구했습니다.');
   } finally {
     await context.close();
   }

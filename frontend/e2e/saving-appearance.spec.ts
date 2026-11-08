@@ -63,7 +63,7 @@ for (const screen of ['setup', 'betting']) {
       await action.dispatchEvent('click');
       await expect(page.locator('.pot strong')).toHaveText('15');
     } else {
-      await page.getByRole('button', { name: '참가자 추가', exact: true }).dispatchEvent('click');
+      await page.getByRole('button', { name: '플레이어 추가', exact: true }).dispatchEvent('click');
       await expect(page.locator('.seat')).toHaveCount(2);
     }
     await page.evaluate(() => (window as unknown as { releaseSave: () => void }).releaseSave());

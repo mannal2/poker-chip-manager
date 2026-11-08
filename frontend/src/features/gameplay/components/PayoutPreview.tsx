@@ -16,7 +16,7 @@ export function PayoutPreview({
 }) {
   return (
     <>
-      <p>테이블의 누적액은 현재 핸드 납부액입니다. WIN 저장 후 지급됩니다.</p>
+      <p>카드의 금액은 이번 핸드에 낸 칩입니다. WIN을 누르면 지급됩니다.</p>
       {pots.map((p, i) => (
         <p key={p.id}>
           {i === 0 ? '메인 팟' : '사이드 팟 ' + i}: {p.amount.toLocaleString('ko-KR')} ·{' '}

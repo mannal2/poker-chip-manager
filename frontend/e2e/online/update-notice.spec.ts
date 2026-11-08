@@ -18,7 +18,7 @@ test('offers a safe refresh and resumes the same participant in the same room', 
   const code = await createRoom(page);
   changed = true;
   await page.evaluate(() => window.dispatchEvent(new Event('focus')));
-  const refresh = page.getByRole('button', { name: '새버전 새로고침', exact: true });
+  const refresh = page.getByRole('button', { name: '새 버전으로 새로고침', exact: true });
   await expect(refresh).toBeVisible();
   const notice = await refresh.boundingBox();
   const header = await page.locator('.meta').boundingBox();

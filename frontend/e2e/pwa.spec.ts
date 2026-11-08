@@ -128,7 +128,7 @@ test('A09 precache 실패를 준비 완료로 표시하지 않는다', async ({ 
   );
   try {
     await page.goto('/local/');
-    await expect(page.getByText(/앱 파일을 저장하지 못했습니다/)).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText(/파일을 받지 못했습니다/)).toBeVisible({ timeout: 15000 });
     await expect(page.getByText('오프라인 준비 완료', { exact: true })).toHaveCount(0);
     await writeFile(file, original);
     await page.getByRole('button', { name: '앱 업데이트', exact: true }).click();

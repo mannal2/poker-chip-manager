@@ -16,7 +16,7 @@ test('브라우저 터치 강조 없이 탭과 키보드 포커스 유지', asyn
         ),
       ),
     ).toBe(true);
-  await page.getByRole('button', { name: '참가자 추가', exact: true }).tap();
+  await page.getByRole('button', { name: '플레이어 추가', exact: true }).tap();
   await expect(page.locator('.seat')).toHaveCount(3);
   await page.getByRole('button', { name: '관리 메뉴', exact: true }).focus();
   await page.keyboard.press('Enter');
@@ -81,7 +81,7 @@ test('Chrome 실제 터치 조기 이동·길게 누르기·취소 후 탭과 �
   test.skip(info.project.name !== 'chromium', 'CDP 실제 touch는 Chromium 전용');
   await page.goto('/local/');
   await openLocal(page);
-  await page.getByRole('button', { name: '참가자 추가', exact: true }).click();
+  await page.getByRole('button', { name: '플레이어 추가', exact: true }).click();
   await expect(page.locator('.seat')).toHaveCount(3);
   await page.locator('.seat').evaluateAll(async (nodes) => {
     await Promise.all(

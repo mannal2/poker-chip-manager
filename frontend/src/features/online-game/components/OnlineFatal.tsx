@@ -6,11 +6,12 @@ export function OnlineFatal({ phase, code }: { phase: OnlineView['phase']; code?
     <>
       <p role="alert">
         {phase === 'gone'
-          ? '방이 사라졌거나 참가 세션이 만료되었습니다. 방이 남아 있다면 기존 참가자로 복구할 수 있습니다.'
+          ? "방에 다시 들어갈 수 없습니다. 방이 남아 있다면 '기존 플레이어로 복구'를 누르세요."
           : phase === 'revoked'
-            ? '이 화면의 참가 권한이 회수되었습니다.'
-            : '새로고침이 필요합니다.'}
+            ? '이 화면에서는 더 이상 참가할 수 없습니다. 방장이 내보냈거나 다른 기기에서 자리를 복구했습니다.'
+            : '앱이 업데이트되었습니다. 새로고침해 주세요.'}
       </p>
+      {phase === 'incompatible' && <button onClick={() => location.reload()}>새로고침</button>}
       {phase !== 'incompatible' && (
         <a href={`/online/${code ? `?code=${encodeURIComponent(code)}` : ''}`}>입장 화면으로</a>
       )}

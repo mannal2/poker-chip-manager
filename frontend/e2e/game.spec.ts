@@ -5,7 +5,7 @@ async function setup(page: import('@playwright/test').Page, count = 6) {
   await openLocal(page);
   await expect(page.getByRole('button', { name: '게임 시작', exact: true })).toBeVisible();
   for (let i = 2; i < count; i++) {
-    await page.getByRole('button', { name: '참가자 추가', exact: true }).click();
+    await page.getByRole('button', { name: '플레이어 추가', exact: true }).click();
     await expect(page.locator('.seat')).toHaveCount(i + 1);
   }
   await page.locator('.seat .card-values').last().click();
@@ -133,10 +133,10 @@ test('A06 저장 실패: 확정잔액 보존·재시도1회', async ({ page }) =
     };
   });
   await page.getByRole('button', { name: 'BET', exact: true }).click();
-  await expect(page.getByRole('alert')).toContainText('재시도');
+  await expect(page.getByRole('alert')).toContainText('다시 시도');
   await expect(page.locator(`[data-player="${id}"] .stack`)).toHaveText('1,000');
   await page.evaluate(() => (window as unknown as { restorePut: () => void }).restorePut());
-  await page.getByRole('button', { name: '재시도', exact: true }).click();
+  await page.getByRole('button', { name: '다시 시도', exact: true }).click();
   await expect(page.locator(`[data-player="${id}"] .stack`)).toHaveText('950');
   await expect(page.locator('.pot strong')).toHaveText('65');
 });
@@ -201,7 +201,7 @@ test('A07 HU 올인 runout·정산 저장 실패·최종 우승', async ({ page 
   await expect(page.getByRole('alert')).toBeVisible();
   await expect(page.locator('.seat .stack').first()).toHaveText('0');
   await page.evaluate(() => (window as unknown as { restorePut: () => void }).restorePut());
-  await page.getByRole('button', { name: '재시도', exact: true }).click();
+  await page.getByRole('button', { name: '다시 시도', exact: true }).click();
   await expect(page.locator('.summary')).toContainText('토너먼트 종료');
   await expect(page.locator('.seat .stack').first()).toHaveText('2,000');
   await page.reload();
@@ -228,7 +228,7 @@ test('A07 side pot 모순 거절·초안 새로고침 폐기·동률', async ({ 
   await expect(page.locator('.pot strong')).toHaveText('30');
   await page.locator('.seat').nth(1).click();
   await page.getByRole('button', { name: 'WIN', exact: true }).click();
-  await expect(page.getByRole('status')).toContainText('충돌');
+  await expect(page.getByRole('status')).toContainText('서로 맞지 않습니다');
   await expect(page.locator('.meta')).toContainText('02');
   await page.reload();
   await openLocal(page);
@@ -262,10 +262,10 @@ test('A10 준비 IME 미확정·저장 실패·재시도', async ({ page }) => {
   });
   await page.getByLabel('시작 칩', { exact: true }).fill('1500');
   await page.getByLabel('SB', { exact: true }).focus();
-  await expect(page.getByRole('alert')).toContainText('재시도');
+  await expect(page.getByRole('alert')).toContainText('다시 시도');
   await expect(page.locator('.seat .stack').first()).toHaveText('1,000');
   await page.evaluate(() => (window as unknown as { restorePut: () => void }).restorePut());
-  await page.getByRole('button', { name: '재시도', exact: true }).click();
+  await page.getByRole('button', { name: '다시 시도', exact: true }).click();
   await expect(page.locator('.seat .stack').first()).toHaveText('1,500');
 });
 test('A10 드래그 도중 다른 탭 인수는 초안 취소·이전 화면 차단', async ({ page, context }) => {
@@ -281,7 +281,7 @@ test('A10 드래그 도중 다른 탭 인수는 초안 취소·이전 화면 차
   const other = await context.newPage();
   await other.goto('/local/');
   await openLocal(other);
-  await expect(page.getByRole('alert')).toContainText('다른 화면');
+  await expect(page.getByRole('alert')).toContainText('다른 창에서 이 게임을 열었습니다.');
   await page.mouse.up();
   expect(await page.locator('.seat .name').allTextContents()).toEqual(before);
   expect(await other.locator('.seat .name').allTextContents()).toEqual(before);
@@ -310,7 +310,7 @@ test('A10 다른 탭의 새 게임을 삭제 확인 없이 교체하지 않는�
   await other.getByRole('button', { name: '관리 메뉴', exact: true }).click();
   await other.getByRole('button', { name: '새 토너먼트', exact: true }).click();
   await other
-    .getByRole('dialog', { name: '확인', exact: true })
+    .getByRole('dialog', { name: '새 토너먼트', exact: true })
     .getByRole('button', { name: '확인', exact: true })
     .click();
   await expect(other.locator('.seat .badge')).toHaveCount(0);
@@ -321,7 +321,7 @@ test('A10 다른 탭의 새 게임을 삭제 확인 없이 교체하지 않는�
   await expect(other.locator('.pot strong')).toHaveText('15');
   await page.getByRole('button', { name: '관리 메뉴', exact: true }).click();
   await page.getByRole('button', { name: '새 토너먼트', exact: true }).click();
-  const confirmation = page.getByRole('dialog', { name: '확인', exact: true });
+  const confirmation = page.getByRole('dialog', { name: '새 토너먼트', exact: true });
   await expect(confirmation).toContainText('새 토너먼트를 준비할까요?');
   await confirmation.getByRole('button', { name: '확인', exact: true }).click();
   await expect(confirmation).toContainText('다른 화면에서 새 토너먼트가 저장되었습니다.');
@@ -340,9 +340,9 @@ test('리뷰 회귀: 인수 후 베팅 초안은 재등장하지 않는다', asy
   const other = await context.newPage();
   await other.goto('/local/');
   await openLocal(other);
-  await expect(page.getByRole('alert')).toContainText('다른 화면');
+  await expect(page.getByRole('alert')).toContainText('다른 창에서 이 게임을 열었습니다.');
   await expect(page.locator('.seat.active .bet')).toHaveText('0');
-  await page.getByRole('button', { name: '이 창에서 조작하기', exact: true }).click();
+  await page.getByRole('button', { name: '이 창에서 이어하기', exact: true }).click();
   await expect(page.locator('.seat.active .bet')).toHaveText('0');
   await page.getByRole('button', { name: '관리 메뉴', exact: true }).click();
   await page.getByRole('button', { name: '홈', exact: true }).click();
@@ -360,7 +360,7 @@ test('리뷰 회귀: 다른 탭의 준비 설정을 인수한 뒤 옛 입력으�
   await other.getByLabel('시작 칩', { exact: true }).fill('1500');
   await other.getByLabel('SB', { exact: true }).focus();
   await expect(other.locator('.seat .stack').first()).toHaveText('1,500');
-  await page.getByRole('button', { name: '이 창에서 조작하기', exact: true }).click();
+  await page.getByRole('button', { name: '이 창에서 이어하기', exact: true }).click();
   await expect(page.locator('.seat .stack').first()).toHaveText('1,500');
   await expect(page.getByLabel('시작 칩', { exact: true })).toHaveValue('1500');
   await page.getByRole('button', { name: '게임 시작', exact: true }).click();

@@ -14,10 +14,10 @@ export interface MenuItem {
 }
 
 export const forfeitWarning =
-  '현재 핸드에서 폴드하고 탈락합니다. 남은 칩은 핸드가 끝난 뒤 다른 참가자에게 나눠집니다. 되돌릴 수 없습니다.';
+  '지금 폴드하고 탈락합니다. 남은 칩은 다른 플레이어에게 나눠지며 되돌릴 수 없습니다.';
 export const resetWarning =
-  '이전 결과와 기록이 삭제됩니다. 이름과 좌석은 유지하고 다시 준비하시겠습니까?';
-export const leaveWarning = '방에서 나가면 이 게임에 다시 들어올 수 없습니다. 방을 나가시겠습니까?';
+  '결과와 기록을 지우고, 이름과 자리는 그대로 두고 다시 준비합니다.';
+export const leaveWarning = '나가면 이 게임에 다시 들어올 수 없습니다.';
 
 // 서버 게임의 기권과 탈락 상태를 모두 확인해 아직 게임에 남은 참가자인지 판별한다
 export function inPlay(snapshot: RoomSnapshot, participant: RoomParticipant) {
@@ -82,7 +82,7 @@ export function menuItems(snapshot: RoomSnapshot): MenuItem[] {
     });
     if (snapshot.roomPhase === 'WAITING')
       items.push({
-        label: '참가자 내보내기',
+        label: '플레이어 내보내기',
         command: { type: 'KICK', handScoped: false },
         targets: others,
       });
@@ -91,7 +91,7 @@ export function menuItems(snapshot: RoomSnapshot): MenuItem[] {
         label: '토너먼트 중단',
         command: { type: 'ABORT_AND_RE_READY', handScoped: false },
         confirm:
-          '현재 게임과 기록, 미정산 팟을 삭제하고 준비 화면으로 돌아갑니다. 토너먼트를 중단하시겠습니까?',
+          '게임과 기록을 지우고 준비 화면으로 돌아갑니다.',
       });
     if (snapshot.roomPhase === 'RESULT')
       items.push({
@@ -138,7 +138,7 @@ export function OnlineMenu({
   }
   return (
     <div className="menu-actions">
-      <button onClick={() => void copyCode()}>방코드:[{snapshot.code}]</button>
+      <button onClick={() => void copyCode()}>방 코드 {snapshot.code} 복사</button>
       {menuRows(items).map((row) => (
         <div key={row.map((item) => item.label).join('/')} className={row.length > 1 ? 'menu-row' : undefined}>
           {row.map((item) => (

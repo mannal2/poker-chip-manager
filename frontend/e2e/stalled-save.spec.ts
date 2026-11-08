@@ -62,13 +62,13 @@ async function ready(page: Page) {
 }
 async function recoveryScreen(page: Page) {
   await page.evaluate(() => (window as unknown as Faults).invalidate());
-  await expect(page.getByText('저장 정보를 불러오지 못했습니다.', { exact: true })).toBeVisible();
+  await expect(page.getByText('저장된 게임을 불러오지 못했습니다.', { exact: true })).toBeVisible();
   await restoreEvents(page);
 }
 async function confirmRestart(page: Page) {
   await page.getByRole('button', { name: '새 토너먼트 시작', exact: true }).click();
   await page
-    .getByRole('dialog', { name: '확인', exact: true })
+    .getByRole('dialog', { name: '새 토너먼트', exact: true })
     .getByRole('button', { name: '확인', exact: true })
     .click();
 }
@@ -103,9 +103,9 @@ test('이름 저장 응답 유실은 제한 후 재시도·핸드 시작 1회·�
   await page.clock.install();
   await holdSave(page);
   await page.clock.fastForward(8001);
-  await expect(page.getByRole('button', { name: '재시도', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: '다시 시도', exact: true })).toBeVisible();
   await restoreEvents(page);
-  await page.getByRole('button', { name: '재시도', exact: true }).click();
+  await page.getByRole('button', { name: '다시 시도', exact: true }).click();
   await expect(page.locator('.seat .name').first()).toHaveText('저장된이름');
   await page.getByRole('button', { name: '게임 시작', exact: true }).click();
   await expect(page.locator('.pot strong')).toHaveText('15');
@@ -125,10 +125,10 @@ test('저장 중 연결 종료: 복구 취소는 보존, 확인하면 즉시 새
   await recoveryScreen(page);
   await page.getByRole('button', { name: '새 토너먼트 시작', exact: true }).click();
   await page
-    .getByRole('dialog', { name: '확인', exact: true })
+    .getByRole('dialog', { name: '새 토너먼트', exact: true })
     .getByRole('button', { name: '닫기', exact: true })
     .click();
-  await expect(page.getByText('저장 정보를 불러오지 못했습니다.', { exact: true })).toBeVisible();
+  await expect(page.getByText('저장된 게임을 불러오지 못했습니다.', { exact: true })).toBeVisible();
   await confirmRestart(page);
   await expect(page.locator('.seat .name')).toHaveText(['P1', 'P2']);
   await page.locator('.seat .card-values').first().click();
@@ -146,7 +146,7 @@ test('저장 대기 중 메뉴 새 토너먼트도 확인 후 복구 가능', as
   await page.getByRole('button', { name: '관리 메뉴', exact: true }).click();
   await page.getByRole('button', { name: '새 토너먼트', exact: true }).click();
   await page
-    .getByRole('dialog', { name: '확인', exact: true })
+    .getByRole('dialog', { name: '새 토너먼트', exact: true })
     .getByRole('button', { name: '확인', exact: true })
     .click();
   await expect(page.locator('.seat .name')).toHaveText(['P1', 'P2']);
@@ -171,7 +171,7 @@ test('복구 교체 쓰기 실패는 이전 이름·기록 보존 후 다시 시
     };
   });
   await confirmRestart(page);
-  await expect(page.getByText('저장 정보를 불러오지 못했습니다.', { exact: true })).toBeVisible();
+  await expect(page.getByText('저장된 게임을 불러오지 못했습니다.', { exact: true })).toBeVisible();
   expect(await snapshot(page)).toBe(before);
   await page.evaluate(() => (window as unknown as { restorePut: () => void }).restorePut());
   await page.getByRole('button', { name: '다시 시도', exact: true }).click();
@@ -191,8 +191,8 @@ test('저장 중 앱 복귀는 완료 제한 후 저장 연결·미확정 요청
   await page.evaluate(() => document.dispatchEvent(new Event('resume')));
   await page.clock.fastForward(8001);
   await expect(page.locator('.seat .name').first()).toHaveText('복귀이름');
-  await expect(page.locator('.notice')).toContainText('저장 결과를 확인한 뒤');
-  await page.getByRole('button', { name: '재시도', exact: true }).click();
+  await expect(page.locator('.notice')).toContainText('저장됐는지 확인하지 못했습니다.');
+  await page.getByRole('button', { name: '다시 시도', exact: true }).click();
   await expect(page.locator('main')).toHaveAttribute('aria-busy', 'false');
   await releaseEvents(page);
 });
@@ -203,9 +203,9 @@ test('연결 종료 후 저장 제한에 도달해도 재시도는 새 연결에
   await holdSave(page, '연결복구');
   await page.evaluate(() => (window as unknown as Faults).invalidate());
   await page.clock.fastForward(8001);
-  await expect(page.getByRole('button', { name: '재시도', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: '다시 시도', exact: true })).toBeVisible();
   await restoreEvents(page);
-  await page.getByRole('button', { name: '재시도', exact: true }).click();
+  await page.getByRole('button', { name: '다시 시도', exact: true }).click();
   await expect(page.locator('.seat .name').first()).toHaveText('연결복구');
   await expect(page.locator('main')).toHaveAttribute('aria-busy', 'false');
   await releaseEvents(page);

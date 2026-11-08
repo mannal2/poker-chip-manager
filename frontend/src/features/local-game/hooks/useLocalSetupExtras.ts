@@ -23,7 +23,7 @@ export function useLocalSetupExtras({
       const settings = { ...s.settings, names: [...s.settings.names, `P${n + 1}`] };
       const v = validateSettings(settings);
       if (!v.ok)
-        return notify(`P${n + 1} 이름이 이미 사용 중입니다. 해당 이름을 변경한 뒤 추가하세요.`);
+        return notify(`'P${n + 1}'이라는 이름이 이미 있습니다. 이름 변경 후 추가하세요.`);
       saveSettings(v.settings);
     } else {
       if (n <= 2) return;

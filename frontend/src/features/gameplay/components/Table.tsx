@@ -86,7 +86,7 @@ export function Table({
                 {onRemove && (
                   <button
                     className="count-control"
-                    aria-label="참가자 삭제"
+                    aria-label="플레이어 삭제"
                     disabled={busy || players.length <= 2}
                     data-unavailable={players.length <= 2}
                     onClick={onRemove}
@@ -101,7 +101,7 @@ export function Table({
                 {onAdd && (
                   <button
                     className="count-control"
-                    aria-label="참가자 추가"
+                    aria-label="플레이어 추가"
                     disabled={busy || players.length >= 10}
                     data-unavailable={players.length >= 10}
                     onClick={onAdd}
@@ -114,7 +114,7 @@ export function Table({
                 <div className="view-actions">
                   <button
                     className="view-rotate"
-                    aria-label="화면 기준 한 자리 회전"
+                    aria-label="자리 돌리기"
                     disabled={busy}
                     onClick={onRotate}
                   >

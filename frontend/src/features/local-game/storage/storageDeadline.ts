@@ -8,7 +8,7 @@ export async function storageDeadline<T>(promise: Promise<T>, phase: string, can
       new Promise<never>((_resolve, reject) => {
         timer = setTimeout(() => {
           cancel();
-          reject(new Error(`저장 상태를 확인하지 못했습니다 (${phase}). 다시 시도해주세요.`));
+          reject(new Error(`저장 상태를 확인하지 못했습니다. 다시 시도해 주세요.`));
         }, 8000);
       }),
     ]);

@@ -9,7 +9,7 @@ it('announces another actor and stays quiet for the actor', () => {
   const actor = s.participants.find((p) => p.playerId === s.game!.hand!.actorId)!;
   s.game!.hand!.pending.reverse();
   const other = s.participants.find((p) => p !== actor)!;
-  expect(dockNoticeFor(s, other.participantId)).toBe(`${actor.name} 차례입니다`);
+  expect(dockNoticeFor(s, other.participantId)).toBe(`${actor.name} 차례입니다.`);
   expect(dockNoticeFor(s, actor.participantId)).toBeNull();
 });
 
@@ -26,7 +26,7 @@ it('announces host settlement and result preparation only to guests', () => {
   expect(dockNoticeFor(s, guest.participantId)).toBe('방장이 승자를 선택하고 있습니다. 2명 선택');
   expect(dockNoticeFor(s, s.hostId)).toBeNull();
   s.roomPhase = 'RESULT';
-  expect(dockNoticeFor(s, guest.participantId)).toBe('방장이 다음 게임을 준비하고 있습니다');
+  expect(dockNoticeFor(s, guest.participantId)).toBe('방장이 다음 게임을 준비하고 있습니다.');
   expect(dockNoticeFor(s, s.hostId)).toBeNull();
 });
 

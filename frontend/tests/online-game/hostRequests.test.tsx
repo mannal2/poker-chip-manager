@@ -54,9 +54,9 @@ const button = (host: HTMLElement, text: string) =>
 // 신청 한 건은 이름을 보여 주고 승인 버튼은 대화상자에서만 보인다
 it('shows one line until the host opens the recovery dialog', () => {
   const { host, send } = render(hostSnapshot([request('r1', 'Bob')]));
-  expect(host.querySelector('section')?.textContent).toBe('Bob 복구 신청 · 확인');
+  expect(host.querySelector('section')?.textContent).toBe('Bob 복구 신청 보기');
   expect(button(host, '복구 승인')).toBeUndefined();
-  act(() => button(host, 'Bob 복구 신청 · 확인')!.click());
+  act(() => button(host, 'Bob 복구 신청 보기')!.click());
   expect([...host.querySelectorAll('.host-request p')].map((p) => p.textContent)).toEqual([
     'Bob',
     '기존 플레이어가 맞는지 확인 후 승인하세요.',
@@ -73,8 +73,8 @@ it('shows one line until the host opens the recovery dialog', () => {
 // 신청이 여러 건이면 건수로 묶고 각 신청을 따로 처리한다
 it('groups several requests and decides them separately', () => {
   const { host, send } = render(hostSnapshot([request('r1', 'Bob'), request('r2', 'Carol')]));
-  expect(host.querySelector('section')?.textContent).toBe('복구 신청 2건 · 확인');
-  act(() => button(host, '복구 신청 2건 · 확인')!.click());
+  expect(host.querySelector('section')?.textContent).toBe('복구 신청 2건 보기');
+  act(() => button(host, '복구 신청 2건 보기')!.click());
   expect(
     [...host.querySelectorAll('.host-request')].map((item) => item.querySelector('p')?.textContent),
   ).toEqual(['Bob', 'Carol']);
@@ -90,7 +90,7 @@ it('groups several requests and decides them separately', () => {
 it('closes the dialog when no request remains', () => {
   const snapshot = hostSnapshot([request('r1', 'Bob')]);
   const { host, draw } = render(snapshot);
-  act(() => button(host, 'Bob 복구 신청 · 확인')!.click());
+  act(() => button(host, 'Bob 복구 신청 보기')!.click());
   draw(hostSnapshot([]));
   expect(host.querySelector('[role="dialog"]')).toBeNull();
   draw(hostSnapshot([request('r2', 'Carol')]));

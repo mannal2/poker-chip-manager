@@ -25,13 +25,13 @@ test('이름 편집 중 조작권 변경 뒤 인수해도 다른 창의 인원·
   const other = await context.newPage();
   await other.goto('/local/');
   await openLocal(other);
-  await other.getByRole('button', { name: '참가자 추가', exact: true }).click();
+  await other.getByRole('button', { name: '플레이어 추가', exact: true }).click();
   await expect(other.locator('.seat')).toHaveCount(3);
   await expect(other.locator('main')).toHaveAttribute('aria-busy', 'false');
   await other.getByRole('textbox', { name: '시작 칩', exact: true }).fill('1500');
   await other.getByRole('textbox', { name: 'SB', exact: true }).focus();
   await expect(other.locator('.seat .stack').first()).toHaveText('1,500');
-  await page.getByRole('button', { name: '이 창에서 조작하기', exact: true }).click();
+  await page.getByRole('button', { name: '이 창에서 이어하기', exact: true }).click();
   await expect(page.locator('.seat')).toHaveCount(3);
   await expect(page.locator('main')).toHaveAttribute('aria-busy', 'false');
   await page.locator('.seat .card-values').first().click();

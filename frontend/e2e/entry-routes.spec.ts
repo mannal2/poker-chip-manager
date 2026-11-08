@@ -61,7 +61,7 @@ test('온라인 화면은 로컬 코드를 받지 않고 서비스 워커 제어
   page.on('request', (request) => requested.push(new URL(request.url()).pathname));
   await page.goto('/online/');
   await expect(page.getByRole('heading', { name: '멀티플레이 모드', exact: true })).toBeVisible();
-  await expect(page.getByRole('link', { name: '앱 홈으로' })).toHaveAttribute('href', '/local/');
+  await expect(page.getByRole('link', { name: '홈으로' })).toHaveAttribute('href', '/local/');
   expect(await page.evaluate(() => navigator.serviceWorker.controller)).toBeNull();
   expect(requested.filter((path) => /^\/assets\/(local|workbox)/.test(path))).toEqual([]);
   expect(requested.some((path) => /^\/assets\/online-/.test(path))).toBe(true);

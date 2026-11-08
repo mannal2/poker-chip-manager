@@ -17,7 +17,7 @@ export class LocalController {
   ) {}
   // 이 화면이 조작권을 가져오고 상태를 다시 읽는다
   async takeControl() {
-    if (this.running) throw Error('저장 완료를 기다려주세요.');
+    if (this.running) throw Error('저장 중입니다. 잠시만 기다려 주세요.');
     this.lease = await this.repository.takeControl(this.screenId);
     this.sequence = 0;
     this.pending = null;
@@ -50,7 +50,7 @@ export class LocalController {
   }
   // 저장소를 비우고 새 토너먼트와 조작권으로 다시 시작한다
   async restart(settings: GameSettings) {
-    if (this.running) throw Error('저장 완료를 기다려주세요.');
+    if (this.running) throw Error('저장 중입니다. 잠시만 기다려 주세요.');
     this.cancelRefresh();
     const result = await this.repository.restart(settings, this.screenId);
     this.lease = result.lease;

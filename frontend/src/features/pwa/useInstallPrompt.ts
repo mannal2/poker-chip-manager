@@ -93,7 +93,7 @@ export function useInstallPrompt(enabled: boolean) {
       if (choice.outcome === 'accepted') setInstalled(true);
       setOpened(false);
     } catch {
-      setError('설치 창을 열지 못했습니다. 아래 방법으로 설치할 수 있어요.');
+      setError('설치 창을 열지 못했습니다. 아래 방법으로 설치하세요.');
     } finally {
       prompting.current = false;
       setPending(false);

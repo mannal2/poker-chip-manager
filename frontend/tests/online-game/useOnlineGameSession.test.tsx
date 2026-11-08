@@ -156,7 +156,7 @@ it('keeps the latest host pick through delayed echoes and restores server picks 
     await act(() => root.render(<Harness />));
     await act(() => result.session.onSelectionChange!(last));
     expect(result.session.sharedSelection).toMatchObject(last);
-    view = { ...view, pending: true, error: '연결이 끊겼습니다' };
+    view = { ...view, pending: true, error: '연결이 끊겼습니다.' };
     await act(() => root.render(<Harness />));
     expect(result.session.sharedSelection).toMatchObject(first);
     view = { ...view, pending: false, error: null };
@@ -240,9 +240,9 @@ it('adapts authoritative permissions, live guards and own rename without grantin
     await result.session.dispatch({ type: 'CALL' });
     expect(send).toHaveBeenLastCalledWith([{ type: 'CALL', handScoped: true }]);
     for (const [patch, message] of [
-      [{ connection: 'offline' }, '연결이 끊겼습니다'],
+      [{ connection: 'offline' }, '연결이 끊겼습니다.'],
       [{ connection: 'online', hasControl: false }, '다른 화면에서 조작 중입니다.'],
-      [{ hasControl: true, pending: true }, '서버 응답을 기다려주세요.'],
+      [{ hasControl: true, pending: true }, '처리 중입니다. 잠시만 기다려 주세요.'],
     ] as const) {
       view = { ...view, ...patch };
       expect(result.session.guard()).toBe(message);

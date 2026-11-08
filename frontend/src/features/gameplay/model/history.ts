@@ -37,7 +37,7 @@ export function historyRows(
       }
     } else active.push(event);
   }
-  const name = (id: string) => players.find((p) => p.id === id)?.name ?? '참가자';
+  const name = (id: string) => players.find((p) => p.id === id)?.name ?? '플레이어';
   const chips = (n: number) => n.toLocaleString('ko-KR') + '칩';
   const rows: HistoryRow[] = [];
   let hand = -1,

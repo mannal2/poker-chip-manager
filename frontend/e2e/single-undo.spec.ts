@@ -13,7 +13,7 @@ test('마지막 폴드는 확인 없이 다음 핸드, 재접속 후 무르기 �
   await start(page);
   await page.getByRole('button', { name: '폴드', exact: true }).click();
   await expect(page.getByLabel('현재 토너먼트 기록', { exact: true })).toContainText('02');
-  await expect(page.getByRole('dialog', { name: '확인', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('dialog', { name: '새 토너먼트', exact: true })).toHaveCount(0);
   await page.reload();
   await openLocal(page);
   await page.getByRole('button', { name: '취소', exact: true }).click();
@@ -95,9 +95,9 @@ test('무르기 저장 실패 후 재시도는 이전 승자 초안을 버린다
     };
   });
   await page.getByRole('button', { name: '취소', exact: true }).click();
-  await expect(page.getByRole('alert')).toContainText('재시도');
+  await expect(page.getByRole('alert')).toContainText('다시 시도');
   await page.evaluate(() => (window as unknown as { restorePut: () => void }).restorePut());
-  await page.getByRole('button', { name: '재시도', exact: true }).click();
+  await page.getByRole('button', { name: '다시 시도', exact: true }).click();
   await expect(page.locator('.settlement-count')).toHaveText('승자 선택');
   await page.locator('.seat').last().click();
   await expect(page.locator('.settlement-count')).toHaveText('1명 선택');

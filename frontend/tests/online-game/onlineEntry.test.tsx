@@ -74,13 +74,13 @@ it('validates recovery name and code on the entry form without contacting the se
   await act(() => root.render(<OnlineApp />));
   const recover = host.querySelectorAll<HTMLButtonElement>('button')[2];
   await act(() => recover.click());
-  expect(host.querySelector('[role="alert"]')?.textContent).toBe('정확한 이름을 입력해주세요.');
+  expect(host.querySelector('[role="alert"]')?.textContent).toBe('이름을 정확히 입력해 주세요.');
   await act(() => type(host.querySelector<HTMLInputElement>('[name="name"]')!, 'Alice'));
   await act(() => recover.click());
-  expect(host.querySelector('[role="alert"]')?.textContent).toBe('정확한 방코드를 입력해주세요.');
+  expect(host.querySelector('[role="alert"]')?.textContent).toBe('방 코드를 정확히 입력해 주세요.');
   await act(() => type(host.querySelector<HTMLInputElement>('[name="code"]')!, 'ABC123'));
   await act(() => recover.click());
-  expect(host.querySelector('[role="alert"]')?.textContent).toBe('정확한 방코드를 입력해주세요.');
+  expect(host.querySelector('[role="alert"]')?.textContent).toBe('방 코드를 정확히 입력해 주세요.');
   expect(fetch).not.toHaveBeenCalled();
 });
 // 승인 대기 중에 중복 복구 신청이나 새 입장을 제공하지 않는지 확인한다

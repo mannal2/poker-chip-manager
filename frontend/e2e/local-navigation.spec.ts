@@ -4,7 +4,7 @@ test('local back returns home before revisiting multiplayer and forward restores
   page,
 }) => {
   await page.goto('/online/');
-  await page.getByRole('link', { name: '앱 홈으로', exact: true }).click();
+  await page.getByRole('link', { name: '홈으로', exact: true }).click();
   await page.getByRole('button', { name: '단일 기기 모드', exact: true }).click();
   await expect(page.locator('.seat')).toHaveCount(2);
   await page.goBack();

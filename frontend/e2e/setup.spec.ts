@@ -5,7 +5,7 @@ async function ready(page: Page) {
   await openLocal(page);
 }
 async function add(page: Page) {
-  await page.getByRole('button', { name: '참가자 추가', exact: true }).click();
+  await page.getByRole('button', { name: '플레이어 추가', exact: true }).click();
   await expect(page.locator('main')).toHaveAttribute('aria-busy', 'false');
 }
 async function drag(page: Page, from: number, to: number) {
@@ -22,24 +22,24 @@ async function drag(page: Page, from: number, to: number) {
 test('준비: 2인·인원 버튼·최근 추가 삭제·P3 재사용·복원', async ({ page }) => {
   await ready(page);
   await expect(page.locator('.seat .name')).toHaveText(['P1', 'P2']);
-  await expect(page.getByRole('button', { name: '참가자 삭제', exact: true })).toBeDisabled();
+  await expect(page.getByRole('button', { name: '플레이어 삭제', exact: true })).toBeDisabled();
   await add(page);
   await expect(page.locator('.pot strong')).toHaveText('3명');
   await drag(page, 2, 0);
   await page.reload();
   await openLocal(page);
-  await page.getByRole('button', { name: '참가자 삭제', exact: true }).click();
+  await page.getByRole('button', { name: '플레이어 삭제', exact: true }).click();
   await expect(page.locator('.seat .name')).toHaveText(['P2', 'P1']);
   await add(page);
   await expect(page.locator('.seat .name')).toHaveText(['P2', 'P1', 'P3']);
   for (let i = 3; i < 10; i++) await add(page);
   await expect(page.locator('.pot strong')).toHaveText('10명');
   await expect(page.locator('.seat .name').last()).toHaveText('P10');
-  await expect(page.getByRole('button', { name: '참가자 추가', exact: true })).toBeDisabled();
+  await expect(page.getByRole('button', { name: '플레이어 추가', exact: true })).toBeDisabled();
   await page.reload();
   await openLocal(page);
   await expect(page.locator('.seat')).toHaveCount(10);
-  await page.getByRole('button', { name: '참가자 삭제', exact: true }).click();
+  await page.getByRole('button', { name: '플레이어 삭제', exact: true }).click();
   await add(page);
   await expect(page.locator('.seat .name').last()).toHaveText('P10');
   await page.getByRole('button', { name: '관리 메뉴', exact: true }).click();
@@ -90,7 +90,7 @@ test('10명: 드래그·전체 회전 뒤 딜러와 순서 보존', async ({ pag
   await expect(page.locator('.seat').first().locator('.badge')).toContainText('D');
   const before = await page.locator('.seat').first().getAttribute('style');
   for (let n = 0; n < 10; n++) {
-    await page.getByRole('button', { name: '화면 기준 한 자리 회전', exact: true }).click();
+    await page.getByRole('button', { name: '자리 돌리기', exact: true }).click();
     await expect(page.locator('main')).toHaveAttribute('aria-busy', 'false');
   }
   expect(await page.locator('.seat').first().getAttribute('style')).toBe(before);
@@ -115,7 +115,7 @@ test('준비: 아래로 드래그해도 화면 기준 고정·회전 버튼은 �
       .first()
       .evaluate((e) => e.style.top),
   ).toBe('87%');
-  const rotate = page.getByRole('button', { name: '화면 기준 한 자리 회전', exact: true });
+  const rotate = page.getByRole('button', { name: '자리 돌리기', exact: true });
   const r = (await rotate.boundingBox())!,
     n = (await page.locator('.pot strong').boundingBox())!;
   expect(r.y).toBeGreaterThanOrEqual(n.y + n.height);
@@ -189,11 +189,11 @@ test.describe('터치 준비 조작', () => {
     await page.getByRole('textbox', { name: 'P1 이름 수정', exact: true }).fill('터치이름');
     await page.getByRole('textbox', { name: 'P1 이름 수정', exact: true }).press('Enter');
     await expect(page.locator('.seat .name').first()).toHaveText('터치이름');
-    await page.getByRole('button', { name: '참가자 삭제', exact: true }).tap();
+    await page.getByRole('button', { name: '플레이어 삭제', exact: true }).tap();
     await expect(page.locator('.seat .badge')).toHaveCount(0);
     const before = await page.locator('.seat').first().getAttribute('style');
     for (let i = 0; i < 2; i++) {
-      await page.getByRole('button', { name: '화면 기준 한 자리 회전', exact: true }).tap();
+      await page.getByRole('button', { name: '자리 돌리기', exact: true }).tap();
       await expect(page.locator('main')).toHaveAttribute('aria-busy', 'false');
     }
     expect(await page.locator('.seat').first().getAttribute('style')).toBe(before);

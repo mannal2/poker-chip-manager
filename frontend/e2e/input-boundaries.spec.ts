@@ -27,7 +27,7 @@ test('조작권 변경은 승자 선택을 폐기하고 다시 인수해도 복�
   await openLocal(other);
   await expect(page.getByRole('alert')).toContainText('다른 창에서 이 게임을 열었습니다.');
   await expect(page.locator('.seat.selected')).toHaveCount(0);
-  await page.getByRole('button', { name: '이 창에서 조작하기', exact: true }).click();
+  await page.getByRole('button', { name: '이 창에서 이어하기', exact: true }).click();
   await expect(page.locator('main')).toHaveAttribute('aria-busy', 'false');
   await expect(page.locator('.settlement-count')).toHaveText('승자 선택');
   await expect(page.locator('.seat.selected')).toHaveCount(0);

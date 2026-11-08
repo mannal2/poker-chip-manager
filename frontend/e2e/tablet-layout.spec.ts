@@ -92,7 +92,7 @@ for (const [width, height] of [
           stack: parseFloat(getComputedStyle(e.querySelector('.stack')!).fontSize),
         }));
       expect(font.stack).toBeCloseTo(font.name, 1);
-      if (count < 10) await page.getByRole('button', { name: '참가자 추가', exact: true }).click();
+      if (count < 10) await page.getByRole('button', { name: '플레이어 추가', exact: true }).click();
     }
     const box = (await page.locator('main').boundingBox())!;
     if (width > height) expect(box.width).toBeLessThanOrEqual((height * 390) / 560 + 2);

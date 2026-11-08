@@ -12,7 +12,7 @@ test('selects a waiting card for kick, cancels confirmation and restores setup c
     const guest = await context.newPage();
     await joinRoom(guest, code);
     await page.getByRole('button', { name: '관리 메뉴', exact: true }).click();
-    await page.getByRole('button', { name: '참가자 내보내기', exact: true }).click();
+    await page.getByRole('button', { name: '플레이어 내보내기', exact: true }).click();
     await expect(page.getByRole('dialog')).toHaveCount(0);
     await expect(page.getByText('내보낼 플레이어를 선택하세요.', { exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: '게임 시작', exact: true })).toHaveCount(0);
@@ -31,9 +31,9 @@ test('selects a waiting card for kick, cancels confirmation and restores setup c
     await expect(page.getByRole('button', { name: '게임 시작', exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Alice 이름 수정', exact: true })).toBeVisible();
     await page.getByRole('button', { name: '관리 메뉴', exact: true }).click();
-    await page.getByRole('button', { name: '참가자 내보내기', exact: true }).click();
+    await page.getByRole('button', { name: '플레이어 내보내기', exact: true }).click();
     await bob.click();
-    await confirm(page, '참가자 내보내기');
+    await confirm(page, '플레이어 내보내기');
     await expect(page.locator('.seat')).toHaveCount(1);
     await expect(guest.getByRole('alert')).toBeVisible();
   } finally {
@@ -87,7 +87,7 @@ test('offers a connected forfeit target and exits when that target forfeits mean
     await expect(page.locator('.bet-top')).toHaveCount(0);
     const bob = page.locator('.seat').filter({ has: page.locator('.name', { hasText: 'Bob' }) });
     await bob.click();
-    await expect(page.getByRole('dialog')).toContainText('접속 중인 참가자입니다.');
+    await expect(page.getByRole('dialog')).toContainText('접속 중인 플레이어입니다.');
     await menu(guest, '기권');
     await confirm(guest, '기권');
     await afterForfeit(guest, '방에 남기');

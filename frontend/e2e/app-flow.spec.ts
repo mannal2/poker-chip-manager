@@ -45,7 +45,7 @@ test('상단 클릭 기록·예약 표시와 자동 스트리트·다음 핸드 
   }
   await expect(page.getByRole('button', { name: '카드 공개', exact: true })).toHaveCount(0);
   await expect(
-    page.getByRole('button', { name: '화면 기준 한 자리 회전', exact: true }),
+    page.getByRole('button', { name: '자리 돌리기', exact: true }),
   ).toHaveCount(0);
   await page.locator('.seat').first().click();
   await page.getByRole('button', { name: 'WIN', exact: true }).click();
@@ -58,7 +58,7 @@ test('상단 클릭 기록·예약 표시와 자동 스트리트·다음 핸드 
 });
 test('준비 이름 직접 편집·즉시 D·숫자 중심 정렬·시계 회전', async ({ page }) => {
   await enter(page);
-  await page.getByRole('button', { name: '참가자 추가', exact: true }).click();
+  await page.getByRole('button', { name: '플레이어 추가', exact: true }).click();
   await expect(page.locator('.seat')).toHaveCount(3);
   const body = page.locator('.seat .card-values').first();
   await body.click();
@@ -79,7 +79,7 @@ test('준비 이름 직접 편집·즉시 D·숫자 중심 정렬·시계 회전
     }),
   );
   expect(Math.max(...centers) - Math.min(...centers)).toBeLessThan(2);
-  await page.getByRole('button', { name: '화면 기준 한 자리 회전', exact: true }).click();
+  await page.getByRole('button', { name: '자리 돌리기', exact: true }).click();
   await expect(page.locator('main')).toHaveAttribute('aria-busy', 'false');
   expect(
     await page
@@ -95,12 +95,12 @@ test('다른 창이 실제 조작 중일 때만 인수 안내, 자동으로 빼�
   await other.goto('/local/');
   await other.getByRole('button', { name: '단일 기기 모드', exact: true }).click();
   await expect(
-    other.getByRole('button', { name: '이 창에서 조작하기', exact: true }),
+    other.getByRole('button', { name: '이 창에서 이어하기', exact: true }),
   ).toBeVisible();
   await expect(page.getByRole('alert')).toHaveCount(0);
-  await other.getByRole('button', { name: '이 창에서 조작하기', exact: true }).click();
+  await other.getByRole('button', { name: '이 창에서 이어하기', exact: true }).click();
   await expect(page.getByRole('alert')).toContainText('다른 창에서 이 게임을 열었습니다.');
-  await expect(other.getByRole('button', { name: '이 창에서 조작하기', exact: true })).toHaveCount(
+  await expect(other.getByRole('button', { name: '이 창에서 이어하기', exact: true })).toHaveCount(
     0,
   );
 });
@@ -121,10 +121,10 @@ test('자동 스트리트 저장 실패는 이전 상태 유지·같은 요청 �
     };
   });
   await page.getByRole('button', { name: '체크', exact: true }).click();
-  await expect(page.getByRole('alert')).toContainText('재시도');
+  await expect(page.getByRole('alert')).toContainText('다시 시도');
   await expect(page.locator('.board')).toHaveAttribute('data-street', 'PREFLOP');
   await page.evaluate(() => (window as unknown as { restorePut: () => void }).restorePut());
-  await page.getByRole('button', { name: '재시도', exact: true }).click();
+  await page.getByRole('button', { name: '다시 시도', exact: true }).click();
   await expect(page.locator('.board')).toHaveAttribute('data-street', 'FLOP');
   await expect(page.locator('.seat .bet')).toHaveText(['10', '10']);
   await page.reload();
@@ -187,7 +187,7 @@ test('리뷰: 조작권을 잃은 창도 저장 요청 없이 앱 홈·업데이
   const other = await context.newPage();
   await other.goto('/local/');
   await other.getByRole('button', { name: '단일 기기 모드', exact: true }).click();
-  await other.getByRole('button', { name: '이 창에서 조작하기', exact: true }).click();
+  await other.getByRole('button', { name: '이 창에서 이어하기', exact: true }).click();
   await expect(page.getByRole('alert')).toContainText('다른 창에서 이 게임을 열었습니다.');
   await page.getByRole('button', { name: '관리 메뉴', exact: true }).click();
   await page.getByRole('button', { name: '홈', exact: true }).click();

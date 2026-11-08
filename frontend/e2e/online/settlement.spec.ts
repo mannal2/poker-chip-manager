@@ -146,12 +146,12 @@ test('shares winners, restores host picks, confirms WIN and clears picks on undo
     await page.reload();
     await expect(page.locator('.seat.selected .name')).toHaveText('Alice');
     await guest.getByRole('button', { name: '취소', exact: true }).dispatchEvent('click');
-    await expect(guest.locator('.toast')).toHaveText('방장만 취소할 수 있습니다');
+    await expect(guest.locator('.toast')).toHaveText('방장만 취소할 수 있습니다.');
     await page.getByRole('button', { name: '취소', exact: true }).click();
     for (const current of [page, guest]) {
       await expect(current.locator('.seat.selected')).toHaveCount(0);
       await expect(current.locator('.toast')).toHaveText(
-        current === page ? '방장이 직전 행동을 취소했습니다' : '방장이 Alice의 체크를 취소했습니다',
+        current === page ? '방장이 직전 행동을 취소했습니다.' : '방장이 Alice의 체크를 취소했습니다.',
       );
     }
     await page.getByRole('button', { name: '체크', exact: true }).click();

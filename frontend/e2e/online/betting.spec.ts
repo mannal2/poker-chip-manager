@@ -26,11 +26,11 @@ test('only the actor bets and every participant receives confirmed balances', as
       'aria-disabled',
       'false',
     );
-    await expect(guest.locator('.dock-notice')).toHaveText('Alice 차례입니다');
+    await expect(guest.locator('.dock-notice')).toHaveText('Alice 차례입니다.');
     const inactive = guest.getByRole('button', { name: '체크', exact: true });
     await expect(inactive).toHaveAttribute('aria-disabled', 'true');
     await inactive.dispatchEvent('click');
-    await expect(guest.locator('.toast')).toHaveText('내 차례가 아닙니다');
+    await expect(guest.locator('.toast')).toHaveText('내 차례가 아닙니다.');
     await page.getByRole('button', { name: '콜 10', exact: true }).click();
     for (const current of [page, guest]) {
       await expect(current.locator('.seat .stack')).toHaveText(['980', '980']);

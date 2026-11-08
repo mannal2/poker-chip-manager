@@ -29,7 +29,7 @@ export function OnlineApp() {
           if (controller.canReload()) location.reload();
         }}
       >
-        새버전 새로고침
+        새 버전으로 새로고침
       </button>
     </div>
   );
@@ -47,7 +47,7 @@ export function OnlineApp() {
         <OnlineEntry view={view} controller={controller} />
       )}
       {online && !fatal && view.error && <p role="alert">{view.error}</p>}
-      <a href="/local/">앱 홈으로</a>
+      <a href="/local/">홈으로</a>
     </main>
   );
 }

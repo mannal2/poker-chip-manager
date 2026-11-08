@@ -16,13 +16,13 @@ it('describes the original undone action before automatic follow-ups', () => {
     ['auto', { event: event('auto', 'FOLD', { auto: true }), actorName: '영희' }],
   ]);
   expect(noticesFor([event('undo', 'UNDO', { eventIds: ['auto', 'call'] })], known)).toEqual([
-    '방장이 민수의 콜 50을 취소했습니다',
+    '방장이 민수의 콜 50을 취소했습니다.',
   ]);
 });
 // 찾을 수 없는 취소 대상에는 지정된 일반 문구를 사용한다
 it('falls back when the original undone event is unknown', () => {
   expect(noticesFor([event('undo', 'UNDO', { eventIds: ['missing'] })], new Map())).toEqual([
-    '방장이 직전 행동을 취소했습니다',
+    '방장이 직전 행동을 취소했습니다.',
   ]);
 });
 // 자동 체크와 폴드만 알리고 일반 행동은 알리지 않는다

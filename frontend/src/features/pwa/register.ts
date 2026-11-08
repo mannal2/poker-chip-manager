@@ -168,7 +168,7 @@ export function useLocalPWA() {
         setState((s) => ({
           ...s,
           updateStatus: 'error',
-          updateError: '인터넷 연결을 확인한 뒤 다시 시도해주세요.',
+          updateError: '인터넷 연결을 확인한 뒤 다시 시도해 주세요.',
         }));
     } finally {
       clearTimeout(timer);
@@ -215,7 +215,7 @@ export function useLocalPWA() {
       setState((s) => ({
         ...s,
         updateStatus: 'applyError',
-        updateError: '잠시 후 다시 시도해주세요.',
+        updateError: '잠시 후 다시 시도해 주세요.',
       }));
     } finally {
       applying.current = false;

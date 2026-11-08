@@ -6,7 +6,7 @@ export function validateStored(value: StoredGame): void {
   if (value.schemaVersion !== 1)
     throw Error('지원하지 않는 저장 형식입니다. 원본을 보존하며 쓰기를 차단합니다.');
   if (value.rulesVersion !== 1)
-    throw Error('지원하지 않는 게임 규칙입니다. 호환되는 앱으로 열어주세요.');
+    throw Error('지원하지 않는 게임 규칙입니다. 호환되는 앱으로 열어 주세요.');
   const s = value.state;
   if (
     !s ||

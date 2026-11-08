@@ -77,7 +77,7 @@ test('the host forfeits a connected player who stays and later leaves', async ({
     await startThree(page);
 
     await menu(page, '기권 처리', 'Carol');
-    await expect(page.getByRole('dialog')).toContainText('접속 중인 참가자입니다.');
+    await expect(page.getByRole('dialog')).toContainText('접속 중인 플레이어입니다.');
     await confirm(page, '기권 처리');
     await afterForfeit(page, '방에 남기기');
     await expect(seat(carol, 'Carol')).toHaveClass(/out/);

@@ -179,7 +179,7 @@ function LocalGame({
       busy || isLocked()
         ? app.status === 'controlLost'
           ? '다른 창에서 이 게임을 열었습니다.'
-          : '저장 완료 또는 재시도를 기다려주세요.'
+          : '저장 중입니다. 잠시만 기다려 주세요.'
         : null,
     run,
     dispatch,
@@ -188,7 +188,7 @@ function LocalGame({
   };
   const confirmationDialog = confirmation && (
     <Dialog
-      title="확인"
+      title="새 토너먼트"
       onClose={() => answer(false)}
       actions={
         <button className="primary" onClick={() => answer(true)}>
@@ -231,11 +231,11 @@ function LocalGame({
                 })
               }
             >
-              재시도
+              다시 시도
             </button>
           )}
           {app.status === 'controlLost' && (
-            <button onClick={() => void continueGame()}>이 창에서 조작하기</button>
+            <button onClick={() => void continueGame()}>이 창에서 이어하기</button>
           )}
           {app.status === 'storageError' && <StorageErrorDetails />}
         </div>

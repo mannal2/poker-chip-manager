@@ -34,7 +34,7 @@ test('A08 블라인드 예약·마지막 fold 자동 진행·기록·홈 복원�
   await expect(page.locator('.pot strong')).toHaveText('30');
   await menu(page);
   await page.getByRole('button', { name: '새 토너먼트', exact: true }).click();
-  const confirmation = page.getByRole('dialog', { name: '확인', exact: true });
+  const confirmation = page.getByRole('dialog', { name: '새 토너먼트', exact: true });
   await expect(confirmation).toContainText('현재 토너먼트와 전체 기록을 삭제');
   await expect(page.getByRole('dialog', { name: '관리 메뉴', exact: true })).toHaveCount(0);
   await confirmation.getByRole('button', { name: '닫기', exact: true }).click();

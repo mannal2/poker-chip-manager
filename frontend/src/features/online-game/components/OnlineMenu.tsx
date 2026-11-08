@@ -82,7 +82,7 @@ export function menuItems(snapshot: RoomSnapshot): MenuItem[] {
     });
     if (snapshot.roomPhase === 'WAITING')
       items.push({
-        label: '참가자 내보내기',
+        label: '플레이어 내보내기',
         command: { type: 'KICK', handScoped: false },
         targets: others,
       });
@@ -138,7 +138,7 @@ export function OnlineMenu({
   }
   return (
     <div className="menu-actions">
-      <button onClick={() => void copyCode()}>방코드:[{snapshot.code}]</button>
+      <button onClick={() => void copyCode()}>방 코드 {snapshot.code} 복사</button>
       {menuRows(items).map((row) => (
         <div key={row.map((item) => item.label).join('/')} className={row.length > 1 ? 'menu-row' : undefined}>
           {row.map((item) => (

@@ -47,7 +47,7 @@ for (const [width, height] of [
     await page.goto('/local/');
     await openLocal(page);
     for (let n = 2; n < 10; n++) {
-      await page.getByLabel('참가자 추가', { exact: true }).click();
+      await page.getByLabel('플레이어 추가', { exact: true }).click();
       await expect(page.locator('main')).toHaveAttribute('aria-busy', 'false');
     }
     await page.locator('.seat .card-values').first().click();

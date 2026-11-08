@@ -56,7 +56,7 @@ export function useSettlementSelection(
 
   // 현재 팟에서 해당 플레이어가 선택되어 있으면 해제하고, 선택되어 있지 않으면 승자로 선택한다
   function selectWinner(id: string) {
-    if (busy || !currentPot) return notify('저장 완료를 기다려주세요.');
+    if (busy || !currentPot) return notify('처리 중입니다. 잠시만 기다려 주세요.');
     if (!currentPot.eligible.includes(id)) return notify('이 팟의 승자 자격이 없습니다.');
     if (currentPot.eligible.length === 1) return notify('이 팟을 받을 수 있는 플레이어가 한 명이라 자동으로 선택됩니다.');
     const selected = winners[currentPot.id];

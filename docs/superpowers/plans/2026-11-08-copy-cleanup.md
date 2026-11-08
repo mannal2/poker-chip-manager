@@ -80,6 +80,7 @@
 |---|---|---|
 | D1 | 기다림 안내: "저장 완료를 기다려주세요."(GameScreen.tsx:310, useSettlementSelection.ts:59, useSetupEditing.ts:36·105, useLocalSession.ts:175·308, controller.ts:20·53, errorMessages.ts REQUEST_PENDING), "저장 완료 또는 재시도를 기다려주세요."(GameScreen.tsx:212, LocalGamePage.tsx:182) | 로컬: "저장 중입니다. 잠시만 기다려 주세요." |
 | D1 | "서버 응답을 기다려주세요."(useOnlineGameSession.ts:92) | 온라인: "처리 중입니다. 잠시만 기다려 주세요." |
+| D1 | 구현 메모: GameScreen·useSettlementSelection·useSetupEditing은 두 모드가 함께 쓰므로 "처리 중입니다. 잠시만 기다려 주세요."를 쓰고, 로컬 전용 파일(useLocalSession·LocalGamePage·controller)만 "저장 중입니다…"를 쓴다. "N명 선택" 같은 문장 조각에는 마침표를 붙이지 않았다. |
 | D1 | REQUEST_PENDING은 로컬·온라인이 함께 쓴다 | "처리 중입니다. 잠시만 기다려 주세요."로 바꿔 두 모드에 모두 맞게 한다 |
 | D2 | 버튼 "재시도"(LocalGamePage.tsx:233, RoomPage.tsx:250) | "다시 시도" |
 | D3 | "먼저 방장을 넘겨주세요"(RoomPage.tsx:144), TRANSFER_HOST_FIRST "방장은 방장을 넘긴 뒤에 기권하거나 나갈 수 있습니다." | 둘 다 "방장을 다른 플레이어에게 넘긴 뒤에 할 수 있습니다." |

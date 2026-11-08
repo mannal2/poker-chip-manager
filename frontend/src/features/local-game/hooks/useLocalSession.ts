@@ -172,7 +172,7 @@ export function useLocalSession({
   // 저장 작업을 한 번에 하나씩 실행하고, 시작 시 저장 중 상태로, 실패 시 저장 오류 상태로 전환한다
   async function run(action: () => Promise<void>) {
     await runner.run(action, {
-      onBusy: () => notify('저장 완료를 기다려주세요.'),
+      onBusy: () => notify('저장 중입니다. 잠시만 기다려 주세요.'),
       onStart: () => setApp({ status: 'saving' }),
       onError: () =>
         setApp({ status: 'storageError', error: '저장하지 못했습니다. 다시 시도를 눌러 주세요.' }),
@@ -306,7 +306,7 @@ export function useLocalSession({
       setApp({ home: true, status: 'ready', error: '' });
       return true;
     }
-    notify('저장 완료를 기다려주세요.');
+    notify('저장 중입니다. 잠시만 기다려 주세요.');
     return false;
   }
   return {

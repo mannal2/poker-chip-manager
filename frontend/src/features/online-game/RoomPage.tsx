@@ -141,9 +141,9 @@ export function RoomPage({
       return notify('상황이 바뀌어 취소했습니다. 다시 선택해 주세요.');
     }
     if (item.command?.type === 'FORFEIT' && current.hostId === current.you.participantId)
-      return notify('먼저 방장을 넘겨주세요');
+      return notify('방장을 다른 플레이어에게 넘긴 뒤에 할 수 있습니다.');
     if (valid.targets && !target) {
-      if (!valid.targets.length) return notify('대상 참가자가 없습니다.');
+      if (!valid.targets.length) return notify('선택할 수 있는 플레이어가 없습니다.');
       setup.clearEditing();
       setTargetSelection({ label: valid.label, scope: selectionScope(current) });
       setDialog('');
@@ -157,7 +157,7 @@ export function RoomPage({
         : latestTarget && valid.command?.type === 'KICK'
           ? `${latestTarget.name}님을 방에서 내보내시겠습니까?`
           : latestTarget?.connected && valid.command?.type === 'FORFEIT_DISCONNECTED'
-            ? `접속 중인 참가자입니다. ${valid.confirm}`
+            ? `접속 중인 플레이어입니다. ${valid.confirm}`
             : valid.confirm;
     if (warning && !answer) {
       setDialog('');
@@ -241,13 +241,13 @@ export function RoomPage({
       )}
       {view.snapshot!.deployPending && view.snapshot!.roomPhase !== 'PLAYING' && (
         <div className="notice deploy-notice" role="status">
-          서버 업데이트 중입니다. 방이 사라질 수 있습니다
+          서버 업데이트 중입니다. 방이 사라질 수 있습니다.
         </div>
       )}
       {view.error && (
         <div className="notice" role="alert">
           {view.error}
-          {controller.canRetry() && <button onClick={() => void controller.retry()}>재시도</button>}
+          {controller.canRetry() && <button onClick={() => void controller.retry()}>다시 시도</button>}
         </div>
       )}
       <GameScreen

@@ -173,7 +173,7 @@ test('설치 안내가 보이는 동안 자동 업데이트는 기다리고 닫�
     await page.evaluate(() =>
       window.dispatchEvent(new Event('beforeinstallprompt', { cancelable: true })),
     );
-    const install = page.getByRole('dialog', { name: '앱으로 설치해서 사용하세요', exact: true });
+    const install = page.getByRole('dialog', { name: '앱으로 설치하기', exact: true });
     await expect(install).toBeVisible();
     await writeFile(file, original + `\n/* install priority ${info.project.name} */`);
     await page.evaluate(async () => {

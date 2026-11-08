@@ -217,12 +217,12 @@ export class OnlineController {
       return Promise.resolve(false);
     const normalizedName = normalizeName(name);
     if (normalizedName === null) {
-      this.update({ error: '정확한 이름을 입력해주세요.' });
+      this.update({ error: '이름을 정확히 입력해 주세요.' });
       return Promise.resolve(false);
     }
     // 서버가 생성하는 코드와 같은 문자 집합과 길이를 확인한다
     if (!/^[ABCDEFGHJKMNPQRSTUVWXYZ2-9]{6}$/i.test(code.trim())) {
-      this.update({ error: '정확한 방코드를 입력해주세요.' });
+      this.update({ error: '방 코드를 정확히 입력해 주세요.' });
       return Promise.resolve(false);
     }
     return this.enter(
@@ -636,7 +636,7 @@ export class OnlineController {
         pending: this.sending,
         error:
           request.kind === 'recovery' && result.code === 'RECOVERY_TARGET_NOT_FOUND'
-            ? `해당 게임방에 ${String(request.body.name)}플레이어가 존재하지 않습니다.`
+            ? `이 방에 '${String(request.body.name)}' 플레이어가 없습니다.`
             : messageFor(result.code),
         ...(request.kind === 'entry' || request.kind === 'recovery'
           ? { phase: 'entry' as const }

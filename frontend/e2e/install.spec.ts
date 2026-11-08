@@ -17,7 +17,7 @@ async function offer(page: Page, outcome = 'dismissed') {
   }, outcome);
 }
 const popup = (page: Page) =>
-  page.getByRole('dialog', { name: '앱으로 설치해서 사용하세요', exact: true });
+  page.getByRole('dialog', { name: '앱으로 설치하기', exact: true });
 
 test('설치 제안: 최초 안내·나중에·수동 재접근·브라우저 취소·재방문', async ({ page }) => {
   await page.goto('/local/');

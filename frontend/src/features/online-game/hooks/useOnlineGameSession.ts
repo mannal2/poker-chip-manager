@@ -85,11 +85,11 @@ export function useOnlineGameSession(view: OnlineView, controller: OnlineControl
   function guard() {
     const current = controller.getView();
     return current.connection !== 'online'
-      ? '연결이 끊겼습니다'
+      ? '연결이 끊겼습니다.'
       : !current.hasControl
         ? '다른 화면에서 조작 중입니다.'
         : current.pending
-          ? '서버 응답을 기다려주세요.'
+          ? '처리 중입니다. 잠시만 기다려 주세요.'
           : null;
   }
   // 명령 실행 전에 최신 연결 상태를 확인한다
@@ -153,10 +153,10 @@ export function useOnlineGameSession(view: OnlineView, controller: OnlineControl
     // 부족한 권한에 맞는 화면 안내를 반환한다
     denied: (need) =>
       need === 'canAct'
-        ? '내 차례가 아닙니다'
+        ? '내 차례가 아닙니다.'
         : need === 'canUndo'
-          ? '방장만 취소할 수 있습니다'
-          : '방장만 조작할 수 있습니다',
+          ? '방장만 취소할 수 있습니다.'
+          : '방장만 조작할 수 있습니다.',
     // 현재 방의 서버 기록을 공통 기록 화면에 제공한다
     loadEvents: (tournamentId, after, limit) => controller.loadEvents(tournamentId, after, limit),
   };

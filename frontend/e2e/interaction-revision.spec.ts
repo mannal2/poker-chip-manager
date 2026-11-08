@@ -4,7 +4,7 @@ async function ready(page: Page, n = 6) {
   await page.goto('/local/');
   await openLocal(page);
   for (let i = 2; i < n; i++) {
-    await page.getByRole('button', { name: '참가자 추가', exact: true }).click();
+    await page.getByRole('button', { name: '플레이어 추가', exact: true }).click();
     await expect(page.locator('main')).toHaveAttribute('aria-busy', 'false');
   }
 }
@@ -135,7 +135,7 @@ for (const rotated of [false, true])
   test(`원형 경계 삽입은 전체 회전 없이 인접 카드만 이동 ${rotated}`, async ({ page }) => {
     await ready(page);
     if (rotated) {
-      await page.getByRole('button', { name: '화면 기준 한 자리 회전' }).click();
+      await page.getByRole('button', { name: '자리 돌리기' }).click();
       await expect(page.locator('main')).toHaveAttribute('aria-busy', 'false');
     }
     const from = page.getByRole('group', { name: 'P1', exact: true });
@@ -183,7 +183,7 @@ test('기록·메뉴·블라인드는 바깥 클릭 닫기, 회전은 준비에�
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await page.locator('.seat .card-values').first().click();
   await page.getByRole('button', { name: '게임 시작', exact: true }).click();
-  await expect(page.getByRole('button', { name: '화면 기준 한 자리 회전' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: '자리 돌리기' })).toHaveCount(0);
   await page.getByRole('button', { name: '다음 핸드 블라인드 설정', exact: true }).click();
   const sb = (await page.getByLabel('다음 SB', { exact: true }).boundingBox())!,
     bb = (await page.getByLabel('다음 BB', { exact: true }).boundingBox())!;

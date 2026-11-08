@@ -11,14 +11,9 @@ async function start(page: Page) {
 }
 test('마지막 폴드는 확인 없이 다음 핸드, 재접속 후 무르기 한 번', async ({ page }) => {
   await start(page);
-  let dialogs = 0;
-  page.on('dialog', async (dialog) => {
-    dialogs++;
-    await dialog.dismiss();
-  });
   await page.getByRole('button', { name: '폴드', exact: true }).click();
   await expect(page.getByLabel('현재 토너먼트 기록', { exact: true })).toContainText('02');
-  expect(dialogs).toBe(0);
+  await expect(page.getByRole('dialog', { name: '확인', exact: true })).toHaveCount(0);
   await page.reload();
   await openLocal(page);
   await page.getByRole('button', { name: '취소', exact: true }).click();

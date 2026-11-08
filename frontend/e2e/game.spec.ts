@@ -308,21 +308,26 @@ test('A10 다른 탭의 새 게임을 삭제 확인 없이 교체하지 않는�
   await other.goto('/local/');
   await openLocal(other);
   await other.getByRole('button', { name: '관리 메뉴', exact: true }).click();
-  other.once('dialog', (d) => d.accept());
   await other.getByRole('button', { name: '새 토너먼트', exact: true }).click();
+  await other
+    .getByRole('dialog', { name: '확인', exact: true })
+    .getByRole('button', { name: '확인', exact: true })
+    .click();
+  await expect(other.locator('.seat .badge')).toHaveCount(0);
+  await expect(other.locator('main')).toHaveAttribute('aria-busy', 'false');
   await other.locator('.seat .card-values').first().click();
+  await expect(other.locator('.seat').first().locator('.badge')).toContainText('D');
   await other.getByRole('button', { name: '게임 시작', exact: true }).click();
   await expect(other.locator('.pot strong')).toHaveText('15');
-  let confirmations = 0;
-  page.on('dialog', async (d) => {
-    confirmations++;
-    if (confirmations === 1) await d.accept();
-    else await d.dismiss();
-  });
   await page.getByRole('button', { name: '관리 메뉴', exact: true }).click();
   await page.getByRole('button', { name: '새 토너먼트', exact: true }).click();
+  const confirmation = page.getByRole('dialog', { name: '확인', exact: true });
+  await expect(confirmation).toContainText('새 토너먼트를 준비할까요?');
+  await confirmation.getByRole('button', { name: '확인', exact: true }).click();
+  await expect(confirmation).toContainText('다른 화면에서 새 토너먼트가 저장되었습니다.');
+  await confirmation.getByRole('button', { name: '닫기', exact: true }).click();
   await expect(page.locator('main')).toHaveAttribute('aria-busy', 'false');
-  expect(confirmations).toBe(2);
+  await expect(confirmation).toHaveCount(0);
   await other.reload();
   await openLocal(other);
   await expect(other.locator('.pot strong')).toHaveText('15');

@@ -27,11 +27,17 @@ test('손상 저장은 두 선택지, 새 토너먼트 취소·확인·새로고
   });
   await page.reload();
   await expect(page.getByRole('button', { name: '다시 시도', exact: true })).toBeVisible();
-  page.once('dialog', (d) => d.dismiss());
   await page.getByRole('button', { name: '새 토너먼트 시작', exact: true }).click();
+  await page
+    .getByRole('dialog', { name: '확인', exact: true })
+    .getByRole('button', { name: '닫기', exact: true })
+    .click();
   await expect(page.getByRole('button', { name: '다시 시도', exact: true })).toBeVisible();
-  page.once('dialog', (d) => d.accept());
   await page.getByRole('button', { name: '새 토너먼트 시작', exact: true }).click();
+  await page
+    .getByRole('dialog', { name: '확인', exact: true })
+    .getByRole('button', { name: '확인', exact: true })
+    .click();
   await expect(page.locator('.seat')).toHaveCount(2);
   await expect(page.locator('.seat .name')).toHaveText(['P1', 'P2']);
   await expect(page.locator('.seat .badge')).toHaveCount(0);
@@ -60,8 +66,11 @@ test('복구 화면의 새 토너먼트 쓰기 실패는 기존 게임 보존·�
     document.dispatchEvent(new Event('visibilitychange'));
   });
   await expect(page.getByRole('button', { name: '다시 시도', exact: true })).toBeVisible();
-  page.once('dialog', (d) => d.accept());
   await page.getByRole('button', { name: '새 토너먼트 시작', exact: true }).click();
+  await page
+    .getByRole('dialog', { name: '확인', exact: true })
+    .getByRole('button', { name: '확인', exact: true })
+    .click();
   await expect(page.getByRole('alert')).toContainText('불러오지 못했습니다');
   await page.evaluate(() => (window as unknown as { restoreStorage: () => void }).restoreStorage());
   await page.getByRole('button', { name: '다시 시도', exact: true }).click();

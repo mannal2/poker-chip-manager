@@ -66,8 +66,11 @@ async function recoveryScreen(page: Page) {
   await restoreEvents(page);
 }
 async function confirmRestart(page: Page) {
-  page.once('dialog', (dialog) => void dialog.accept());
   await page.getByRole('button', { name: '새 토너먼트 시작', exact: true }).click();
+  await page
+    .getByRole('dialog', { name: '확인', exact: true })
+    .getByRole('button', { name: '확인', exact: true })
+    .click();
 }
 
 async function snapshot(page: Page) {
@@ -120,8 +123,11 @@ test('저장 중 연결 종료: 복구 취소는 보존, 확인하면 즉시 새
   await ready(page);
   await holdSave(page);
   await recoveryScreen(page);
-  page.once('dialog', (dialog) => void dialog.dismiss());
   await page.getByRole('button', { name: '새 토너먼트 시작', exact: true }).click();
+  await page
+    .getByRole('dialog', { name: '확인', exact: true })
+    .getByRole('button', { name: '닫기', exact: true })
+    .click();
   await expect(page.getByText('저장 정보를 불러오지 못했습니다.', { exact: true })).toBeVisible();
   await confirmRestart(page);
   await expect(page.locator('.seat .name')).toHaveText(['P1', 'P2']);
@@ -138,8 +144,11 @@ test('저장 대기 중 메뉴 새 토너먼트도 확인 후 복구 가능', as
   await holdSave(page);
   await restoreEvents(page);
   await page.getByRole('button', { name: '관리 메뉴', exact: true }).click();
-  page.once('dialog', (dialog) => void dialog.accept());
   await page.getByRole('button', { name: '새 토너먼트', exact: true }).click();
+  await page
+    .getByRole('dialog', { name: '확인', exact: true })
+    .getByRole('button', { name: '확인', exact: true })
+    .click();
   await expect(page.locator('.seat .name')).toHaveText(['P1', 'P2']);
   await expect(page.locator('main')).toHaveAttribute('aria-busy', 'false');
   await releaseEvents(page);

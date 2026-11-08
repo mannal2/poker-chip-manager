@@ -30,8 +30,11 @@ test('새 토너먼트는 회전하지 않은 화면에서 시작한다', async 
   await rotate(page);
   expect(await firstSeat(page)).not.toBe(unrotated);
   await page.getByRole('button', { name: '관리 메뉴', exact: true }).click();
-  page.once('dialog', (d) => d.accept());
   await page.getByRole('button', { name: '새 토너먼트', exact: true }).click();
+  await page
+    .getByRole('dialog', { name: '확인', exact: true })
+    .getByRole('button', { name: '확인', exact: true })
+    .click();
   await expect(page.locator('main')).toHaveAttribute('aria-busy', 'false');
   expect(await firstSeat(page)).toBe(unrotated);
 });

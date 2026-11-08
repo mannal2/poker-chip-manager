@@ -32,7 +32,7 @@ export type ServerErrorCode =
   | 'DUPLICATE_NAME'
   | 'TRANSFER_HOST_FIRST'
   | 'ABORT_FIRST'
-  | 'TARGET_CONNECTED'
+  | 'NOT_ELIMINATED'
   | 'HOST_TAKEOVER_CLOSED'
   | 'RECOVERY_LIMIT'
   | 'RECOVERY_NOT_PENDING'
@@ -84,9 +84,9 @@ export const errorMessages: Record<ErrorCode, string> = {
   SESSION_LIMIT: '접속자가 많습니다. 잠시 뒤 다시 시도해 주세요.',
   INVALID_NAME: '이름은 한글, 영문, 숫자, 공백으로 1~10자여야 합니다.',
   DUPLICATE_NAME: '같은 이름이 이미 있습니다.',
-  TRANSFER_HOST_FIRST: '방장은 방장을 넘긴 뒤에 기권할 수 있습니다.',
+  TRANSFER_HOST_FIRST: '방장은 방장을 넘긴 뒤에 기권하거나 나갈 수 있습니다.',
   ABORT_FIRST: '진행 중인 게임을 먼저 중단해 주세요.',
-  TARGET_CONNECTED: '접속 중인 참가자는 기권 처리할 수 없습니다.',
+  NOT_ELIMINATED: '진행 중에는 탈락한 참가자만 방을 나갈 수 있습니다.',
   HOST_TAKEOVER_CLOSED: '방장 인수 요청이 이미 닫혔습니다.',
   RECOVERY_LIMIT: '이 자리의 복구 신청이 너무 많습니다. 잠시 뒤 다시 시도해 주세요.',
   RECOVERY_NOT_PENDING: '이미 처리되었거나 만료된 복구 신청입니다.',

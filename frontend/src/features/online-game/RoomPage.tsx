@@ -17,10 +17,11 @@ import '../gameplay/styles/header.css';
 import '../gameplay/styles/table.css';
 import '../gameplay/styles/controls.css';
 
+// 같은 명령이 단계마다 다른 메뉴 이름을 가지므로 명령 종류로 안내 문구를 고른다
 const selectionLabels: Record<string, string> = {
-  '방장 넘기기': '방장을 넘길 플레이어를 선택하세요.',
-  '기권 처리': '기권 처리할 플레이어를 선택하세요.',
-  '참가자 내보내기': '내보낼 플레이어를 선택하세요.',
+  TRANSFER_HOST: '방장을 넘길 플레이어를 선택하세요.',
+  FORFEIT_DISCONNECTED: '기권 처리할 플레이어를 선택하세요.',
+  KICK: '내보낼 플레이어를 선택하세요.',
 };
 
 // 다른 방장·핸드·조작 세대에서 이전 대상 선택을 재사용하지 않는다
@@ -68,10 +69,7 @@ export function RoomPage({
   const notify = toast.show;
   const snapshot = view.snapshot!;
   const selectedItem = targetSelection
-    ? menuItems(
-        snapshot,
-        new Set(snapshot.participants.filter((p) => p.connected).map((p) => p.participantId)),
-      ).find((item) => item.label === targetSelection.label)
+    ? menuItems(snapshot).find((item) => item.label === targetSelection.label)
     : undefined;
   const targets = selectedItem?.targets ?? [];
   const validSelection =
@@ -126,10 +124,7 @@ export function RoomPage({
     const blocked = session.guard();
     if (blocked) return notify(blocked);
     const current = controller.getView().snapshot!;
-    const valid = menuItems(
-      current,
-      new Set(current.participants.filter((p) => p.connected).map((p) => p.participantId)),
-    ).find((i) => i.label === item.label);
+    const valid = menuItems(current).find((i) => i.label === item.label);
     if (
       !valid ||
       (targetSelection && targetSelection.scope !== selectionScope(current)) ||
@@ -154,7 +149,7 @@ export function RoomPage({
     const warning =
       latestTarget && valid.label === '방장 넘기기'
         ? `${latestTarget.name}님에게 방장을 넘기시겠습니까?`
-        : latestTarget && valid.label === '참가자 내보내기'
+        : latestTarget && valid.command?.type === 'KICK'
           ? `${latestTarget.name}님을 방에서 내보내시겠습니까?`
           : valid.confirm;
     if (warning && !confirmed) {
@@ -180,7 +175,7 @@ export function RoomPage({
       host={view.snapshot!.hostId === view.snapshot!.you.participantId}
       busy={session.busy}
       onReset={() => {
-        const item = menuItems(view.snapshot!, new Set()).find((i) => i.label === '다시 준비하기');
+        const item = menuItems(view.snapshot!).find((i) => i.label === '다시 준비하기');
         if (item) void choose(item);
       }}
     />
@@ -224,7 +219,7 @@ export function RoomPage({
                 selectedId: confirmation?.target
                   ? cardId(snapshot, confirmation.target)
                   : undefined,
-                label: selectionLabels[targetSelection!.label],
+                label: (selectedItem?.command && selectionLabels[selectedItem.command.type]) ?? '',
                 onCancel: () => {
                   if (!session.busy) setTargetSelection(null);
                 },

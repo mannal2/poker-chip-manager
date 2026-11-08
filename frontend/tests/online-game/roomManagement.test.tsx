@@ -130,15 +130,16 @@ it.each([
   }
 });
 
-// 확인창이 열린 뒤 대상이 재연결되면 기권 명령을 전송하지 않는다
-it('rejects a reconnected target at confirmation time', async () => {
+// 확인창이 열린 뒤 대상이 이미 기권했으면 기권 명령을 전송하지 않는다
+it('rejects a target who left the play at confirmation time', async () => {
   const x = await mountRoom();
   try {
     await x.click('관리 메뉴');
     await x.click('기권 처리');
     await x.click('Bob');
     expect(x.host.querySelectorAll('dialog')).toHaveLength(1);
-    x.view.snapshot!.participants.find((p) => p.name === 'Bob')!.connected = true;
+    const bob = x.view.snapshot!.participants.find((p) => p.name === 'Bob')!;
+    x.view.snapshot!.game!.players.find((p) => p.id === bob.playerId)!.forfeited = true;
     await x.click('확인');
     expect(x.send).not.toHaveBeenCalled();
     expect(x.host.textContent).toContain('대상 또는 상태가 변경되었습니다. 다시 확인하세요.');

@@ -133,6 +133,11 @@ dialog li {
   width: 100%;
   text-align: center;
 }
+.menu-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: calc(8 * var(--u));
+}
 .fields {
   display: grid;
   gap: calc(10 * var(--u));

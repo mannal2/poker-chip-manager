@@ -6,7 +6,7 @@ import { startBackend, type BackendProcess } from './backendProcess';
 const BACKEND = 'http://127.0.0.1:8080';
 const ORIGIN = 'http://127.0.0.1:4175';
 const LOST =
-  '방이 사라졌거나 참가 세션이 만료되었습니다. 방이 남아 있다면 기존 참가자로 복구할 수 있습니다.';
+  "방에 다시 들어갈 수 없습니다. 방이 남아 있다면 '기존 플레이어로 복구'를 누르세요.";
 
 // 내부 배포 상태에서 방 수와 진행 중 토너먼트 수와 게이트를 읽는다
 async function serverStatus(request: APIRequestContext) {

@@ -750,7 +750,7 @@ export class OnlineController {
     const reasons = {
       REJECTED: '방장이 복구 신청을 거절했습니다.',
       EXPIRED: '복구 신청이 만료되었습니다.',
-      SUPERSEDED: '다른 복구 신청으로 대체되었습니다.',
+      SUPERSEDED: '더 최근에 보낸 복구 신청이 있어 이 신청은 취소되었습니다.',
     };
     this.update({ phase: 'entry', pending: false, error: reasons[status.status] });
   }

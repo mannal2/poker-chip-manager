@@ -90,10 +90,10 @@ export function RoomPage({
     if (!validSelection) {
       setTargetSelection(null);
       setConfirmation(null);
-      notify('대상 또는 상태가 변경되었습니다. 다시 확인하세요.');
+      notify('상황이 바뀌어 취소했습니다. 다시 선택해 주세요.');
     } else if (!validConfirmation) {
       setConfirmation(null);
-      notify('대상 또는 상태가 변경되었습니다. 다시 확인하세요.');
+      notify('상황이 바뀌어 취소했습니다. 다시 선택해 주세요.');
     }
   }, [targetSelection, view.pending, validSelection, validConfirmation, notify]);
   // 최신 연결 상태와 조작권을 확인하고 서버 관리 명령을 보낸다
@@ -106,7 +106,7 @@ export function RoomPage({
     const current = controller.getView().snapshot!;
     const command = commands[0];
     if (command.type === 'TAKE_HOST' && (!current.hostTakeoverOpen || !current.you.canTakeHost)) {
-      notify('방장 인수 요청이 종료되었습니다.');
+      notify('다른 플레이어가 이미 방장을 맡았습니다.');
       return false;
     }
     if (command.type.startsWith('RECOVERY_')) {
@@ -121,7 +121,7 @@ export function RoomPage({
     }
     const ok = await controller.send(commands);
     if (!ok)
-      notify(controller.getView().error ?? '명령을 처리하지 못했습니다. 최신 상태를 확인하세요.');
+      notify(controller.getView().error ?? '처리하지 못했습니다. 다시 시도해 주세요.');
     return ok;
   }
   // 메뉴와 카드 선택에서 최신 서버 스냅샷으로 대상과 권한을 확인한다
@@ -138,7 +138,7 @@ export function RoomPage({
       setConfirmation(null);
       setTargetSelection(null);
       setDialog('');
-      return notify('대상 또는 상태가 변경되었습니다. 다시 확인하세요.');
+      return notify('상황이 바뀌어 취소했습니다. 다시 선택해 주세요.');
     }
     if (item.command?.type === 'FORFEIT' && current.hostId === current.you.participantId)
       return notify('먼저 방장을 넘겨주세요');

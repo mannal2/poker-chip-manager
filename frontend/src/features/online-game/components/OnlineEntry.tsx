@@ -52,7 +52,7 @@ export function OnlineEntry({
         방 참가
       </button>
       <button disabled={view.pending} onClick={() => void controller.requestRecovery(code, name)}>
-        기존 참가자로 복구
+        기존 플레이어로 복구
       </button>
       {view.phase === 'joining' && <p role="status">방에 연결하고 있습니다</p>}
       {view.phase === 'recovering' && <p role="status">방장의 승인을 기다리고 있습니다</p>}

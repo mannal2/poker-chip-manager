@@ -311,7 +311,7 @@ it('distinguishes transport failure from a disconnected participant rejection', 
   await x.enter();
   x.api.post.mockResolvedValueOnce({ ok: false, status: 422, code: 'NOT_CONNECTED' });
   await x.c.send([{ type: 'START', handScoped: false }]);
-  expect(x.c.getView().error).toBe('접속하지 않은 참가자가 있습니다.');
+  expect(x.c.getView().error).toBe('연결이 끊긴 플레이어가 있어 시작할 수 없습니다.');
 });
 
 // LEAVE 결과를 잃은 뒤 원장에서 방을 찾지 못하면 자격 표식을 지우고 입장으로 돌아간다
@@ -863,7 +863,7 @@ it.each(['create', 'recovery'] as const)(
     expect(x.c.getView()).toMatchObject({
       phase: 'entry',
       pending: false,
-      error: '세션이 만료되었습니다. 다시 시도해 주세요.',
+      error: '접속이 만료되었습니다. 다시 입장해 주세요.',
     });
     expect(x.api.closeStream).toHaveBeenCalledTimes(1);
     expect(x.c.canRetry()).toBe(false);

@@ -58,7 +58,7 @@ export function useSettlementSelection(
   function selectWinner(id: string) {
     if (busy || !currentPot) return notify('저장 완료를 기다려주세요.');
     if (!currentPot.eligible.includes(id)) return notify('이 팟의 승자 자격이 없습니다.');
-    if (currentPot.eligible.length === 1) return notify('단독 자격자는 자동 선택됩니다.');
+    if (currentPot.eligible.length === 1) return notify('이 팟을 받을 수 있는 플레이어가 한 명이라 자동으로 선택됩니다.');
     const selected = winners[currentPot.id];
     changeSelection(
       {

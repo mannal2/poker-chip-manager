@@ -94,7 +94,7 @@ test('offers a connected forfeit target and exits when that target forfeits mean
     await expect(page.getByRole('dialog')).toHaveCount(0);
     await expect(page.locator('.participant-selection-controls')).toHaveCount(0);
     await expect(page.locator('.toast')).toHaveText(
-      '대상 또는 상태가 변경되었습니다. 다시 확인하세요.',
+      '상황이 바뀌어 취소했습니다. 다시 선택해 주세요.',
     );
   } finally {
     await context.close();

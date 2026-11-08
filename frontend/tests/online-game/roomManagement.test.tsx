@@ -142,7 +142,7 @@ it('rejects a target who left the play at confirmation time', async () => {
     x.view.snapshot!.game!.players.find((p) => p.id === bob.playerId)!.forfeited = true;
     await x.click('확인');
     expect(x.send).not.toHaveBeenCalled();
-    expect(x.host.textContent).toContain('대상 또는 상태가 변경되었습니다. 다시 확인하세요.');
+    expect(x.host.textContent).toContain('상황이 바뀌어 취소했습니다. 다시 선택해 주세요.');
   } finally {
     await x.close();
   }
@@ -429,7 +429,7 @@ it('rechecks host authority before confirming abort', async () => {
     )!.participantId;
     await x.click('확인');
     expect(x.send).not.toHaveBeenCalled();
-    expect(x.host.textContent).toContain('대상 또는 상태가 변경되었습니다. 다시 확인하세요.');
+    expect(x.host.textContent).toContain('상황이 바뀌어 취소했습니다. 다시 선택해 주세요.');
   } finally {
     await x.close();
   }

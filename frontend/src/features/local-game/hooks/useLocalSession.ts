@@ -74,7 +74,7 @@ export function useLocalSession({
               ? ''
               : '다른 창에서 이 게임을 열었습니다.',
         });
-      } catch (error) {
+      } catch {
         if (version === restoreVersion.current)
           setApp({ status: 'restoreError', error: '' });
       }

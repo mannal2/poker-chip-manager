@@ -118,7 +118,7 @@ export function historyRows(
         id: event.id,
         hand,
         kind: 'action',
-        text: `${name(d.playerId)} - 미콜 ${chips(d.amount!)} 반환`,
+        text: `${name(d.playerId)} - ${chips(d.amount!)} 돌려받음`,
       });
     } else if (actions[event.type] && d.playerId) {
       const amount = ['CHECK', 'FOLD'].includes(event.type) ? '' : ' ' + chips(d.additional!);

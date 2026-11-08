@@ -18,8 +18,8 @@ test('approves recovery with seat and chips preserved and revokes the old screen
     const recovery = await newContext.newPage();
     await recovery.goto(`/online/?code=${code}`);
     await recovery.getByLabel('이름', { exact: true }).fill('Bob');
-    await recovery.getByRole('button', { name: '기존 참가자로 복구', exact: true }).click();
-    await expect(page.getByRole('region', { name: '방 관리 요청' })).toContainText('Bob');
+    await recovery.getByRole('button', { name: '기존 플레이어로 복구', exact: true }).click();
+    await expect(page.getByRole('region', { name: '방장 알림' })).toContainText('Bob');
     await expect(page.locator('.meta .host-requests')).toContainText('Bob');
     await page.reload();
     await page.getByRole('button', { name: 'Bob 복구 신청 확인', exact: true }).click();
@@ -31,7 +31,7 @@ test('approves recovery with seat and chips preserved and revokes the old screen
     await expect(recovery.locator('.seat')).toHaveCount(2);
     await expect(recovery.locator('.seat .name')).toHaveText(names);
     await expect(recovery.locator('.seat .stack')).toHaveText(before);
-    await expect(old.getByRole('alert')).toHaveText('이 화면의 참가 권한이 회수되었습니다.');
+    await expect(old.getByRole('alert')).toHaveText('이 화면에서는 더 이상 참가할 수 없습니다. 방장이 내보냈거나 다른 기기에서 자리를 복구했습니다.');
     await expect(page.getByRole('button', { name: '복구 승인', exact: true })).toHaveCount(0);
   } finally {
     await oldContext.close();
@@ -47,7 +47,7 @@ test('rejects a recovery request', async ({ page, browser }) => {
     const recovery = await context.newPage();
     await recovery.goto(`/online/?code=${code}`);
     await recovery.getByLabel('이름', { exact: true }).fill('Alice');
-    await recovery.getByRole('button', { name: '기존 참가자로 복구', exact: true }).click();
+    await recovery.getByRole('button', { name: '기존 플레이어로 복구', exact: true }).click();
     await page.getByRole('button', { name: 'Alice 복구 신청 확인', exact: true }).click();
     await page.getByRole('button', { name: '복구 거절', exact: true }).click();
     await expect(recovery.getByRole('alert')).toHaveText('방장이 복구 신청을 거절했습니다.');

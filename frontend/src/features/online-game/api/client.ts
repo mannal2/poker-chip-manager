@@ -19,7 +19,7 @@ function limited(response: Response, code: string | undefined): ApiResult<never>
 export class ApiOpenError extends Error {
   // 초기화가 실패한 단계와 결과를 보관한다
   constructor(public readonly result: ApiResult<unknown>) {
-    super('온라인 세션 또는 스트림을 준비하지 못했습니다.');
+    super('서버에 연결하지 못했습니다.');
   }
 }
 

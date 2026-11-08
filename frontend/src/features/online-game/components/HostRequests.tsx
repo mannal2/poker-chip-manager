@@ -25,7 +25,7 @@ export function HostRequests({
   }
   return (
     <>
-      <section className="host-requests" aria-label="방 관리 요청">
+      <section className="host-requests" aria-label="방장 알림">
         {takeover && (
           <button
             aria-disabled={busy}

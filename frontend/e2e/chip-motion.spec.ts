@@ -209,7 +209,7 @@ test('폴드 저장 재시도도 단일 이동, 반환·지급 기록과 취소 
   await expect(page.locator('.chip-flight')).toHaveCount(1);
   await expect(page.locator('.chip-flight')).toHaveAttribute('data-amount', '15');
   await page.getByLabel('현재 토너먼트 기록', { exact: true }).click();
-  await expect(page.locator('.history-list')).toContainText('미콜 5칩 반환');
+  await expect(page.locator('.history-list')).toContainText('5칩 돌려받음');
   await expect(page.locator('.history-list')).toContainText('10칩 획득');
   await page.mouse.click(3, 3);
   await page.getByRole('button', { name: '취소', exact: true }).click();

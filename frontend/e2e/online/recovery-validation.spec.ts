@@ -7,7 +7,7 @@ test('validates recovery inputs before contacting the server', async ({ page }) 
     if (new URL(request.url()).pathname.startsWith('/api/')) requests.push(request.url());
   });
   await page.goto('/online/');
-  const recover = page.getByRole('button', { name: '기존 참가자로 복구', exact: true });
+  const recover = page.getByRole('button', { name: '기존 플레이어로 복구', exact: true });
   await recover.click();
   await expect(page.getByRole('alert')).toHaveText('정확한 이름을 입력해주세요.');
   await page.getByLabel('이름', { exact: true }).fill('Alice');
@@ -26,7 +26,7 @@ test('names the missing player in an existing room', async ({ page, browser }) =
     const recovery = await context.newPage();
     await recovery.goto(`/online/?code=${code}`);
     await recovery.getByLabel('이름', { exact: true }).fill('Nobody');
-    await recovery.getByRole('button', { name: '기존 참가자로 복구', exact: true }).click();
+    await recovery.getByRole('button', { name: '기존 플레이어로 복구', exact: true }).click();
     await expect(recovery.getByRole('alert')).toHaveText(
       '해당 게임방에 Nobody플레이어가 존재하지 않습니다.',
     );

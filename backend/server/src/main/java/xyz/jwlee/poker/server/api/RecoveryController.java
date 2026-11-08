@@ -3,7 +3,6 @@ package xyz.jwlee.poker.server.api;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import java.time.Clock;
-import java.util.Optional;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -21,7 +20,6 @@ import xyz.jwlee.poker.server.room.Fingerprint;
 import xyz.jwlee.poker.server.room.RecoveryCommands;
 import xyz.jwlee.poker.server.room.RecoveryRequests;
 import xyz.jwlee.poker.server.room.RecoveryRequests.Status;
-import xyz.jwlee.poker.server.room.RequestLedger;
 import xyz.jwlee.poker.server.room.RequestOutcome;
 import xyz.jwlee.poker.server.room.Room;
 import xyz.jwlee.poker.server.room.RoomEnv;
@@ -57,28 +55,10 @@ class RecoveryController {
         String name = f.string("name");
         String fingerprint = Fingerprint.sha256("recovery\n" + code + "\n" + name);
         SessionIdentity identity = identity(request);
-        RequestLedger ledger = identity.ledgerFor(f.streamId);
-        synchronized (ledger) {
-            Optional<RequestOutcome> replay = ledger.replayOf(f.requestId, f.sequence, fingerprint);
-            if (replay.isPresent()) {
-                RequestOutcome first = replay.get();
-                if (first.outcome() == RequestOutcome.Outcome.REJECTED) {
-                    throw new RoomException(first.code());
-                }
-                return created(registry.withRoom(first.roomId(), room -> describe(room, first.recoveryRequestId())));
-            }
-            RequestOutcome outcome;
-            try {
-                outcome = create(identity, code, name, f);
-            } catch (RoomException e) {
-                ledger.record(new RequestOutcome(
-                        f.requestId, f.sequence, RequestOutcome.Outcome.REJECTED, e.code(), 0, null), fingerprint);
-                throw e;
-            }
-            // Record first: the work is done, so a failure while building the body must not lose the outcome.
-            ledger.record(outcome, fingerprint);
-            return created(registry.withRoom(outcome.roomId(), room -> describe(room, outcome.recoveryRequestId())));
-        }
+        return identity.ledgerFor(f.streamId).runOnce(f.requestId, f.sequence, fingerprint,
+                () -> create(identity, code, name, f),
+                outcome -> created(registry.withRoom(
+                        outcome.roomId(), room -> describe(room, outcome.recoveryRequestId()))));
     }
 
     // 방을 찾아 잠금 안에서 신청을 만들고 세션에 기억한다

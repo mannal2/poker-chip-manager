@@ -32,7 +32,7 @@ import xyz.jwlee.poker.server.support.Protocol;
 // 방 생성, 입장, 상태 조회를 처리하는 컨트롤러
 /**
  * Create, join and read a room. Create and join are deduplicated by the request ledger of the screen
- * stream they came from: {@code synchronized (ledger) { check; do the work; record }}.
+ * stream they came from, through {@link RequestLedger#runOnce} (check; do the work; record).
  * Lock order: ledger, then the registry global lock, then a room lock, then (innermost, a leaf) the
  * HttpSession monitor taken by {@code SessionIdentity}.
  */
@@ -94,29 +94,11 @@ class RoomController {
             throw new RoomException("NO_SESSION");
         }
         SessionIdentity identity = SessionIdentity.from(session);
-        RequestLedger ledger = identity.ledgerFor(f.streamId);
-        synchronized (ledger) {
-            Optional<RequestOutcome> replay = ledger.replayOf(f.requestId, f.sequence, fingerprint);
-            if (replay.isPresent()) {
-                RequestOutcome outcome = replay.get();
-                if (outcome.outcome() == RequestOutcome.Outcome.REJECTED) {
-                    throw new RoomException(outcome.code());
-                }
-                return respond(okStatus, outcome.roomId(), identity);
-            }
-            RoomRegistry.Entry entry;
-            try {
-                entry = work.apply(identity);
-            } catch (RoomException e) {
-                ledger.record(new RequestOutcome(
-                        f.requestId, f.sequence, RequestOutcome.Outcome.REJECTED, e.code(), 0, null), fingerprint);
-                throw e;
-            }
-            // Record first: the work is done, so a failure while building the body must not lose the outcome.
-            ledger.record(new RequestOutcome(f.requestId, f.sequence, RequestOutcome.Outcome.APPLIED, "OK",
-                    entry.stateVersion(), entry.roomId()), fingerprint);
-            return respond(okStatus, entry.roomId(), identity);
-        }
+        return identity.ledgerFor(f.streamId).runOnce(f.requestId, f.sequence, fingerprint, () -> {
+            RoomRegistry.Entry entry = work.apply(identity);
+            return new RequestOutcome(f.requestId, f.sequence, RequestOutcome.Outcome.APPLIED, "OK",
+                    entry.stateVersion(), entry.roomId());
+        }, outcome -> respond(okStatus, outcome.roomId(), identity));
     }
 
     // 세션이 지금 들고 있는 자리로 응답을 만든다

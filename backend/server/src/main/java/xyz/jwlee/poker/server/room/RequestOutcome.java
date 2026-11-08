@@ -20,6 +20,11 @@ public record RequestOutcome(
         this(requestId, sequence, outcome, code, resultStateVersion, roomId, 0, null, null);
     }
 
+    // 거절된 요청의 결과를 만든다
+    public static RequestOutcome rejected(String requestId, long sequence, String code) {
+        return new RequestOutcome(requestId, sequence, Outcome.REJECTED, code, 0, null);
+    }
+
     // 성공한 조작권 인수의 결과를 만든다
     public static RequestOutcome takeover(
             String requestId, long sequence, long resultStateVersion, long issuedGeneration, String issuedTo) {

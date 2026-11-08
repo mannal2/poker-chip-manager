@@ -78,7 +78,7 @@ class CommandController {
     // 다른 화면에서 조작권을 가져오고, 재시도는 처음 결과를 그대로 돌려준다
     /**
      * Takes control on another screen. A takeover has no generation to belong to yet, so it is deduplicated by
-     * the stream ledger of the screen asking: {@code synchronized (ledger) { check; do the work; record }}, with
+     * the stream ledger of the screen asking, through {@link RequestLedger#runOnce}, with
      * the lock order of {@code RoomController}. A refusal is recorded (it uses up the sequence) and a retry
      * answers what the first attempt got, whatever has happened to the generation since.
      */
@@ -95,33 +95,14 @@ class CommandController {
         if (session == null) {
             throw new RoomException("NO_SESSION");
         }
-        RequestLedger ledger = SessionIdentity.from(session).ledgerFor(streamId);
-        synchronized (ledger) {
-            Optional<RequestOutcome> replay = ledger.replayOf(requestId, sequence, fingerprint);
-            if (replay.isPresent()) {
-                RequestOutcome first = replay.get();
-                if (first.outcome() == RequestOutcome.Outcome.REJECTED) {
-                    throw new RoomException(first.code());
-                }
-                return respondToControl(first, roomId, request);
-            }
-            RequestOutcome outcome;
-            try {
-                SeatBinding binding = bindingIn(roomId, request);
-                outcome = registry.update(roomId, room -> {
-                    String participantId = seat(room, binding).participantId();
-                    long issued = CommandPipeline.takeControl(room, participantId, expected);
-                    return RequestOutcome.takeover(requestId, sequence, room.version(), issued, participantId);
-                });
-            } catch (RoomException e) {
-                ledger.record(new RequestOutcome(
-                        requestId, sequence, RequestOutcome.Outcome.REJECTED, e.code(), 0, null), fingerprint);
-                throw e;
-            }
-            // Record first: the work is done, so a failure while building the body must not lose the outcome.
-            ledger.record(outcome, fingerprint);
-            return respondToControl(outcome, roomId, request);
-        }
+        return SessionIdentity.from(session).ledgerFor(streamId).runOnce(requestId, sequence, fingerprint, () -> {
+            SeatBinding binding = bindingIn(roomId, request);
+            return registry.update(roomId, room -> {
+                String participantId = seat(room, binding).participantId();
+                long issued = CommandPipeline.takeControl(room, participantId, expected);
+                return RequestOutcome.takeover(requestId, sequence, room.version(), issued, participantId);
+            });
+        }, outcome -> respondToControl(outcome, roomId, request));
     }
 
     // 조작권 인수 결과와 최신 방 상태를 응답 본문으로 만든다

@@ -14,29 +14,29 @@ public final class StartConditions {
     private StartConditions() {}
 
     // 시작을 막는 이유 코드를 돌려주고 시작 가능하면 빈 값을 돌려준다
-    public static Optional<String> blockReason(Room room, StartGate gate) {
+    public static Optional<ErrorCode> blockReason(Room room, StartGate gate) {
         if (room.phase() != RoomPhase.WAITING) {
-            return Optional.of("NOT_WAITING");
+            return Optional.of(ErrorCode.NOT_WAITING);
         }
         if (gate.isClosed()) {
-            return Optional.of("DEPLOY_PENDING");
+            return Optional.of(ErrorCode.DEPLOY_PENDING);
         }
         int count = room.participants().size();
         if (count < 2 || count > Room.MAX_PARTICIPANTS) {
-            return Optional.of("PLAYER_COUNT");
+            return Optional.of(ErrorCode.PLAYER_COUNT);
         }
         RoomSettings s = room.settings();
         if (s.button() < 0 || s.button() >= count) {
-            return Optional.of("NO_DEALER");
+            return Optional.of(ErrorCode.NO_DEALER);
         }
         List<String> names = new ArrayList<>();
         room.participants().forEach(p -> names.add(p.name()));
         if (!(SettingsValidator.validate(new GameSettings(names, s.initial(), s.sb(), s.bb(), s.button()))
                 instanceof SettingsValidation.Valid)) {
-            return Optional.of("INVALID_SETTINGS");
+            return Optional.of(ErrorCode.INVALID_SETTINGS);
         }
         if (!everyoneConnected(room)) {
-            return Optional.of("NOT_CONNECTED");
+            return Optional.of(ErrorCode.NOT_CONNECTED);
         }
         return Optional.empty();
     }

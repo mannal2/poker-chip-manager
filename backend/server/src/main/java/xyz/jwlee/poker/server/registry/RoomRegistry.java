@@ -16,6 +16,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import xyz.jwlee.poker.server.room.ErrorCode;
 import xyz.jwlee.poker.server.room.Participant;
 import xyz.jwlee.poker.server.room.Publication;
 import xyz.jwlee.poker.server.room.PublicationBuilder;
@@ -134,7 +135,7 @@ public class RoomRegistry {
     public Entry create(String hostName, BiConsumer<String, SeatBinding> bind) {
         Created created = withGlobal(() -> {
             if (rooms.size() >= maxRooms) {
-                throw new RoomException("ROOM_LIMIT");
+                throw new RoomException(ErrorCode.ROOM_LIMIT);
             }
             Room room = new Room(ids.next(), codes.next(byCode.keySet()), clock.instant());
             String participantId = ids.next();
@@ -171,7 +172,7 @@ public class RoomRegistry {
     public Entry join(String code, String name, Function<String, Optional<SeatBinding>> existing,
             BiConsumer<String, SeatBinding> bind, UnaryOperator<String> nameRule) {
         Room room = RoomCodes.normalize(code).flatMap(this::findByCode)
-                .orElseThrow(() -> new RoomException("ROOM_NOT_FOUND"));
+                .orElseThrow(() -> new RoomException(ErrorCode.ROOM_NOT_FOUND));
         return change(room, r -> {
             Optional<Participant> seat = existing.apply(r.roomId()).flatMap(r::seatOf);
             if (seat.isPresent()) {
@@ -253,7 +254,7 @@ public class RoomRegistry {
     private Room existing(String roomId) {
         Room room = withGlobal(() -> rooms.get(roomId));
         if (room == null) {
-            throw new RoomException("ROOM_NOT_FOUND");
+            throw new RoomException(ErrorCode.ROOM_NOT_FOUND);
         }
         return room;
     }
@@ -261,7 +262,7 @@ public class RoomRegistry {
     // 닫힌 방이면 없는 방으로 답한다. 호출자가 방 잠금을 잡고 있다
     private static void requireOpen(Room room) {
         if (room.isClosed()) {
-            throw new RoomException("ROOM_NOT_FOUND");
+            throw new RoomException(ErrorCode.ROOM_NOT_FOUND);
         }
     }
 
@@ -329,7 +330,7 @@ public class RoomRegistry {
     public PrepareResult prepareDeployment(String id) {
         PrepareResult result = withGlobal(() -> {
             if (!gate.close(id)) {
-                throw new RoomException("DEPLOY_IN_PROGRESS");
+                throw new RoomException(ErrorCode.DEPLOY_IN_PROGRESS);
             }
             int active = activeTournaments();
             if (active > 0) {

@@ -20,11 +20,11 @@ public final class RecoveryCommands {
     // 이름으로 자리를 찾아 신청을 만든다. 이 세션이 이미 이 방의 유효한 자리에 있으면 거절한다
     public static Request request(Room room, Optional<SeatBinding> caller, String name, RoomEnv env) {
         if (caller.flatMap(room::seatOf).isPresent()) {
-            throw new RoomException("ALREADY_PARTICIPANT");
+            throw new RoomException(ErrorCode.ALREADY_PARTICIPANT);
         }
         Participant seat = comparable(name).flatMap(wanted -> room.participants().stream()
                 .filter(p -> comparable(p.name()).filter(wanted::equals).isPresent()).findFirst())
-                .orElseThrow(() -> new RoomException("RECOVERY_TARGET_NOT_FOUND"));
+                .orElseThrow(() -> new RoomException(ErrorCode.RECOVERY_TARGET_NOT_FOUND));
         Request request = room.recoveryRequests().add(env.newId(), seat.participantId(), env.now());
         room.bumpVersion();
         return request;
@@ -47,12 +47,9 @@ public final class RecoveryCommands {
 
     // payload가 가리키는 신청이 아직 대기 중인지 확인해 돌려준다
     private static Request pending(Room room, JsonNode payload, Instant now) {
-        JsonNode id = payload == null || !payload.isObject() ? null : payload.get("recoveryRequestId");
-        if (id == null || !id.isString()) {
-            throw new RoomException("INVALID_INPUT");
-        }
-        return room.recoveryRequests().find(id.asString()).filter(r -> r.statusAt(now) == Status.PENDING)
-                .orElseThrow(() -> new RoomException("RECOVERY_NOT_PENDING"));
+        String id = Payload.string(Payload.object(payload), "recoveryRequestId");
+        return room.recoveryRequests().find(id).filter(r -> r.statusAt(now) == Status.PENDING)
+                .orElseThrow(() -> new RoomException(ErrorCode.RECOVERY_NOT_PENDING));
     }
 
     // 이름을 공백 제거·NFC·소문자로 맞추고 이름 규칙에 어긋나면 빈 값을 돌려준다

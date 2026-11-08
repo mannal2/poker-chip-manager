@@ -18,6 +18,7 @@ import xyz.jwlee.poker.game.settings.SettingsValidator;
 import xyz.jwlee.poker.server.auth.SessionIdentity;
 import xyz.jwlee.poker.server.registry.RoomCodes;
 import xyz.jwlee.poker.server.registry.RoomRegistry;
+import xyz.jwlee.poker.server.room.ErrorCode;
 import xyz.jwlee.poker.server.room.Fingerprint;
 import xyz.jwlee.poker.server.room.Participant;
 import xyz.jwlee.poker.server.room.RequestLedger;
@@ -27,19 +28,16 @@ import xyz.jwlee.poker.server.room.RoomException;
 import xyz.jwlee.poker.server.room.RoomSnapshot;
 import xyz.jwlee.poker.server.room.SeatBinding;
 import xyz.jwlee.poker.server.room.SnapshotWriter;
-import xyz.jwlee.poker.server.support.Protocol;
 
 // 방 생성, 입장, 상태 조회를 처리하는 컨트롤러
 /**
  * Create, join and read a room. Create and join are deduplicated by the request ledger of the screen
- * stream they came from: {@code synchronized (ledger) { check; do the work; record }}.
+ * stream they came from, through {@link RequestLedger#runOnce} (check; do the work; record).
  * Lock order: ledger, then the registry global lock, then a room lock, then (innermost, a leaf) the
  * HttpSession monitor taken by {@code SessionIdentity}.
  */
 @RestController
 class RoomController {
-
-    private static final int MAX_ID_LENGTH = 128;
 
     private final RoomRegistry registry;
 
@@ -63,7 +61,7 @@ class RoomController {
         String code = f.string("code");
         String name = f.string("name");
         return bind(request, f, "join\n" + code + "\n" + name, 200, identity -> {
-            String canonical = RoomCodes.normalize(code).orElseThrow(() -> new RoomException("ROOM_NOT_FOUND"));
+            String canonical = RoomCodes.normalize(code).orElseThrow(() -> new RoomException(ErrorCode.ROOM_NOT_FOUND));
             return registry.join(canonical, name, identity::bindingIn, identity::bind, RoomController::normalized);
         });
     }
@@ -73,11 +71,11 @@ class RoomController {
     ResponseEntity<ObjectNode> state(@PathVariable String roomId, HttpServletRequest request) {
         HttpSession session = request.getSession(false);
         if (session == null) {
-            throw new RoomException("NO_SESSION");
+            throw new RoomException(ErrorCode.NO_SESSION);
         }
         // Not bound, or bound to a seat this session no longer holds: both look like a missing room.
         SeatBinding binding = SessionIdentity.from(session).bindingIn(roomId)
-                .orElseThrow(() -> new RoomException("ROOM_NOT_FOUND"));
+                .orElseThrow(() -> new RoomException(ErrorCode.ROOM_NOT_FOUND));
         RoomSnapshot snapshot = registry.withRoom(roomId,
                 room -> SnapshotWriter.snapshot(room, member(room.seatOf(binding))));
         return ResponseEntity.ok().header(HttpHeaders.CACHE_CONTROL, "no-store").body(snapshot.json());
@@ -91,37 +89,19 @@ class RoomController {
         String fingerprint = Fingerprint.sha256(payload);
         HttpSession session = request.getSession(false);
         if (session == null) {
-            throw new RoomException("NO_SESSION");
+            throw new RoomException(ErrorCode.NO_SESSION);
         }
         SessionIdentity identity = SessionIdentity.from(session);
-        RequestLedger ledger = identity.ledgerFor(f.streamId);
-        synchronized (ledger) {
-            Optional<RequestOutcome> replay = ledger.replayOf(f.requestId, f.sequence, fingerprint);
-            if (replay.isPresent()) {
-                RequestOutcome outcome = replay.get();
-                if (outcome.outcome() == RequestOutcome.Outcome.REJECTED) {
-                    throw new RoomException(outcome.code());
-                }
-                return respond(okStatus, outcome.roomId(), identity);
-            }
-            RoomRegistry.Entry entry;
-            try {
-                entry = work.apply(identity);
-            } catch (RoomException e) {
-                ledger.record(new RequestOutcome(
-                        f.requestId, f.sequence, RequestOutcome.Outcome.REJECTED, e.code(), 0, null), fingerprint);
-                throw e;
-            }
-            // Record first: the work is done, so a failure while building the body must not lose the outcome.
-            ledger.record(new RequestOutcome(f.requestId, f.sequence, RequestOutcome.Outcome.APPLIED, "OK",
-                    entry.stateVersion(), entry.roomId()), fingerprint);
-            return respond(okStatus, entry.roomId(), identity);
-        }
+        return identity.ledgerFor(f.streamId).runOnce(f.requestId, f.sequence, fingerprint, () -> {
+            RoomRegistry.Entry entry = work.apply(identity);
+            return new RequestOutcome(f.requestId, f.sequence, RequestOutcome.Outcome.APPLIED, "OK",
+                    entry.stateVersion(), entry.roomId());
+        }, outcome -> respond(okStatus, outcome.roomId(), identity));
     }
 
     // 세션이 지금 들고 있는 자리로 응답을 만든다
     private ResponseEntity<ObjectNode> respond(int status, String roomId, SessionIdentity identity) {
-        SeatBinding binding = identity.bindingIn(roomId).orElseThrow(() -> new RoomException("ROOM_NOT_FOUND"));
+        SeatBinding binding = identity.bindingIn(roomId).orElseThrow(() -> new RoomException(ErrorCode.ROOM_NOT_FOUND));
         ObjectNode body = registry.withRoom(roomId, room -> entry(room, member(room.seatOf(binding))));
         return ResponseEntity.status(status).header(HttpHeaders.CACHE_CONTROL, "no-store").body(body);
     }
@@ -140,12 +120,12 @@ class RoomController {
 
     // 참가자가 없으면 방을 찾을 수 없다는 예외를 던진다
     private static Participant member(Optional<Participant> p) {
-        return p.orElseThrow(() -> new RoomException("ROOM_NOT_FOUND"));
+        return p.orElseThrow(() -> new RoomException(ErrorCode.ROOM_NOT_FOUND));
     }
 
     // 이름을 정규화하고 규칙에 어긋나면 예외를 던진다
     private static String normalized(String name) {
-        return SettingsValidator.normalizeName(name).orElseThrow(() -> new RoomException("INVALID_NAME"));
+        return SettingsValidator.normalizeName(name).orElseThrow(() -> new RoomException(ErrorCode.INVALID_NAME));
     }
 
     // 생성/입장 요청의 공통 필드(스트림, 요청 id, 순번)를 검증해 담는다
@@ -166,46 +146,20 @@ class RoomController {
 
         // 본문과 프로토콜 버전, 공통 필드를 검증해 Fields를 만든다
         static Fields parse(JsonNode node) {
-            if (node == null || !node.isObject()) {
-                throw invalid();
-            }
-            JsonNode version = node.get("protocolVersion");
-            if (version == null || !version.isIntegralNumber() || !version.canConvertToInt()) {
-                throw invalid();
-            }
-            if (version.asInt() != Protocol.VERSION) {
-                throw new RoomException("PROTOCOL_INCOMPATIBLE");
-            }
-            String streamId = id(node, "streamId");
-            String requestId = id(node, "requestId");
-            JsonNode seq = node.get("sequence");
-            if (seq == null || !seq.isIntegralNumber() || !seq.canConvertToLong() || seq.asLong() < 1) {
-                throw invalid();
-            }
-            return new Fields(node, streamId, requestId, seq.asLong());
+            Envelope.requireProtocol(node);
+            String streamId = Envelope.text(node, "streamId", Envelope.MAX_ID_LENGTH, true);
+            String requestId = Envelope.text(node, "requestId", Envelope.MAX_ID_LENGTH, true);
+            long sequence = Envelope.number(node, "sequence", 1);
+            return new Fields(node, streamId, requestId, sequence);
         }
 
         // 문자열 필드를 읽고 형식이 틀리면 예외를 던진다
         String string(String field) {
             JsonNode v = node.get(field);
             if (v == null || !v.isString()) {
-                throw invalid();
+                throw Envelope.invalid();
             }
             return v.asString();
-        }
-
-        // 비어 있지 않고 길이 제한을 지키는 id 문자열을 읽는다
-        private static String id(JsonNode node, String field) {
-            JsonNode v = node.get(field);
-            if (v == null || !v.isString() || v.asString().isEmpty() || v.asString().length() > MAX_ID_LENGTH) {
-                throw invalid();
-            }
-            return v.asString();
-        }
-
-        // 입력 형식 오류 예외를 만든다
-        private static RoomException invalid() {
-            return new RoomException("INVALID_INPUT");
         }
     }
 }

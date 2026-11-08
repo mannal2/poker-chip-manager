@@ -70,3 +70,12 @@ it('규칙은 문장 대신 코드를 반환하고 화면 문구는 기존과 �
   const r = transition(s, { type: 'RAISE', additional: 15 }, ctx);
   expect(r).toEqual({ ok: false, errorCode: 'MIN_RAISE' });
 });
+
+// 서버가 보낼 수 있는 오류 코드 가운데 화면이 따로 처리하지 않는 코드는 모두 전용 문구가 있다
+it('서버 오류 코드 목록의 화면 표시 코드에 문구가 있다', () => {
+  const contract = JSON.parse(
+    readFileSync(new URL('../../../shared/error-codes.json', import.meta.url), 'utf8'),
+  ) as { server: string[]; rules: string[]; notShown: string[] };
+  const shown = [...contract.server, ...contract.rules].filter((c) => !contract.notShown.includes(c));
+  for (const code of shown) expect(errorMessages, code).toHaveProperty(code);
+});

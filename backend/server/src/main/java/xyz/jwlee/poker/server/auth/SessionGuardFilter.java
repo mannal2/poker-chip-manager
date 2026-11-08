@@ -6,6 +6,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import org.springframework.web.filter.OncePerRequestFilter;
+import xyz.jwlee.poker.server.room.ErrorCode;
 
 // 세션 없는 상태 변경 요청을 CSRF 처리 전에 401로 막는 필터
 /** Answers state-changing requests without a live session with 401, before CSRF code can create one. */
@@ -18,7 +19,7 @@ final class SessionGuardFilter extends OncePerRequestFilter {
         String method = request.getMethod();
         boolean safe = method.equals("GET") || method.equals("HEAD");
         if (!safe && request.getSession(false) == null) {
-            JsonErrors.write(response, 401, "NO_SESSION");
+            JsonErrors.write(response, 401, ErrorCode.NO_SESSION);
             return;
         }
         chain.doFilter(request, response);

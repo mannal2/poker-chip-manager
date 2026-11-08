@@ -222,14 +222,14 @@ public final class Room {
      */
     public Participant addParticipant(String participantId, String name, String credential, Instant now) {
         if (phase != RoomPhase.WAITING) {
-            throw new RoomException("NOT_WAITING");
+            throw new RoomException(ErrorCode.NOT_WAITING);
         }
         if (participants.size() >= MAX_PARTICIPANTS) {
-            throw new RoomException("ROOM_FULL");
+            throw new RoomException(ErrorCode.ROOM_FULL);
         }
         String lowered = name.toLowerCase(Locale.ROOT);
         if (participants.stream().anyMatch(p -> p.name().toLowerCase(Locale.ROOT).equals(lowered))) {
-            throw new RoomException("DUPLICATE_NAME");
+            throw new RoomException(ErrorCode.DUPLICATE_NAME);
         }
         Participant p = new Participant(participantId, name, nextJoinOrder++, INITIAL_CONTROL_GENERATION, credential);
         participants.add(p);
@@ -367,7 +367,7 @@ public final class Room {
                 return next;
             }
         }
-        throw new RoomException("ROOM_NOT_FOUND");
+        throw new RoomException(ErrorCode.ROOM_NOT_FOUND);
     }
 
     // 자리의 자격 값을 바꾼다

@@ -2,6 +2,8 @@ package xyz.jwlee.poker.server.room;
 
 import java.util.ArrayDeque;
 import java.util.Deque;
+import java.util.function.Function;
+import java.util.function.Supplier;
 
 // 스트림별로 요청 순번과 최근 결과를 보관해 재시도를 가려내는 원장
 /**
@@ -60,9 +62,9 @@ public final class RequestLedger {
     public java.util.Optional<RequestOutcome> replayOf(String requestId, long sequence, String fingerprint) {
         return switch (check(requestId, sequence, fingerprint)) {
             case Check.Replay replay -> java.util.Optional.of(replay.outcome());
-            case Check.Conflict c -> throw new RoomException("REQUEST_CONFLICT");
-            case Check.Expired e -> throw new RoomException("RESULT_EXPIRED");
-            case Check.Gap g -> throw new RoomException("SEQUENCE_GAP");
+            case Check.Conflict c -> throw new RoomException(ErrorCode.REQUEST_CONFLICT);
+            case Check.Expired e -> throw new RoomException(ErrorCode.RESULT_EXPIRED);
+            case Check.Gap g -> throw new RoomException(ErrorCode.SEQUENCE_GAP);
             case Check.New n -> java.util.Optional.empty();
         };
     }
@@ -85,5 +87,35 @@ public final class RequestLedger {
             results.removeFirst();
         }
         highWatermark = outcome.sequence();
+    }
+    // 같은 요청은 처음 결과로 답하고, 새 요청은 한 번만 실행해 결과를 기록한 뒤 응답을 만든다
+    /**
+     * The one place for "check; do the work; record" under this ledger's monitor. A retry is answered from the
+     * stored outcome (a stored rejection is thrown again with its code) without running {@code work}. A new
+     * request runs {@code work} once; a {@link RoomException} from it is recorded as a rejection and rethrown.
+     * The outcome is recorded before {@code respond} runs, so a failure while building the answer does not lose
+     * work that was already done. Conflicts, expired results and sequence gaps are thrown by {@link #replayOf}.
+     */
+    public <T> T runOnce(String requestId, long sequence, String fingerprint,
+            Supplier<RequestOutcome> work, Function<RequestOutcome, T> respond) {
+        synchronized (this) {
+            java.util.Optional<RequestOutcome> replay = replayOf(requestId, sequence, fingerprint);
+            if (replay.isPresent()) {
+                RequestOutcome first = replay.get();
+                if (first.outcome() == RequestOutcome.Outcome.REJECTED) {
+                    throw RoomException.replayed(first.code());
+                }
+                return respond.apply(first);
+            }
+            RequestOutcome outcome;
+            try {
+                outcome = work.get();
+            } catch (RoomException e) {
+                record(RequestOutcome.rejected(requestId, sequence, e.code()), fingerprint);
+                throw e;
+            }
+            record(outcome, fingerprint);
+            return respond.apply(outcome);
+        }
     }
 }

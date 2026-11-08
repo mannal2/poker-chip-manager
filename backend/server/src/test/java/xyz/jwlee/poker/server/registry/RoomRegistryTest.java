@@ -23,6 +23,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
 import tools.jackson.databind.ObjectMapper;
+import xyz.jwlee.poker.server.room.ErrorCode;
 import xyz.jwlee.poker.server.room.CommandPipeline;
 import xyz.jwlee.poker.server.room.CommandRequest;
 import xyz.jwlee.poker.server.room.MutableClock;
@@ -60,7 +61,7 @@ class RoomRegistryTest {
         public Instant instant() {
             if (fail) {
                 fail = false;
-                throw new RoomException("ROOM_NOT_FOUND");
+                throw new RoomException(ErrorCode.ROOM_NOT_FOUND);
             }
             return time.instant();
         }

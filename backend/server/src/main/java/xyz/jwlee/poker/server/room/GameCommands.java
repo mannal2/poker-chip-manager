@@ -1,9 +1,15 @@
 package xyz.jwlee.poker.server.room;
 
+import static xyz.jwlee.poker.server.room.Payload.integer;
+import static xyz.jwlee.poker.server.room.Payload.invalid;
+import static xyz.jwlee.poker.server.room.Payload.object;
+import static xyz.jwlee.poker.server.room.Payload.required;
+import static xyz.jwlee.poker.server.room.Payload.requireEmpty;
+import static xyz.jwlee.poker.server.room.Payload.winners;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import tools.jackson.databind.JsonNode;
@@ -35,7 +41,7 @@ final class GameCommands {
 
     // 시작 조건을 확인하고 참가자 순서대로 토너먼트를 만들어 게임을 시작한다
     static void start(Room room, Participant actor, CommandRequest request, RoomEnv env) {
-        emptyPayload(request.payload());
+        requireEmpty(request.payload());
         StartConditions.blockReason(room, env.gate()).ifPresent(reason -> {
             throw new RoomException(reason);
         });
@@ -52,7 +58,7 @@ final class GameCommands {
         try {
             created = Tournament.create(new GameSettings(names, s.initial(), s.sb(), s.bb(), s.button()), ctx);
         } catch (IllegalArgumentException e) {
-            throw new RoomException("INVALID_SETTINGS");
+            throw new RoomException(ErrorCode.INVALID_SETTINGS);
         }
         TransitionResult.Applied applied =
                 applied(GameEngine.transition(created, new GameCommand.StartTournament(), ctx));
@@ -71,7 +77,7 @@ final class GameCommands {
             case "FOLD" -> {
                 // Folding when nothing is owed is almost always a mis-tap, so the server refuses it.
                 if (Legal.of(game).callAdditional() == 0) {
-                    throw new RoomException("INVALID_ACTION");
+                    throw new RoomException(ErrorCode.INVALID_ACTION);
                 }
                 yield new GameCommand.Fold(playerId);
             }
@@ -87,11 +93,11 @@ final class GameCommands {
     static void undo(Room room, Participant actor, CommandRequest request, RoomEnv env) {
         GameState game = requireGame(room);
         if (room.hasPlayerLeft()) {
-            throw new RoomException("UNDO_LOCKED");
+            throw new RoomException(ErrorCode.UNDO_LOCKED);
         }
         // Undoing the end of a tournament brings a game back to life, so it is a start in all but name.
         if (game.status == TournamentStatus.ENDED && env.gate().isClosed()) {
-            throw new RoomException("UNDO_DEPLOY_PENDING");
+            throw new RoomException(ErrorCode.UNDO_DEPLOY_PENDING);
         }
         run(room, new GameCommand.Undo(), env);
     }
@@ -107,13 +113,13 @@ final class GameCommands {
     static void settleHand(Room room, Participant actor, CommandRequest request, RoomEnv env) {
         requireGame(room);
         JsonNode body = object(request.payload());
-        run(room, new GameCommand.SettleHand(winners(requiredField(body, "winners"))), env);
+        run(room, new GameCommand.SettleHand(winners(required(body, "winners"))), env);
     }
 
     // 진행 중인 게임을 중단한다
     static void abort(Room room, Participant actor, CommandRequest request, RoomEnv env) {
         requireGame(room);
-        emptyPayload(request.payload());
+        requireEmpty(request.payload());
         run(room, new GameCommand.Abort(), env);
     }
 
@@ -127,13 +133,13 @@ final class GameCommands {
     /** A person gives up their own seat. The host must hand the room over first (MULTIPLAYER_MODE section 10). */
     static void forfeit(Room room, Participant actor, CommandRequest request, RoomEnv env) {
         requirePlaying(room);
-        emptyPayload(request.payload());
+        requireEmpty(request.payload());
         if (room.isHost(actor.participantId())) {
-            throw new RoomException("TRANSFER_HOST_FIRST");
+            throw new RoomException(ErrorCode.TRANSFER_HOST_FIRST);
         }
         String playerId = room.playerIds().get(actor.participantId());
         if (playerId == null) {
-            throw new RoomException("INVALID_ACTION");
+            throw new RoomException(ErrorCode.INVALID_ACTION);
         }
         run(room, new GameCommand.Forfeit(playerId, false), env);
     }
@@ -142,7 +148,7 @@ final class GameCommands {
     /** The host gives up another participant's seat, connected or not (the name predates that rule). */
     static void forfeitDisconnected(Room room, Participant actor, CommandRequest request, RoomEnv env) {
         requirePlaying(room);
-        JsonNode target = requiredField(object(request.payload()), "participantId");
+        JsonNode target = required(object(request.payload()), "participantId");
         if (!target.isString()) {
             throw invalid();
         }
@@ -164,11 +170,11 @@ final class GameCommands {
         GameState game = requirePlaying(room);
         Hand hand = game.hand;
         if (hand == null || hand.phase != Phase.SETTLEMENT) {
-            throw new RoomException("INVALID_ACTION");
+            throw new RoomException(ErrorCode.INVALID_ACTION);
         }
         JsonNode body = object(request.payload());
         int potIndex = integer(body, "potIndex");
-        Map<String, List<String>> winners = winners(requiredField(body, "winners"));
+        Map<String, List<String>> winners = winners(required(body, "winners"));
         List<Pot> pots = Settlement.buildPots(game);
         if (potIndex < 0 || potIndex >= pots.size()) {
             throw invalid();
@@ -216,14 +222,14 @@ final class GameCommands {
     private static TransitionResult.Applied applied(TransitionResult result) {
         return switch (result) {
             case TransitionResult.Applied a -> a;
-            case TransitionResult.Rejected r -> throw new RoomException(r.code().name());
+            case TransitionResult.Rejected r -> throw RoomException.rule(r.code());
         };
     }
 
     // 게임이 있는지 확인하고 돌려준다
     private static GameState requireGame(Room room) {
         if (room.game() == null) {
-            throw new RoomException("INVALID_ACTION");
+            throw new RoomException(ErrorCode.INVALID_ACTION);
         }
         return room.game();
     }
@@ -233,7 +239,7 @@ final class GameCommands {
     private static GameState requirePlaying(Room room) {
         GameState game = requireGame(room);
         if (room.phase() != RoomPhase.PLAYING || game.status != TournamentStatus.PLAYING) {
-            throw new RoomException("INVALID_ACTION");
+            throw new RoomException(ErrorCode.INVALID_ACTION);
         }
         return game;
     }
@@ -242,69 +248,14 @@ final class GameCommands {
     private static String requireTurn(Room room, Participant actor, GameState game) {
         String playerId = room.playerIds().get(actor.participantId());
         if (playerId == null || game.hand == null || !playerId.equals(game.hand.actorId)) {
-            throw new RoomException("NOT_YOUR_TURN");
+            throw new RoomException(ErrorCode.NOT_YOUR_TURN);
         }
         return playerId;
     }
 
-    // payload가 비어 있는지 확인한다
-    private static void emptyPayload(JsonNode payload) {
-        if (payload != null && !payload.isNull() && !(payload.isObject() && payload.isEmpty())) {
-            throw invalid();
-        }
-    }
 
-    // payload가 객체인지 확인한다
-    private static JsonNode object(JsonNode payload) {
-        if (payload == null || !payload.isObject()) {
-            throw invalid();
-        }
-        return payload;
-    }
 
-    // 필수 필드를 꺼내고 없으면 예외를 던진다
-    private static JsonNode requiredField(JsonNode body, String field) {
-        JsonNode v = body.get(field);
-        if (v == null) {
-            throw invalid();
-        }
-        return v;
-    }
 
-    // 정수 필드를 꺼내고 형식이 틀리면 예외를 던진다
-    private static int integer(JsonNode body, String field) {
-        JsonNode v = body.get(field);
-        if (v == null || !v.isIntegralNumber() || !v.canConvertToInt()) {
-            throw invalid();
-        }
-        return v.asInt();
-    }
 
-    // 팟별 승자 JSON을 맵으로 읽는다
-    /** {@code {potId: [playerId, ...]}}. */
-    private static Map<String, List<String>> winners(JsonNode node) {
-        if (node == null || !node.isObject()) {
-            throw invalid();
-        }
-        Map<String, List<String>> out = new LinkedHashMap<>();
-        for (Map.Entry<String, JsonNode> e : node.properties()) {
-            if (!e.getValue().isArray()) {
-                throw invalid();
-            }
-            List<String> ids = new ArrayList<>();
-            for (JsonNode id : e.getValue()) {
-                if (!id.isString()) {
-                    throw invalid();
-                }
-                ids.add(id.asString());
-            }
-            out.put(e.getKey(), ids);
-        }
-        return out;
-    }
 
-    // 입력 형식 오류 예외를 만든다
-    private static RoomException invalid() {
-        return new RoomException("INVALID_INPUT");
-    }
 }

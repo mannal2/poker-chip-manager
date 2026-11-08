@@ -7,6 +7,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
+import xyz.jwlee.poker.server.room.ErrorCode;
 import xyz.jwlee.poker.server.room.RequestLedger;
 import xyz.jwlee.poker.server.room.RoomException;
 import xyz.jwlee.poker.server.room.SeatBinding;
@@ -65,7 +66,7 @@ public final class SessionIdentity {
     public RequestLedger ledgerFor(String streamId) {
         RequestLedger ledger = streams().get(streamId);
         if (ledger == null) {
-            throw new RoomException("UNKNOWN_STREAM");
+            throw new RoomException(ErrorCode.UNKNOWN_STREAM);
         }
         return ledger;
     }

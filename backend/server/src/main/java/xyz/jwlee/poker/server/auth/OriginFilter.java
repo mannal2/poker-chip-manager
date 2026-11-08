@@ -7,6 +7,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.Set;
 import org.springframework.web.filter.OncePerRequestFilter;
+import xyz.jwlee.poker.server.room.ErrorCode;
 
 // 허용 목록에 없는 Origin의 상태 변경 요청을 막는 필터
 /** Rejects state-changing requests whose Origin header is missing or not on the allow-list. */
@@ -26,7 +27,7 @@ final class OriginFilter extends OncePerRequestFilter {
         boolean safe = method.equals("GET") || method.equals("HEAD");
         String origin = request.getHeader("Origin");
         if (!safe && (origin == null || !allowed.contains(origin))) {
-            JsonErrors.write(response, 403, "ORIGIN_REJECTED");
+            JsonErrors.write(response, 403, ErrorCode.ORIGIN_REJECTED);
             return;
         }
         chain.doFilter(request, response);

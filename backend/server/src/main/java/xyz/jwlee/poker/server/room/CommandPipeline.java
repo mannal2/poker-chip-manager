@@ -153,7 +153,7 @@ public final class CommandPipeline {
     public static long takeControl(Room room, String participantId, long expectedGeneration) {
         Participant actor = requireParticipant(room, participantId);
         if (expectedGeneration != actor.controlGeneration()) {
-            throw new RoomException("CONTROL_LOST");
+            throw new RoomException(ErrorCode.CONTROL_LOST);
         }
         long issued = room.advanceControl(participantId);
         room.requestSnapshotsOf(participantId);
@@ -170,14 +170,14 @@ public final class CommandPipeline {
     private static Handler requireKnownType(CommandRequest request) {
         Handler handler = handlerFor(request.type());
         if (handler == null) {
-            throw new RoomException("UNKNOWN_TYPE");
+            throw new RoomException(ErrorCode.UNKNOWN_TYPE);
         }
         return handler;
     }
 
     // 방 참가자를 찾고 없으면 예외를 던진다
     private static Participant requireParticipant(Room room, String participantId) {
-        return room.participant(participantId).orElseThrow(() -> new RoomException("ROOM_NOT_FOUND"));
+        return room.participant(participantId).orElseThrow(() -> new RoomException(ErrorCode.ROOM_NOT_FOUND));
     }
 
     // 현재와 다른 조작권 세대의 요청은 해당 세대의 원장에 ID, 순번, 지문이 모두 일치하는 결과가 있을 때만 반환하고, 그렇지 않으면 조작권 상실로 거절한다
@@ -187,13 +187,13 @@ public final class CommandPipeline {
         return room.existingLedger(actor.participantId(), request.controlGeneration())
                 .map(ledger -> ledger.check(request.requestId(), request.sequence(), fingerprint)
                         instanceof RequestLedger.Check.Replay replay ? replay.outcome() : null)
-                .orElseThrow(() -> new RoomException("CONTROL_LOST"));
+                .orElseThrow(() -> new RoomException(ErrorCode.CONTROL_LOST));
     }
 
     // 방장 전용 명령을 방장이 아닌 사람이 보내면 거절한다
     private static void checkPermission(Room room, Participant actor, Handler handler) {
         if (handler.hostOnly() && !room.isHost(actor.participantId())) {
-            throw new RoomException("FORBIDDEN");
+            throw new RoomException(ErrorCode.FORBIDDEN);
         }
     }
 
@@ -210,14 +210,14 @@ public final class CommandPipeline {
                 ? Objects.equals(handId, request.handId())
                 : request.handId() == null || request.handId().equals(handId);
         if (!Objects.equals(tournamentId, request.tournamentId()) || !handMatches) {
-            throw new RoomException("TOURNAMENT_CHANGED");
+            throw new RoomException(ErrorCode.TOURNAMENT_CHANGED);
         }
     }
 
     // 버전을 올리는 명령이 기대한 방 상태 버전이 현재와 같은지 확인한다
     private static void checkVersion(Room room, CommandRequest request, Handler handler) {
         if (handler.bumpsVersion() && request.expectedStateVersion() != room.version()) {
-            throw new RoomException("STALE_STATE");
+            throw new RoomException(ErrorCode.STALE_STATE);
         }
     }
 

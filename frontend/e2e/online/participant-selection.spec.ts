@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { createRoom, joinRoom, startRoom, confirm } from './managementSupport';
+import { afterForfeit, createRoom, joinRoom, startRoom, confirm, menu } from './managementSupport';
 
 test('selects a waiting card for kick, cancels confirmation and restores setup controls', async ({
   page,
@@ -68,7 +68,7 @@ test('confirms a host transfer by selecting a player card', async ({ page, brows
   }
 });
 
-test('highlights only a disconnected forfeit target and exits when that target reconnects', async ({
+test('offers a connected forfeit target and exits when that target forfeits meanwhile', async ({
   page,
   browser,
 }) => {
@@ -78,8 +78,7 @@ test('highlights only a disconnected forfeit target and exits when that target r
     const guest = await context.newPage();
     await joinRoom(guest, code);
     await startRoom(page);
-    await context.setOffline(true);
-    await expect(page.locator('.seat .disconnected')).toHaveCount(1);
+    await expect(page.locator('.seat .disconnected')).toHaveCount(0);
     await page.getByRole('button', { name: '관리 메뉴', exact: true }).click();
     await page.getByRole('button', { name: '기권 처리', exact: true }).click();
     await expect(
@@ -88,13 +87,15 @@ test('highlights only a disconnected forfeit target and exits when that target r
     await expect(page.locator('.bet-top')).toHaveCount(0);
     const bob = page.locator('.seat').filter({ has: page.locator('.name', { hasText: 'Bob' }) });
     await bob.click();
-    await expect(page.getByRole('dialog')).toContainText('되돌릴 수 없습니다.');
-    await context.setOffline(false);
-    await guest.reload();
-    await expect(page.locator('.seat .disconnected')).toHaveCount(0);
+    await expect(page.getByRole('dialog')).toContainText('접속 중인 참가자입니다.');
+    await menu(guest, '기권');
+    await confirm(guest, '기권');
+    await afterForfeit(guest, '방에 남기');
     await expect(page.getByRole('dialog')).toHaveCount(0);
     await expect(page.locator('.participant-selection-controls')).toHaveCount(0);
-    await expect(bob).not.toContainText('탈락');
+    await expect(page.locator('.toast')).toHaveText(
+      '대상 또는 상태가 변경되었습니다. 다시 확인하세요.',
+    );
   } finally {
     await context.close();
   }

@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { createRoom, joinRoom, startRoom, menu, confirm } from './managementSupport';
+import { afterForfeit, createRoom, joinRoom, startRoom, menu, confirm } from './managementSupport';
 
 // 대기방 내보내기와 직접 방장 이전을 실제 두 세션에서 검증한다
 test('kicks a waiting participant and transfers the host', async ({ page, browser }, testInfo) => {
@@ -80,6 +80,7 @@ test('forfeits self after host transfer and distributes chips at hand end', asyn
     await menu(page, '방장 넘기기', 'Bob');
     await menu(page, '기권');
     await confirm(page, '기권');
+    await afterForfeit(page, '방에 남기');
     for (const current of [page, guest]) {
       await expect(current.locator('.summary')).toHaveText('토너먼트 종료 · Bob 우승');
       await expect(
@@ -95,7 +96,7 @@ test('forfeits self after host transfer and distributes chips at hand end', asyn
   }
 });
 
-// 끊긴 참가자만 방장이 대신 기권 처리할 수 있다
+// 방장이 끊긴 참가자를 대신 기권 처리하고 방에 남긴다
 test('forfeits a disconnected participant', async ({ page, browser }) => {
   const code = await createRoom(page);
   const context = await browser.newContext();
@@ -106,6 +107,7 @@ test('forfeits a disconnected participant', async ({ page, browser }) => {
   await expect(page.locator('.seat .disconnected')).toHaveCount(1);
   await menu(page, '기권 처리', 'Bob');
   await confirm(page, '기권 처리');
+  await afterForfeit(page, '방에 남기기');
   await expect(page.locator('.summary')).toHaveText('토너먼트 종료 · Alice 우승');
   await expect(page.locator('.seat').filter({ hasText: 'Alice' }).locator('.stack')).toHaveText(
     '2,000',
@@ -157,6 +159,7 @@ test('defers forfeited stack distribution until the current hand ends', async ({
     await startRoom(page, 3);
     await menu(bob, '기권');
     await confirm(bob, '기권');
+    await afterForfeit(bob, '방에 남기');
     for (const current of [page, bob, carol]) {
       await expect(
         current.locator('.seat').filter({ hasText: 'Bob' }).locator('.stack'),

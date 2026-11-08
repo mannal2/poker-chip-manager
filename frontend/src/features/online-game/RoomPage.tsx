@@ -9,7 +9,7 @@ import type { OnlineController, OnlineView } from './session/onlineController';
 import { useOnlineChipMotion } from './hooks/useOnlineChipMotion';
 import { noticesFor } from './model/eventNotices';
 import { Dialog } from '../../shared/ui/Dialog';
-import { OnlineMenu, menuItems, type MenuItem } from './components/OnlineMenu';
+import { OnlineMenu, inPlay, menuItems, type MenuItem } from './components/OnlineMenu';
 import { HostRequests } from './components/HostRequests';
 import { ResultActions } from './components/ResultActions';
 import type { RoomParticipant, RoomSnapshot, ServerCommand } from './api/types';
@@ -23,6 +23,9 @@ const selectionLabels: Record<string, string> = {
   FORFEIT_DISCONNECTED: '기권 처리할 플레이어를 선택하세요.',
   KICK: '내보낼 플레이어를 선택하세요.',
 };
+
+// 관리 확인창의 답: 실행 확인, 또는 기권 뒤 방에 남기·나가기
+type Answer = 'confirm' | 'stay' | 'leave';
 
 // 다른 방장·핸드·조작 세대에서 이전 대상 선택을 재사용하지 않는다
 function selectionScope(snapshot: RoomSnapshot) {
@@ -63,6 +66,7 @@ export function RoomPage({
   const [confirmation, setConfirmation] = useState<{
     item: MenuItem;
     target?: RoomParticipant;
+    step: 'confirm' | 'stay-or-leave';
   } | null>(null);
   const game = useRef<GameScreenHandle>(null);
   const { session, setup, toast, resetSelection } = useOnlineGameSession(view, controller);
@@ -93,13 +97,14 @@ export function RoomPage({
     }
   }, [targetSelection, view.pending, validSelection, validConfirmation, notify]);
   // 최신 연결 상태와 조작권을 확인하고 서버 관리 명령을 보낸다
-  async function send(command: ServerCommand) {
+  async function send(...commands: ServerCommand[]) {
     const blocked = session.guard();
     if (blocked) {
       notify(blocked);
       return false;
     }
     const current = controller.getView().snapshot!;
+    const command = commands[0];
     if (command.type === 'TAKE_HOST' && (!current.hostTakeoverOpen || !current.you.canTakeHost)) {
       notify('방장 인수 요청이 종료되었습니다.');
       return false;
@@ -114,13 +119,13 @@ export function RoomPage({
         return false;
       }
     }
-    const ok = await controller.send([command]);
+    const ok = await controller.send(commands);
     if (!ok)
       notify(controller.getView().error ?? '명령을 처리하지 못했습니다. 최신 상태를 확인하세요.');
     return ok;
   }
   // 메뉴와 카드 선택에서 최신 서버 스냅샷으로 대상과 권한을 확인한다
-  async function choose(item: MenuItem, target?: RoomParticipant, confirmed = false) {
+  async function choose(item: MenuItem, target?: RoomParticipant, answer?: Answer) {
     const blocked = session.guard();
     if (blocked) return notify(blocked);
     const current = controller.getView().snapshot!;
@@ -151,19 +156,53 @@ export function RoomPage({
         ? `${latestTarget.name}님에게 방장을 넘기시겠습니까?`
         : latestTarget && valid.command?.type === 'KICK'
           ? `${latestTarget.name}님을 방에서 내보내시겠습니까?`
-          : valid.confirm;
-    if (warning && !confirmed) {
+          : latestTarget?.connected && valid.command?.type === 'FORFEIT_DISCONNECTED'
+            ? `접속 중인 참가자입니다. ${valid.confirm}`
+            : valid.confirm;
+    if (warning && !answer) {
       setDialog('');
-      setConfirmation({ item: { ...valid, confirm: warning }, target: latestTarget || undefined });
+      setConfirmation({
+        item: { ...valid, confirm: warning },
+        target: latestTarget || undefined,
+        step: 'confirm',
+      });
       return;
     }
-    const command = {
-      ...valid.command!,
-      ...(target ? { payload: { participantId: target.participantId } } : {}),
-    };
+    // 기권은 남을지 나갈지 답을 받은 뒤에야 서버에 보낸다
+    if (valid.then && answer === 'confirm') {
+      setConfirmation({
+        item: { ...valid, confirm: warning },
+        target: latestTarget || undefined,
+        step: 'stay-or-leave',
+      });
+      return;
+    }
+    const payload = target ? { payload: { participantId: target.participantId } } : {};
+    const commands: ServerCommand[] = [{ ...valid.command!, ...payload }];
+    if (answer === 'leave')
+      commands.push(
+        target
+          ? { type: 'KICK', handScoped: false, ...payload }
+          : { type: 'LEAVE', handScoped: false },
+      );
     setConfirmation(null);
-    if (await send(command)) setTargetSelection(null);
+    if (await send(...commands)) setTargetSelection(null);
+    else if (commands.length > 1 && forfeitedMeanwhile(target)) {
+      setTargetSelection(null);
+      notify(
+        target
+          ? '기권 처리는 되었지만 방에서 내보내지 못했습니다. 메뉴의 내보내기로 다시 시도하세요.'
+          : '기권은 처리되었지만 방에서 나가지 못했습니다. 메뉴의 방 나가기로 다시 시도하세요.',
+      );
+    }
     setDialog('');
+  }
+  // 두 번째 명령만 실패했는지 판단하려고 기권이 최신 상태에 반영됐는지 확인한다
+  function forfeitedMeanwhile(target?: RoomParticipant) {
+    const current = controller.getView().snapshot;
+    const id = target?.participantId ?? current?.you.participantId;
+    const person = current?.participants.find((p) => p.participantId === id);
+    return !!current && !!person && !inPlay(current, person);
   }
   // 참가 자격은 보존하고 화면 자원을 해제한 뒤 앱 홈으로 문서 이동한다
   function home() {
@@ -267,7 +306,37 @@ export function RoomPage({
           />
         }
       />
-      {confirmation && (
+      {confirmation?.step === 'stay-or-leave' && (
+        <Dialog
+          title="기권 후 방 선택"
+          stackActions
+          closeDisabled={session.busy}
+          onClose={() => setConfirmation(null)}
+          actions={
+            <>
+              <button
+                aria-disabled={session.busy}
+                onClick={() => void choose(confirmation.item, confirmation.target, 'stay')}
+              >
+                {confirmation.target ? '방에 남기기' : '방에 남기'}
+              </button>
+              <button
+                aria-disabled={session.busy}
+                onClick={() => void choose(confirmation.item, confirmation.target, 'leave')}
+              >
+                {confirmation.target ? '방에서 내보내기' : '방 나가기'}
+              </button>
+            </>
+          }
+        >
+          <p>
+            {confirmation.target
+              ? `${confirmation.target.name}님을 기권 처리한 뒤 방에 남길지, 방에서 내보낼지 선택하세요. 내보내면 이 게임에 다시 들어올 수 없습니다.`
+              : '기권한 뒤 이 방에 남아 게임을 관전할지, 방에서 나갈지 선택하세요. 방에서 나가면 이 게임에 다시 들어올 수 없습니다.'}
+          </p>
+        </Dialog>
+      )}
+      {confirmation?.step === 'confirm' && (
         <Dialog
           title={confirmation.item.label}
           closeDisabled={session.busy}
@@ -276,7 +345,7 @@ export function RoomPage({
             <button
               className="primary"
               aria-disabled={session.busy}
-              onClick={() => void choose(confirmation.item, confirmation.target, true)}
+              onClick={() => void choose(confirmation.item, confirmation.target, 'confirm')}
             >
               확인
             </button>

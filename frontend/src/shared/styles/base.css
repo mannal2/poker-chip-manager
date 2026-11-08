@@ -129,6 +129,12 @@ dialog li {
 .dialog-actions .primary {
   flex: 1.5;
 }
+.dialog-actions.stacked {
+  flex-direction: column;
+}
+.dialog-actions.stacked .dialog-close {
+  order: 1;
+}
 .menu-actions button {
   width: 100%;
   text-align: center;

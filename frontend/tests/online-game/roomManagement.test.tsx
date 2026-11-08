@@ -222,6 +222,95 @@ it('does not enter an empty card selection', async () => {
 });
 
 // 실제 세션 훅과 페이지에 필요한 최소 컨트롤러 경계를 제공한다
+// 방장의 기권 처리는 확인 뒤 남기기·내보내기를 답할 때까지 명령을 보내지 않는다
+it.each([
+  ['닫기', []],
+  ['방에 남기기', ['FORFEIT_DISCONNECTED']],
+  ['방에서 내보내기', ['FORFEIT_DISCONNECTED', 'KICK']],
+] as const)('host forfeit then %s sends %j', async (choice, types) => {
+  const x = await mountRoom();
+  try {
+    const bob = x.view.snapshot!.participants.find((p) => p.name === 'Bob')!;
+    await x.click('관리 메뉴');
+    await x.click('기권 처리');
+    await x.click('Bob');
+    await x.click('확인');
+    expect(x.send).not.toHaveBeenCalled();
+    expect(x.host.querySelector('dialog')?.getAttribute('aria-label')).toBe('기권 후 방 선택');
+    await x.click(choice);
+    if (!types.length) {
+      expect(x.send).not.toHaveBeenCalled();
+      expect(x.host.querySelector('dialog')).toBeNull();
+      expect(x.host.textContent).toContain('기권 처리할 플레이어를 선택하세요.');
+      return;
+    }
+    const sent = (x.send.mock.calls[0] as unknown as [{ type: string; payload?: unknown }[]])[0];
+    expect(sent.map((c) => c.type)).toEqual(types);
+    for (const command of sent)
+      expect(command.payload).toEqual({ participantId: bob.participantId });
+  } finally {
+    await x.close();
+  }
+});
+
+// 본인 기권은 확인 뒤 남기를 고르면 기권만, 나가기를 고르면 기권과 나가기를 보낸다
+it.each([
+  ['방에 남기', ['FORFEIT']],
+  ['방 나가기', ['FORFEIT', 'LEAVE']],
+] as const)('self forfeit then %s sends %j', async (choice, types) => {
+  const x = await mountRoom();
+  try {
+    x.view.snapshot!.you.participantId = x.view.snapshot!.participants.find(
+      (p) => p.name === 'Bob',
+    )!.participantId;
+    await x.rerender();
+    await x.click('관리 메뉴');
+    await x.click('기권');
+    await x.click('확인');
+    expect(x.send).not.toHaveBeenCalled();
+    await x.click(choice);
+    const sent = (x.send.mock.calls[0] as unknown as [{ type: string }[]])[0];
+    expect(sent.map((c) => c.type)).toEqual(types);
+  } finally {
+    await x.close();
+  }
+});
+
+// 접속 중인 대상을 기권 처리할 때는 첫 확인창에 접속 중임을 알린다
+it('warns when forfeiting a connected participant', async () => {
+  const x = await mountRoom();
+  try {
+    x.view.snapshot!.participants.find((p) => p.name === 'Bob')!.connected = true;
+    await x.rerender();
+    await x.click('관리 메뉴');
+    await x.click('기권 처리');
+    await x.click('Bob');
+    expect(x.host.querySelector('dialog')?.textContent).toContain('접속 중인 참가자입니다.');
+  } finally {
+    await x.close();
+  }
+});
+
+// 두 번째 명령만 실패하면 기권은 됐다고 알리고 다시 시도할 메뉴를 안내한다
+it('explains a forfeit whose leave failed', async () => {
+  const x = await mountRoom();
+  try {
+    const bob = x.view.snapshot!.participants.find((p) => p.name === 'Bob')!;
+    x.send.mockImplementation(async () => {
+      x.view.snapshot!.game!.players.find((p) => p.id === bob.playerId)!.forfeited = true;
+      return false;
+    });
+    await x.click('관리 메뉴');
+    await x.click('기권 처리');
+    await x.click('Bob');
+    await x.click('확인');
+    await x.click('방에서 내보내기');
+    expect(x.host.textContent).toContain('기권 처리는 되었지만 방에서 내보내지 못했습니다.');
+  } finally {
+    await x.close();
+  }
+});
+
 async function mountRoom(
   phase: 'WAITING' | 'PLAYING' | 'RESULT' = 'PLAYING',
   error: string | null = null,

@@ -6,6 +6,7 @@ export function Dialog({
   onClose,
   children,
   actions,
+  stackActions = false,
   dismissOutside = false,
   closeDisabled = false,
   showTitle = true,
@@ -15,6 +16,8 @@ export function Dialog({
   onClose: () => void;
   children: ReactNode;
   actions?: ReactNode;
+  // 선택지가 여럿이라 한 줄이 좁을 때 버튼을 세로로 쌓고 닫기를 맨 아래에 둔다
+  stackActions?: boolean;
   dismissOutside?: boolean;
   closeDisabled?: boolean;
   showTitle?: boolean;
@@ -56,9 +59,9 @@ export function Dialog({
       {showTitle && <h2>{title}</h2>}
       {children}
       {(actions || !dismissOutside) && (
-        <div className="dialog-actions">
+        <div className={stackActions ? 'dialog-actions stacked' : 'dialog-actions'}>
           {!dismissOutside && (
-            <button disabled={closeDisabled} onClick={onClose}>
+            <button className="dialog-close" disabled={closeDisabled} onClick={onClose}>
               닫기
             </button>
           )}

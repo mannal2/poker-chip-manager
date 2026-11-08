@@ -62,7 +62,7 @@ async function ready(page: Page) {
 }
 async function recoveryScreen(page: Page) {
   await page.evaluate(() => (window as unknown as Faults).invalidate());
-  await expect(page.getByText('저장 정보를 불러오지 못했습니다.', { exact: true })).toBeVisible();
+  await expect(page.getByText('저장된 게임을 불러오지 못했습니다.', { exact: true })).toBeVisible();
   await restoreEvents(page);
 }
 async function confirmRestart(page: Page) {
@@ -128,7 +128,7 @@ test('저장 중 연결 종료: 복구 취소는 보존, 확인하면 즉시 새
     .getByRole('dialog', { name: '확인', exact: true })
     .getByRole('button', { name: '닫기', exact: true })
     .click();
-  await expect(page.getByText('저장 정보를 불러오지 못했습니다.', { exact: true })).toBeVisible();
+  await expect(page.getByText('저장된 게임을 불러오지 못했습니다.', { exact: true })).toBeVisible();
   await confirmRestart(page);
   await expect(page.locator('.seat .name')).toHaveText(['P1', 'P2']);
   await page.locator('.seat .card-values').first().click();
@@ -171,7 +171,7 @@ test('복구 교체 쓰기 실패는 이전 이름·기록 보존 후 다시 시
     };
   });
   await confirmRestart(page);
-  await expect(page.getByText('저장 정보를 불러오지 못했습니다.', { exact: true })).toBeVisible();
+  await expect(page.getByText('저장된 게임을 불러오지 못했습니다.', { exact: true })).toBeVisible();
   expect(await snapshot(page)).toBe(before);
   await page.evaluate(() => (window as unknown as { restorePut: () => void }).restorePut());
   await page.getByRole('button', { name: '다시 시도', exact: true }).click();
@@ -191,7 +191,7 @@ test('저장 중 앱 복귀는 완료 제한 후 저장 연결·미확정 요청
   await page.evaluate(() => document.dispatchEvent(new Event('resume')));
   await page.clock.fastForward(8001);
   await expect(page.locator('.seat .name').first()).toHaveText('복귀이름');
-  await expect(page.locator('.notice')).toContainText('저장 결과를 확인한 뒤');
+  await expect(page.locator('.notice')).toContainText('저장됐는지 확인하지 못했습니다.');
   await page.getByRole('button', { name: '재시도', exact: true }).click();
   await expect(page.locator('main')).toHaveAttribute('aria-busy', 'false');
   await releaseEvents(page);

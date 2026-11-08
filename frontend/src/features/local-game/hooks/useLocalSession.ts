@@ -41,10 +41,10 @@ export function useLocalSession({
       () =>
         setApp({
           status: 'restoreError',
-          error: '다른 창을 닫으면 저장소 업그레이드를 계속합니다.',
+          error: '이 앱이 열린 다른 창을 닫아 주세요.',
         }),
       () =>
-        setApp({ status: 'restoreError', error: '저장소 연결이 변경되었습니다. 다시 열어주세요.' }),
+        setApp({ status: 'restoreError', error: '저장에 문제가 생겼습니다. 앱을 다시 열어 주세요.' }),
     );
     const controller = new LocalController(
       repo,
@@ -69,14 +69,14 @@ export function useLocalSession({
           game: c.state,
           status: c.pending ? 'storageError' : !inGame.current || c.lease ? 'ready' : 'controlLost',
           error: c.pending
-            ? '저장 결과를 확인한 뒤 같은 요청으로 재시도해주세요.'
+            ? '저장됐는지 확인하지 못했습니다. 다시 시도를 눌러 주세요.'
             : !inGame.current || c.lease
               ? ''
-              : '다른 화면이 조작 권한을 인수했습니다.',
+              : '다른 창에서 이 게임을 열었습니다.',
         });
       } catch (error) {
         if (version === restoreVersion.current)
-          setApp({ status: 'restoreError', error: String(error) });
+          setApp({ status: 'restoreError', error: '' });
       }
     },
     [c, runtime],
@@ -111,7 +111,7 @@ export function useLocalSession({
           announce('changed');
         },
         {
-          onError: (error) => setApp({ status: 'restoreError', error: String(error) }),
+          onError: () => setApp({ status: 'restoreError', error: '' }),
           onRelease: afterRun,
         },
       );
@@ -145,14 +145,14 @@ export function useLocalSession({
       setApp({
         game: c.state,
         status: 'controlLost',
-        error: '다른 화면이 조작 권한을 인수했습니다.',
+        error: '다른 창에서 이 게임을 열었습니다.',
       });
       return false;
     }
     if (result.status === 'UNKNOWN') {
       setApp({
         status: 'storageError',
-        error: `저장 결과를 확인할 수 없습니다: ${messageFor(result.reason)}. 같은 요청으로 재시도하세요.`,
+        error: '저장됐는지 확인하지 못했습니다. 다시 시도를 눌러 주세요.',
       });
       return false;
     }
@@ -174,7 +174,8 @@ export function useLocalSession({
     await runner.run(action, {
       onBusy: () => notify('저장 완료를 기다려주세요.'),
       onStart: () => setApp({ status: 'saving' }),
-      onError: (e) => setApp({ status: 'storageError', error: String(e) }),
+      onError: () =>
+        setApp({ status: 'storageError', error: '저장하지 못했습니다. 다시 시도를 눌러 주세요.' }),
       onRelease: afterRun,
     });
   }
@@ -208,7 +209,7 @@ export function useLocalSession({
           game: c.state,
           status: 'controlLost',
           home: false,
-          error: '다른 창에서 조작 중입니다.',
+          error: '다른 창에서 이 게임을 열었습니다.',
         });
         return;
       }
@@ -234,7 +235,7 @@ export function useLocalSession({
         setApp({
           game: c.state,
           status: c.lease ? 'ready' : 'controlLost',
-          error: c.lease ? '' : '다른 화면이 조작 권한을 인수했습니다.',
+          error: c.lease ? '' : '다른 창에서 이 게임을 열었습니다.',
         });
         announce('control');
         return;
@@ -279,7 +280,7 @@ export function useLocalSession({
           game: c.state,
           status: !c.lease ? 'controlLost' : r.status === 'UNKNOWN' ? 'storageError' : 'ready',
           error: !c.lease
-            ? '다른 화면이 조작 권한을 인수했습니다.'
+            ? '다른 창에서 이 게임을 열었습니다.'
             : r.status === 'UNKNOWN'
               ? r.reason
                 ? messageFor(r.reason)
@@ -292,7 +293,7 @@ export function useLocalSession({
         setApp({
           game: c.state,
           status: c.lease ? 'ready' : 'controlLost',
-          error: c.lease ? '' : '다른 화면이 조작 권한을 인수했습니다.',
+          error: c.lease ? '' : '다른 창에서 이 게임을 열었습니다.',
         });
       }
     });

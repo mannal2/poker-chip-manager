@@ -99,7 +99,7 @@ test('다른 창이 실제 조작 중일 때만 인수 안내, 자동으로 빼�
   ).toBeVisible();
   await expect(page.getByRole('alert')).toHaveCount(0);
   await other.getByRole('button', { name: '이 창에서 조작하기', exact: true }).click();
-  await expect(page.getByRole('alert')).toContainText('다른 화면');
+  await expect(page.getByRole('alert')).toContainText('다른 창에서 이 게임을 열었습니다.');
   await expect(other.getByRole('button', { name: '이 창에서 조작하기', exact: true })).toHaveCount(
     0,
   );
@@ -188,7 +188,7 @@ test('리뷰: 조작권을 잃은 창도 저장 요청 없이 앱 홈·업데이
   await other.goto('/local/');
   await other.getByRole('button', { name: '단일 기기 모드', exact: true }).click();
   await other.getByRole('button', { name: '이 창에서 조작하기', exact: true }).click();
-  await expect(page.getByRole('alert')).toContainText('다른 화면');
+  await expect(page.getByRole('alert')).toContainText('다른 창에서 이 게임을 열었습니다.');
   await page.getByRole('button', { name: '관리 메뉴', exact: true }).click();
   await page.getByRole('button', { name: '홈', exact: true }).click();
   await expect(page.getByRole('button', { name: '단일 기기 모드', exact: true })).toBeVisible();

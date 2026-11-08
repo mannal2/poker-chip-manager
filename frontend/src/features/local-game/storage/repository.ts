@@ -29,7 +29,7 @@ export class LocalRepository {
   // 데이터베이스 연결을 만들거나 기존 연결을 돌려준다
   private connect() {
     if (this.invalid || this.disposed)
-      throw Error('저장 연결이 변경되었습니다. 앱을 다시 열어주세요.');
+      throw Error('저장에 문제가 생겼습니다. 앱을 다시 열어 주세요.');
     if (!this.db) {
       let expired = false;
       const raw = openDatabase(this.name, this.onBlocked, () => {
@@ -95,7 +95,7 @@ export class LocalRepository {
         if (cancelled) return;
         cancelled = true;
         abort();
-        reject(new Error('저장 연결을 다시 확인해주세요.'));
+        reject(new Error('저장에 문제가 생겼습니다. 앱을 다시 열어 주세요.'));
       };
     });
     this.operations.add(cancel);

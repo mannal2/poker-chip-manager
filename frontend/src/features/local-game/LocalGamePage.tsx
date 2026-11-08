@@ -178,7 +178,7 @@ function LocalGame({
     guard: () =>
       busy || isLocked()
         ? app.status === 'controlLost'
-          ? '다른 화면에서 조작 중입니다.'
+          ? '다른 창에서 이 게임을 열었습니다.'
           : '저장 완료 또는 재시도를 기다려주세요.'
         : null,
     run,
@@ -208,8 +208,9 @@ function LocalGame({
   if (app.status === 'restoreError')
     return (
       <main ref={screen} className="phone home">
-        <p role="alert">저장 정보를 불러오지 못했습니다.</p>
-        <p>{app.error}</p>
+        <p role="alert">저장된 게임을 불러오지 못했습니다.</p>
+        {app.error && <p>{app.error}</p>}
+        <p>먼저 다시 시도를 눌러 보세요. 새 토너먼트를 시작하면 저장된 게임과 기록이 지워집니다.</p>
         <button onClick={() => void restore(true)}>다시 시도</button>
         <button onClick={() => void restartAfterFailure()}>새 토너먼트 시작</button>
         <StorageErrorDetails />

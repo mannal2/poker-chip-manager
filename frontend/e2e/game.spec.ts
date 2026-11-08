@@ -281,7 +281,7 @@ test('A10 드래그 도중 다른 탭 인수는 초안 취소·이전 화면 차
   const other = await context.newPage();
   await other.goto('/local/');
   await openLocal(other);
-  await expect(page.getByRole('alert')).toContainText('다른 화면');
+  await expect(page.getByRole('alert')).toContainText('다른 창에서 이 게임을 열었습니다.');
   await page.mouse.up();
   expect(await page.locator('.seat .name').allTextContents()).toEqual(before);
   expect(await other.locator('.seat .name').allTextContents()).toEqual(before);
@@ -340,7 +340,7 @@ test('리뷰 회귀: 인수 후 베팅 초안은 재등장하지 않는다', asy
   const other = await context.newPage();
   await other.goto('/local/');
   await openLocal(other);
-  await expect(page.getByRole('alert')).toContainText('다른 화면');
+  await expect(page.getByRole('alert')).toContainText('다른 창에서 이 게임을 열었습니다.');
   await expect(page.locator('.seat.active .bet')).toHaveText('0');
   await page.getByRole('button', { name: '이 창에서 조작하기', exact: true }).click();
   await expect(page.locator('.seat.active .bet')).toHaveText('0');

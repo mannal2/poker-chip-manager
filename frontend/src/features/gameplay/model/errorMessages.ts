@@ -40,7 +40,15 @@ export type ServerErrorCode =
   | 'ALREADY_PARTICIPANT'
   | 'FORBIDDEN'
   | 'DEPLOY_PENDING'
-  | 'UNDO_DEPLOY_PENDING';
+  | 'UNDO_DEPLOY_PENDING'
+  | 'INVALID_INPUT'
+  | 'REQUEST_NOT_FOUND'
+  | 'UNKNOWN_STREAM'
+  | 'TOO_MANY_STREAMS'
+  | 'BODY_TOO_LARGE'
+  | 'ORIGIN_REJECTED'
+  | 'HTTP_ERROR'
+  | 'INTERNAL_ERROR';
 
 // 거절 사유 코드별 한국어 안내 문구
 export const errorMessages: Record<ErrorCode, string> = {
@@ -97,6 +105,14 @@ export const errorMessages: Record<ErrorCode, string> = {
   FORBIDDEN: '이 작업을 할 권한이 없습니다.',
   DEPLOY_PENDING: '서버 업데이트가 끝나면 시작할 수 있습니다.',
   UNDO_DEPLOY_PENDING: '서버 업데이트 중이라 취소할 수 없습니다.',
+  INVALID_INPUT: '요청이 올바르지 않습니다. 화면을 새로고침해 주세요.',
+  REQUEST_NOT_FOUND: '처리 결과를 찾을 수 없습니다. 화면을 새로고침해 주세요.',
+  UNKNOWN_STREAM: '화면을 새로고침해 주세요.',
+  TOO_MANY_STREAMS: '열린 화면이 너무 많습니다. 사용하지 않는 화면을 닫아 주세요.',
+  BODY_TOO_LARGE: '요청이 너무 큽니다. 화면을 새로고침해 주세요.',
+  ORIGIN_REJECTED: '허용되지 않은 주소에서 접속했습니다.',
+  HTTP_ERROR: '처리하지 못했습니다. 다시 시도해 주세요.',
+  INTERNAL_ERROR: '서버에 문제가 생겼습니다. 잠시 후 다시 시도해 주세요.',
 };
 
 // 거절 코드를 사용자에게 보여줄 문구로 바꾼다

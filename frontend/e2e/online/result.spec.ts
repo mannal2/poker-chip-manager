@@ -17,11 +17,26 @@ test('aborts and resets while keeping names and seats and restoring initial sett
     await page.getByRole('dialog').getByLabel('다음 BB', { exact: true }).fill('40');
     await page.getByRole('button', { name: '예약', exact: true }).click();
     await menu(page, '토너먼트 중단');
+    const footer = page
+      .getByRole('dialog', { name: '토너먼트 중단', exact: true })
+      .locator('.dialog-actions');
+    const close = footer.getByRole('button', { name: '닫기', exact: true });
+    const action = footer.getByRole('button', { name: '확인', exact: true });
+    await expect(action).toHaveClass('primary');
+    await expect
+      .poll(async () => {
+        const left = await close.boundingBox();
+        const right = await action.boundingBox();
+        return !!left && !!right && Math.abs(left.y - right.y) < 1 && left.x + left.width < right.x;
+      })
+      .toBe(true);
     await confirm(page, '토너먼트 중단');
     for (const current of [page, guest]) {
       await expect(current.getByTestId('room-code')).toHaveText(code);
       await expect(current.locator('.summary')).toHaveCount(0);
-      await expect(current.getByRole('button', { name: '다시 준비하기', exact: true })).toHaveCount(0);
+      await expect(current.getByRole('button', { name: '다시 준비하기', exact: true })).toHaveCount(
+        0,
+      );
       await expect(current.locator('.seat .name')).toHaveText(['Alice', 'Bob']);
       await expect(current.locator('.seat .stack')).toHaveText(['1,000', '1,000']);
       await expect(current.locator('.seat .badge')).toHaveText(['방장']);

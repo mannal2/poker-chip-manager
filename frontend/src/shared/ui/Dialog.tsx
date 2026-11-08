@@ -5,6 +5,7 @@ export function Dialog({
   title,
   onClose,
   children,
+  actions,
   dismissOutside = false,
   closeDisabled = false,
   showTitle = true,
@@ -13,6 +14,7 @@ export function Dialog({
   title: string;
   onClose: () => void;
   children: ReactNode;
+  actions?: ReactNode;
   dismissOutside?: boolean;
   closeDisabled?: boolean;
   showTitle?: boolean;
@@ -53,10 +55,15 @@ export function Dialog({
     >
       {showTitle && <h2>{title}</h2>}
       {children}
-      {!dismissOutside && (
-        <button disabled={closeDisabled} onClick={onClose}>
-          닫기
-        </button>
+      {(actions || !dismissOutside) && (
+        <div className="dialog-actions">
+          {!dismissOutside && (
+            <button disabled={closeDisabled} onClick={onClose}>
+              닫기
+            </button>
+          )}
+          {actions}
+        </div>
       )}
     </dialog>
   );

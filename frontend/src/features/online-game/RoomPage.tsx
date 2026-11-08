@@ -277,15 +277,18 @@ export function RoomPage({
           title={confirmation.item.label}
           closeDisabled={session.busy}
           onClose={() => setConfirmation(null)}
+          actions={
+            <button
+              className="primary"
+              aria-disabled={session.busy}
+              onClick={() => void choose(confirmation.item, confirmation.target, true)}
+            >
+              확인
+            </button>
+          }
         >
           {confirmation.target && <p>{confirmation.target.name}</p>}
           <p>{confirmation.item.confirm}</p>
-          <button
-            aria-disabled={session.busy}
-            onClick={() => void choose(confirmation.item, confirmation.target, true)}
-          >
-            확인
-          </button>
         </Dialog>
       )}
       {toast.message && (

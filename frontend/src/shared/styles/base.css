@@ -118,6 +118,17 @@ dialog li {
   display: grid;
   gap: calc(8 * var(--u));
 }
+.dialog-actions {
+  display: flex;
+  gap: calc(8 * var(--u));
+  margin-top: calc(16 * var(--u));
+}
+.dialog-actions > * {
+  flex: 1;
+}
+.dialog-actions .primary {
+  flex: 1.5;
+}
 .menu-actions button {
   width: 100%;
   text-align: center;

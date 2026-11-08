@@ -138,8 +138,8 @@ final class GameCommands {
         run(room, new GameCommand.Forfeit(playerId, false), env);
     }
 
-    // 방장이 끊겨 있는 다른 참가자를 대신 기권시킨다
-    /** The host gives up a seat whose person has no connection; a reconnected target is TARGET_CONNECTED. */
+    // 방장이 다른 참가자를 연결 여부와 관계없이 대신 기권시킨다
+    /** The host gives up another participant's seat, connected or not (the name predates that rule). */
     static void forfeitDisconnected(Room room, Participant actor, CommandRequest request, RoomEnv env) {
         requirePlaying(room);
         JsonNode target = requiredField(object(request.payload()), "participantId");
@@ -150,9 +150,6 @@ final class GameCommands {
         String playerId = room.playerIds().get(targetId);
         if (playerId == null || room.isHost(targetId)) {
             throw invalid();
-        }
-        if (room.presence().isConnected(targetId)) {
-            throw new RoomException("TARGET_CONNECTED");
         }
         run(room, new GameCommand.Forfeit(playerId, true), env);
     }

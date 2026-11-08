@@ -11,7 +11,7 @@ class ApiErrorTest {
     @Test
     void recoveryAndConnectionCodesHaveAKoreanMessage() {
         for (String code : new String[] {"RECOVERY_TARGET_NOT_FOUND", "RECOVERY_LIMIT", "ALREADY_PARTICIPANT",
-                "NOT_CONNECTED", "TARGET_CONNECTED", "RECOVERY_NOT_PENDING"}) {
+                "NOT_CONNECTED", "NOT_ELIMINATED", "RECOVERY_NOT_PENDING"}) {
             assertThat(ApiError.of(code).message()).as(code).containsPattern("[가-힣]");
         }
     }

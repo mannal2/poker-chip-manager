@@ -101,7 +101,7 @@ export function useSetupEditing({
   // 설정을 검증하고 필요하면 저장한 뒤 토너먼트를 시작한다
   function start(settings: GameSettings) {
     if (renameId.startsWith(draftScope + ':'))
-      return notify('이름 입력을 Enter로 저장하거나 다른 곳을 눌러 완료하세요.');
+      return notify('이름 입력을 먼저 마쳐 주세요.');
     if (busy) return notify('저장 완료를 기다려주세요.');
     const v = validateSettings(settings);
     if (!v.ok) return notify(messageFor(v.code));

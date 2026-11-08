@@ -61,7 +61,7 @@ it('규칙은 문장 대신 코드를 반환하고 화면 문구는 기존과 �
   const settings = validateSettings({ ...defaultSettings, names: ['A', 'a'] });
   expect(settings).toEqual({ ok: false, code: 'INVALID_NAMES' });
   expect(messageFor(settings.ok ? '' : settings.code)).toBe(
-    '이름은 1~10자의 한글·영문·숫자, 중복 없이 2~10명으로 설정하세요.',
+    '이름은 한글·영문·숫자 1~10자로, 서로 다르게 정하세요. 플레이어는 2~10명이어야 합니다.',
   );
   const s = fixtureState();
   expect(previewSettlement(s, {}, []).error).toBe('NO_POT');

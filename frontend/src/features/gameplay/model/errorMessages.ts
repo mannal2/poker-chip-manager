@@ -57,7 +57,8 @@ export const errorMessages: Record<ErrorCode, string> = {
   WINNER_REQUIRED: '모든 팟에서 자격 있는 승자를 선택하세요.',
   TIE_CONFLICT: '팟마다 고른 승자가 서로 맞지 않습니다. 승자를 다시 확인하세요.',
   POT_ORDER_CONFLICT: '팟마다 고른 승자가 서로 맞지 않습니다. 승자를 다시 확인하세요.',
-  INVALID_NAMES: '이름은 1~10자의 한글·영문·숫자, 중복 없이 2~10명으로 설정하세요.',
+  INVALID_NAMES:
+    '이름은 한글·영문·숫자 1~10자로, 서로 다르게 정하세요. 플레이어는 2~10명이어야 합니다.',
   INVALID_CHIP_SETTINGS: '5 단위, 0 < SB < BB ≤ 시작 칩 (최대 1,000,000)으로 설정하세요.',
   INVALID_SEATS: '좌석을 확인하세요.',
   NOT_ACTOR: '지금은 베팅 차례가 아닙니다.',

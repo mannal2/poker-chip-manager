@@ -305,7 +305,7 @@ it('explains a forfeit whose leave failed', async () => {
     await x.click('Bob');
     await x.click('확인');
     await x.click('방에서 내보내기');
-    expect(x.host.textContent).toContain('기권 처리는 되었지만 방에서 내보내지 못했습니다.');
+    expect(x.host.textContent).toContain('기권은 됐지만 내보내지 못했습니다.');
   } finally {
     await x.close();
   }

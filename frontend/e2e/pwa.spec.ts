@@ -16,6 +16,11 @@ test('온라인 경로까지 설치 범위를 넓히되 온라인 자산을 캐�
   await page.goto('/online/');
   await expect(page.getByRole('button', { name: '방 만들기', exact: true })).toBeVisible();
   expect(await page.evaluate(() => navigator.serviceWorker.controller)).toBeNull();
+  // 온라인 화면에서 설치해도 같은 manifest로 /local/에서 시작한다
+  await expect(page.locator('link[rel="manifest"]')).toHaveAttribute(
+    'href',
+    '/local/manifest.webmanifest',
+  );
 });
 async function offlineReady(page: Page) {
   await expect

@@ -86,8 +86,8 @@ test('offline locks actions, exposes automatic play and restores fresh state', a
   }
 });
 
-// 실제 서버의 오 초 유예 안 복귀는 자리를 유지하고 유예 이후에는 명단에서 제거한다
-test('waiting-room reconnection preserves the seat only within the five-second grace', async ({
+// 실제 서버의 대기방 유예(e2e 프로필 5초, 운영 5분) 안 복귀는 자리를 유지하고 유예 이후에는 명단에서 제거한다
+test('waiting-room reconnection preserves the seat only within the grace', async ({
   page,
   browser,
 }) => {

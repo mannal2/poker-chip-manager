@@ -14,7 +14,11 @@ import xyz.jwlee.poker.server.support.IdGenerator;
 class RoomLifecycleTest {
 
     private final MutableClock clock = new MutableClock(Instant.parse("2026-10-31T00:00:00Z"));
-    private final RoomEnv env = new RoomEnv(clock, IdGenerator.random());
+    // 순서 규칙을 짧게 검사하려고 대기방 유예를 E2E와 같은 5초로 줄인 환경
+    private final RoomEnv env = new RoomEnv(clock, IdGenerator.random(), new StartGate(),
+            new PresenceGrace(Duration.ofSeconds(5), PresenceGrace.DEFAULT.autoPlay()));
+    // 운영 기본 유예(대기방 5분)를 쓰는 환경
+    private final RoomEnv defaults = new RoomEnv(clock, IdGenerator.random());
 
     // 시계를 밀리초만큼 진행한다
     private void pass(long millis) {
@@ -72,6 +76,48 @@ class RoomLifecycleTest {
         assertThat(roster(room)).containsExactly("a", "c");
         assertThat(room.version()).isEqualTo(before + 1);
         assertThat(room.isClosed()).isFalse();
+    }
+
+    // 기본 설정에서는 끊긴 대기방 참가자가 5분 직전까지 남고 5분에 빠지는지 확인한다
+    @Test
+    void byDefaultAWaitingAbsenceLastsFiveMinutes() {
+        Room room = new CommandFixture(2, clock).room;
+        RoomLifecycle.disconnected(room, "conn-b", defaults);
+
+        pass(Duration.ofMinutes(5).minusMillis(1).toMillis());
+        RoomLifecycle.sweep(room, defaults);
+        assertThat(roster(room)).containsExactly("a", "b");
+
+        pass(1);
+        RoomLifecycle.sweep(room, defaults);
+        assertThat(roster(room)).containsExactly("a");
+    }
+
+    // 기본 설정에서 방장이 끊겨도 유예 동안 방장이 유지되고 시작은 막히는지 확인한다
+    @Test
+    void aDisconnectedHostKeepsTheRoomForTheWholeGrace() {
+        CommandFixture f = new CommandFixture(2, clock);
+        f.send("a", "SET_DEALER", "{\"participantId\":\"b\"}");
+        Room room = f.room;
+        RoomLifecycle.disconnected(room, "conn-a", defaults);
+
+        pass(Duration.ofMinutes(4).toMillis());
+        RoomLifecycle.sweep(room, defaults);
+
+        assertThat(roster(room)).containsExactly("a", "b");
+        assertThat(room.hostId()).isEqualTo("a");
+        assertThat(StartConditions.blockReason(room, new StartGate())).contains(ErrorCode.NOT_CONNECTED);
+    }
+
+    // 유예 중인 참가자도 방장이 바로 내보낼 수 있는지 확인한다
+    @Test
+    void theHostCanKickSomeoneStillInTheGrace() {
+        CommandFixture f = new CommandFixture(2, clock);
+        RoomLifecycle.disconnected(f.room, "conn-b", defaults);
+
+        assertThat(code(f.send("a", "KICK", "{\"participantId\":\"b\"}"))).isEqualTo("OK");
+
+        assertThat(roster(f.room)).containsExactly("a");
     }
 
     // 4.9초에 돌아오면 유예가 취소되는지 확인한다

@@ -12,7 +12,6 @@ import java.util.List;
  */
 public final class RoomLifecycle {
 
-    static final Duration WAITING_RECONNECT_GRACE = Duration.ofSeconds(5);
     static final Duration FIRST_CONNECTION_WAIT = Duration.ofSeconds(30);
     static final Duration HOST_TAKEOVER_DELAY = Duration.ofSeconds(60);
     public static final Duration ABANDONED_ROOM_LIMIT = Duration.ofMinutes(30);
@@ -53,7 +52,7 @@ public final class RoomLifecycle {
             room.bumpVersion();
         }
         switch (room.phase()) {
-            case WAITING -> expireAbsences(room, now);
+            case WAITING -> expireAbsences(room, env.grace().waitingReconnect(), now);
             case PLAYING, RESULT -> {
                 if (everyoneGone(room, abandonedLimit, now)) {
                     room.close();
@@ -65,19 +64,19 @@ public final class RoomLifecycle {
     }
 
     // 유예가 끝난 대기방 참가자를 명단에서 뺀다
-    private static void expireAbsences(Room room, Instant now) {
+    private static void expireAbsences(Room room, Duration reconnectGrace, Instant now) {
         List<String> expired = room.participants().stream().map(Participant::participantId)
-                .filter(id -> graceOver(room, id, now)).toList();
+                .filter(id -> graceOver(room, id, reconnectGrace, now)).toList();
         expired.forEach(id -> room.removeParticipant(id, now));
         if (!expired.isEmpty()) {
             room.bumpVersion();
         }
     }
 
-    // 참가자의 대기방 유예(첫 연결 전 30초, 그 뒤 끊김 5초)가 끝났는지 확인한다
-    private static boolean graceOver(Room room, String participantId, Instant now) {
+    // 참가자의 대기방 유예(첫 연결 전 30초, 그 뒤 끊김은 설정값)가 끝났는지 확인한다
+    private static boolean graceOver(Room room, String participantId, Duration reconnectGrace, Instant now) {
         Presence presence = room.presence();
-        Duration grace = presence.neverConnected(participantId) ? FIRST_CONNECTION_WAIT : WAITING_RECONNECT_GRACE;
+        Duration grace = presence.neverConnected(participantId) ? FIRST_CONNECTION_WAIT : reconnectGrace;
         return absentFor(room, participantId, grace, now);
     }
 

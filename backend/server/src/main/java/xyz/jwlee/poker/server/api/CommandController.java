@@ -22,6 +22,7 @@ import xyz.jwlee.poker.server.room.CommandRequest;
 import xyz.jwlee.poker.server.room.CommandResult;
 import xyz.jwlee.poker.server.room.Fingerprint;
 import xyz.jwlee.poker.server.room.Participant;
+import xyz.jwlee.poker.server.room.PresenceGrace;
 import xyz.jwlee.poker.server.room.RequestLedger;
 import xyz.jwlee.poker.server.room.RequestOutcome;
 import xyz.jwlee.poker.server.room.Room;
@@ -44,9 +45,9 @@ class CommandController {
     private final RoomRegistry registry;
     private final CommandPipeline pipeline;
 
-    CommandController(RoomRegistry registry, Clock clock, IdGenerator ids, StartGate gate) {
+    CommandController(RoomRegistry registry, Clock clock, IdGenerator ids, StartGate gate, PresenceGrace grace) {
         this.registry = registry;
-        this.pipeline = new CommandPipeline(clock, ids, gate);
+        this.pipeline = new CommandPipeline(clock, ids, gate, grace);
     }
 
     // 명령을 검증하고 방 잠금 안에서 파이프라인으로 실행해 결과를 응답한다

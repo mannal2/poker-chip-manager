@@ -105,7 +105,12 @@ public final class CommandPipeline {
 
     // 서버 전체 시작 게이트를 읽는 파이프라인을 만든다
     public CommandPipeline(Clock clock, IdGenerator ids, StartGate gate) {
-        this.env = new RoomEnv(clock, ids, gate);
+        this(clock, ids, gate, PresenceGrace.DEFAULT);
+    }
+
+    // 시작 게이트와 설정된 끊김 유예를 쓰는 파이프라인을 만든다
+    public CommandPipeline(Clock clock, IdGenerator ids, StartGate gate, PresenceGrace grace) {
+        this.env = new RoomEnv(clock, ids, gate, grace);
     }
 
     public CommandPipeline() {

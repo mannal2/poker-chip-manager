@@ -68,6 +68,8 @@ poker:
   max-rooms: 200
   # Games the earlier specs leave behind must end before the deployment gate spec can prepare on this server.
   abandoned-room-seconds: 20
+  # The online specs check the waiting-room grace against a real server, so they wait seconds, not minutes.
+  waiting-reconnect-grace-seconds: 5
   # Every test browser shares one address, and the suite opens far more rooms than one person would.
   rate-limit:
     ip-per-minute: 60000

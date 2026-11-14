@@ -18,6 +18,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import xyz.jwlee.poker.server.room.ErrorCode;
 import xyz.jwlee.poker.server.room.Participant;
+import xyz.jwlee.poker.server.room.PresenceGrace;
 import xyz.jwlee.poker.server.room.Publication;
 import xyz.jwlee.poker.server.room.PublicationBuilder;
 import xyz.jwlee.poker.server.room.Room;
@@ -80,6 +81,7 @@ public class RoomRegistry {
     private final int maxRooms;
     private final Duration abandonedLimit;
     private final StartGate gate;
+    private final PresenceGrace grace;
 
     // 방 레지스트리를 만든다
     public RoomRegistry(IdGenerator ids, Clock clock, RoomPublisher publisher) {
@@ -93,7 +95,8 @@ public class RoomRegistry {
 
     // 서버 전체 시작 게이트를 함께 받아 기본 방 삭제 시간으로 레지스트리를 만든다
     public RoomRegistry(IdGenerator ids, Clock clock, RoomPublisher publisher, int maxRooms, StartGate gate) {
-        this(ids, clock, publisher, maxRooms, gate, RoomLifecycle.ABANDONED_ROOM_LIMIT.toSeconds());
+        this(ids, clock, publisher, maxRooms, gate, RoomLifecycle.ABANDONED_ROOM_LIMIT.toSeconds(),
+                PresenceGrace.DEFAULT);
     }
 
     // 전원 미접속 방의 삭제 시간까지 받아 레지스트리를 만든다
@@ -101,8 +104,9 @@ public class RoomRegistry {
     @Autowired
     public RoomRegistry(IdGenerator ids, Clock clock, RoomPublisher publisher,
             @Value("${poker.max-rooms:10}") int maxRooms, StartGate gate,
-            @Value("${poker.abandoned-room-seconds:1800}") long abandonedSeconds) {
+            @Value("${poker.abandoned-room-seconds:1800}") long abandonedSeconds, PresenceGrace grace) {
         this.abandonedLimit = Duration.ofSeconds(abandonedSeconds);
+        this.grace = grace;
         this.maxRooms = maxRooms;
         this.gate = gate;
         this.ids = ids;
@@ -280,7 +284,7 @@ public class RoomRegistry {
     // 방마다 시간 규칙을 판정한다
     /** Each room is swept through {@link #update}; one room's failure is logged and the others still run. */
     public void sweepAll() {
-        RoomEnv env = new RoomEnv(clock, ids, gate);
+        RoomEnv env = new RoomEnv(clock, ids, gate, grace);
         for (String roomId : roomIds()) {
             sweep(roomId, env);
         }

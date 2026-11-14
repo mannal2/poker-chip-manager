@@ -18,6 +18,7 @@ import xyz.jwlee.poker.server.registry.RoomCodes;
 import xyz.jwlee.poker.server.registry.RoomRegistry;
 import xyz.jwlee.poker.server.room.ErrorCode;
 import xyz.jwlee.poker.server.room.Fingerprint;
+import xyz.jwlee.poker.server.room.PresenceGrace;
 import xyz.jwlee.poker.server.room.RecoveryCommands;
 import xyz.jwlee.poker.server.room.RecoveryRequests;
 import xyz.jwlee.poker.server.room.RecoveryRequests.Status;
@@ -43,9 +44,9 @@ class RecoveryController {
     private final RoomEnv env;
 
     // 복구 요청 API에 필요한 협력 객체를 주입받는다
-    RecoveryController(RoomRegistry registry, Clock clock, IdGenerator ids, StartGate gate) {
+    RecoveryController(RoomRegistry registry, Clock clock, IdGenerator ids, StartGate gate, PresenceGrace grace) {
         this.registry = registry;
-        this.env = new RoomEnv(clock, ids, gate);
+        this.env = new RoomEnv(clock, ids, gate, grace);
     }
 
     // 방 코드와 이름으로 복구를 신청한다

@@ -12,7 +12,6 @@ import java.util.List;
  */
 public final class RoomLifecycle {
 
-    static final Duration WAITING_RECONNECT_GRACE = Duration.ofSeconds(5);
     static final Duration FIRST_CONNECTION_WAIT = Duration.ofSeconds(30);
     static final Duration HOST_TAKEOVER_DELAY = Duration.ofSeconds(60);
     public static final Duration ABANDONED_ROOM_LIMIT = Duration.ofMinutes(30);
@@ -53,31 +52,32 @@ public final class RoomLifecycle {
             room.bumpVersion();
         }
         switch (room.phase()) {
-            case WAITING -> expireAbsences(room, now);
+            case WAITING -> expireAbsences(room, env.grace().waitingReconnect(), now);
             case PLAYING, RESULT -> {
                 if (everyoneGone(room, abandonedLimit, now)) {
                     room.close();
                 } else {
                     openHostTakeover(room, now);
+                    playForTheLongGone(room, env);
                 }
             }
         }
     }
 
     // 유예가 끝난 대기방 참가자를 명단에서 뺀다
-    private static void expireAbsences(Room room, Instant now) {
+    private static void expireAbsences(Room room, Duration reconnectGrace, Instant now) {
         List<String> expired = room.participants().stream().map(Participant::participantId)
-                .filter(id -> graceOver(room, id, now)).toList();
+                .filter(id -> graceOver(room, id, reconnectGrace, now)).toList();
         expired.forEach(id -> room.removeParticipant(id, now));
         if (!expired.isEmpty()) {
             room.bumpVersion();
         }
     }
 
-    // 참가자의 대기방 유예(첫 연결 전 30초, 그 뒤 끊김 5초)가 끝났는지 확인한다
-    private static boolean graceOver(Room room, String participantId, Instant now) {
+    // 참가자의 대기방 유예(첫 연결 전 30초, 그 뒤 끊김은 설정값)가 끝났는지 확인한다
+    private static boolean graceOver(Room room, String participantId, Duration reconnectGrace, Instant now) {
         Presence presence = room.presence();
-        Duration grace = presence.neverConnected(participantId) ? FIRST_CONNECTION_WAIT : WAITING_RECONNECT_GRACE;
+        Duration grace = presence.neverConnected(participantId) ? FIRST_CONNECTION_WAIT : reconnectGrace;
         return absentFor(room, participantId, grace, now);
     }
 
@@ -85,6 +85,13 @@ public final class RoomLifecycle {
     private static boolean everyoneGone(Room room, Duration limit, Instant now) {
         return room.participants().stream()
                 .allMatch(p -> absentFor(room, p.participantId(), limit, now));
+    }
+
+    // 진행 중 유예가 막 끝난 끊긴 행동자를 자동 처리하고 게임이 바뀌었으면 버전을 올린다
+    private static void playForTheLongGone(Room room, RoomEnv env) {
+        if (room.phase() == RoomPhase.PLAYING && AutoPlay.run(room, env)) {
+            room.bumpVersion();
+        }
     }
 
     // 방장이 60초 이상 끊겼으면 인수 요청을 한 번 연다

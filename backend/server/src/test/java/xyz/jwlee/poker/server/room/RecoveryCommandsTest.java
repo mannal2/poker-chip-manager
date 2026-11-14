@@ -20,6 +20,9 @@ class RecoveryCommandsTest {
 
     private final MutableClock clock = new MutableClock(Instant.parse("2026-10-31T00:00:00Z"));
     private final RoomEnv env = new RoomEnv(clock, IdGenerator.random());
+    // 복구 요청 수명(5분)보다 먼저 부재가 만료되도록 대기방 유예를 5초로 줄인 환경
+    private final RoomEnv shortGrace = new RoomEnv(clock, IdGenerator.random(), new StartGate(),
+            new PresenceGrace(Duration.ofSeconds(5), PresenceGrace.DEFAULT.autoPlay()));
     private final CommandFixture f = new CommandFixture(3, clock);
     private final Room room = f.room;
 
@@ -399,7 +402,7 @@ class RecoveryCommandsTest {
         RoomLifecycle.disconnected(room, "conn-b", env);
 
         clock.advance(Duration.ofSeconds(5));
-        RoomLifecycle.sweep(room, env);
+        RoomLifecycle.sweep(room, shortGrace);
 
         assertThat(room.hasParticipant("b")).isFalse();
         assertThat(statusOf(room, request)).isEqualTo(Status.SUPERSEDED);
@@ -416,7 +419,7 @@ class RecoveryCommandsTest {
         assertThat(statusOf(game.room, request)).isEqualTo(Status.PENDING);
 
         clock.advance(Duration.ofSeconds(5));
-        RoomLifecycle.sweep(game.room, env);
+        RoomLifecycle.sweep(game.room, shortGrace);
 
         assertThat(game.room.hasParticipant("b")).isFalse();
         assertThat(statusOf(game.room, request)).isEqualTo(Status.SUPERSEDED);

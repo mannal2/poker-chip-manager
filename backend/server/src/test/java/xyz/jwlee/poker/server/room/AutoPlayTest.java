@@ -3,6 +3,7 @@ package xyz.jwlee.poker.server.room;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -50,6 +51,104 @@ class AutoPlayTest {
             assertThat(a.action()).isEqualTo(ActionType.FOLD);
             assertThat(a.playerId()).isEqualTo("p1");
         });
+    }
+
+    // 시계를 직접 돌리는 3인 게임과 그 시계를 쓰는 기본 유예 환경
+    private record Timed(GameFixture f, MutableClock clock, RoomEnv env) {
+        // 지금 시각에 참가자의 연결을 끊는다
+        void drop(String who) {
+            RoomLifecycle.disconnected(f.room, "conn-" + who, env);
+        }
+
+        // 시계를 초 단위로 진행한다
+        void pass(long seconds) {
+            clock.advance(Duration.ofSeconds(seconds));
+        }
+    }
+
+    // 시계를 직접 돌리는 3인 게임을 a 차례로 시작한다
+    private static Timed timed() {
+        MutableClock clock = new MutableClock(Instant.parse("2026-11-14T00:00:00Z"));
+        return new Timed(GameFixture.started(3, 0, clock), clock, new RoomEnv(clock, IdGenerator.random()));
+    }
+
+    // 끊긴 지 30초가 안 된 행동자는 자동 처리하지 않는지 확인한다
+    @Test
+    void aFreshlyDisconnectedActorIsNotPlayedForYet() {
+        Timed t = timed();
+        t.f().check(t.f().send("a", "CALL", null));
+        t.drop("b");
+
+        assertThat(AutoPlay.run(t.f().room, t.env())).isFalse();
+
+        assertThat(t.f().actor()).isEqualTo("b");
+        assertThat(automatic(t.f())).isEmpty();
+    }
+
+    // 끊긴 지 30초가 지나면 방 점검이 자동 처리하고 버전을 한 번 올리는지 확인한다
+    @Test
+    void theSweepPlaysForAnActorGoneForThirtySeconds() {
+        Timed t = timed();
+        t.f().check(t.f().send("a", "CALL", null));
+        t.drop("b");
+
+        t.pass(29);
+        RoomLifecycle.sweep(t.f().room, t.env());
+        assertThat(t.f().actor()).isEqualTo("b");
+
+        long before = t.f().room.version();
+        t.pass(1);
+        RoomLifecycle.sweep(t.f().room, t.env());
+
+        assertThat(t.f().room.game().players.get(1).folded).isTrue();
+        assertThat(t.f().actor()).isEqualTo("c");
+        assertThat(t.f().room.version()).isEqualTo(before + 1);
+    }
+
+    // 유예 안에 돌아오면 자동 처리 없이 본인 차례로 남는지 확인한다
+    @Test
+    void aPlayerWhoReturnsWithinTheGraceActsThemselves() {
+        Timed t = timed();
+        t.f().check(t.f().send("a", "CALL", null));
+        t.drop("b");
+        t.pass(20);
+        RoomLifecycle.connected(t.f().room, "b", "again-b", t.env());
+
+        t.pass(20);
+        RoomLifecycle.sweep(t.f().room, t.env());
+
+        assertThat(t.f().actor()).isEqualTo("b");
+        assertThat(automatic(t.f())).isEmpty();
+    }
+
+    // 이미 30초 넘게 끊긴 사람에게 차례가 오면 그 명령 응답 안에서 바로 처리되는지 확인한다
+    @Test
+    void aLongGoneActorIsPlayedForInsideTheSameResponse() {
+        Timed t = timed();
+        t.drop("b");
+        t.pass(31);
+
+        t.f().check(t.f().send("a", "CALL", null));
+
+        assertThat(t.f().room.game().players.get(1).folded).isTrue();
+        assertThat(t.f().actor()).isEqualTo("c");
+    }
+
+    // 전원이 끊기면 30초가 지나도 점검이 진행하지 않는지 확인한다
+    @Test
+    void theSweepDoesNotPlayWhenNobodyIsConnected() {
+        Timed t = timed();
+        t.drop("a");
+        t.drop("b");
+        t.drop("c");
+        // 30초 유예는 지났지만 60초 방장 인수 요청은 아직 열리지 않는 시점
+        t.pass(45);
+        long before = t.f().room.version();
+
+        RoomLifecycle.sweep(t.f().room, t.env());
+
+        assertThat(t.f().actor()).isEqualTo("a");
+        assertThat(t.f().room.version()).isEqualTo(before);
     }
 
     // 끊긴 차례는 낼 몫이 없으면 체크하는지 확인한다

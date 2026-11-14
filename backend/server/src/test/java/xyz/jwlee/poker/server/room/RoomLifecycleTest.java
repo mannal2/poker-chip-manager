@@ -270,13 +270,17 @@ class RoomLifecycleTest {
         assertThat(room.version()).isEqualTo(start + 2);
     }
 
-    // 끊긴 행동자는 끊긴 시점에 자동 처리되는지 확인한다
+    // 끊긴 행동자는 끊긴 시점이 아니라 30초 유예가 지난 점검에서 자동 처리되는지 확인한다
     @Test
-    void aDisconnectingActorIsPlayedForAtOnce() {
+    void aDisconnectingActorIsPlayedForAfterTheGrace() {
         GameFixture f = GameFixture.started(3, 0, clock);
         assertThat(f.actor()).isEqualTo("a");
 
         drop(f.room, "a");
+        assertThat(f.room.game().players.get(0).folded).isFalse();
+
+        pass(PresenceGrace.DEFAULT.autoPlay().toMillis());
+        RoomLifecycle.sweep(f.room, env);
 
         assertThat(f.room.game().players.get(0).folded).isTrue();
         assertThat(f.actor()).isEqualTo("b");
@@ -289,6 +293,8 @@ class RoomLifecycleTest {
         drop(f.room, "b");
         drop(f.room, "c");
         drop(f.room, "a");
+        pass(PresenceGrace.DEFAULT.autoPlay().toMillis());
+        RoomLifecycle.sweep(f.room, env);
         assertThat(f.room.game().players.get(0).folded).isFalse();
 
         back(f.room, "b");

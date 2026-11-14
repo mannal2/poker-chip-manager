@@ -58,6 +58,7 @@ public final class RoomLifecycle {
                     room.close();
                 } else {
                     openHostTakeover(room, now);
+                    playForTheLongGone(room, env);
                 }
             }
         }
@@ -84,6 +85,13 @@ public final class RoomLifecycle {
     private static boolean everyoneGone(Room room, Duration limit, Instant now) {
         return room.participants().stream()
                 .allMatch(p -> absentFor(room, p.participantId(), limit, now));
+    }
+
+    // 진행 중 유예가 막 끝난 끊긴 행동자를 자동 처리하고 게임이 바뀌었으면 버전을 올린다
+    private static void playForTheLongGone(Room room, RoomEnv env) {
+        if (room.phase() == RoomPhase.PLAYING && AutoPlay.run(room, env)) {
+            room.bumpVersion();
+        }
     }
 
     // 방장이 60초 이상 끊겼으면 인수 요청을 한 번 연다

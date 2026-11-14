@@ -171,7 +171,9 @@ class DisconnectedTournamentHttpTest {
         syncScreens(all);
 
         bob.screen.goSilent();
+        // 45초 무응답으로 끊김이 판정되고 30초 유예가 더 지나야 자동 처리된다
         passTime(Duration.ofSeconds(45), alice, carol);
+        passTime(Duration.ofSeconds(30), alice, carol);
 
         assertThat(bob.screen.awaitClosed()).isEqualTo(1001);
         alice.screen.awaitState(s -> bob.absentIn(s)

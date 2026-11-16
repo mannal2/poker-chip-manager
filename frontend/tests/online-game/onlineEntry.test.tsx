@@ -92,6 +92,7 @@ it('shows only approval guidance while recovery is pending', async () => {
     connection: 'offline',
     pending: false,
     error: null,
+    errorField: null,
     hasControl: false,
   };
   const controller = new OnlineController({} as never, () => ({}) as never);

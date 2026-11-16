@@ -330,6 +330,7 @@ async function mountRoom(
     hasControl: true,
     recovery: null,
     error,
+    errorField: null,
   };
   const send = vi.fn(async () => true);
   let observe!: (events: GameEvent[]) => void;

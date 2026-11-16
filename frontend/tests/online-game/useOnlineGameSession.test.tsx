@@ -30,6 +30,7 @@ it('retains a cleared pick through the initial draft and delayed first echo unti
     pending: false,
     recovery: null,
     error: null,
+    errorField: null,
   };
   const controller = {
     // 온라인 세션 Hook에 현재 테스트 상태를 제공한다
@@ -93,6 +94,7 @@ it('keeps the latest host pick through delayed echoes and restores server picks 
     pending: false,
     recovery: null,
     error: null,
+    errorField: null,
   };
   const sendDraft = vi.fn();
   const controller = {
@@ -201,6 +203,7 @@ it('adapts authoritative permissions, live guards and own rename without grantin
     pending: false,
     recovery: null,
     error: null,
+    errorField: null,
   };
   const send = vi.fn(async () => true);
   const controller = {

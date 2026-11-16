@@ -5,6 +5,7 @@ import { OnlineController } from '../../src/features/online-game/session/onlineC
 import { ApiClient, ApiOpenError } from '../../src/features/online-game/api/client';
 import type { RoomSocketHandlers } from '../../src/features/online-game/realtime/roomSocket';
 import type { JoinResponse, RoomSnapshot } from '../../src/features/online-game/api/types';
+import { messageFor } from '../../src/features/gameplay/model/errorMessages';
 
 // HTTP와 소켓의 도착 순서가 달라도 최근 토너먼트와 재준비 상태를 보존한다
 it.each(['START', 'RE_READY'] as const)(
@@ -591,6 +592,53 @@ it('returns an initial connection failure to entry', async () => {
   expect(await x.c.create('Alice')).toBe(false);
   expect(x.c.getView().phase).toBe('entry');
   expect(x.c.getView().error).toBeTruthy();
+});
+// 이름 검사 실패는 이름 칸에 묶인다
+it('ties a client-side name rejection to the name field', async () => {
+  const x = setup();
+  expect(await x.c.create('')).toBe(false);
+  expect(x.c.getView().errorField).toBe('name');
+  expect(x.c.getView().error).toBe(messageFor('INVALID_NAME'));
+});
+// 복구 전 방 코드 형식 실패는 방 코드 칸에 묶인다
+it('ties a malformed recovery code to the code field', async () => {
+  const x = setup();
+  expect(await x.c.requestRecovery('ABC123', 'Alice')).toBe(false);
+  expect(x.c.getView().errorField).toBe('code');
+});
+// 서버의 중복 이름 거절은 이름 칸에 묶인다
+it('ties a duplicate name rejection to the name field', async () => {
+  const x = setup();
+  x.api.post.mockResolvedValueOnce({ ok: false, status: 409, code: 'DUPLICATE_NAME' });
+  expect(await x.c.join('ABC234', 'Alice')).toBe(false);
+  expect(x.c.getView().phase).toBe('entry');
+  expect(x.c.getView().errorField).toBe('name');
+});
+// 없는 방 거절은 방 코드 칸에 묶이고 그 밖의 거절과 연결 실패는 어느 칸에도 묶이지 않는다
+it('ties a missing room to the code field and leaves other errors unbound', async () => {
+  const x = setup();
+  x.api.post.mockResolvedValueOnce({ ok: false, status: 404, code: 'ROOM_NOT_FOUND' });
+  await x.c.join('ABC234', 'Alice');
+  expect(x.c.getView().errorField).toBe('code');
+  x.api.post.mockResolvedValueOnce({ ok: false, status: 409, code: 'ROOM_FULL' });
+  await x.c.join('ABC234', 'Alice');
+  expect(x.c.getView().error).toBe(messageFor('ROOM_FULL'));
+  expect(x.c.getView().errorField).toBeNull();
+  const y = setup();
+  y.api.open.mockRejectedValueOnce(new Error('offline'));
+  await y.c.create('Alice');
+  expect(y.c.getView().error).toBeTruthy();
+  expect(y.c.getView().errorField).toBeNull();
+});
+// 칸 오류는 같은 칸에서만 지워진다
+it('clears a field error only for its own field', async () => {
+  const x = setup();
+  await x.c.create('');
+  x.c.clearFieldError('code');
+  expect(x.c.getView().errorField).toBe('name');
+  x.c.clearFieldError('name');
+  expect(x.c.getView().error).toBeNull();
+  expect(x.c.getView().errorField).toBeNull();
 });
 // 복귀 실패가 입장 화면과 저장 상태를 함께 복원하는지 확인한다
 it('returns failed resume to entry and clears the saved room', async () => {

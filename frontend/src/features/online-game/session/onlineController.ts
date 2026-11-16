@@ -30,6 +30,14 @@ import {
   tabControls,
 } from './roomMemory';
 
+// 입장 화면에서 오류를 묶을 수 있는 입력 칸
+export type EntryField = 'name' | 'code';
+// 서버 거절 코드가 가리키는 입장 칸을 찾고 칸과 무관하면 null을 돌려준다
+export function entryErrorField(code: string | undefined): EntryField | null {
+  if (code === 'INVALID_NAME' || code === 'DUPLICATE_NAME' || code === 'RECOVERY_TARGET_NOT_FOUND')
+    return 'name';
+  return code === 'ROOM_NOT_FOUND' ? 'code' : null;
+}
 // 화면이 구독하는 온라인 상태
 export interface OnlineView {
   phase: 'entry' | 'joining' | 'recovering' | 'room' | 'gone' | 'revoked' | 'incompatible';
@@ -40,6 +48,7 @@ export interface OnlineView {
   pending: boolean;
   recovery: RecoveryStatus | null;
   error: string | null;
+  errorField: EntryField | null;
 }
 // 컨트롤러가 쓰는 소켓 기능
 type SocketPort = Pick<RoomSocket, 'subscribe' | 'resync' | 'reconnect' | 'close'>;
@@ -70,6 +79,7 @@ export class OnlineController {
     pending: false,
     recovery: null,
     error: null,
+    errorField: null,
   };
   private listeners = new Set<() => void>();
   private confirmed = new Set<(value: Confirmed) => void>();
@@ -144,7 +154,9 @@ export class OnlineController {
   }
   // 새 화면 값을 저장하고 모든 구독자에게 알린다
   private update(patch: Partial<OnlineView>): void {
-    this.view = { ...this.view, ...patch };
+    // 오류를 바꾸면서 칸을 지정하지 않은 경로는 칸 묶음을 지운다
+    const field = 'error' in patch && !('errorField' in patch) ? { errorField: null } : {};
+    this.view = { ...this.view, ...patch, ...field };
     this.listeners.forEach((listener) => listener());
   }
   // 활성 화면의 세션과 스트림을 한 번 준비한다
@@ -201,6 +213,10 @@ export class OnlineController {
       sequence: ++this.streamSequence,
     };
   }
+  // 사용자가 고친 칸에 묶인 오류만 지운다
+  clearFieldError(field: EntryField): void {
+    if (this.view.errorField === field) this.update({ error: null, errorField: null });
+  }
   // 새 방을 생성한다
   create(name: string): Promise<boolean> {
     if (this.rejectsName(name)) return Promise.resolve(false);
@@ -217,12 +233,12 @@ export class OnlineController {
       return Promise.resolve(false);
     const normalizedName = normalizeName(name);
     if (normalizedName === null) {
-      this.update({ error: '이름을 정확히 입력해 주세요.' });
+      this.update({ error: '이름을 정확히 입력해 주세요.', errorField: 'name' });
       return Promise.resolve(false);
     }
     // 서버가 생성하는 코드와 같은 문자 집합과 길이를 확인한다
     if (!/^[ABCDEFGHJKMNPQRSTUVWXYZ2-9]{6}$/i.test(code.trim())) {
-      this.update({ error: '방 코드를 정확히 입력해 주세요.' });
+      this.update({ error: '방 코드를 정확히 입력해 주세요.', errorField: 'code' });
       return Promise.resolve(false);
     }
     return this.enter(
@@ -235,7 +251,7 @@ export class OnlineController {
   private rejectsName(name: string): boolean {
     if (normalizeName(name) !== null) return false;
     if (!this.request && !this.view.pending && this.view.phase !== 'room')
-      this.update({ error: messageFor('INVALID_NAME') });
+      this.update({ error: messageFor('INVALID_NAME'), errorField: 'name' });
     return true;
   }
   // 입장 요청을 보관하여 명시적 재시도에도 같은 본문을 사용한다
@@ -639,7 +655,7 @@ export class OnlineController {
             ? `이 방에 '${String(request.body.name)}' 플레이어가 없습니다.`
             : messageFor(result.code),
         ...(request.kind === 'entry' || request.kind === 'recovery'
-          ? { phase: 'entry' as const }
+          ? { phase: 'entry' as const, errorField: entryErrorField(result.code) }
           : {}),
       });
       if (

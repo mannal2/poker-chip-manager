@@ -10,7 +10,7 @@ test('validates recovery inputs before contacting the server', async ({ page }) 
   await page.getByRole('tab', { name: '방 참가', exact: true }).click();
   const recover = page.getByRole('button', { name: '기존 플레이어로 복구', exact: true });
   await recover.click();
-  await expect(page.getByRole('alert')).toHaveText('이름을 정확히 입력해 주세요.');
+  await expect(page.getByRole('alert')).toHaveText('이름은 한글, 영문, 숫자, 공백으로 1~10자여야 합니다.');
   await page.getByLabel('내 이름', { exact: true }).fill('Alice');
   await recover.click();
   await expect(page.getByRole('alert')).toHaveText('방 코드를 정확히 입력해 주세요.');

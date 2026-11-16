@@ -819,7 +819,7 @@ it.each(['', '   ', 'a!', '가나다라마바사아자차카'])(
     expect(x.c.getView()).toMatchObject({
       phase: 'entry',
       pending: false,
-      error: '이름을 정확히 입력해 주세요.',
+      error: '이름은 한글, 영문, 숫자, 공백으로 1~10자여야 합니다.',
     });
   },
 );
@@ -847,7 +847,7 @@ it('checks the recovery name before the room code', async () => {
   const x = setup();
   expect(await x.c.requestRecovery('', '')).toBe(false);
   expect(x.api.open).not.toHaveBeenCalled();
-  expect(x.c.getView().error).toBe('이름을 정확히 입력해 주세요.');
+  expect(x.c.getView().error).toBe('이름은 한글, 영문, 숫자, 공백으로 1~10자여야 합니다.');
 });
 
 it.each([

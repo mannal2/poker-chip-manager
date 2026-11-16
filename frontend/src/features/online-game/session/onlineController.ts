@@ -233,7 +233,7 @@ export class OnlineController {
       return Promise.resolve(false);
     const normalizedName = normalizeName(name);
     if (normalizedName === null) {
-      this.update({ error: '이름을 정확히 입력해 주세요.', errorField: 'name' });
+      this.update({ error: messageFor('INVALID_NAME'), errorField: 'name' });
       return Promise.resolve(false);
     }
     // 서버가 생성하는 코드와 같은 문자 집합과 길이를 확인한다

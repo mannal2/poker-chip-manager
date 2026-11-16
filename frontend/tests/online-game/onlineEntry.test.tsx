@@ -107,7 +107,7 @@ it('validates recovery name and code on the entry form without contacting the se
   await act(() => tab('방 참가').click());
   const recover = button('기존 플레이어로 복구')!;
   await act(() => recover.click());
-  expect(host.querySelector('#entry-name-error')?.textContent).toBe('이름을 정확히 입력해 주세요.');
+  expect(host.querySelector('#entry-name-error')?.textContent).toBe('이름은 한글, 영문, 숫자, 공백으로 1~10자여야 합니다.');
   await act(() => type(host.querySelector<HTMLInputElement>('[name="name"]')!, 'Alice'));
   await act(() => recover.click());
   expect(host.querySelector('#entry-code-error')?.textContent).toBe('방 코드를 정확히 입력해 주세요.');

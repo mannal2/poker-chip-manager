@@ -296,6 +296,14 @@ it('rejects a case-insensitive duplicate online without sending', async () => {
     const me = snapshot.you.participantId;
     expect(await result.setup.rename!(me, other.toLowerCase())).toBe(messageFor('DUPLICATE_NAME'));
     expect(await result.setup.rename!(me, '!!')).toBe(messageFor('INVALID_NAME'));
+    // 조작이 막힌 상태에서는 편집 칸 아래에 막힌 이유를 돌려준다
+    view.connection = 'offline';
+    expect(result.setup.rename!(me, 'Zed')).toBe('연결이 끊겼습니다.');
+    view.connection = 'online';
+    // 본인 카드가 아니면 지금처럼 편집을 닫도록 거절 Promise를 돌려준다
+    const notMine = result.setup.rename!(snapshot.hostId, 'Zed');
+    expect(notMine).toBeInstanceOf(Promise);
+    expect(await notMine).toBe(false);
     expect(send).not.toHaveBeenCalled();
   } finally {
     await act(() => root.unmount());

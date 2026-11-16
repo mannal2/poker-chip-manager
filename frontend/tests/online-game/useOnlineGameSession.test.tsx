@@ -12,6 +12,7 @@ import type {
 } from '../../src/features/online-game/session/onlineController';
 import type { RoomSnapshot } from '../../src/features/online-game/api/types';
 import { validateSettings } from '../../src/game/settings';
+import { messageFor } from '../../src/features/gameplay/model/errorMessages';
 import playing from '../../../shared/api-contract/snapshot-playing.json';
 
 // 원래 서버 값과 같은 마지막 선택도 새 버전의 확인이 올 때까지 유지한다
@@ -30,6 +31,7 @@ it('retains a cleared pick through the initial draft and delayed first echo unti
     pending: false,
     recovery: null,
     error: null,
+    errorField: null,
   };
   const controller = {
     // 온라인 세션 Hook에 현재 테스트 상태를 제공한다
@@ -93,6 +95,7 @@ it('keeps the latest host pick through delayed echoes and restores server picks 
     pending: false,
     recovery: null,
     error: null,
+    errorField: null,
   };
   const sendDraft = vi.fn();
   const controller = {
@@ -201,6 +204,7 @@ it('adapts authoritative permissions, live guards and own rename without grantin
     pending: false,
     recovery: null,
     error: null,
+    errorField: null,
   };
   const send = vi.fn(async () => true);
   const controller = {
@@ -249,6 +253,58 @@ it('adapts authoritative permissions, live guards and own rename without grantin
       await act(() => root.render(<Harness />));
       expect(result.session.busy).toBe(true);
     }
+  } finally {
+    await act(() => root.unmount());
+    vi.unstubAllGlobals();
+  }
+});
+
+// 온라인 대기방에서 대소문자만 다른 중복 이름과 규칙 위반 이름은 보내지 않고 이유를 돌려준다
+it('rejects a case-insensitive duplicate online without sending', async () => {
+  vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
+  const root = createRoot(document.createElement('div'));
+  const snapshot = structuredClone(playing.response) as RoomSnapshot;
+  snapshot.roomPhase = 'WAITING';
+  snapshot.game = null;
+  snapshot.you.participantId = snapshot.participants[1].participantId;
+  const other = snapshot.participants[0].name;
+  const view: OnlineView = {
+    phase: 'room',
+    snapshot,
+    connection: 'online',
+    hasControl: true,
+    pending: false,
+    recovery: null,
+    error: null,
+    errorField: null,
+  };
+  const send = vi.fn(async () => true);
+  const controller = {
+    // 온라인 세션 Hook에 현재 테스트 상태를 제공한다
+    getView: () => view,
+    send,
+    loadEvents: vi.fn(),
+  } as unknown as OnlineController;
+  let result!: ReturnType<typeof useOnlineGameSession>;
+  // 훅 결과를 테스트가 접근할 수 있도록 실제 React 렌더링으로 만든다
+  function Harness() {
+    result = useOnlineGameSession(view, controller);
+    return null;
+  }
+  try {
+    await act(() => root.render(<Harness />));
+    const me = snapshot.you.participantId;
+    expect(await result.setup.rename!(me, other.toLowerCase())).toBe(messageFor('DUPLICATE_NAME'));
+    expect(await result.setup.rename!(me, '!!')).toBe(messageFor('INVALID_NAME'));
+    // 조작이 막힌 상태에서는 편집 칸 아래에 막힌 이유를 돌려준다
+    view.connection = 'offline';
+    expect(result.setup.rename!(me, 'Zed')).toBe('연결이 끊겼습니다.');
+    view.connection = 'online';
+    // 본인 카드가 아니면 지금처럼 편집을 닫도록 거절 Promise를 돌려준다
+    const notMine = result.setup.rename!(snapshot.hostId, 'Zed');
+    expect(notMine).toBeInstanceOf(Promise);
+    expect(await notMine).toBe(false);
+    expect(send).not.toHaveBeenCalled();
   } finally {
     await act(() => root.unmount());
     vi.unstubAllGlobals();

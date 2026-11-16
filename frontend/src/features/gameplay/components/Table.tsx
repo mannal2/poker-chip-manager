@@ -20,7 +20,7 @@ export interface TableSetup {
     handlers: (id: string) => React.HTMLAttributes<HTMLElement>;
   };
   editScope?: string;
-  onRename?: (id: string, name: string) => boolean | Promise<boolean>;
+  onRename?: (id: string, name: string) => boolean | string | Promise<boolean>;
   canRename?: (id: string) => boolean;
   onNameEditing?: (id: string, editing: boolean, finish?: () => Promise<boolean>) => void;
   onAdd?: () => void;

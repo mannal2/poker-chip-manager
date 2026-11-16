@@ -6,14 +6,14 @@ test('only the actor bets and every participant receives confirmed balances', as
   browser,
 }) => {
   await page.goto('/online/');
-  await page.getByLabel('이름', { exact: true }).fill('Alice');
+  await page.getByLabel('내 이름', { exact: true }).fill('Alice');
   await page.getByRole('button', { name: '방 만들기', exact: true }).click();
   const code = await page.getByTestId('room-code').textContent();
   const context = await browser.newContext();
   try {
     const guest = await context.newPage();
     await guest.goto(`/online/?code=${code}`);
-    await guest.getByLabel('이름', { exact: true }).fill('Bob');
+    await guest.getByLabel('내 이름', { exact: true }).fill('Bob');
     await guest.getByRole('button', { name: '방 참가', exact: true }).click();
     await expect(guest.getByRole('button', { name: 'Bob 이름 수정', exact: true })).toBeEnabled();
     await expect(page.locator('.seat')).toHaveCount(2);

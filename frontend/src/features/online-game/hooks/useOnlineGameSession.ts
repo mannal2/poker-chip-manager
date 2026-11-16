@@ -1,6 +1,12 @@
 import { useMemo, useState } from 'react';
 import { useToast } from '../../../shared/hooks/useToast';
-import { validChips, type GameSettings, type SettingsValidation } from '../../../game/settings';
+import {
+  renameError,
+  validChips,
+  type GameSettings,
+  type SettingsValidation,
+} from '../../../game/settings';
+import { messageFor } from '../../gameplay/model/errorMessages';
 import type { GameCommand } from '../../../game/types';
 import { useSetupEditing } from '../../gameplay/hooks/useSetupEditing';
 import type { GameSession, SetupControls } from '../../gameplay/session';
@@ -120,11 +126,20 @@ export function useOnlineGameSession(view: OnlineView, controller: OnlineControl
     run,
     dispatch,
   });
-  // 이름 변경은 본인 카드만 서버에 직접 보내어 단독 대기방에서도 저장한다
-  async function rename(id: string, name: string) {
+  // 이름 변경은 본인 카드만 서버에 직접 보내어 단독 대기방에서도 저장하고, 거절 이유는 바로 돌려준다
+  function rename(id: string, name: string): boolean | string | Promise<boolean> {
     const current = controller.getView().snapshot!;
-    if (guard() || current.roomPhase !== 'WAITING' || id !== current.you.participantId)
-      return false;
+    // 조작이 막혔으면 편집 칸 아래에 막힌 이유를 띄운다
+    const blocked = guard();
+    if (blocked) return blocked;
+    // 본인 카드가 아니거나 대기방이 아니면 예전처럼 편집을 닫는다
+    if (current.roomPhase !== 'WAITING' || id !== current.you.participantId)
+      return Promise.resolve(false);
+    const reason = renameError(
+      name,
+      current.participants.filter((p) => p.participantId !== id).map((p) => p.name),
+    );
+    if (reason) return messageFor(reason);
     return controller.send([{ type: 'RENAME', payload: { name }, handScoped: false }]);
   }
   const session: GameSession = {

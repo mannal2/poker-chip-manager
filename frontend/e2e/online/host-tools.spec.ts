@@ -25,7 +25,7 @@ test('kicks a waiting participant and transfers the host', async ({ page, browse
     await guest.goto(`/online/?code=${code}`);
     // 이전 참가 자격의 자동 복귀가 끝난 뒤 신규 참가 정보를 입력한다
     await expect(guest.getByRole('alert')).toHaveText('방을 찾을 수 없습니다.');
-    await guest.getByLabel('이름', { exact: true }).fill('Bob');
+    await guest.getByLabel('내 이름', { exact: true }).fill('Bob');
     await guest.getByRole('button', { name: '방 참가', exact: true }).click();
     await expect(page.locator('.seat')).toHaveCount(2);
     await menu(page, '방장 넘기기', 'Bob');
@@ -154,7 +154,7 @@ test('defers forfeited stack distribution until the current hand ends', async ({
     await joinRoom(bob, code);
     const carol = await carolContext.newPage();
     await carol.goto(`/online/?code=${code}`);
-    await carol.getByLabel('이름', { exact: true }).fill('Carol');
+    await carol.getByLabel('내 이름', { exact: true }).fill('Carol');
     await carol.getByRole('button', { name: '방 참가', exact: true }).click();
     await startRoom(page, 3);
     await menu(bob, '기권');
@@ -202,7 +202,7 @@ test('rejoins from the same kicked browser screen', async ({ page, browser }, te
     });
     await guest.goto(`/online/?code=${code}`);
     await expect(guest.getByRole('alert')).toHaveText('방을 찾을 수 없습니다.');
-    await guest.getByLabel('이름', { exact: true }).fill('Bob');
+    await guest.getByLabel('내 이름', { exact: true }).fill('Bob');
     await guest.getByRole('button', { name: '방 참가', exact: true }).click();
     try {
       await expect(page.locator('.seat')).toHaveCount(2);

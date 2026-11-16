@@ -60,28 +60,140 @@ it('keeps only ASCII letters and digits in invite and edited codes', async () =>
   await act(() => type(input, ''));
   expect(input.value).toBe('');
 });
-// 이름 거절이 입장 화면으로 돌아와도 유지되는지 확인한다
+// 이름으로 버튼을 찾는다
+function button(name: string) {
+  return [...host.querySelectorAll<HTMLButtonElement>('button:not([role="tab"])')].find(
+    (b) => b.textContent === name,
+  );
+}
+// 이름으로 탭을 찾는다
+function tab(name: string) {
+  return [...host.querySelectorAll<HTMLButtonElement>('[role="tab"]')].find(
+    (b) => b.textContent === name,
+  )!;
+}
+// 선택된 탭의 이름을 읽는다
+function selectedTab() {
+  return host.querySelector('[role="tab"][aria-selected="true"]')?.textContent;
+}
+// 입장 화면에 칸 오류를 띄운 상태를 만든다
+function entryView(patch: Partial<OnlineView>): OnlineView {
+  return {
+    phase: 'entry',
+    recovery: null,
+    snapshot: null,
+    connection: 'offline',
+    pending: false,
+    error: null,
+    errorField: null,
+    hasControl: false,
+    ...patch,
+  };
+}
+// 이름 거절이 입장 화면으로 돌아와도 이름 칸 아래에 유지되는지 확인한다
 it('keeps an invalid name rejection visible on the entry form', async () => {
   await act(() => root.render(<OnlineApp />));
-  await act(() => host.querySelector<HTMLButtonElement>('button')!.click());
-  expect(host.textContent).toContain('이름은 한글, 영문, 숫자, 공백으로 1~10자여야 합니다.');
-  expect(host.querySelector('input')).not.toBeNull();
+  await act(() => button('방 참가')!.click());
+  expect(host.querySelector('#entry-name-error')?.textContent).toBe(
+    '이름은 한글, 영문, 숫자, 공백으로 1~10자여야 합니다.',
+  );
+  expect(host.querySelectorAll('[role="alert"]')).toHaveLength(1);
   expect(fetch).not.toHaveBeenCalled();
 });
 
 it('validates recovery name and code on the entry form without contacting the server', async () => {
   history.replaceState(null, '', '/online/');
   await act(() => root.render(<OnlineApp />));
-  const recover = host.querySelectorAll<HTMLButtonElement>('button')[2];
+  await act(() => tab('방 참가').click());
+  const recover = button('기존 플레이어로 복구')!;
   await act(() => recover.click());
-  expect(host.querySelector('[role="alert"]')?.textContent).toBe('이름을 정확히 입력해 주세요.');
+  expect(host.querySelector('#entry-name-error')?.textContent).toBe('이름은 한글, 영문, 숫자, 공백으로 1~10자여야 합니다.');
   await act(() => type(host.querySelector<HTMLInputElement>('[name="name"]')!, 'Alice'));
   await act(() => recover.click());
-  expect(host.querySelector('[role="alert"]')?.textContent).toBe('방 코드를 정확히 입력해 주세요.');
+  expect(host.querySelector('#entry-code-error')?.textContent).toBe('방 코드를 정확히 입력해 주세요.');
   await act(() => type(host.querySelector<HTMLInputElement>('[name="code"]')!, 'ABC123'));
   await act(() => recover.click());
-  expect(host.querySelector('[role="alert"]')?.textContent).toBe('방 코드를 정확히 입력해 주세요.');
+  expect(host.querySelector('#entry-code-error')?.textContent).toBe('방 코드를 정확히 입력해 주세요.');
   expect(fetch).not.toHaveBeenCalled();
+});
+// 코드 없이 열면 방 만들기 탭이, 링크로 열면 방 참가 탭이 선택된다
+it('opens the create tab by default and the join tab from an invite link', async () => {
+  history.replaceState(null, '', '/online/');
+  await act(() => root.render(<OnlineApp />));
+  expect(selectedTab()).toBe('방 만들기');
+  expect(host.querySelector('[name="code"]')).toBeNull();
+  expect(button('방 참가')).toBeUndefined();
+  expect(button('방 만들기')).toBeDefined();
+  await act(() => root.unmount());
+  root = createRoot(host);
+  history.replaceState(null, '', '/online/?code=ab12cd');
+  await act(() => root.render(<OnlineApp />));
+  expect(selectedTab()).toBe('방 참가');
+  expect(host.querySelector<HTMLInputElement>('[name="code"]')?.value).toBe('AB12CD');
+});
+// 이름 칸은 내 이름 라벨과 늘 보이는 도움말을 가진다
+it('labels the name as the player name with a visible rule', async () => {
+  await act(() => root.render(<OnlineApp />));
+  const input = host.querySelector<HTMLInputElement>('[name="name"]')!;
+  expect(input.closest('label')?.textContent).toContain('내 이름');
+  expect(host.textContent).toContain(
+    '다른 플레이어에게 보이는 이름입니다. 한글·영문·숫자·공백 1~10자로 정해 주세요.',
+  );
+});
+// 탭을 바꿔도 입력한 이름과 코드가 남는다
+it('keeps the typed name and code when switching tabs', async () => {
+  await act(() => root.render(<OnlineApp />));
+  await act(() => type(host.querySelector<HTMLInputElement>('[name="name"]')!, 'Alice'));
+  await act(() => tab('방 만들기').click());
+  expect(host.querySelector<HTMLInputElement>('[name="name"]')!.value).toBe('Alice');
+  await act(() => tab('방 참가').click());
+  expect(host.querySelector<HTMLInputElement>('[name="name"]')!.value).toBe('Alice');
+  expect(host.querySelector<HTMLInputElement>('[name="code"]')!.value).toBe('ABC234');
+});
+// 요청 중에는 탭을 바꿀 수 없다
+it('disables the tabs while a request is pending', async () => {
+  const controller = new OnlineController({} as never, () => ({}) as never);
+  await act(() =>
+    root.render(<OnlineEntry view={entryView({ pending: true })} controller={controller} />),
+  );
+  expect(tab('방 만들기').disabled).toBe(true);
+  expect(tab('방 참가').disabled).toBe(true);
+});
+// 칸 오류는 그 칸 아래에만 뜨고 입력과 연결된다
+it('shows a field error only under its field', async () => {
+  await act(() => root.render(<OnlineApp />));
+  await act(() => button('방 참가')!.click());
+  const input = host.querySelector<HTMLInputElement>('[name="name"]')!;
+  expect(input.getAttribute('aria-invalid')).toBe('true');
+  expect(input.getAttribute('aria-describedby')).toContain('entry-name-error');
+  expect(host.textContent).not.toContain('다른 플레이어에게 보이는 이름입니다.');
+});
+// 칸을 고치면 그 칸의 오류가 사라진다
+it('clears a field error when the field is edited', async () => {
+  await act(() => root.render(<OnlineApp />));
+  await act(() => button('방 참가')!.click());
+  await act(() => type(host.querySelector<HTMLInputElement>('[name="name"]')!, 'A'));
+  expect(host.querySelector('[role="alert"]')).toBeNull();
+  expect(host.querySelector('[name="name"]')!.getAttribute('aria-invalid')).toBeNull();
+});
+// 탭을 바꾸면 칸 오류가 사라진다
+it('clears field errors when the tab changes', async () => {
+  await act(() => root.render(<OnlineApp />));
+  await act(() => button('방 참가')!.click());
+  await act(() => tab('방 만들기').click());
+  expect(host.querySelector('[role="alert"]')).toBeNull();
+});
+// 칸과 무관한 오류는 일반 알림으로 남는다
+it('keeps unbound errors in the general alert', async () => {
+  const controller = new OnlineController({} as never, () => ({}) as never);
+  await act(() =>
+    root.render(
+      <OnlineEntry view={entryView({ error: '방이 가득 찼습니다.' })} controller={controller} />,
+    ),
+  );
+  expect(host.querySelector('#entry-name-error')).toBeNull();
+  expect(host.querySelector('#entry-code-error')).toBeNull();
+  expect(host.querySelector('[name="name"]')!.getAttribute('aria-invalid')).toBeNull();
 });
 // 승인 대기 중에 중복 복구 신청이나 새 입장을 제공하지 않는지 확인한다
 it('shows only approval guidance while recovery is pending', async () => {
@@ -92,6 +204,7 @@ it('shows only approval guidance while recovery is pending', async () => {
     connection: 'offline',
     pending: false,
     error: null,
+    errorField: null,
     hasControl: false,
   };
   const controller = new OnlineController({} as never, () => ({}) as never);
@@ -145,10 +258,10 @@ it.each([
   );
   await act(() => root.render(<OnlineApp />));
   await act(() => type(host.querySelector<HTMLInputElement>('[name="name"]')!, 'Alice'));
-  await act(() => host.querySelectorAll<HTMLButtonElement>('button')[2].click());
+  await act(() => button('기존 플레이어로 복구')!.click());
   expect(host.querySelector('[role="alert"]')?.textContent).toBe(reason);
   expect(host.querySelector<HTMLInputElement>('[name="code"]')).not.toBeNull();
-  expect(host.querySelector<HTMLButtonElement>('button')?.disabled).toBe(false);
+  expect(button('기존 플레이어로 복구')?.disabled).toBe(false);
 });
 // 효과 재실행은 복귀 요청을 중복하지 않고 해제 시 스트림을 닫는지 확인한다
 it('resumes once under effect replay and closes the stream on unmount', async () => {

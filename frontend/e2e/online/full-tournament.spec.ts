@@ -33,7 +33,7 @@ test('three participants complete a tournament and start another with conserved 
     for (const [index, context] of contexts.entries()) {
       const guest = await context.newPage();
       await guest.goto(`/online/?code=${code}`);
-      await guest.getByLabel('이름', { exact: true }).fill(['Bob', 'Carol'][index]);
+      await guest.getByLabel('내 이름', { exact: true }).fill(['Bob', 'Carol'][index]);
       await guest.getByRole('button', { name: '방 참가', exact: true }).click();
       await expect(
         guest.getByRole('button', { name: `${['Bob', 'Carol'][index]} 이름 수정`, exact: true }),

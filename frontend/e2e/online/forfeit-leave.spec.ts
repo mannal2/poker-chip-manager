@@ -4,7 +4,7 @@ import { afterForfeit, confirm, createRoom, menu } from './managementSupport';
 // 세 번째 참가자까지 같은 방에 참가시킨다
 async function join(page: Page, code: string, name: string, count: number) {
   await page.goto(`/online/?code=${code}`);
-  await page.getByLabel('이름', { exact: true }).fill(name);
+  await page.getByLabel('내 이름', { exact: true }).fill(name);
   await page.getByRole('button', { name: '방 참가', exact: true }).click();
   await expect(page.locator('.seat')).toHaveCount(count);
 }

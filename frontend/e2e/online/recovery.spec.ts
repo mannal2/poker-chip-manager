@@ -17,7 +17,7 @@ test('approves recovery with seat and chips preserved and revokes the old screen
     const names = await page.locator('.seat .name').allTextContents();
     const recovery = await newContext.newPage();
     await recovery.goto(`/online/?code=${code}`);
-    await recovery.getByLabel('이름', { exact: true }).fill('Bob');
+    await recovery.getByLabel('내 이름', { exact: true }).fill('Bob');
     await recovery.getByRole('button', { name: '기존 플레이어로 복구', exact: true }).click();
     await expect(page.getByRole('region', { name: '방장 알림' })).toContainText('Bob');
     await expect(page.locator('.meta .host-requests')).toContainText('Bob');
@@ -46,7 +46,7 @@ test('rejects a recovery request', async ({ page, browser }) => {
   try {
     const recovery = await context.newPage();
     await recovery.goto(`/online/?code=${code}`);
-    await recovery.getByLabel('이름', { exact: true }).fill('Alice');
+    await recovery.getByLabel('내 이름', { exact: true }).fill('Alice');
     await recovery.getByRole('button', { name: '기존 플레이어로 복구', exact: true }).click();
     await page.getByRole('button', { name: 'Alice 복구 신청 보기', exact: true }).click();
     await page.getByRole('button', { name: '복구 거절', exact: true }).click();

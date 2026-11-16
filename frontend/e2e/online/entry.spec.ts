@@ -5,7 +5,7 @@ test('creates a room and joins with a lowercase invite code', async ({ page, bro
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
   await page.goto('/online/');
-  await page.getByLabel('이름', { exact: true }).fill('Alice');
+  await page.getByLabel('내 이름', { exact: true }).fill('Alice');
   await page.getByRole('button', { name: '방 만들기', exact: true }).click();
   const code = await page.getByTestId('room-code').textContent();
   expect(code).toMatch(/^[A-Z2-9]{6}$/);
@@ -14,7 +14,7 @@ test('creates a room and joins with a lowercase invite code', async ({ page, bro
     const guest = await context.newPage();
     await guest.goto(`/online/?code=${code!.toLowerCase()}`);
     await expect(guest.getByLabel('방 코드', { exact: true })).toHaveValue(code!);
-    await guest.getByLabel('이름', { exact: true }).fill('Bob');
+    await guest.getByLabel('내 이름', { exact: true }).fill('Bob');
     await guest.getByRole('button', { name: '방 참가', exact: true }).click();
     await expect(guest.getByTestId('room-code')).toHaveText(code!);
     expect(errors).toEqual([]);
@@ -25,7 +25,8 @@ test('creates a room and joins with a lowercase invite code', async ({ page, bro
 // 없는 방의 오류가 입력 화면에 남는지 확인한다
 test('shows a missing room rejection', async ({ page }) => {
   await page.goto('/online/');
-  await page.getByLabel('이름', { exact: true }).fill('Alice');
+  await page.getByRole('tab', { name: '방 참가', exact: true }).click();
+  await page.getByLabel('내 이름', { exact: true }).fill('Alice');
   await page.getByLabel('방 코드', { exact: true }).fill('AAAAAA');
   await page.getByRole('button', { name: '방 참가', exact: true }).click();
   await expect(page.getByRole('alert')).toHaveText('방을 찾을 수 없습니다.');

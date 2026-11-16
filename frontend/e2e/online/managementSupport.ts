@@ -4,7 +4,7 @@ import type { Page } from '@playwright/test';
 // 실제 화면에서 방을 생성하고 초대 코드를 반환한다
 export async function createRoom(page: Page) {
   await page.goto('/online/');
-  await page.getByLabel('이름', { exact: true }).fill('Alice');
+  await page.getByLabel('내 이름', { exact: true }).fill('Alice');
   await page.getByRole('button', { name: '방 만들기', exact: true }).click();
   return (await page.getByTestId('room-code').textContent())!;
 }
@@ -12,7 +12,7 @@ export async function createRoom(page: Page) {
 // 독립 세션 화면을 같은 방에 참가시킨다
 export async function joinRoom(page: Page, code: string, name = 'Bob') {
   await page.goto(`/online/?code=${code}`);
-  await page.getByLabel('이름', { exact: true }).fill(name);
+  await page.getByLabel('내 이름', { exact: true }).fill(name);
   await page.getByRole('button', { name: '방 참가', exact: true }).click();
   await expect(page.locator('.seat')).toHaveCount(2);
 }

@@ -36,6 +36,50 @@
   opacity: 0.5;
   cursor: default;
 }
+.entry-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+}
+.entry-tabs [role='tab'] {
+  min-height: 44px;
+  border-color: transparent;
+  background: transparent;
+  color: var(--muted);
+}
+.entry-tabs [role='tab'][aria-selected='true'] {
+  background: var(--gold);
+  border-color: var(--gold);
+  color: #172119;
+  font-weight: 750;
+}
+.entry-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.entry-field {
+  display: grid;
+  gap: 6px;
+}
+.entry-field p {
+  margin: 0;
+  font-size: 13px;
+}
+.entry-field .field-error {
+  font-size: 13px;
+}
+.entry-help {
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+.online-app input[aria-invalid='true'] {
+  border-color: var(--gold);
+}
 .waiting-bar {
   display: flex;
   align-items: center;

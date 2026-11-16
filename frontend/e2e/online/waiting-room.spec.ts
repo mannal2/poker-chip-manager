@@ -6,7 +6,7 @@ test('shares waiting settings, own names, seats and dealer across three particip
   browser,
 }) => {
   await page.goto('/online/');
-  await page.getByLabel('이름', { exact: true }).fill('Alice');
+  await page.getByLabel('내 이름', { exact: true }).fill('Alice');
   await page.getByRole('button', { name: '방 만들기', exact: true }).click();
   const code = await page.getByTestId('room-code').textContent();
   await page.getByRole('button', { name: 'Alice 이름 수정', exact: true }).click();
@@ -22,7 +22,7 @@ test('shares waiting settings, own names, seats and dealer across three particip
     for (const [i, context] of contexts.entries()) {
       const guest = await context.newPage();
       await guest.goto(`/online/?code=${code}`);
-      await guest.getByLabel('이름', { exact: true }).fill(['Bob', 'Carol'][i]);
+      await guest.getByLabel('내 이름', { exact: true }).fill(['Bob', 'Carol'][i]);
       await guest.getByRole('button', { name: '방 참가', exact: true }).click();
       await expect(
         guest.getByRole('button', { name: ['Bob', 'Carol'][i] + ' 이름 수정', exact: true }),

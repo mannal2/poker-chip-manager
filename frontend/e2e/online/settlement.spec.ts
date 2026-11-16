@@ -27,7 +27,7 @@ test('shares side-pot navigation and automatically selects the sole eligible win
   // 세 화면에서 두 핸드를 순차 진행하므로 전체 시나리오의 실행 시간을 확보한다
   test.slow();
   await page.goto('/online/');
-  await page.getByLabel('이름', { exact: true }).fill('Alice');
+  await page.getByLabel('내 이름', { exact: true }).fill('Alice');
   await page.getByRole('button', { name: '방 만들기', exact: true }).click();
   const code = await page.getByTestId('room-code').textContent();
   const contexts = [await browser.newContext(), await browser.newContext()];
@@ -38,7 +38,7 @@ test('shares side-pot navigation and automatically selects the sole eligible win
       [carol, 'Carol'],
     ] as const) {
       await guest.goto(`/online/?code=${code}`);
-      await guest.getByLabel('이름', { exact: true }).fill(name);
+      await guest.getByLabel('내 이름', { exact: true }).fill(name);
       await guest.getByRole('button', { name: '방 참가', exact: true }).click();
       await expect(
         guest.getByRole('button', { name: `${name} 이름 수정`, exact: true }),
@@ -101,14 +101,14 @@ test('shares winners, restores host picks, confirms WIN and clears picks on undo
   browser,
 }) => {
   await page.goto('/online/');
-  await page.getByLabel('이름', { exact: true }).fill('Alice');
+  await page.getByLabel('내 이름', { exact: true }).fill('Alice');
   await page.getByRole('button', { name: '방 만들기', exact: true }).click();
   const code = await page.getByTestId('room-code').textContent();
   const context = await browser.newContext();
   try {
     const guest = await context.newPage();
     await guest.goto(`/online/?code=${code}`);
-    await guest.getByLabel('이름', { exact: true }).fill('Bob');
+    await guest.getByLabel('내 이름', { exact: true }).fill('Bob');
     await guest.getByRole('button', { name: '방 참가', exact: true }).click();
     await expect(page.locator('.seat')).toHaveCount(2);
     await expect(page.locator('.seat .disconnected')).toHaveCount(0);

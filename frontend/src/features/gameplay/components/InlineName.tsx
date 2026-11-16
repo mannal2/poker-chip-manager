@@ -8,11 +8,13 @@ export function InlineName({
 }: {
   name: string;
   busy: boolean;
-  onSave: (name: string) => boolean | Promise<boolean>;
+  // 문자열을 돌려주면 저장을 거절한 이유로 보고 편집을 유지한 채 입력 아래에 띄운다
+  onSave: (name: string) => boolean | string | Promise<boolean>;
   onEditing: (editing: boolean, finish?: () => Promise<boolean>) => void;
 }) {
   const [editing, setEditing] = useState(false),
-    [draft, setDraft] = useState(name);
+    [draft, setDraft] = useState(name),
+    [refusal, setRefusal] = useState('');
   const composing = useRef(false),
     skipBlur = useRef(false),
     value = useRef(name),
@@ -24,6 +26,7 @@ export function InlineName({
   useLayoutEffect(() => () => editingCallback.current(false), []);
   // 편집 모드를 닫고 편집 종료를 알린다
   function close() {
+    setRefusal('');
     setEditing(false);
     onEditing(false);
   }
@@ -32,6 +35,10 @@ export function InlineName({
     if (pending.current) return pending.current;
     if (skipBlur.current || composing.current || busy) return Promise.resolve(false);
     const result = onSave(value.current);
+    if (typeof result === 'string') {
+      setRefusal(result);
+      return Promise.resolve(false);
+    }
     if (result === false) return Promise.resolve(false);
     skipBlur.current = true;
     close();
@@ -48,35 +55,44 @@ export function InlineName({
       onClick={(e) => e.stopPropagation()}
     >
       {editing ? (
-        <input
-          autoFocus
-          aria-label={name + ' 이름 수정'}
-          disabled={busy}
-          value={draft}
-          maxLength={10}
-          onFocus={(e) => e.target.select()}
-          onChange={(e) => {
-            value.current = e.target.value;
-            setDraft(value.current);
-          }}
-          onCompositionStart={() => {
-            composing.current = true;
-          }}
-          onCompositionEnd={() => {
-            composing.current = false;
-          }}
-          onBlur={save}
-          onKeyDown={(e) => {
-            e.stopPropagation();
-            if (e.key === 'Escape') {
-              skipBlur.current = true;
-              close();
-            } else if (e.key === 'Enter' && !e.nativeEvent.isComposing && !composing.current) {
-              e.preventDefault();
-              save();
-            }
-          }}
-        />
+        <>
+          <input
+            autoFocus
+            aria-label={name + ' 이름 수정'}
+            {...(refusal ? { 'aria-invalid': true, 'aria-describedby': 'inline-name-error' } : {})}
+            disabled={busy}
+            value={draft}
+            maxLength={10}
+            onFocus={(e) => e.target.select()}
+            onChange={(e) => {
+              value.current = e.target.value;
+              setDraft(value.current);
+              setRefusal('');
+            }}
+            onCompositionStart={() => {
+              composing.current = true;
+            }}
+            onCompositionEnd={() => {
+              composing.current = false;
+            }}
+            onBlur={save}
+            onKeyDown={(e) => {
+              e.stopPropagation();
+              if (e.key === 'Escape') {
+                skipBlur.current = true;
+                close();
+              } else if (e.key === 'Enter' && !e.nativeEvent.isComposing && !composing.current) {
+                e.preventDefault();
+                save();
+              }
+            }}
+          />
+          {refusal && (
+            <span role="alert" id="inline-name-error" className="inline-name-error">
+              {refusal}
+            </span>
+          )}
+        </>
       ) : (
         <button
           type="button"

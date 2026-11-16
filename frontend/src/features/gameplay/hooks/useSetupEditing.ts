@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { validateSettings, type GameSettings } from '../../../game/settings';
+import { renameError, validateSettings, type GameSettings } from '../../../game/settings';
 import type { GameCommand, GameState } from '../../../game/types';
 import { useSeatDrag } from './useSeatDrag';
 import { messageFor } from '../model/errorMessages';
@@ -80,6 +80,11 @@ export function useSetupEditing({
     s?.status === 'setup'
       ? (id: string, name: string) => {
           if (busy || isLocked()) return false;
+          const reason = renameError(
+            name,
+            s.players.filter((p) => p.id !== id).map((p) => p.name),
+          );
+          if (reason) return messageFor(reason);
           const v = validateSettings({
             ...s.settings,
             names: s.players.map((p) => (p.id === id ? name : p.name)),

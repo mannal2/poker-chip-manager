@@ -26,6 +26,18 @@ export function normalizeName(raw: string): string | null {
   const name = raw.trim().normalize('NFC');
   return /^[가-힣ㄱ-ㅣa-zA-Z0-9 ]{1,10}$/.test(name) ? name : null;
 }
+// 한 사람의 새 이름이 규칙에 맞지 않거나 다른 이름과 대소문자 무시로 겹치는 이유를 돌려준다
+export function renameError(
+  name: string,
+  others: string[],
+): 'INVALID_NAME' | 'DUPLICATE_NAME' | null {
+  const normalized = normalizeName(name);
+  if (normalized === null) return 'INVALID_NAME';
+  const lowered = normalized.toLowerCase();
+  return others.some((other) => other.trim().normalize('NFC').toLowerCase() === lowered)
+    ? 'DUPLICATE_NAME'
+    : null;
+}
 // 이름을 정규화하고 이름/칩/좌석 규칙을 검사해 검증 결과를 돌려준다
 export function validateSettings(input: GameSettings): SettingsValidation {
   const names = input.names.map((n) => n.trim().normalize('NFC'));

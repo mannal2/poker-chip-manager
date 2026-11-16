@@ -299,8 +299,27 @@
   line-height: calc(14 * var(--u));
 }
 .inline-name:has(input) {
+  position: relative;
   display: block;
   width: 100%;
+}
+.inline-name-error {
+  position: absolute;
+  top: calc(100% + 4 * var(--u));
+  left: 0;
+  z-index: 5;
+  width: max-content;
+  max-width: calc(220 * var(--u));
+  padding: calc(6 * var(--u)) calc(8 * var(--u));
+  border: calc(1 * var(--u)) solid var(--gold);
+  border-radius: calc(8 * var(--u));
+  background: var(--bg);
+  color: var(--gold);
+  font-size: calc(12 * var(--u));
+  font-weight: 600;
+  line-height: 1.35;
+  white-space: normal;
+  text-align: left;
 }
 .inline-name input {
   -webkit-touch-callout: default;

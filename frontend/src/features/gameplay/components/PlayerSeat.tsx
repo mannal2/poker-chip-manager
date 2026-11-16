@@ -52,7 +52,7 @@ export function PlayerSeat({
   handlers?: HTMLAttributes<HTMLElement>;
   busy?: boolean;
   onSelect?: (id: string) => void;
-  onRename?: (id: string, name: string) => boolean | Promise<boolean>;
+  onRename?: (id: string, name: string) => boolean | string | Promise<boolean>;
   onNameEditing?: (id: string, editing: boolean, finish?: () => Promise<boolean>) => void;
   editScope?: string;
   targetState?: 'eligible' | 'selected' | 'disabled';

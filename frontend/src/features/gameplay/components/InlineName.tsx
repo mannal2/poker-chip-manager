@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState } from 'react';
+import { useId, useLayoutEffect, useRef, useState } from 'react';
 // 이름을 그 자리에서 눌러 수정하는 입력 컴포넌트
 export function InlineName({
   name,
@@ -14,7 +14,8 @@ export function InlineName({
 }) {
   const [editing, setEditing] = useState(false),
     [draft, setDraft] = useState(name),
-    [refusal, setRefusal] = useState('');
+    [refusal, setRefusal] = useState(''),
+    refusalId = useId();
   const composing = useRef(false),
     skipBlur = useRef(false),
     value = useRef(name),
@@ -59,7 +60,7 @@ export function InlineName({
           <input
             autoFocus
             aria-label={name + ' 이름 수정'}
-            {...(refusal ? { 'aria-invalid': true, 'aria-describedby': 'inline-name-error' } : {})}
+            {...(refusal ? { 'aria-invalid': true, 'aria-describedby': refusalId } : {})}
             disabled={busy}
             value={draft}
             maxLength={10}
@@ -88,7 +89,7 @@ export function InlineName({
             }}
           />
           {refusal && (
-            <span role="alert" id="inline-name-error" className="inline-name-error">
+            <span role="alert" id={refusalId} className="inline-name-error">
               {refusal}
             </span>
           )}

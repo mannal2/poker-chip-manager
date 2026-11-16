@@ -52,6 +52,33 @@ it('clears the refusal message on the next edit', async () => {
   expect(host.querySelector('[role="alert"]')).toBeNull();
   expect(input.getAttribute('aria-invalid')).toBeNull();
 });
+// 두 편집 칸이 동시에 거절되어도 각 칸은 자기 거절 문구를 가리킨다
+it('links each refused editor to its own message', async () => {
+  const editor = (name: string, reason: string) => (
+    <InlineName name={name} busy={false} onSave={() => reason} onEditing={() => {}} />
+  );
+  await act(() =>
+    root.render(
+      <>
+        {editor('Ann', '첫 번째 이유')}
+        {editor('Ben', '두 번째 이유')}
+      </>,
+    ),
+  );
+  for (const button of [...host.querySelectorAll<HTMLButtonElement>('button')])
+    await act(() => button.click());
+  for (const input of [...host.querySelectorAll<HTMLInputElement>('input')]) {
+    await act(() => type(input, 'Zed'));
+    await act(() => {
+      input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    });
+  }
+  const inputs = [...host.querySelectorAll<HTMLInputElement>('input')];
+  const messages = inputs.map(
+    (input) => host.querySelector(`[id="${input.getAttribute('aria-describedby')}"]`)?.textContent,
+  );
+  expect(messages).toEqual(['첫 번째 이유', '두 번째 이유']);
+});
 // 저장에 성공하면 편집을 닫는다
 it('closes the editor when saving succeeds', async () => {
   await editAndSave(() => true);

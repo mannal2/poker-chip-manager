@@ -173,9 +173,23 @@ select {
   border-radius: calc(12 * var(--u));
   font-size: calc(13 * var(--u));
 }
+/* Part of the configuration verified on an iPhone against iOS 26's top blur in the installed app: without
+   viewport-fit=cover nothing sits behind the status bar, and this fixed, opaque strip at the top edge (a
+   condition WebKit reportedly checks before drawing the blur) never takes a touch. */
+.top-edge {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: max(env(safe-area-inset-top), 8px);
+  background: var(--bg);
+  pointer-events: none;
+  z-index: 40;
+}
 .toast {
   position: fixed;
-  bottom: calc(24 * var(--u));
+  /* With viewport-fit=cover the screen edge sits under the home indicator. */
+  bottom: calc(24 * var(--u) + env(safe-area-inset-bottom));
   left: 50%;
   transform: translateX(-50%);
   background: #f0e9d8;

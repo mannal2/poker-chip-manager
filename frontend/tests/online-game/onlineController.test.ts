@@ -1758,7 +1758,7 @@ it('shows the too-many-screens notice until a snapshot arrives', async () => {
   const x = setup();
   await x.enter();
   x.h.onTooManyScreens!();
-  expect(x.c.getView().error).toContain('열린 화면이 너무 많습니다');
+  expect(x.c.getView().error).toBe('지금은 서버 연결이 많습니다. 잠시 후 자동으로 다시 연결합니다.');
   x.h.onSnapshot({ type: 'SNAPSHOT', previousVersion: null, events: [], state: x.entry.state });
   expect(x.c.getView().error).toBeNull();
 });
@@ -1781,4 +1781,18 @@ it.each([false, true])('blocks reload until a pending draft=%s request settles',
   await work;
   await new Promise((resolve) => setTimeout(resolve));
   expect(x.c.canReload()).toBe(true);
+});
+
+// 밀려난 화면은 replaced로 표시하고 다음 스냅샷에서 online으로 돌아온다
+it('marks a replaced screen and returns to online on the next snapshot', async () => {
+  const x = setup();
+  await x.enter();
+  expect(x.c.getView().connection).toBe('online');
+  x.h.onState('waiting');
+  x.h.onReplaced!();
+  expect(x.c.getView().connection).toBe('replaced');
+  x.h.onState('connecting');
+  x.h.onState('open');
+  x.h.onSnapshot({ type: 'SNAPSHOT', previousVersion: null, events: [], state: x.entry.state });
+  expect(x.c.getView().connection).toBe('online');
 });

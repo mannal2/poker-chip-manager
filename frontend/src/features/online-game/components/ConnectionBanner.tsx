@@ -8,6 +8,13 @@ export function ConnectionBanner({
   view: OnlineView;
   controller: OnlineController;
 }) {
+  if (view.connection === 'replaced')
+    return (
+      <div className="notice" role="status">
+        다른 화면이 이 자리에 연결되어 이 화면의 연결을 멈췄습니다.{' '}
+        <button onClick={() => controller.reconnect()}>이 화면에서 다시 연결</button>
+      </div>
+    );
   if (view.connection !== 'online')
     return (
       <div className="notice" role="status">

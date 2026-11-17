@@ -43,7 +43,7 @@ export interface OnlineView {
   phase: 'entry' | 'joining' | 'recovering' | 'room' | 'gone' | 'revoked' | 'incompatible';
   snapshot: RoomSnapshot | null;
   effectsFromVersion?: number | null;
-  connection: 'online' | 'syncing' | 'offline';
+  connection: 'online' | 'syncing' | 'offline' | 'replaced';
   hasControl: boolean;
   pending: boolean;
   recovery: RecoveryStatus | null;
@@ -66,7 +66,7 @@ type Request = {
 };
 const CONNECTION_ERROR = '서버에 연결하지 못했습니다. 연결 상태를 확인해 주세요.';
 const UNKNOWN_RESULT = '요청 결과를 확인하지 못했습니다. 다시 확인해 주세요.';
-const TOO_MANY_SCREENS = '열린 화면이 너무 많습니다. 사용하지 않는 화면을 닫아 주세요.';
+const TOO_MANY_SCREENS = '지금은 서버 연결이 많습니다. 잠시 후 자동으로 다시 연결합니다.';
 const LOST_ROOM_CODES = ['NO_SESSION', 'ROOM_NOT_FOUND'];
 
 // 서버 상태와 요청 원장 및 화면 수명을 함께 관리한다
@@ -353,6 +353,10 @@ export class OnlineController {
       // 연결 한도로 거절된 화면에 재연결이 멈추지 않는 이유를 안내한다
       onTooManyScreens: () => {
         if (epoch === this.epoch) this.update({ error: TOO_MANY_SCREENS });
+      },
+      // 다른 화면에 밀려 멈춘 화면임을 표시해 다시 연결 안내를 띄운다
+      onReplaced: () => {
+        if (epoch === this.epoch && this.active) this.update({ connection: 'replaced' });
       },
       // 열린 소켓에서도 스냅샷을 받기 전에는 조작을 잠근다
       onState: (state) => {

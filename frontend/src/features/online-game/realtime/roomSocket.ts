@@ -16,9 +16,12 @@ export interface RoomSocketHandlers {
   onState(state: SocketState): void;
   // 서버가 연결 수 한도로 이 화면을 받지 못했음을 전달한다
   onTooManyScreens?(): void;
+  // 같은 자리나 브라우저의 새 화면에 밀려 연결이 멈췄음을 전달한다
+  onReplaced?(): void;
 }
 
 const TRY_LATER = 1013;
+const REPLACED = 4001;
 
 // 재연결 횟수에 따라 최대 15초 기준의 지터 지연을 계산한다
 export function reconnectDelay(attempt: number, random: () => number): number {
@@ -33,6 +36,8 @@ export class RoomSocket {
   private handshake: ReturnType<typeof setTimeout> | undefined;
   private stopped = false;
   private offline = false;
+  // 다른 화면에 밀려 멈춘 동안에는 화면이 다시 쓰일 때까지 스스로 연결하지 않는다
+  private replaced = false;
   private attempt = 0;
   private reconnectTimer: ReturnType<typeof setTimeout> | undefined;
   private watchdog: ReturnType<typeof setTimeout> | undefined;
@@ -84,6 +89,7 @@ export class RoomSocket {
 
   // 수동 재접속과 화면 복귀 모두 기존 자리의 접속을 유지하며 구독을 교체한다
   reconnect(): void {
+    this.replaced = false;
     if (!this.stopped && !this.offline) {
       if (this.retained) {
         this.resync();
@@ -125,7 +131,7 @@ export class RoomSocket {
 
   // 새 소켓의 이벤트만 허용하고 이전 소켓의 콜백을 무시한다
   private connect(): void {
-    if (this.stopped || this.offline) return;
+    if (this.stopped || this.offline || this.replaced) return;
     const previous = this.socket;
     this.setState('connecting');
     if (this.stopped || this.socket !== previous) return;
@@ -145,6 +151,7 @@ export class RoomSocket {
     socket.onclose = (event) => {
       if (socket === this.retained) this.retained = null;
       if (this.socket !== socket || this.stopped) return;
+      if (event.code === REPLACED) return this.pause();
       if (event.code === TRY_LATER) this.handlers.onTooManyScreens?.();
       this.recoverHandshake();
     };
@@ -214,6 +221,18 @@ export class RoomSocket {
   private boundHandshake(): void {
     clearTimeout(this.handshake);
     this.handshake = setTimeout(() => this.recoverHandshake(), 10000);
+  }
+
+  // 다른 화면에 밀린 연결을 정리하고 재연결 예약 없이 멈춘다
+  private pause(): void {
+    this.replaced = true;
+    clearTimeout(this.reconnectTimer);
+    clearTimeout(this.handshake);
+    clearTimeout(this.watchdog);
+    this.releaseRetained();
+    this.socket = null;
+    this.setState('waiting');
+    if (!this.stopped) this.handlers.onReplaced?.();
   }
 
   // 끊어진 소켓을 폐기하고 다음 재연결을 예약한다

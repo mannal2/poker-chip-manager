@@ -372,3 +372,60 @@ it('reports a full server close and keeps retrying', () => {
   expect(FakeSocket.instances.at(-1)).not.toBe(first);
   socket.close();
 });
+
+// 밀려난 화면 테스트에 쓰는 소켓을 열린 상태로 만든다
+function replacedSetup() {
+  const onReplaced = vi.fn();
+  const handlers = {
+    onSnapshot: vi.fn(),
+    onFinal: vi.fn(),
+    onPing: vi.fn(),
+    onState: vi.fn(),
+    onReplaced,
+  };
+  const socket = new RoomSocket('ws://test', handlers);
+  socket.subscribe('room', 1);
+  const first = FakeSocket.instances.at(-1)!;
+  first.open();
+  first.close(4001);
+  return { socket, first, handlers, onReplaced };
+}
+// 다른 화면에 밀려나면 알리고 자동으로 다시 연결하지 않는다
+it('stops reconnecting after being replaced', () => {
+  const { socket, first, handlers, onReplaced } = replacedSetup();
+  expect(onReplaced).toHaveBeenCalledOnce();
+  expect(handlers.onState).toHaveBeenLastCalledWith('waiting');
+  vi.advanceTimersByTime(60000);
+  expect(FakeSocket.instances.at(-1)).toBe(first);
+  socket.close();
+});
+// 밀려난 화면이 다시 보이면 연결을 되찾는다
+it('reconnects a replaced screen when it becomes visible', () => {
+  const { socket, first } = replacedSetup();
+  visibility.dispatchEvent(new Event('visibilitychange'));
+  expect(FakeSocket.instances.at(-1)).not.toBe(first);
+  socket.close();
+});
+// 밀려난 화면에서 다시 연결을 누르면 연결을 되찾는다
+it('reconnects a replaced screen on a manual retry', () => {
+  const { socket, first } = replacedSetup();
+  socket.reconnect();
+  const next = FakeSocket.instances.at(-1)!;
+  expect(next).not.toBe(first);
+  next.open();
+  next.close(1001);
+  vi.advanceTimersByTime(1500);
+  expect(FakeSocket.instances.at(-1)).not.toBe(next);
+  socket.close();
+});
+// 밀려난 동안 네트워크가 끊겼다 돌아와도 멈춘 상태를 유지하고 재연결 중으로 바뀌지 않는다
+it('stays paused through a network flip while replaced', () => {
+  const { socket, first, handlers } = replacedSetup();
+  const calls = handlers.onState.mock.calls.length;
+  window.dispatchEvent(new Event('offline'));
+  window.dispatchEvent(new Event('online'));
+  vi.advanceTimersByTime(60000);
+  expect(handlers.onState.mock.calls.length).toBe(calls);
+  expect(FakeSocket.instances.at(-1)).toBe(first);
+  socket.close();
+});

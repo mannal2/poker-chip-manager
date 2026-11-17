@@ -306,24 +306,4 @@ class ConnectionTest {
 
         assertThat(seen).succeedsWithin(Duration.ofSeconds(5)).isEqualTo(true);
     }
-
-    // 한 세션의 아홉 번째 연결은 거부하되 다른 세션은 허용하는지 확인한다
-    @Test
-    void theHubRefusesTheNinthConnectionOfASessionButNotAnotherSession() {
-        ConnectionHub hub = new ConnectionHub();
-        List<Connection> all = new ArrayList<>();
-        for (int i = 0; i < 8; i++) {
-            all.add(connected(hub, "c" + i, "busy", new FakeSocket()));
-        }
-
-        Connection ninth = Connection.open("ninth", "busy", new FakeSocket(), clock, c -> { });
-        assertThat(hub.register(ninth)).isFalse();
-        assertThat(hub.connections()).hasSize(8);
-        all.add(connected(hub, "other", "calm", new FakeSocket()));
-
-        hub.unregister(all.getFirst());
-        assertThat(hub.register(ninth)).isTrue();
-        ninth.close();
-        all.forEach(Connection::close);
-    }
 }

@@ -16,6 +16,7 @@ import java.time.Clock;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
@@ -415,25 +416,39 @@ class RoomSocketHttpTest {
         assertThat(hostScreen.closed).isNotDone();
     }
 
-    // 참가자의 다섯 번째 연결은 닫히고 나머지 네 개는 유지되는지 확인한다
+    // 다섯 번째 화면은 받아들이고 같은 자리에서 가장 오래 응답 없는 화면을 4001로 닫는지 확인한다
     @Test
-    void theFifthConnectionOfAParticipantIsClosedAndTheOtherFourStay() throws Exception {
+    void theFifthScreenReplacesTheStalestOfTheSameSeat() throws Exception {
         Browser host = host();
+        Browser guest = guest(host, "Guest");
+        Screen guestScreen = guest.subscribed();
         List<Screen> four = new ArrayList<>();
+        List<Connection> fourConnections = new ArrayList<>();
         for (int i = 0; i < 4; i++) {
+            Set<Connection> before = Set.copyOf(hub.connections());
             four.add(host.subscribed());
+            fourConnections.add(hub.connections().stream().filter(c -> !before.contains(c)).findFirst().orElseThrow());
+        }
+        Thread.sleep(20);
+        for (int i = 0; i < 4; i++) {
+            if (i != 1) {
+                fourConnections.get(i).ping("n", 1L);
+                fourConnections.get(i).pong("n");
+            }
         }
 
         Screen fifth = host.open();
         fifth.say(host.subscribeTo(host.roomId, 1));
+        fifth.next("SNAPSHOT");
 
-        assertThat(fifth.awaitClosed()).isEqualTo(1013);
-        await().atMost(WAIT).until(() -> hub.connections().size() == 4);
-        for (Screen screen : four) {
-            screen.say("{\"type\":\"RESYNC\"}");
-            screen.next("SNAPSHOT");
+        assertThat(four.get(1).awaitClosed()).isEqualTo(4001);
+        await().atMost(WAIT).until(() -> connectionCount(host) == 4);
+        for (int i : new int[] {0, 2, 3}) {
+            assertThat(four.get(i).closed).isNotDone();
         }
-        assertThat(connectionCount(host)).isEqualTo(4);
+        guestScreen.say("{\"type\":\"RESYNC\"}");
+        guestScreen.next("SNAPSHOT");
+        assertThat(connected(host.state(), host)).isTrue();
     }
 
     // 한도를 넘는 수신 메시지는 연결을 닫고 아무것도 바꾸지 않는지 확인한다
@@ -734,23 +749,24 @@ class RoomSocketHttpTest {
                 .anyMatch(task -> task.contains("HeartbeatTask.tick"));
     }
 
-    // 세션의 아홉 번째 소켓만 닫히고 나머지와 다른 세션은 무사한지 확인한다
+    // 세션의 아홉 번째 소켓은 받아들이고 가장 오래된 소켓을 4001로 닫으며 다른 세션은 무사한지 확인한다
     @Test
-    void theNinthSocketOfASessionIsClosedAndTheOthersAndOtherSessionsAreFine() throws Exception {
+    void theNinthSocketOfASessionReplacesTheStalest() throws Exception {
         Browser host = host();
         List<Screen> eight = new ArrayList<>();
         for (int i = 0; i < 8; i++) {
             eight.add(host.open());
+            int opened = i + 1;
+            await().atMost(WAIT).until(() -> hub.connections().size() == opened);
         }
-        await().atMost(WAIT).until(() -> hub.connections().size() == 8);
 
         Screen ninth = host.open();
 
-        assertThat(ninth.awaitClosed()).isEqualTo(1013);
+        assertThat(eight.getFirst().awaitClosed()).isEqualTo(4001);
         await().atMost(WAIT).until(() -> hub.connections().size() == 8);
-        eight.getFirst().say(host.subscribeTo(host.roomId, 1));
-        eight.getFirst().next("SNAPSHOT");
-        eight.forEach(screen -> assertThat(screen.closed).isNotDone());
+        ninth.say(host.subscribeTo(host.roomId, 1));
+        ninth.next("SNAPSHOT");
+        eight.subList(1, 8).forEach(screen -> assertThat(screen.closed).isNotDone());
         Browser bob = guest(host, "Bob");
         bob.subscribed();
     }

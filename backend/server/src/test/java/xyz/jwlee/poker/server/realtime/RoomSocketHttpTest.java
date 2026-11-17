@@ -734,23 +734,24 @@ class RoomSocketHttpTest {
                 .anyMatch(task -> task.contains("HeartbeatTask.tick"));
     }
 
-    // 세션의 아홉 번째 소켓만 닫히고 나머지와 다른 세션은 무사한지 확인한다
+    // 세션의 아홉 번째 소켓은 받아들이고 가장 오래된 소켓을 4001로 닫으며 다른 세션은 무사한지 확인한다
     @Test
-    void theNinthSocketOfASessionIsClosedAndTheOthersAndOtherSessionsAreFine() throws Exception {
+    void theNinthSocketOfASessionReplacesTheStalest() throws Exception {
         Browser host = host();
         List<Screen> eight = new ArrayList<>();
         for (int i = 0; i < 8; i++) {
             eight.add(host.open());
+            int opened = i + 1;
+            await().atMost(WAIT).until(() -> hub.connections().size() == opened);
         }
-        await().atMost(WAIT).until(() -> hub.connections().size() == 8);
 
         Screen ninth = host.open();
 
-        assertThat(ninth.awaitClosed()).isEqualTo(1013);
+        assertThat(eight.getFirst().awaitClosed()).isEqualTo(4001);
         await().atMost(WAIT).until(() -> hub.connections().size() == 8);
-        eight.getFirst().say(host.subscribeTo(host.roomId, 1));
-        eight.getFirst().next("SNAPSHOT");
-        eight.forEach(screen -> assertThat(screen.closed).isNotDone());
+        ninth.say(host.subscribeTo(host.roomId, 1));
+        ninth.next("SNAPSHOT");
+        eight.subList(1, 8).forEach(screen -> assertThat(screen.closed).isNotDone());
         Browser bob = guest(host, "Bob");
         bob.subscribed();
     }

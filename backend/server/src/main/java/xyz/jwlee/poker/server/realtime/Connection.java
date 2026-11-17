@@ -6,6 +6,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
@@ -33,9 +34,12 @@ public final class Connection {
     static final int CLOSE_POLICY = 1008;
     static final int CLOSE_TOO_BIG = 1009;
     static final int CLOSE_TRY_LATER = 1013;
+    // 같은 자리나 세션의 새 연결에 밀려 닫힌 연결. 화면은 다시 쓰일 때까지 재연결하지 않는다
+    static final int CLOSE_REPLACED = 4001;
 
     private static final int MAX_MESSAGE_BYTES = 256 * 1024;
     private static final Logger LOG = LoggerFactory.getLogger(Connection.class);
+    private static final AtomicLong SERIALS = new AtomicLong();
 
     // 연결이 쓰는 소켓의 전송과 닫기
     public interface Socket {
@@ -71,6 +75,7 @@ public final class Connection {
     private volatile Instant lastPong;
     private volatile Instant lastPing;
     private final Instant openedAt;
+    private final long serial = SERIALS.incrementAndGet();
     private volatile String roomId;
 
     // 소켓과 식별자로 연결 하나를 만든다
@@ -114,6 +119,8 @@ public final class Connection {
     Instant lastPing() { return lastPing; }
     // 연결이 열린 시각을 돌려준다
     Instant openedAt() { return openedAt; }
+    // 연결이 만들어진 순번을 돌려준다. 작을수록 먼저 열렸다
+    long serial() { return serial; }
 
     // 진행 중인 전송의 시작 시각을 돌려준다
     public Optional<Instant> sendingSince() {

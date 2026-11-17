@@ -64,8 +64,9 @@ public final class ConnectionHub implements RoomPublisher {
         if (connections.size() >= MAX_CONNECTIONS) {
             return false;
         }
+        // 닫히는 중인 연결은 곧 목록에서 빠지므로 세지 않는다
         List<Connection> sameSession = connections.values().stream()
-                .filter(other -> other.sessionId().equals(connection.sessionId())).toList();
+                .filter(other -> other.sessionId().equals(connection.sessionId()) && !other.isClosed()).toList();
         if (sameSession.size() >= MAX_CONNECTIONS_PER_SESSION) {
             stalest(sameSession).ifPresent(victim -> {
                 connections.remove(victim.connectionId(), victim);

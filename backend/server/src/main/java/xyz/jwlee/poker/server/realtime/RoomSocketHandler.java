@@ -2,6 +2,7 @@ package xyz.jwlee.poker.server.realtime;
 
 import java.io.IOException;
 import java.time.Clock;
+import java.util.List;
 import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -50,7 +51,7 @@ class RoomSocketHandler extends TextWebSocketHandler {
     private static final JsonMapper JSON = JsonMapper.builder().build();
 
     // 방 잠금 안에서 내린 구독 판정
-    private enum Subscription { ACCEPTED, NO_SEAT, FULL, CLOSING }
+    private enum Subscription { ACCEPTED, NO_SEAT, CLOSING }
 
     // Spring 소켓을 연결이 쓰는 소켓으로 맞춘다
     private record SpringSocket(WebSocketSession session) implements Connection.Socket {
@@ -182,27 +183,41 @@ class RoomSocketHandler extends TextWebSocketHandler {
         }
         switch (result) {
             case NO_SEAT -> connection.offerFinal(ConnectionHub.control("ACCESS_REVOKED"));
-            case FULL -> connection.close(Connection.CLOSE_TRY_LATER);
             case ACCEPTED, CLOSING -> { }
         }
     }
 
     // 구독 판정을 내리고 받아들이면 연결을 붙인다. 호출자가 방 잠금을 잡고 있다
+    /**
+     * At the per-seat limit the new screen wins: the seat's connection silent the longest is closed with
+     * {@link Connection#CLOSE_REPLACED}. Closing runs on its own thread and detaches later under this same lock,
+     * while the seat keeps the new connection, so the participant never reads as disconnected.
+     */
     private Subscription attachInRoom(Room room, Connection connection, SeatBinding binding) {
         Optional<Participant> seat = room.seatOf(binding);
         if (seat.isEmpty()) {
             return Subscription.NO_SEAT;
         }
-        String participantId = seat.get().participantId();
-        if (room.presence().connectionCount(participantId) >= MAX_CONNECTIONS_PER_PARTICIPANT) {
-            return Subscription.FULL;
-        }
         if (connection.isClosed()) {
             return Subscription.CLOSING;
         }
+        String participantId = seat.get().participantId();
+        replaceStalestAtLimit(room, participantId);
         RoomLifecycle.connected(room, participantId, connection.connectionId(), env);
         room.requestSnapshot(connection.connectionId());
         return Subscription.ACCEPTED;
+    }
+
+    // 자리의 살아 있는 연결이 한도면 가장 오래 응답 없는 연결을 4001로 닫는다. 호출자가 방 잠금을 잡고 있다
+    /** Counts only connections not already closing, whose detach may still be on its way to this lock. */
+    private void replaceStalestAtLimit(Room room, String participantId) {
+        List<Connection> live = room.presence().subscribers().entrySet().stream()
+                .filter(e -> e.getValue().equals(participantId))
+                .map(e -> hub.find(e.getKey())).flatMap(Optional::stream)
+                .filter(c -> !c.isClosed()).toList();
+        if (live.size() >= MAX_CONNECTIONS_PER_PARTICIPANT) {
+            ConnectionHub.stalest(live).ifPresent(victim -> victim.close(Connection.CLOSE_REPLACED));
+        }
     }
 
     // 방이 없다는 거절이 아니면 그대로 다시 던진다

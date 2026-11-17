@@ -93,6 +93,21 @@ class ConnectionHubTest {
         assertThat(hub.connections()).contains(other).hasSize(9);
     }
 
+    // 닫히는 중이라 아직 목록에 남은 연결은 세지 않아 살아 있는 연결을 밀어내지 않는다
+    @Test
+    void doesNotCountAClosingConnection() {
+        Connection closing = Connection.open("closing", "s", new FakeSocket(), clock, c -> { });
+        assertThat(hub.register(closing)).isTrue();
+        closing.close();
+        for (int i = 0; i < 7; i++) {
+            assertThat(hub.register(open("s"))).isTrue();
+        }
+
+        assertThat(hub.register(open("s"))).isTrue();
+
+        assertThat(opened).noneMatch(Connection::isClosed);
+    }
+
     // 서버 전체 한도는 지금처럼 새 연결을 거절한다
     @Test
     void stillRefusesNewConnectionsAtTheServerLimit() {

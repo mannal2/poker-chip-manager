@@ -184,6 +184,16 @@ public final class Connection {
         }
     }
 
+    // 보낸 PING의 응답을 아직 기다리는지 확인한다. 살아 있는 화면은 곧바로 답하므로 죽은 연결의 신호다
+    boolean awaitingPong() {
+        lock.lock();
+        try {
+            return expectedNonce != null;
+        } finally {
+            lock.unlock();
+        }
+    }
+
     // 기다리던 nonce의 응답이면 마지막 응답 시각을 갱신한다
     void pong(String nonce) {
         lock.lock();

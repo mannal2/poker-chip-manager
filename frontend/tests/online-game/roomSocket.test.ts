@@ -418,3 +418,14 @@ it('reconnects a replaced screen on a manual retry', () => {
   expect(FakeSocket.instances.at(-1)).not.toBe(next);
   socket.close();
 });
+// 밀려난 동안 네트워크가 끊겼다 돌아와도 멈춘 상태를 유지하고 재연결 중으로 바뀌지 않는다
+it('stays paused through a network flip while replaced', () => {
+  const { socket, first, handlers } = replacedSetup();
+  const calls = handlers.onState.mock.calls.length;
+  window.dispatchEvent(new Event('offline'));
+  window.dispatchEvent(new Event('online'));
+  vi.advanceTimersByTime(60000);
+  expect(handlers.onState.mock.calls.length).toBe(calls);
+  expect(FakeSocket.instances.at(-1)).toBe(first);
+  socket.close();
+});

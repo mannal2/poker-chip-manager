@@ -108,13 +108,15 @@ export class RoomSocket {
   // 브라우저의 연결 끊김 알림으로 소켓 종료를 기다리지 않고 조작을 잠근다
   private onOffline = (): void => {
     this.offline = true;
-    if (!this.stopped) this.wait();
+    // 밀려나 멈춘 화면은 재연결 중으로 바꾸지 않고 멈춤 안내를 유지한다
+    if (!this.stopped && !this.replaced) this.wait();
   };
 
   // 네트워크 복귀 시 예약된 지연을 해제하고 최신 상태를 다시 구독한다
   private onOnline = (): void => {
     if (this.stopped || !this.offline) return;
     this.offline = false;
+    if (this.replaced) return;
     clearTimeout(this.reconnectTimer);
     clearTimeout(this.watchdog);
     const socket = this.socket;

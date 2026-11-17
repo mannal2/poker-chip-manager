@@ -77,10 +77,15 @@ public final class ConnectionHub implements RoomPublisher {
         return true;
     }
 
-    // 닫히지 않은 후보 중 마지막 응답이 가장 오래된 연결을 고르고, 같으면 먼저 열린 연결을 고른다
+    // 닫히지 않은 후보 중 PING 응답을 기다리는 연결을 먼저, 그다음 마지막 응답이 가장 오래된 연결을 고른다
+    /**
+     * A live screen answers a PING at once, so an unanswered one marks a socket iOS froze even when it is younger
+     * than a live socket whose last PONG is up to one ping interval old. Ties go to the earliest opened.
+     */
     static Optional<Connection> stalest(Collection<Connection> candidates) {
         return candidates.stream().filter(c -> !c.isClosed())
-                .min(Comparator.comparing(Connection::lastPong).thenComparingLong(Connection::serial));
+                .min(Comparator.comparing((Connection c) -> !c.awaitingPong())
+                        .thenComparing(Connection::lastPong).thenComparingLong(Connection::serial));
     }
 
     // 연결 식별자로 열린 연결을 찾는다

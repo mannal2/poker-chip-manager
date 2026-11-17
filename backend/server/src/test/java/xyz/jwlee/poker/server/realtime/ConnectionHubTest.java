@@ -62,6 +62,27 @@ class ConnectionHubTest {
         assertThat(hub.connections()).hasSize(8).doesNotContain(eight.get(2));
     }
 
+    // 답을 기다리는 PING이 있는 연결은 마지막 응답이 더 최근이어도 먼저 밀어낸다
+    @Test
+    void evictsAConnectionWithAnUnansweredPingFirst() throws Exception {
+        List<Connection> seven = new ArrayList<>();
+        for (int i = 0; i < 7; i++) {
+            Connection c = open("s");
+            assertThat(hub.register(c)).isTrue();
+            answer(c);
+            seven.add(c);
+        }
+        clock.advance(Duration.ofSeconds(10));
+        Connection silent = open("s");
+        assertThat(hub.register(silent)).isTrue();
+        silent.ping("unanswered", 1L);
+
+        assertThat(hub.register(open("s"))).isTrue();
+
+        assertThat(sockets.get(7).awaitClosed()).isEqualTo(Connection.CLOSE_REPLACED);
+        assertThat(seven).noneMatch(Connection::isClosed);
+    }
+
     // 응답 시각이 같으면 먼저 열린 연결을 밀어낸다
     @Test
     void breaksTiesByOpeningOrder() throws Exception {

@@ -46,7 +46,7 @@ export interface GameState {
   settings: GameSettings;
   initialTotal: number;
   setupOrder?: string[];
-  formerPlayers?: { id: string; name: string }[];
+  formerPlayers?: { id: string; name: string; entry: number; reason: 'replaced' | 'cancelled' }[];
   players: Player[];
   hand: Hand | null;
   pot: number;

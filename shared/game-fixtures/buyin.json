@@ -372,7 +372,14 @@
     },
     "expectedStateSubset": {
       "initialTotal": 4000,
-      "formerPlayers": [],
+      "formerPlayers": [
+        {
+          "id": "p4",
+          "name": "Dan",
+          "entry": 1,
+          "reason": "cancelled"
+        }
+      ],
       "players": [
         {},
         {
@@ -515,6 +522,240 @@
     },
     "expectedStateSubset": {
       "status": "ended"
+    },
+    "expectedError": "INVALID_ACTION",
+    "expectedEvents": []
+  },
+  {
+    "id": "BUY20",
+    "suite": "buyin",
+    "description": "자리를 빼앗긴 탈락자도 재입장할 수 있다",
+    "initialState": {
+      "names": ["A", "B", "C", "D"],
+      "initial": 1000,
+      "sb": 5,
+      "bb": 10,
+      "button": 0
+    },
+    "commands": [
+      {
+        "type": "START_TOURNAMENT"
+      },
+      {
+        "type": "ALL_IN"
+      },
+      {
+        "type": "FOLD"
+      },
+      {
+        "type": "CALL"
+      },
+      {
+        "type": "FOLD"
+      },
+      {
+        "type": "SETTLE_HAND",
+        "winners": {
+          "pot0": ["p3"]
+        }
+      },
+      {
+        "type": "BUY_IN",
+        "name": "Dan",
+        "placement": {
+          "kind": "replace",
+          "playerId": "p1"
+        }
+      },
+      {
+        "type": "BUY_IN",
+        "reentryOf": "p1",
+        "placement": {
+          "kind": "between",
+          "after": "p2"
+        }
+      }
+    ],
+    "context": {
+      "id": "BUY20",
+      "at": "2026-11-19T00:00:00Z"
+    },
+    "expectedStateSubset": {
+      "initialTotal": 6000,
+      "formerPlayers": [
+        {
+          "id": "p1",
+          "name": "B",
+          "entry": 1,
+          "reason": "replaced"
+        }
+      ],
+      "players": [
+        {},
+        {
+          "id": "p4",
+          "name": "Dan"
+        },
+        {},
+        {
+          "id": "p5",
+          "name": "B",
+          "entry": 2,
+          "joining": "next-hand"
+        },
+        {}
+      ]
+    },
+    "expectedError": null,
+    "expectedEvents": ["BUY_IN"]
+  },
+  {
+    "id": "BUY21",
+    "suite": "buyin",
+    "description": "between 바이인을 취소하면 좌석 번호가 돌아오고 id는 다시 쓰이지 않는다",
+    "initialState": {
+      "names": ["A", "B", "C", "D"],
+      "initial": 1000,
+      "sb": 5,
+      "bb": 10,
+      "button": 2
+    },
+    "commands": [
+      {
+        "type": "START_TOURNAMENT"
+      },
+      {
+        "type": "BUY_IN",
+        "name": "Dan",
+        "placement": {
+          "kind": "between",
+          "after": "p0"
+        }
+      },
+      {
+        "type": "CANCEL_BUY_IN",
+        "playerId": "p4",
+        "expectedStateSubset": {
+          "initialTotal": 4000,
+          "hand": {
+            "buttonSeat": 2,
+            "sbSeat": 3,
+            "bbSeat": 0
+          },
+          "players": [
+            {
+              "id": "p0"
+            },
+            {
+              "id": "p1"
+            },
+            {
+              "id": "p2"
+            },
+            {
+              "id": "p3"
+            }
+          ],
+          "formerPlayers": [
+            {
+              "id": "p4",
+              "name": "Dan",
+              "entry": 1,
+              "reason": "cancelled"
+            }
+          ]
+        }
+      },
+      {
+        "type": "BUY_IN",
+        "name": "Dan",
+        "placement": {
+          "kind": "between",
+          "after": "p0"
+        }
+      }
+    ],
+    "context": {
+      "id": "BUY21",
+      "at": "2026-11-19T00:00:00Z"
+    },
+    "expectedStateSubset": {
+      "initialTotal": 5000,
+      "hand": {
+        "buttonSeat": 3,
+        "sbSeat": 4,
+        "bbSeat": 0
+      },
+      "players": [
+        {
+          "id": "p0"
+        },
+        {
+          "id": "p5",
+          "name": "Dan"
+        },
+        {
+          "id": "p1"
+        },
+        {
+          "id": "p2"
+        },
+        {
+          "id": "p3"
+        }
+      ],
+      "formerPlayers": [
+        {
+          "id": "p4",
+          "reason": "cancelled"
+        }
+      ]
+    },
+    "expectedError": null,
+    "expectedEvents": ["BUY_IN", "BUY_IN_CANCEL"]
+  },
+  {
+    "id": "BUY22",
+    "suite": "buyin",
+    "description": "취소된 바이인 id로는 재입장할 수 없다",
+    "initialState": {
+      "names": ["A", "B", "C", "D"],
+      "initial": 1000,
+      "sb": 5,
+      "bb": 10,
+      "button": 2
+    },
+    "commands": [
+      {
+        "type": "START_TOURNAMENT"
+      },
+      {
+        "type": "BUY_IN",
+        "name": "Dan",
+        "placement": {
+          "kind": "between",
+          "after": "p0"
+        }
+      },
+      {
+        "type": "CANCEL_BUY_IN",
+        "playerId": "p4"
+      },
+      {
+        "type": "BUY_IN",
+        "reentryOf": "p4",
+        "placement": {
+          "kind": "between",
+          "after": "p0"
+        }
+      }
+    ],
+    "context": {
+      "id": "BUY22",
+      "at": "2026-11-19T00:00:00Z"
+    },
+    "expectedStateSubset": {
+      "initialTotal": 4000
     },
     "expectedError": "INVALID_ACTION",
     "expectedEvents": []

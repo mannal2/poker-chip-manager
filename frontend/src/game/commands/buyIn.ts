@@ -22,11 +22,16 @@ function shiftSeats(s: GameState, from: number, by: 1 | -1) {
 // 바이인 명령을 검증해 새 플레이어를 자리에 앉히고 칩 합계를 늘린다
 const buyIn: CommandHandler<'BUY_IN'> = (s, cmd, c, events) => {
   requireRule(s.status === 'playing');
-  const target = cmd.reentryOf ? s.players.find((p) => p.id === cmd.reentryOf) : undefined;
+  // A re-entry target is an eliminated player still seated or one whose seat a newcomer took.
+  const seated = cmd.reentryOf ? s.players.find((p) => p.id === cmd.reentryOf) : undefined;
+  const former = cmd.reentryOf
+    ? (s.formerPlayers ?? []).find((p) => p.id === cmd.reentryOf && p.reason === 'replaced')
+    : undefined;
+  const target = seated ?? former;
   let name: string;
   if (cmd.reentryOf) {
-    requireRule(target?.eliminated);
-    name = target.name;
+    requireRule(seated ? seated.eliminated : former);
+    name = target!.name;
   } else {
     const normalized = typeof cmd.name === 'string' ? normalizeName(cmd.name) : null;
     requireRule(normalized !== null, 'INVALID_NAMES');
@@ -70,7 +75,10 @@ const buyIn: CommandHandler<'BUY_IN'> = (s, cmd, c, events) => {
   } else {
     const [old] = s.players.splice(index, 1, player);
     player.replaced = old;
-    s.formerPlayers = [...(s.formerPlayers ?? []), { id: old.id, name: old.name }];
+    s.formerPlayers = [
+      ...(s.formerPlayers ?? []),
+      { id: old.id, name: old.name, entry: old.entry ?? 1, reason: 'replaced' as const },
+    ];
   }
   s.initialTotal += s.settings.initial;
   s.undo = null;
@@ -87,14 +95,15 @@ const cancelBuyIn: CommandHandler<'CANCEL_BUY_IN'> = (s, cmd, c, events) => {
   requireRule(s.status === 'playing');
   const index = s.players.findIndex((p) => p.id === cmd.playerId);
   requireRule(index >= 0 && s.players[index].joining);
-  const { replaced } = s.players[index];
-  if (replaced) {
-    s.players[index] = replaced;
-    s.formerPlayers = (s.formerPlayers ?? []).filter((p) => p.id !== replaced.id);
-  } else {
+  const { replaced, id, name, entry } = s.players[index];
+  const former = (s.formerPlayers ?? []).filter((p) => p.id !== replaced?.id);
+  if (replaced) s.players[index] = replaced;
+  else {
     s.players.splice(index, 1);
     shiftSeats(s, index + 1, -1);
   }
+  // Keep the cancelled id reserved so later buy-ins never reuse it in the event history.
+  s.formerPlayers = [...former, { id, name, entry: entry ?? 1, reason: 'cancelled' }];
   s.initialTotal -= s.settings.initial;
   s.undo = null;
   emit(s, c, events, 'BUY_IN_CANCEL', { playerId: cmd.playerId });

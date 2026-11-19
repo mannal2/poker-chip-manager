@@ -55,12 +55,12 @@ const buyIn: CommandHandler<'BUY_IN'> = (s, cmd, c, events) => {
       'INVALID_SEATS',
     );
   }
-  // A returning person's entry follows the highest entry ever recorded under the same name.
+  // A returning person's entry follows the highest entry ever recorded under the same name; cancelled buy-ins do not count.
   const entry =
     1 +
     (cmd.reentryOf
       ? Math.max(
-          ...[...s.players, ...(s.formerPlayers ?? [])]
+          ...[...s.players, ...(s.formerPlayers ?? []).filter((p) => p.reason !== 'cancelled')]
             .filter((p) => p.name.toLowerCase() === name.toLowerCase())
             .map((p) => p.entry ?? 1),
         )

@@ -763,7 +763,7 @@
   {
     "id": "BUY23",
     "suite": "buyin",
-    "description": "같은 옛 id로 다시 재입장하면 entry가 겹치지 않는다",
+    "description": "취소된 재입장은 entry를 쓰지 않아 다시 재입장해도 entry가 2다",
     "initialState": {
       "names": ["A", "B", "C", "D"],
       "initial": 1000,
@@ -844,7 +844,7 @@
         {
           "id": "p5",
           "name": "B",
-          "entry": 3,
+          "entry": 2,
           "joining": "next-hand"
         },
         {}

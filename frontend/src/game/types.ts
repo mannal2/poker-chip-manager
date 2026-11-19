@@ -1,5 +1,8 @@
 import type { GameSettings } from './settings';
 import type { LegalReasonCode, RuleErrorCode } from './errors';
+// 바이인한 사람이 앉을 자리(어느 사람 뒤 또는 탈락자 자리)
+export type BuyInPlacement =
+  { kind: 'between'; after: string } | { kind: 'replace'; playerId: string };
 // 플레이어 한 명의 스택과 베팅 상태
 export interface Player {
   id: string;
@@ -12,6 +15,9 @@ export interface Player {
   H: number;
   actedAt: number | null;
   reopenAt: number;
+  entry?: number;
+  joining?: 'next-hand' | 'button';
+  replaced?: Player;
 }
 // 핸드의 단계(베팅 중 또는 정산 대기)
 export type Phase = 'betting' | 'settlement';
@@ -40,6 +46,7 @@ export interface GameState {
   settings: GameSettings;
   initialTotal: number;
   setupOrder?: string[];
+  formerPlayers?: { id: string; name: string }[];
   players: Player[];
   hand: Hand | null;
   pot: number;
@@ -57,6 +64,8 @@ export type GameCommand =
   | { type: 'BET' | 'RAISE'; additional: number; playerId?: string }
   | { type: 'SETTLE_HAND'; winners: WinnerSelection }
   | { type: 'SCHEDULE_BLINDS'; sb: number; bb: number }
+  | { type: 'BUY_IN'; name?: string; placement: BuyInPlacement; reentryOf?: string }
+  | { type: 'CANCEL_BUY_IN'; playerId: string }
   | { type: 'UNDO' | 'ABORT' };
 // 한 번의 전이에 쓰이는 식별자와 시각
 export interface TransitionContext {

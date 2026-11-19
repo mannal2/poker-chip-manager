@@ -19,4 +19,5 @@ export type RuleErrorCode =
   | 'DEALER_REQUIRED'
   | 'INVALID_SETTINGS'
   | 'UNDO_LOCKED'
+  | SettingsErrorCode
   | SettlementErrorCode;

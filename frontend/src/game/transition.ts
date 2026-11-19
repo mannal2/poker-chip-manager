@@ -10,6 +10,7 @@ import { Invalid, requireRule, type CommandHandler } from './rule';
 import { setupHandlers } from './commands/setup';
 import { bettingHandlers } from './commands/betting';
 import { flowHandlers } from './commands/flow';
+import { buyInHandlers } from './commands/buyIn';
 
 export { createTournament } from './tournament';
 export { getLegalActions } from './legal';
@@ -20,6 +21,7 @@ const handlers: { [K in GameCommand['type']]: CommandHandler<K> } = {
   ...setupHandlers,
   ...bettingHandlers,
   ...flowHandlers,
+  ...buyInHandlers,
 };
 /** Player actions and payouts that can be undone once. */
 const undoable = ['CHECK', 'CALL', 'BET', 'RAISE', 'FOLD', 'ALL_IN', 'SETTLE_HAND'];

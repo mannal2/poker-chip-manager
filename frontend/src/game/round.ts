@@ -1,5 +1,5 @@
 import type { GameEvent, GameState, TransitionContext, WinnerSelection } from './types';
-import { nextSeat, nextPositions, initialBlindSeats } from './positions';
+import { nextSeat, nextPositions, initialBlindSeats, isBetweenButtonAndSb } from './positions';
 import { buildPots, previewSettlement } from './settlement';
 import { requireRule } from './rule';
 
@@ -106,13 +106,38 @@ export function finishRound(s: GameState, c: TransitionContext, events: GameEven
   if (h.showdown) h.phase = 'settlement';
   else advanceStreet(s, c, events);
 }
+// 대기자를 참여시킬지 정하고 참여 중인 생존자 기준으로 위치를 계산한다
+function seatJoiners(s: GameState, previous: GameState['hand']) {
+  const playing = () => s.players.map((p) => !p.eliminated && !p.joining);
+  const compute = (alive: boolean[]) =>
+    previous
+      ? nextPositions(alive, previous)
+      : { buttonSeat: s.settings.button, ...initialBlindSeats(s.settings.button, alive) };
+  const joiners = s.players.filter((p) => p.joining);
+  let position = compute(playing());
+  if (!joiners.length) return position;
+  const deal = (p: GameState['players'][number]) => {
+    delete p.joining;
+    delete p.replaced;
+  };
+  if (playing().filter(Boolean).length < 2) joiners.forEach(deal);
+  else {
+    const size = s.players.length;
+    for (const p of joiners) {
+      const seat = s.players.indexOf(p);
+      if (!isBetweenButtonAndSb(seat, position.buttonSeat, position.sbSeat, size)) deal(p);
+      else p.joining = 'button';
+    }
+    if (joiners.some((p) => !p.joining)) position = compute(playing());
+    return position;
+  }
+  return compute(playing());
+}
 // 새 핸드를 만들고 블라인드를 낸 뒤 첫 차례를 정한다
 export function startHand(s: GameState, c: TransitionContext, events: GameEvent[]) {
   const previous = s.hand,
-    alive = s.players.map((p) => !p.eliminated);
-  const position = previous
-    ? nextPositions(alive, previous)
-    : { buttonSeat: s.settings.button, ...initialBlindSeats(s.settings.button, alive) };
+    position = seatJoiners(s, previous),
+    alive = s.players.map((p) => !p.eliminated && !p.joining);
   const blinds =
     s.pendingBlinds ??
     (previous ? { sb: previous.sb, bb: previous.bb } : { sb: s.settings.sb, bb: s.settings.bb });
@@ -120,7 +145,7 @@ export function startHand(s: GameState, c: TransitionContext, events: GameEvent[
   s.players.forEach((p) => {
     p.B = 0;
     p.H = 0;
-    p.folded = false;
+    p.folded = !!p.joining;
     p.actedAt = null;
     p.reopenAt = 0;
   });
@@ -137,7 +162,7 @@ export function startHand(s: GameState, c: TransitionContext, events: GameEvent[
     actorId: null,
     W: blinds.bb,
     R: blinds.bb,
-    pending: s.players.filter((p) => !p.eliminated && p.stack > 0).map((p) => p.id),
+    pending: s.players.filter((p, i) => alive[i] && p.stack > 0).map((p) => p.id),
     showdown: false,
   };
   for (const [seat, amount] of [

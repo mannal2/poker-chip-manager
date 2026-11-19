@@ -852,5 +852,432 @@
     },
     "expectedError": null,
     "expectedEvents": ["BUY_IN", "BUY_IN_CANCEL"]
+  },
+  {
+    "id": "BUY11",
+    "suite": "buyin",
+    "description": "헤즈업에서 바이인하면 다음 핸드에 세 명이 함께 시작한다",
+    "initialState": {
+      "names": ["A", "B"],
+      "initial": 1000,
+      "sb": 5,
+      "bb": 10,
+      "button": 0
+    },
+    "commands": [
+      {
+        "type": "START_TOURNAMENT"
+      },
+      {
+        "type": "BUY_IN",
+        "name": "Dan",
+        "placement": {
+          "kind": "between",
+          "after": "p1"
+        }
+      },
+      {
+        "type": "FOLD"
+      }
+    ],
+    "context": {
+      "id": "BUY11",
+      "at": "2026-11-19T00:00:00Z"
+    },
+    "expectedStateSubset": {
+      "hand": {
+        "number": 2,
+        "buttonSeat": 0,
+        "sbSeat": 1,
+        "bbSeat": 2
+      },
+      "players": [
+        {},
+        {},
+        {
+          "id": "p2",
+          "name": "Dan",
+          "folded": false
+        }
+      ]
+    },
+    "expectedError": null,
+    "expectedEvents": ["BUY_IN"]
+  },
+  {
+    "id": "BUY12",
+    "suite": "buyin",
+    "description": "버튼과 SB 사이에 앉은 새 사람은 버튼이 지나갈 때까지 기다린다",
+    "initialState": {
+      "names": ["A", "B", "C", "D"],
+      "initial": 1000,
+      "sb": 5,
+      "bb": 10,
+      "button": 0
+    },
+    "commands": [
+      {
+        "type": "START_TOURNAMENT"
+      },
+      {
+        "type": "BUY_IN",
+        "name": "Dan",
+        "placement": {
+          "kind": "between",
+          "after": "p1"
+        }
+      },
+      {
+        "type": "FOLD"
+      },
+      {
+        "type": "FOLD"
+      },
+      {
+        "type": "FOLD"
+      }
+    ],
+    "context": {
+      "id": "BUY12",
+      "at": "2026-11-19T00:00:00Z"
+    },
+    "expectedStateSubset": {
+      "hand": {
+        "number": 2,
+        "buttonSeat": 1,
+        "sbSeat": 3,
+        "bbSeat": 4,
+        "pending": ["p0", "p1", "p2", "p3"]
+      },
+      "players": [
+        {},
+        {},
+        {
+          "id": "p4",
+          "stack": 1000,
+          "B": 0,
+          "H": 0,
+          "folded": true,
+          "joining": "button"
+        },
+        {},
+        {}
+      ]
+    },
+    "expectedError": null,
+    "expectedEvents": ["BUY_IN"]
+  },
+  {
+    "id": "BUY13",
+    "suite": "buyin",
+    "description": "기다리던 사람은 버튼이 지나간 다음 핸드에 카드를 받는다",
+    "initialState": {
+      "names": ["A", "B", "C", "D"],
+      "initial": 1000,
+      "sb": 5,
+      "bb": 10,
+      "button": 0
+    },
+    "commands": [
+      {
+        "type": "START_TOURNAMENT"
+      },
+      {
+        "type": "BUY_IN",
+        "name": "Dan",
+        "placement": {
+          "kind": "between",
+          "after": "p1"
+        }
+      },
+      {
+        "type": "FOLD"
+      },
+      {
+        "type": "FOLD"
+      },
+      {
+        "type": "FOLD"
+      },
+      {
+        "type": "FOLD"
+      },
+      {
+        "type": "FOLD"
+      },
+      {
+        "type": "FOLD"
+      }
+    ],
+    "context": {
+      "id": "BUY13",
+      "at": "2026-11-19T00:00:00Z"
+    },
+    "expectedStateSubset": {
+      "hand": {
+        "number": 3,
+        "buttonSeat": 3,
+        "sbSeat": 4,
+        "bbSeat": 0
+      },
+      "players": [
+        {},
+        {},
+        {
+          "id": "p4",
+          "folded": false
+        },
+        {},
+        {}
+      ]
+    },
+    "expectedError": null,
+    "expectedEvents": ["BUY_IN"]
+  },
+  {
+    "id": "BUY14",
+    "suite": "buyin",
+    "description": "대기자가 있으면 한 명이 탈락해도 토너먼트가 끝나지 않고 바로 헤즈업이 된다",
+    "initialState": {
+      "names": ["A", "B"],
+      "initial": 1000,
+      "sb": 5,
+      "bb": 10,
+      "button": 0
+    },
+    "commands": [
+      {
+        "type": "START_TOURNAMENT"
+      },
+      {
+        "type": "BUY_IN",
+        "name": "Dan",
+        "placement": {
+          "kind": "between",
+          "after": "p1"
+        }
+      },
+      {
+        "type": "ALL_IN"
+      },
+      {
+        "type": "CALL"
+      },
+      {
+        "type": "SETTLE_HAND",
+        "winners": {
+          "pot0": ["p0"]
+        }
+      }
+    ],
+    "context": {
+      "id": "BUY14",
+      "at": "2026-11-19T00:00:00Z"
+    },
+    "expectedStateSubset": {
+      "status": "playing",
+      "hand": {
+        "number": 2,
+        "buttonSeat": 0,
+        "sbSeat": 0,
+        "bbSeat": 2
+      },
+      "players": [
+        {
+          "id": "p0"
+        },
+        {
+          "id": "p1",
+          "eliminated": true
+        },
+        {
+          "id": "p2",
+          "folded": false
+        }
+      ]
+    },
+    "expectedError": null,
+    "expectedEvents": ["BUY_IN"]
+  },
+  {
+    "id": "BUY15",
+    "suite": "buyin",
+    "description": "새 사람이 다음 핸드의 BB 자리면 바로 BB를 낸다",
+    "initialState": {
+      "names": ["A", "B", "C", "D"],
+      "initial": 1000,
+      "sb": 5,
+      "bb": 10,
+      "button": 0
+    },
+    "commands": [
+      {
+        "type": "START_TOURNAMENT"
+      },
+      {
+        "type": "BUY_IN",
+        "name": "Dan",
+        "placement": {
+          "kind": "between",
+          "after": "p2"
+        }
+      },
+      {
+        "type": "FOLD"
+      },
+      {
+        "type": "FOLD"
+      },
+      {
+        "type": "FOLD"
+      }
+    ],
+    "context": {
+      "id": "BUY15",
+      "at": "2026-11-19T00:00:00Z"
+    },
+    "expectedStateSubset": {
+      "hand": {
+        "number": 2,
+        "buttonSeat": 1,
+        "sbSeat": 2,
+        "bbSeat": 3
+      },
+      "players": [
+        {},
+        {},
+        {},
+        {
+          "id": "p4",
+          "stack": 990,
+          "B": 10,
+          "folded": false
+        },
+        {}
+      ]
+    },
+    "expectedError": null,
+    "expectedEvents": ["BUY_IN"]
+  },
+  {
+    "id": "BUY24",
+    "suite": "buyin",
+    "description": "재입장한 사람이 다시 탈락한 뒤 원래 탈락자 id로 재입장하면 entry가 3이 된다",
+    "initialState": {
+      "names": ["A", "B", "C", "D"],
+      "initial": 1000,
+      "sb": 5,
+      "bb": 10,
+      "button": 0
+    },
+    "commands": [
+      {
+        "type": "START_TOURNAMENT"
+      },
+      {
+        "type": "ALL_IN"
+      },
+      {
+        "type": "FOLD"
+      },
+      {
+        "type": "CALL"
+      },
+      {
+        "type": "FOLD"
+      },
+      {
+        "type": "SETTLE_HAND",
+        "winners": {
+          "pot0": ["p3"]
+        }
+      },
+      {
+        "type": "BUY_IN",
+        "reentryOf": "p1",
+        "placement": {
+          "kind": "between",
+          "after": "p3"
+        }
+      },
+      {
+        "type": "FOLD"
+      },
+      {
+        "type": "FOLD"
+      },
+      {
+        "type": "ALL_IN"
+      },
+      {
+        "type": "FOLD"
+      },
+      {
+        "type": "FOLD"
+      },
+      {
+        "type": "CALL"
+      },
+      {
+        "type": "SETTLE_HAND",
+        "winners": {
+          "pot0": ["p0"]
+        }
+      },
+      {
+        "type": "BUY_IN",
+        "reentryOf": "p1",
+        "placement": {
+          "kind": "between",
+          "after": "p4"
+        },
+        "expectedStateSubset": {
+          "players": [
+            {},
+            {
+              "id": "p1",
+              "eliminated": true
+            },
+            {},
+            {},
+            {
+              "id": "p4",
+              "eliminated": true,
+              "entry": 2
+            },
+            {
+              "id": "p5",
+              "name": "B",
+              "entry": 3,
+              "joining": "next-hand"
+            }
+          ]
+        }
+      }
+    ],
+    "context": {
+      "id": "BUY24",
+      "at": "2026-11-19T00:00:00Z"
+    },
+    "expectedStateSubset": {
+      "players": [
+        {},
+        {
+          "id": "p1"
+        },
+        {},
+        {},
+        {
+          "id": "p4",
+          "entry": 2
+        },
+        {
+          "id": "p5",
+          "entry": 3
+        }
+      ]
+    },
+    "expectedError": null,
+    "expectedEvents": ["BUY_IN", "ELIMINATED"]
   }
 ]

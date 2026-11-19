@@ -48,3 +48,9 @@ it('예전 공개 단계 저장은 지원하지 않는 형식으로 원본을 �
     expect(saved).toEqual(original);
   }
 });
+it('바이인으로 참가자와 총량이 늘어난 저장도 복원한다', () => {
+  const state = fixtureState();
+  state.players.push({ ...structuredClone(state.players[0]), id: 'p9', name: 'Carol', entry: 1 });
+  state.initialTotal += state.settings.initial;
+  expect(() => validateStored({ schemaVersion: 1, rulesVersion: 1, eventSequence: 0, state })).not.toThrow();
+});

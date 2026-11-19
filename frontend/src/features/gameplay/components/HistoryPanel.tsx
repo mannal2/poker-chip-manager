@@ -5,17 +5,19 @@ import { historyRows } from '../model/history';
 export function HistoryPanel({
   events,
   players,
+  formerPlayers,
   error,
   loading,
 }: {
   events: GameEvent[];
   players: Player[];
+  formerPlayers?: { id: string; name: string }[];
   error: string;
   loading: boolean;
 }) {
   const [reversed, setReversed] = useState(false),
     [limit, setLimit] = useState(50);
-  const rows = historyRows(events, players);
+  const rows = historyRows(events, [...players, ...(formerPlayers ?? [])]);
   if (reversed) rows.reverse();
   const shown = rows.slice(0, limit);
   return (

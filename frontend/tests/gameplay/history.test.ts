@@ -164,3 +164,32 @@ it('폴드 종료는 쇼다운을 만들지 않고 올인 조기 정산은 가�
   expect(allin).not.toContain('턴');
   expect(allin).not.toContain('리버');
 });
+
+// 바이인, 재입장, 취소 기록 문구를 검증한다
+it('writes buy-in, re-entry and cancel rows', () => {
+  const rows = historyRows(
+    [
+      event('BUY_IN', { playerId: 'a', entry: 1 }),
+      event('BUY_IN', { playerId: 'b', entry: 2, reentryOf: 'x' }),
+      event('BUY_IN_CANCEL', { playerId: 'a' }),
+    ],
+    [
+      { id: 'a', name: 'P1' },
+      { id: 'b', name: 'P2' },
+    ],
+  );
+  expect(rows.filter((r) => r.kind === 'action').map((r) => r.text)).toEqual([
+    'P1 - 바이인',
+    'P2 - 재입장(2번째)',
+    'P1 - 바이인 취소',
+  ]);
+});
+
+// 자리를 내준 플레이어의 이름도 기록에 남는다
+it('keeps names of former players in history', () => {
+  const rows = historyRows(
+    [event('BUY_IN', { playerId: 'gone', entry: 1 })],
+    [{ id: 'gone', name: 'Old' }],
+  );
+  expect(rows.map((r) => r.text)).toContain('Old - 바이인');
+});

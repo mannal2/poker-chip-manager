@@ -12,5 +12,5 @@ export function GameHistoryPanel({
   state: GameState;
 }) {
   const history = useEventHistory(loadEvents, state.tournamentId);
-  return <HistoryPanel {...history} players={state.players} />;
+  return <HistoryPanel {...history} players={state.players} formerPlayers={state.formerPlayers} />;
 }

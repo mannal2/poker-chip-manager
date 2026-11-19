@@ -15,6 +15,7 @@ export interface CardPlayer {
   pending?: boolean;
   eligible?: boolean;
   disconnected?: boolean;
+  entry?: number;
 }
 
 // 큰 칩 금액을 만/억 단위의 축약 문자열로 만든다
@@ -66,7 +67,7 @@ export function PlayerSeat({
       data-player={p.id}
       className={`seat ${p.active ? 'active' : ''} ${p.selected ? 'selected' : ''} ${p.out || p.folded ? 'out' : ''} ${pressed ? 'pressing' : ''} ${dragReady ? 'drag-ready' : ''} ${dragging ? 'dragging' : ''} ${targetState ? `target-${targetState}` : ''}`}
       style={style}
-      aria-label={`${p.name}${p.active ? ' 현재 차례' : ''}${p.folded ? ' 폴드' : ''}${p.out ? ' 탈락' : ''}${p.disconnected ? ' 연결 끊김' : ''}`}
+      aria-label={`${p.name}${p.active ? ' 현재 차례' : ''}${p.folded ? ' 폴드' : ''}${p.out ? ' 탈락' : ''}${p.disconnected ? ' 연결 끊김' : ''}${p.entry && p.entry > 1 ? ` ${p.entry}번째 참가` : ''}`}
       disabled={targetState ? targetState === 'disabled' || busy : undefined}
       aria-pressed={
         targetState ? targetState === 'selected' : phase === 'settlement' ? !!p.selected : undefined
@@ -95,6 +96,7 @@ export function PlayerSeat({
         ) : (
           p.name
         )}
+        {p.entry && p.entry > 1 && <small className="entry-count">×{p.entry}</small>}
       </div>
       <Values
         className="card-values"

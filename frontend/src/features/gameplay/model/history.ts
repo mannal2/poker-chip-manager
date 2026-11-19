@@ -58,14 +58,22 @@ export function historyRows(
       auto?: boolean;
       byHost?: boolean;
       shares?: Record<string, number>;
+      entry?: number;
     };
     if (
       !event.hand ||
       !(
         actions[event.type] ||
-        ['HAND_START', 'STREET', 'PAYOUT', 'RETURN', 'FORFEIT', 'FORFEIT_SPLIT'].includes(
-          event.type,
-        ) ||
+        [
+          'HAND_START',
+          'STREET',
+          'PAYOUT',
+          'RETURN',
+          'FORFEIT',
+          'FORFEIT_SPLIT',
+          'BUY_IN',
+          'BUY_IN_CANCEL',
+        ].includes(event.type) ||
         (event.type === 'REVEAL' && d.showdown)
       )
     )
@@ -113,6 +121,18 @@ export function historyRows(
         kind: 'action',
         text: `${name(d.playerId)} - 기권${d.byHost ? '(방장 처리)' : ''}`,
       });
+    } else if (event.type === 'BUY_IN' && d.playerId) {
+      rows.push({
+        id: event.id,
+        hand,
+        kind: 'action',
+        text:
+          (d.entry ?? 1) === 1
+            ? `${name(d.playerId)} - 바이인`
+            : `${name(d.playerId)} - 재입장(${d.entry}번째)`,
+      });
+    } else if (event.type === 'BUY_IN_CANCEL' && d.playerId) {
+      rows.push({ id: event.id, hand, kind: 'action', text: `${name(d.playerId)} - 바이인 취소` });
     } else if (event.type === 'RETURN' && d.playerId) {
       rows.push({
         id: event.id,

@@ -434,3 +434,8 @@ button.card-values {
   font-size: calc(12 * var(--u));
   pointer-events: none;
 }
+.seat .entry-count {
+  margin-left: calc(3 * var(--u));
+  font-size: calc(var(--card-text) * 0.7 * var(--u));
+  opacity: 0.7;
+}

@@ -759,5 +759,98 @@
     },
     "expectedError": "INVALID_ACTION",
     "expectedEvents": []
+  },
+  {
+    "id": "BUY23",
+    "suite": "buyin",
+    "description": "같은 옛 id로 다시 재입장하면 entry가 겹치지 않는다",
+    "initialState": {
+      "names": ["A", "B", "C", "D"],
+      "initial": 1000,
+      "sb": 5,
+      "bb": 10,
+      "button": 0
+    },
+    "commands": [
+      {
+        "type": "START_TOURNAMENT"
+      },
+      {
+        "type": "ALL_IN"
+      },
+      {
+        "type": "FOLD"
+      },
+      {
+        "type": "CALL"
+      },
+      {
+        "type": "FOLD"
+      },
+      {
+        "type": "SETTLE_HAND",
+        "winners": {
+          "pot0": ["p3"]
+        }
+      },
+      {
+        "type": "BUY_IN",
+        "reentryOf": "p1",
+        "placement": {
+          "kind": "between",
+          "after": "p2"
+        },
+        "expectedStateSubset": {
+          "players": [
+            {},
+            {
+              "id": "p1"
+            },
+            {},
+            {
+              "id": "p4",
+              "name": "B",
+              "entry": 2
+            },
+            {}
+          ]
+        }
+      },
+      {
+        "type": "CANCEL_BUY_IN",
+        "playerId": "p4"
+      },
+      {
+        "type": "BUY_IN",
+        "reentryOf": "p1",
+        "placement": {
+          "kind": "between",
+          "after": "p2"
+        }
+      }
+    ],
+    "context": {
+      "id": "BUY23",
+      "at": "2026-11-19T00:00:00Z"
+    },
+    "expectedStateSubset": {
+      "players": [
+        {},
+        {
+          "id": "p1",
+          "eliminated": true
+        },
+        {},
+        {
+          "id": "p5",
+          "name": "B",
+          "entry": 3,
+          "joining": "next-hand"
+        },
+        {}
+      ]
+    },
+    "expectedError": null,
+    "expectedEvents": ["BUY_IN", "BUY_IN_CANCEL"]
   }
 ]

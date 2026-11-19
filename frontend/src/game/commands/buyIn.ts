@@ -55,7 +55,16 @@ const buyIn: CommandHandler<'BUY_IN'> = (s, cmd, c, events) => {
       'INVALID_SEATS',
     );
   }
-  const entry = (target ? (target.entry ?? 1) : 0) + 1;
+  // A returning person's entry follows the highest entry ever recorded under the same name.
+  const entry =
+    1 +
+    (cmd.reentryOf
+      ? Math.max(
+          ...[...s.players, ...(s.formerPlayers ?? [])]
+            .filter((p) => p.name.toLowerCase() === name.toLowerCase())
+            .map((p) => p.entry ?? 1),
+        )
+      : 0);
   const player: Player = {
     id: nextPlayerId(s),
     name,

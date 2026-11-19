@@ -1,0 +1,188 @@
+import { useId, useState } from 'react';
+import { Dialog } from '../../../shared/ui/Dialog';
+import { Tabs } from '../../../shared/ui/Tabs';
+import { renameError } from '../../../game/settings';
+import { messageFor } from '../../gameplay/model/errorMessages';
+import { seatOptions } from '../model/buyIn';
+import type { GameCommand, GameState } from '../../../game/types';
+import '../styles/buyIn.css';
+
+type Mode = 'new' | 'reentry';
+const TABS: readonly { id: Mode; label: string }[] = [
+  { id: 'new', label: '새 플레이어' },
+  { id: 'reentry', label: '재입장' },
+];
+
+// 같은 이름은 가장 높은 입장 번호 하나로 모아 재입장 대상 목록을 만든다
+function reentryCandidates(state: GameState): { id: string; name: string; seated: boolean }[] {
+  const best = new Map<string, { id: string; name: string; entry: number; seated: boolean }>();
+  const consider = (c: { id: string; name: string; entry: number; seated: boolean }) => {
+    const key = c.name.toLowerCase();
+    const old = best.get(key);
+    if (!old || c.entry > old.entry || (c.entry === old.entry && c.seated && !old.seated))
+      best.set(key, c);
+  };
+  for (const p of state.players)
+    if (p.eliminated && !p.joining)
+      consider({ id: p.id, name: p.name, entry: p.entry ?? 1, seated: true });
+  for (const f of state.formerPlayers ?? [])
+    if (f.reason === 'replaced')
+      consider({ id: f.id, name: f.name, entry: f.entry, seated: false });
+  const alive = new Set(
+    state.players.filter((p) => !p.eliminated).map((p) => p.name.toLowerCase()),
+  );
+  return [...best.entries()]
+    .filter(([key]) => !alive.has(key))
+    .map(([, c]) => ({ id: c.id, name: c.name, seated: c.seated }));
+}
+
+// 새 플레이어나 탈락자를 자리에 앉히고 대기 중인 바이인을 취소하는 대화상자
+export function BuyInDialog({
+  state,
+  busy,
+  onSubmit,
+  onClose,
+  onDone,
+}: {
+  state: GameState;
+  busy: boolean;
+  onSubmit: (command: GameCommand) => Promise<boolean>;
+  onClose: () => void;
+  onDone?: (name: string) => void;
+}) {
+  const [mode, setMode] = useState<Mode>('new');
+  const [name, setName] = useState('');
+  const [target, setTarget] = useState<string | null>(null);
+  const [seatKey, setSeatKey] = useState('');
+  const errorId = useId();
+  const options = seatOptions(state);
+  const seat = options.find((o) => o.key === seatKey) ?? options[0];
+  const candidates = reentryCandidates(state);
+  const person = candidates.find((c) => c.id === target);
+  const others = state.players.filter((p) => !p.eliminated).map((p) => p.name);
+  const code = mode === 'new' && name !== '' ? renameError(name, others) : null;
+  const error = code ? messageFor(code) : '';
+  const ready = !busy && !!seat && (mode === 'new' ? name !== '' && !code : person !== undefined);
+  const waiting = state.players.filter((p) => p.joining);
+
+  // 입력한 내용으로 바이인 명령을 보내고 성공하면 닫는다
+  async function submit() {
+    if (!ready || !seat) return;
+    const command: GameCommand =
+      mode === 'new'
+        ? { type: 'BUY_IN', name, placement: seat.placement }
+        : { type: 'BUY_IN', placement: seat.placement, reentryOf: person!.id };
+    if (!(await onSubmit(command))) return;
+    const done = mode === 'new' ? name.trim() : person!.name;
+    onClose();
+    onDone?.(done);
+  }
+  // 재입장 대상을 고르고 자기 자리가 있으면 그 자리를 미리 고른다
+  function choose(id: string) {
+    setTarget(id);
+    if (candidates.find((c) => c.id === id)?.seated) setSeatKey(`replace:${id}`);
+  }
+
+  return (
+    <Dialog
+      title="바이인"
+      scrollable
+      onClose={onClose}
+      actions={
+        <button className="primary" disabled={!ready} onClick={() => void submit()}>
+          바이인
+        </button>
+      }
+    >
+      <div className="buy-in">
+        {waiting.length > 0 && (
+          <section>
+            <h3>대기 중인 바이인</h3>
+            <ul className="waiting">
+              {waiting.map((p) => (
+                <li key={p.id}>
+                  <span>{p.name}</span>
+                  <button
+                    disabled={busy}
+                    onClick={() => void onSubmit({ type: 'CANCEL_BUY_IN', playerId: p.id })}
+                  >
+                    바이인 취소
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+        <Tabs
+          tabs={TABS}
+          selected={mode}
+          onSelect={setMode}
+          disabled={busy}
+          label="바이인 방식"
+          idPrefix="buy-in"
+        />
+        <div role="tabpanel" id="buy-in-panel" aria-labelledby={`buy-in-tab-${mode}`}>
+          {mode === 'new' ? (
+            <div className="fields">
+              <label>
+                이름
+                <input
+                  value={name}
+                  disabled={busy}
+                  aria-invalid={error ? true : undefined}
+                  aria-describedby={error ? errorId : undefined}
+                  onChange={(e) => setName(e.target.value)}
+                />
+                <span className="hint">
+                  다른 플레이어에게 보이는 이름입니다. 한글·영문·숫자·공백 1~10자로 정해 주세요.
+                </span>
+                {error && (
+                  <span id={errorId} className="field-error" role="alert">
+                    {error}
+                  </span>
+                )}
+              </label>
+            </div>
+          ) : candidates.length === 0 ? (
+            <p>재입장할 탈락자가 없습니다.</p>
+          ) : (
+            <div className="reentry-list" role="radiogroup" aria-label="재입장할 탈락자">
+              {candidates.map((c) => (
+                <label key={c.id}>
+                  <span>{c.name}</span>
+                  <input
+                    type="radio"
+                    name="reentry"
+                    checked={target === c.id}
+                    disabled={busy}
+                    onChange={() => choose(c.id)}
+                  />
+                </label>
+              ))}
+            </div>
+          )}
+        </div>
+        <div className="fields">
+          <label>
+            자리
+            <select
+              value={seat?.key ?? ''}
+              disabled={busy}
+              onChange={(e) => setSeatKey(e.target.value)}
+            >
+              {options.map((o) => (
+                <option key={o.key} value={o.key}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+        <p className="guide">
+          시작 칩 {state.settings.initial}을 받고 다음 핸드부터 참여합니다. 버튼과 스몰 블라인드
+          사이 자리면 버튼이 지나간 뒤 참여합니다.
+        </p>
+      </div>
+    </Dialog>
+  );
+}

@@ -1,4 +1,5 @@
-import { useState, type KeyboardEvent, type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
+import { Tabs } from '../../../shared/ui/Tabs';
 import type { EntryField, OnlineController, OnlineView } from '../session/onlineController';
 
 // 영문과 숫자만 남긴 뒤 소문자를 대문자로 바꾼다
@@ -80,14 +81,6 @@ export function OnlineEntry({
     controller.clearFieldError('code');
     setTab(next);
   };
-  // 왼쪽·오른쪽 화살표로 탭을 옮긴다
-  const moveTab = (event: KeyboardEvent<HTMLDivElement>) => {
-    if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
-    event.preventDefault();
-    const next = tab === 'create' ? 'join' : 'create';
-    choose(next);
-    event.currentTarget.querySelector<HTMLButtonElement>(`#entry-tab-${next}`)?.focus();
-  };
   const nameInput = (
     <EntryInput field="name" label="내 이름" error={fieldError('name')} help={NAME_HELP}>
       {(aria) => (
@@ -106,23 +99,14 @@ export function OnlineEntry({
   );
   return (
     <>
-      <div className="entry-tabs" role="tablist" aria-label="입장 방법" onKeyDown={moveTab}>
-        {TABS.map((t) => (
-          <button
-            key={t.id}
-            id={`entry-tab-${t.id}`}
-            role="tab"
-            type="button"
-            aria-selected={tab === t.id}
-            aria-controls="entry-panel"
-            tabIndex={tab === t.id ? 0 : -1}
-            disabled={view.pending}
-            onClick={() => choose(t.id)}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
+      <Tabs
+        tabs={TABS}
+        selected={tab}
+        onSelect={choose}
+        disabled={view.pending}
+        label="입장 방법"
+        idPrefix="entry"
+      />
       <div
         className="entry-panel"
         id="entry-panel"

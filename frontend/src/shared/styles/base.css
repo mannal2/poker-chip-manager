@@ -242,3 +242,24 @@ dialog.scrollable {
   overflow: auto;
   user-select: text;
 }
+.tabs {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+}
+.tabs [role='tab'] {
+  min-height: 44px;
+  border-color: transparent;
+  background: transparent;
+  color: var(--muted);
+}
+.tabs [role='tab'][aria-selected='true'] {
+  background: var(--gold);
+  border-color: var(--gold);
+  color: #172119;
+  font-weight: 750;
+}

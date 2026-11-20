@@ -226,3 +226,27 @@ test('폴드 저장 재시도도 단일 이동, 반환·지급 기록과 취소 
   await expect(page.locator('.chip-flight')).toHaveCount(0);
   await expect(page.locator('.seat .stack')).toHaveText(['995', '990']);
 });
+
+test('새 핸드가 시작되면 펠트 테두리와 핸드 번호를 한 번 강조하고 새로고침에는 생략', async ({
+  page,
+}) => {
+  await start(page);
+  const hand = page.getByLabel('현재 토너먼트 기록', { exact: true }).locator('strong');
+  await expect(page.locator('.felt-glow')).toHaveCount(0);
+  await expect(hand).not.toHaveClass(/hand-cue/);
+  await page.getByRole('button', { name: '폴드', exact: true }).click();
+  await idle(page);
+  await expect(hand).toHaveText('02');
+  await expect(hand).toHaveClass(/hand-cue/);
+  const glow = page.locator('.felt-glow');
+  await expect(glow).toHaveCount(1);
+  expect(await glow.evaluate((e) => getComputedStyle(e).pointerEvents)).toBe('none');
+  // 효과 중에도 다음 행동을 바로 할 수 있다
+  await page.getByRole('button', { name: /^콜 / }).click();
+  await idle(page);
+  await page.reload();
+  await openLocal(page);
+  await expect(hand).toHaveText('02');
+  await expect(page.locator('.felt-glow')).toHaveCount(0);
+  await expect(hand).not.toHaveClass(/hand-cue/);
+});

@@ -434,3 +434,32 @@ button.card-values {
   font-size: calc(12 * var(--u));
   pointer-events: none;
 }
+
+/* A new hand lights the felt rim once: brightest at 30%, gone after 1s. It never takes input. */
+.felt-glow {
+  position: absolute;
+  inset: calc(26 * var(--u)) calc(29 * var(--u));
+  border-radius: 50%;
+  border: calc(2 * var(--u)) solid transparent;
+  pointer-events: none;
+  animation: felt-glow 1000ms ease-out both;
+}
+@keyframes felt-glow {
+  0% {
+    border-color: transparent;
+    box-shadow: 0 0 0 0 transparent;
+  }
+  30% {
+    border-color: #e2bd75aa;
+    box-shadow: 0 0 calc(18 * var(--u)) calc(2 * var(--u)) #e2bd7566;
+  }
+  100% {
+    border-color: transparent;
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .felt-glow {
+    display: none;
+  }
+}

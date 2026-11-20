@@ -9,6 +9,7 @@ import { SettlementPanel } from './components/SettlementPanel';
 import { SetupPanel } from './components/SetupPanel';
 import { Table, type CardSelection } from './components/Table';
 import { useBettingDraft } from './hooks/useBettingDraft';
+import { useHandStartCue } from './hooks/useHandStartCue';
 import { useSettlementSelection } from './hooks/useSettlementSelection';
 import { permits, requiredCapability, type GameCapabilities } from './model/capabilities';
 import { messageFor } from './model/errorMessages';
@@ -68,6 +69,7 @@ export function GameScreen({
     previousBlindScope.current = blindScope;
   }, [blindScope, dialog, onDialog, s.status]);
   const { changeCount } = setup;
+  const handCue = useHandStartCue(s.hand?.number, session.boardReveal);
   const legal = session.legal;
   const { draftAmount, submitAllowed, prepareAction, resetDraft } = useBettingDraft(
     s,
@@ -121,6 +123,7 @@ export function GameScreen({
       <GameHeader
         notice={headerNotice}
         handNumber={s.hand?.number ?? 1}
+        handCue={handCue}
         sb={s.hand?.sb ?? s.settings.sb}
         bb={s.hand?.bb ?? s.settings.bb}
         pendingBlinds={s.status === 'playing' ? s.pendingBlinds : null}
@@ -141,6 +144,7 @@ export function GameScreen({
         })}
         viewSeat={session.viewSeat}
         boardReveal={session.boardReveal}
+        handCue={handCue}
         onSelect={currentPot && can.canSettle ? selectWinner : undefined}
         onPot={() => {
           if (currentPot && !selection) onDialog('payout');

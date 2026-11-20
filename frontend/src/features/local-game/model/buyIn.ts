@@ -2,12 +2,13 @@ import type { BuyInPlacement, GameState } from '../../../game/types';
 
 const MAX_SEATS = 10;
 
+// 바이인 대화상자에 보이는 자리 하나
+export type SeatOption = { key: string; placement: BuyInPlacement; label: string };
+
 // 앉을 수 있는 자리(사이 자리와 탈락자의 빈자리)를 자리 순서대로 만든다
-export function seatOptions(
-  state: GameState,
-): { key: string; placement: BuyInPlacement; label: string }[] {
+export function seatOptions(state: GameState): SeatOption[] {
   const players = state.players;
-  const options: { key: string; placement: BuyInPlacement; label: string }[] = [];
+  const options: SeatOption[] = [];
   players.forEach((p, i) => {
     if (p.eliminated && !p.joining)
       options.push({

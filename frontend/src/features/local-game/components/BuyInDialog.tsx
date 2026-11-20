@@ -3,7 +3,7 @@ import { Dialog } from '../../../shared/ui/Dialog';
 import { Tabs } from '../../../shared/ui/Tabs';
 import { normalizeName, renameError } from '../../../game/settings';
 import { messageFor } from '../../gameplay/model/errorMessages';
-import { seatOptions } from '../model/buyIn';
+import { seatOptions, type SeatOption } from '../model/buyIn';
 import type { GameCommand, GameState } from '../../../game/types';
 import '../styles/buyIn.css';
 
@@ -36,6 +36,43 @@ function reentryCandidates(state: GameState): { id: string; name: string; seated
     .map(([, c]) => ({ id: c.id, name: c.name, seated: c.seated }));
 }
 
+// 앉을 자리를 고르는 선택칸
+function SeatField({
+  options,
+  seat,
+  busy,
+  onChange,
+}: {
+  options: SeatOption[];
+  seat: SeatOption | undefined;
+  busy: boolean;
+  onChange: (key: string) => void;
+}) {
+  return (
+    <div className="fields">
+      <label>
+        자리
+        <select value={seat?.key ?? ''} disabled={busy} onChange={(e) => onChange(e.target.value)}>
+          {options.map((o) => (
+            <option key={o.key} value={o.key}>
+              {o.label}
+            </option>
+          ))}
+        </select>
+      </label>
+    </div>
+  );
+}
+
+// 탭 내용 하나를 그리고 안 보이는 탭은 자리만 차지하게 숨긴다
+function Panel({ shown, children }: { shown: boolean; children: React.ReactNode }) {
+  return (
+    <div className={shown ? undefined : 'inactive'} aria-hidden={shown ? undefined : true} inert={!shown}>
+      {children}
+    </div>
+  );
+}
+
 // 새 플레이어나 탈락자를 자리에 앉히고 대기 중인 바이인을 취소하는 대화상자
 export function BuyInDialog({
   state,
@@ -62,25 +99,26 @@ export function BuyInDialog({
   const others = state.players.filter((p) => !p.eliminated).map((p) => p.name);
   const code = mode === 'new' && name !== '' ? renameError(name, others) : null;
   const error = code ? messageFor(code) : '';
-  const ready = !busy && !!seat && (mode === 'new' ? name !== '' && !code : person !== undefined);
+  // 재입장은 원래 자리로만 하고, 원래 자리를 다른 플레이어가 차지했을 때만 자리를 고른다
+  const placement =
+    mode === 'reentry' && person?.seated
+      ? { kind: 'replace' as const, playerId: person.id }
+      : seat?.placement;
+  const ready =
+    !busy && !!placement && (mode === 'new' ? name !== '' && !code : person !== undefined);
   const waiting = state.players.filter((p) => p.joining);
 
   // 입력한 내용으로 바이인 명령을 보내고 성공하면 닫는다
   async function submit() {
-    if (!ready || !seat) return;
+    if (!ready || !placement) return;
     const command: GameCommand =
       mode === 'new'
-        ? { type: 'BUY_IN', name, placement: seat.placement }
-        : { type: 'BUY_IN', placement: seat.placement, reentryOf: person!.id };
+        ? { type: 'BUY_IN', name, placement }
+        : { type: 'BUY_IN', placement, reentryOf: person!.id };
     if (!(await onSubmit(command))) return;
     const done = mode === 'new' ? (normalizeName(name) ?? name.trim()) : person!.name;
     onClose();
     onDone?.(done);
-  }
-  // 재입장 대상을 고르고 자기 자리가 있으면 그 자리를 미리 고른다
-  function choose(id: string) {
-    setTarget(id);
-    if (candidates.find((c) => c.id === id)?.seated) setSeatKey(`replace:${id}`);
   }
 
   return (
@@ -122,61 +160,60 @@ export function BuyInDialog({
           idPrefix="buy-in"
         />
         <div role="tabpanel" id="buy-in-panel" aria-labelledby={`buy-in-tab-${mode}`}>
-          {mode === 'new' ? (
-            <div className="fields">
-              <label>
-                이름
-                <input
-                  value={name}
-                  disabled={busy}
-                  aria-invalid={error ? true : undefined}
-                  aria-describedby={error ? errorId : undefined}
-                  onChange={(e) => setName(e.target.value)}
-                />
-                <span className="hint">
-                  다른 플레이어에게 보이는 이름입니다. 한글·영문·숫자·공백 1~10자로 정해 주세요.
-                </span>
-                {error && (
-                  <span id={errorId} className="field-error" role="alert">
-                    {error}
-                  </span>
-                )}
-              </label>
-            </div>
-          ) : candidates.length === 0 ? (
-            <p>재입장할 탈락자가 없습니다.</p>
-          ) : (
-            <div className="reentry-list" role="radiogroup" aria-label="재입장할 탈락자">
-              {candidates.map((c) => (
-                <label key={c.id}>
-                  <span>{c.name}</span>
+          <div className="buy-in-panels">
+            <Panel shown={mode === 'new'}>
+              <div className="fields">
+                <label>
+                  이름
                   <input
-                    type="radio"
-                    name="reentry"
-                    checked={target === c.id}
+                    value={name}
                     disabled={busy}
-                    onChange={() => choose(c.id)}
+                    aria-invalid={error ? true : undefined}
+                    aria-describedby={error ? errorId : undefined}
+                    onChange={(e) => setName(e.target.value)}
                   />
+                  <span className="hint">
+                    다른 플레이어에게 보이는 이름입니다. 한글·영문·숫자·공백 1~10자로 정해 주세요.
+                  </span>
+                  {error && (
+                    <span id={errorId} className="field-error" role="alert">
+                      {error}
+                    </span>
+                  )}
                 </label>
-              ))}
-            </div>
-          )}
-        </div>
-        <div className="fields">
-          <label>
-            자리
-            <select
-              value={seat?.key ?? ''}
-              disabled={busy}
-              onChange={(e) => setSeatKey(e.target.value)}
-            >
-              {options.map((o) => (
-                <option key={o.key} value={o.key}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
-          </label>
+              </div>
+              <SeatField options={options} seat={seat} busy={busy} onChange={setSeatKey} />
+            </Panel>
+            <Panel shown={mode === 'reentry'}>
+              {candidates.length === 0 ? (
+                <p>재입장할 탈락자가 없습니다.</p>
+              ) : (
+                <div className="reentry-list" role="radiogroup" aria-label="재입장할 탈락자">
+                  {candidates.map((c) => (
+                    <label key={c.id}>
+                      <span>{c.name}</span>
+                      <input
+                        type="radio"
+                        name="reentry"
+                        checked={target === c.id}
+                        disabled={busy}
+                        onChange={() => setTarget(c.id)}
+                      />
+                    </label>
+                  ))}
+                </div>
+              )}
+              {person?.seated && <p className="hint">원래 자리로 돌아갑니다.</p>}
+              {person && !person.seated && (
+                <>
+                  <p className="hint">
+                    원래 자리에 다른 플레이어가 앉아 있습니다. 앉을 자리를 골라 주세요.
+                  </p>
+                  <SeatField options={options} seat={seat} busy={busy} onChange={setSeatKey} />
+                </>
+              )}
+            </Panel>
+          </div>
         </div>
         <p className="guide">
           시작 칩 {state.settings.initial.toLocaleString('ko-KR')}을 받고 다음 핸드부터 참여합니다.

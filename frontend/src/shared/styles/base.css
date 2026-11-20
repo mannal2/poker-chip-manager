@@ -166,6 +166,16 @@ select {
   border-radius: calc(8 * var(--u));
   min-height: calc(48 * var(--u));
 }
+/* A drawn chevron with its own right margin; the native iOS arrow sits flush against the border. */
+select {
+  -webkit-appearance: none;
+  appearance: none;
+  padding-right: calc(36 * var(--u));
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5 6 6.5 11 1.5' fill='none' stroke='%23a1b2a8' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right calc(14 * var(--u)) center;
+  background-size: calc(12 * var(--u)) auto;
+}
 .notice {
   margin: calc(8 * var(--u)) calc(12 * var(--u));
   padding: calc(12 * var(--u));

@@ -33,3 +33,18 @@
   font-size: calc(11 * var(--u));
   color: var(--muted);
 }
+/* Both tab contents share one grid cell, so the dialog keeps the taller one's height when switching tabs. */
+.buy-in-panels {
+  display: grid;
+}
+.buy-in-panels > * {
+  grid-area: 1 / 1;
+  min-width: 0;
+}
+.buy-in-panels > .inactive {
+  visibility: hidden;
+}
+.buy-in .reentry-list {
+  max-height: calc(200 * var(--u));
+  overflow-y: auto;
+}

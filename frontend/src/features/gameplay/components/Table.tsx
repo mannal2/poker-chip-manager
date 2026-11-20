@@ -43,6 +43,7 @@ export function Table({
   setup,
   handKey,
   boardReveal,
+  handCue = 0,
   selection,
 }: {
   players: CardPlayer[];
@@ -55,6 +56,8 @@ export function Table({
   setup?: TableSetup;
   handKey?: string;
   boardReveal?: GameSession['boardReveal'];
+  /** Rises once per new hand; each rise replays the felt glow. */
+  handCue?: number;
   selection?: CardSelection;
   viewSeat?: number;
   onSelect?: (id: string) => void;
@@ -79,6 +82,7 @@ export function Table({
         aria-label="포커 테이블"
       >
         <div className="felt" />
+        {handCue > 0 && <span key={handCue} className="felt-glow" aria-hidden="true" />}
         <div className={`table-center ${phase === 'setup' ? 'setup-center' : ''}`}>
           {phase === 'setup' ? (
             <>

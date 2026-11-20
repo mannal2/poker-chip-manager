@@ -3,6 +3,7 @@ import { useLayoutEffect, useRef, type ReactNode } from 'react';
 // 핸드 번호, 블라인드, 메뉴 버튼을 보여주는 상단 바
 export function GameHeader({
   handNumber,
+  handCue = 0,
   sb,
   bb,
   pendingBlinds,
@@ -13,6 +14,8 @@ export function GameHeader({
   notice,
 }: {
   handNumber: number;
+  /** Rises once per new hand; each rise replays the hand number pulse. */
+  handCue?: number;
   sb: number;
   bb: number;
   pendingBlinds: { sb: number; bb: number } | null;
@@ -48,7 +51,10 @@ export function GameHeader({
     <header ref={ref} className="meta">
       <div className="meta-info">
         <button className="meta-link" aria-label="현재 토너먼트 기록" onClick={onHistory}>
-          HAND <strong>{String(handNumber).padStart(2, '0')}</strong>
+          HAND{' '}
+          <strong key={handCue} className={handCue > 0 ? 'hand-cue' : undefined}>
+            {String(handNumber).padStart(2, '0')}
+          </strong>
         </button>
         <button
           id="blinds"

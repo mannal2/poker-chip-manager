@@ -148,6 +148,14 @@ test('폴드 반환과 지급은 한 번, 획득 알림 없이 자동 진행·�
   await expect(payouts).toHaveAttribute('data-amount', '15');
   await expect(payouts).toHaveAttribute('data-to', 'p1');
   expect(await payouts.evaluate((e) => e.getAnimations()[0].effect!.getTiming().delay)).toBe(0);
+  // 칩이 도착할 즈음 승자 카드 위에 받은 금액이 떠오르고 입력은 막지 않는다
+  const gain = page.locator('.payout-gain');
+  await expect(gain).toHaveCount(1);
+  await expect(gain).toHaveText('+15');
+  await expect(gain).toHaveAttribute('data-to', 'p1');
+  expect(await gain.evaluate((e) => getComputedStyle(e).pointerEvents)).toBe('none');
+  expect(await gain.evaluate((e) => e.getAnimations()[0].effect!.getTiming().delay)).toBe(600);
+  await expect(gain).toHaveCount(0, { timeout: 3000 });
   await expect(page.locator('.toast')).toHaveCount(0);
   await page
     .locator('.chip-flight')
@@ -217,4 +225,28 @@ test('폴드 저장 재시도도 단일 이동, 반환·지급 기록과 취소 
   await expect(page.getByLabel('현재 토너먼트 기록', { exact: true })).toContainText('01');
   await expect(page.locator('.chip-flight')).toHaveCount(0);
   await expect(page.locator('.seat .stack')).toHaveText(['995', '990']);
+});
+
+test('새 핸드가 시작되면 펠트 테두리와 핸드 번호를 한 번 강조하고 새로고침에는 생략', async ({
+  page,
+}) => {
+  await start(page);
+  const hand = page.getByLabel('현재 토너먼트 기록', { exact: true }).locator('strong');
+  await expect(page.locator('.felt-glow')).toHaveCount(0);
+  await expect(hand).not.toHaveClass(/hand-cue/);
+  await page.getByRole('button', { name: '폴드', exact: true }).click();
+  await idle(page);
+  await expect(hand).toHaveText('02');
+  await expect(hand).toHaveClass(/hand-cue/);
+  const glow = page.locator('.felt-glow');
+  await expect(glow).toHaveCount(1);
+  expect(await glow.evaluate((e) => getComputedStyle(e).pointerEvents)).toBe('none');
+  // 효과 중에도 다음 행동을 바로 할 수 있다
+  await page.getByRole('button', { name: /^콜 / }).click();
+  await idle(page);
+  await page.reload();
+  await openLocal(page);
+  await expect(hand).toHaveText('02');
+  await expect(page.locator('.felt-glow')).toHaveCount(0);
+  await expect(hand).not.toHaveClass(/hand-cue/);
 });

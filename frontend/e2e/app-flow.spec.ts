@@ -10,14 +10,14 @@ async function round(page: Page) {
     await expect(page.locator('main')).toHaveAttribute('aria-busy', 'false');
   }
 }
-test('앱 홈은 모드·업데이트, 단일 모드는 자동 생성/복원, 메뉴 두 항목', async ({ page }) => {
+test('앱 홈은 모드·업데이트, 단일 모드는 자동 생성/복원, 메뉴 세 항목', async ({ page }) => {
   await enter(page);
   await expect(page.getByText('이 화면에서 이어하기', { exact: true })).toHaveCount(0);
   await page.getByLabel('시작 칩', { exact: true }).fill('1500');
   await page.getByLabel('SB', { exact: true }).focus();
   await expect(page.locator('.seat .stack').first()).toHaveText('1,500');
   await page.getByRole('button', { name: '관리 메뉴', exact: true }).click();
-  await expect(page.locator('.menu-actions button')).toHaveText(['홈', '새 토너먼트']);
+  await expect(page.locator('.menu-actions button')).toHaveText(['홈', '바이인', '새 토너먼트']);
   await page.getByRole('button', { name: '홈', exact: true }).click();
   await expect(page.getByRole('button', { name: '멀티플레이 모드', exact: true })).toBeEnabled();
   await page.getByRole('button', { name: '앱 업데이트', exact: true }).click();

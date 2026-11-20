@@ -1,7 +1,7 @@
 import { useId, useState } from 'react';
 import { Dialog } from '../../../shared/ui/Dialog';
 import { Tabs } from '../../../shared/ui/Tabs';
-import { renameError } from '../../../game/settings';
+import { normalizeName, renameError } from '../../../game/settings';
 import { messageFor } from '../../gameplay/model/errorMessages';
 import { seatOptions } from '../model/buyIn';
 import type { GameCommand, GameState } from '../../../game/types';
@@ -73,7 +73,7 @@ export function BuyInDialog({
         ? { type: 'BUY_IN', name, placement: seat.placement }
         : { type: 'BUY_IN', placement: seat.placement, reentryOf: person!.id };
     if (!(await onSubmit(command))) return;
-    const done = mode === 'new' ? name.trim() : person!.name;
+    const done = mode === 'new' ? (normalizeName(name) ?? name.trim()) : person!.name;
     onClose();
     onDone?.(done);
   }
@@ -179,8 +179,8 @@ export function BuyInDialog({
           </label>
         </div>
         <p className="guide">
-          시작 칩 {state.settings.initial}을 받고 다음 핸드부터 참여합니다. 버튼과 스몰 블라인드
-          사이 자리면 버튼이 지나간 뒤 참여합니다.
+          시작 칩 {state.settings.initial.toLocaleString('ko-KR')}을 받고 다음 핸드부터 참여합니다.
+          버튼과 스몰 블라인드 사이 자리면 버튼이 지나간 뒤 참여합니다.
         </p>
       </div>
     </Dialog>

@@ -3,7 +3,7 @@ import type { GameState, Player } from '../types';
 import { requireRule, type CommandHandler } from '../rule';
 import { emit } from '../round';
 
-/** Seats a new or returning player between seats or in an eliminated seat; the stack is dealt in next hand. */
+// 한 테이블에 앉을 수 있는 최대 좌석 수
 const MAX_SEATS = 10;
 
 // 지금 플레이어와 이전 플레이어의 p<숫자> 중 최댓값에 1을 더한 새 id를 돌려준다

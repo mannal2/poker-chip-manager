@@ -14,12 +14,7 @@ function withEliminated(s: GameState, id: string): GameState {
 it('lists between and empty-seat options in seat order', () => {
   const s = withEliminated(fixtureState(3), 'p1');
   const options = seatOptions(s);
-  expect(options.map((o) => o.label)).toEqual([
-    'A와 B 사이',
-    'B의 빈자리',
-    'B와 C 사이',
-    'C와 A 사이',
-  ]);
+  expect(options.map((o) => o.label)).toEqual(['A·B 사이', 'B의 빈자리', 'B·C 사이', 'C·A 사이']);
   expect(options[1].placement).toEqual({ kind: 'replace', playerId: 'p1' });
   expect(options[0].placement).toEqual({ kind: 'between', after: 'p0' });
   expect(new Set(options.map((o) => o.key)).size).toBe(4);

@@ -19,7 +19,7 @@ export function seatOptions(
       options.push({
         key: `between:${p.id}`,
         placement: { kind: 'between', after: p.id },
-        label: `${p.name}와 ${players[(i + 1) % players.length].name} 사이`,
+        label: `${p.name}·${players[(i + 1) % players.length].name} 사이`,
       });
   });
   return options;

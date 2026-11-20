@@ -1,6 +1,13 @@
 import type { StoredGame } from './types';
 import { assertInvariants } from '../../../game/invariants';
 import { validateSettings, validChips } from '../../../game/settings';
+// 살아 있는 참가자의 이름이 공백·NFC·대소문자를 무시하고 겹치는지 확인한다
+function hasDuplicateLiveName(players: { name: string; eliminated: boolean }[]): boolean {
+  const names = players
+    .filter((p) => !p.eliminated)
+    .map((p) => String(p.name).trim().normalize('NFC').toLowerCase());
+  return new Set(names).size !== names.length;
+}
 // 저장된 게임의 형식, 설정, 핸드, 취소 스냅샷이 손상되지 않았는지 검증한다
 export function validateStored(value: StoredGame): void {
   if (value.schemaVersion !== 1)
@@ -35,7 +42,8 @@ export function validateStored(value: StoredGame): void {
   if (
     boughtIn
       ? s.initialTotal % s.settings.initial !== 0 ||
-        s.initialTotal < s.settings.initial * s.players.length
+        s.initialTotal < s.settings.initial * s.players.length ||
+        hasDuplicateLiveName(s.players)
       : s.initialTotal !== s.settings.initial * s.players.length ||
         s.players.some((p, i) => p.name !== s.settings.names[i])
   )

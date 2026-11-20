@@ -48,3 +48,11 @@
   max-height: calc(200 * var(--u));
   overflow-y: auto;
 }
+/* A field the person still has to fill gets the same gold edge as the online entry fields. */
+.buy-in input[aria-invalid='true'] {
+  border-color: var(--gold);
+}
+.buy-in .field-error {
+  display: block;
+  margin-top: calc(4 * var(--u));
+}

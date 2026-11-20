@@ -79,7 +79,34 @@ it('shows the name rule error under the field', async () => {
   const alert = host.querySelector('[role="alert"]');
   expect(alert?.textContent).toBeTruthy();
   expect(input.getAttribute('aria-describedby')).toContain(alert!.id);
-  expect(button('바이인').disabled).toBe(true);
+  expect(button('바이인').getAttribute('aria-disabled')).toBe('true');
+});
+
+// 이름 없이 바이인을 누르면 이름 칸 아래에 안내하고 그 칸으로 옮긴다
+it('asks for a name when buy-in is pressed with the name empty', async () => {
+  const { onSubmit } = await show(fixtureState(3));
+  const input = host.querySelector<HTMLInputElement>('input')!;
+  expect(host.querySelector('[role="alert"]')).toBeNull();
+  await act(async () => button('바이인').click());
+  const alert = host.querySelector('[role="alert"]');
+  expect(alert?.textContent).toBe('이름을 입력해 주세요.');
+  expect(input.getAttribute('aria-invalid')).toBe('true');
+  expect(input.getAttribute('aria-describedby')).toContain(alert!.id);
+  expect(document.activeElement).toBe(input);
+  expect(onSubmit).not.toHaveBeenCalled();
+  await act(() => type(input, 'Zed'));
+  expect(host.querySelector('[role="alert"]')).toBeNull();
+});
+
+// 재입장할 사람을 고르지 않고 바이인을 누르면 목록 위에 안내한다
+it('asks to choose someone when re-entry is pressed with nobody chosen', async () => {
+  const { onSubmit } = await show(eliminated());
+  await act(() => button('재입장').click());
+  await act(async () => button('바이인').click());
+  expect(activePanel().querySelector('[role="alert"]')?.textContent).toBe(
+    '재입장할 탈락자를 골라 주세요.',
+  );
+  expect(onSubmit).not.toHaveBeenCalled();
 });
 
 // 지금 보이는 탭 내용을 찾는다

@@ -1,4 +1,4 @@
-import { useId, useState } from 'react';
+import { useId, useRef, useState } from 'react';
 import { Dialog } from '../../../shared/ui/Dialog';
 import { Tabs } from '../../../shared/ui/Tabs';
 import { normalizeName, renameError } from '../../../game/settings';
@@ -91,14 +91,19 @@ export function BuyInDialog({
   const [name, setName] = useState('');
   const [target, setTarget] = useState<string | null>(null);
   const [seatKey, setSeatKey] = useState('');
+  // 준비되지 않은 채 바이인을 눌렀는지. 빈 입력을 그 칸에서 안내하는 데 쓴다
+  const [asked, setAsked] = useState(false);
+  const nameInput = useRef<HTMLInputElement>(null);
   const errorId = useId();
+  const pickErrorId = useId();
   const options = seatOptions(state);
   const seat = options.find((o) => o.key === seatKey) ?? options[0];
   const candidates = reentryCandidates(state);
   const person = candidates.find((c) => c.id === target);
   const others = state.players.filter((p) => !p.eliminated).map((p) => p.name);
   const code = mode === 'new' && name !== '' ? renameError(name, others) : null;
-  const error = code ? messageFor(code) : '';
+  const error = code ? messageFor(code) : asked && name === '' ? '이름을 입력해 주세요.' : '';
+  const pickError = asked && mode === 'reentry' && candidates.length > 0 && !person;
   // 재입장은 원래 자리로만 하고, 원래 자리를 다른 플레이어가 차지했을 때만 자리를 고른다
   const placement =
     mode === 'reentry' && person?.seated
@@ -110,7 +115,13 @@ export function BuyInDialog({
 
   // 입력한 내용으로 바이인 명령을 보내고 성공하면 닫는다
   async function submit() {
-    if (!ready || !placement) return;
+    if (busy) return;
+    if (!ready || !placement) {
+      // 무엇이 빠졌는지 해당 칸에서 알려 주고 이름 칸이면 그 칸으로 옮긴다
+      setAsked(true);
+      if (mode === 'new') nameInput.current?.focus();
+      return;
+    }
     const command: GameCommand =
       mode === 'new'
         ? { type: 'BUY_IN', name, placement }
@@ -127,7 +138,7 @@ export function BuyInDialog({
       scrollable
       onClose={onClose}
       actions={
-        <button className="primary" disabled={!ready} onClick={() => void submit()}>
+        <button className="primary" aria-disabled={!ready} onClick={() => void submit()}>
           바이인
         </button>
       }
@@ -154,7 +165,10 @@ export function BuyInDialog({
         <Tabs
           tabs={TABS}
           selected={mode}
-          onSelect={setMode}
+          onSelect={(next) => {
+            setMode(next);
+            setAsked(false);
+          }}
           disabled={busy}
           label="바이인 방식"
           idPrefix="buy-in"
@@ -166,18 +180,21 @@ export function BuyInDialog({
                 <label>
                   이름
                   <input
+                    ref={nameInput}
                     value={name}
                     disabled={busy}
                     aria-invalid={error ? true : undefined}
                     aria-describedby={error ? errorId : undefined}
                     onChange={(e) => setName(e.target.value)}
                   />
-                  <span className="hint">
-                    다른 플레이어에게 보이는 이름입니다. 한글·영문·숫자·공백 1~10자로 정해 주세요.
-                  </span>
-                  {error && (
+                  {/* 오류가 있으면 입장 화면처럼 도움말 자리에 오류를 바로 띄운다 */}
+                  {error ? (
                     <span id={errorId} className="field-error" role="alert">
                       {error}
+                    </span>
+                  ) : (
+                    <span className="hint">
+                      다른 플레이어에게 보이는 이름입니다. 한글·영문·숫자·공백 1~10자로 정해 주세요.
                     </span>
                   )}
                 </label>
@@ -188,7 +205,13 @@ export function BuyInDialog({
               {candidates.length === 0 ? (
                 <p>재입장할 탈락자가 없습니다.</p>
               ) : (
-                <div className="reentry-list" role="radiogroup" aria-label="재입장할 탈락자">
+                <div
+                  className="reentry-list"
+                  role="radiogroup"
+                  aria-label="재입장할 탈락자"
+                  aria-invalid={pickError ? true : undefined}
+                  aria-describedby={pickError ? pickErrorId : undefined}
+                >
                   {candidates.map((c) => (
                     <label key={c.id}>
                       <span>{c.name}</span>
@@ -202,6 +225,11 @@ export function BuyInDialog({
                     </label>
                   ))}
                 </div>
+              )}
+              {pickError && (
+                <p id={pickErrorId} className="field-error" role="alert">
+                  재입장할 탈락자를 골라 주세요.
+                </p>
               )}
               {person?.seated && <p className="hint">원래 자리로 돌아갑니다.</p>}
               {person && !person.seated && (

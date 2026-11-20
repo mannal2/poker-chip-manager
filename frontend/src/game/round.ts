@@ -106,32 +106,67 @@ export function finishRound(s: GameState, c: TransitionContext, events: GameEven
   if (h.showdown) h.phase = 'settlement';
   else advanceStreet(s, c, events);
 }
-// 대기자를 참여시킬지 정하고 참여 중인 생존자 기준으로 위치를 계산한다
+// 헤즈업 직후 세 명 이상이 되면 이전 BB 다음 자리를 BB로 두고 거꾸로 SB와 버튼을 정한다
+function positionsAfterHeadsUp(
+  alive: boolean[],
+  previous: { buttonSeat: number; sbSeat: number; bbSeat: number },
+) {
+  const before = (seat: number) => {
+    for (let k = 1; k <= alive.length; k++) {
+      const i = (seat - k + alive.length) % alive.length;
+      if (alive[i]) return i;
+    }
+    throw Error('NO_ELIGIBLE_SEAT');
+  };
+  const bbSeat = nextSeat(previous.bbSeat, alive),
+    sbSeat = before(bbSeat);
+  return { buttonSeat: before(sbSeat), sbSeat, bbSeat };
+}
+// 대기자를 참여시킬지 정하고 이번 핸드에 카드를 받는 사람 기준으로 위치를 계산한다
 function seatJoiners(s: GameState, previous: GameState['hand']) {
-  const playing = () => s.players.map((p) => !p.eliminated && !p.joining);
-  const compute = (alive: boolean[]) =>
-    previous
-      ? nextPositions(alive, previous)
-      : { buttonSeat: s.settings.button, ...initialBlindSeats(s.settings.button, alive) };
+  const playing = s.players.map((p) => !p.eliminated && !p.joining);
   const joiners = s.players.filter((p) => p.joining);
-  let position = compute(playing());
-  if (!joiners.length) return position;
+  // 카드를 받는 자리 집합으로 이번 핸드 위치를 계산한다
+  const compute = (alive: boolean[]) => {
+    if (!previous)
+      return { buttonSeat: s.settings.button, ...initialBlindSeats(s.settings.button, alive) };
+    const headsUp = previous.buttonSeat === previous.sbSeat;
+    return headsUp && alive.filter(Boolean).length >= 3
+      ? positionsAfterHeadsUp(alive, previous)
+      : nextPositions(alive, previous);
+  };
   const deal = (p: GameState['players'][number]) => {
     delete p.joining;
     delete p.replaced;
   };
-  if (playing().filter(Boolean).length < 2) joiners.forEach(deal);
-  else {
+  let position;
+  if (!joiners.length) {
+    position = previous
+      ? nextPositions(playing, previous)
+      : { buttonSeat: s.settings.button, ...initialBlindSeats(s.settings.button, playing) };
+  } else if (playing.filter(Boolean).length < 2) {
+    joiners.forEach(deal);
+    position = compute(s.players.map((p) => !p.eliminated && !p.joining));
+  } else {
+    // 버튼과 SB 사이(양 끝 제외)에 놓이는 대기자를 빼며 위치가 더 바뀌지 않을 때까지 다시 계산한다
     const size = s.players.length;
+    let candidates = joiners;
+    for (;;) {
+      const alive = playing.map((x, i) => x || candidates.includes(s.players[i]));
+      position = compute(alive);
+      const { buttonSeat, sbSeat } = position;
+      const kept = candidates.filter(
+        (p) => !isBetweenButtonAndSb(s.players.indexOf(p), buttonSeat, sbSeat, size),
+      );
+      if (kept.length === candidates.length) break;
+      candidates = kept;
+    }
     for (const p of joiners) {
-      const seat = s.players.indexOf(p);
-      if (!isBetweenButtonAndSb(seat, position.buttonSeat, position.sbSeat, size)) deal(p);
+      if (candidates.includes(p)) deal(p);
       else p.joining = 'button';
     }
-    if (joiners.some((p) => !p.joining)) position = compute(playing());
-    return position;
   }
-  return compute(playing());
+  return position;
 }
 // 새 핸드를 만들고 블라인드를 낸 뒤 첫 차례를 정한다
 export function startHand(s: GameState, c: TransitionContext, events: GameEvent[]) {

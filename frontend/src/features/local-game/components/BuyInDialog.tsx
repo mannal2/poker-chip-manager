@@ -102,7 +102,7 @@ export function BuyInDialog({
   const person = candidates.find((c) => c.id === target);
   const others = state.players.filter((p) => !p.eliminated).map((p) => p.name);
   const code = mode === 'new' && name !== '' ? renameError(name, others) : null;
-  const error = code ? messageFor(code) : asked && name === '' ? '이름을 입력해 주세요.' : '';
+  const error = code ? messageFor(code) : asked && mode === 'new' && name === '' ?'이름을 입력해 주세요.' : '';
   const pickError = asked && mode === 'reentry' && candidates.length > 0 && !person;
   // 재입장은 원래 자리로만 하고, 원래 자리를 다른 플레이어가 차지했을 때만 자리를 고른다
   const placement =
@@ -187,16 +187,17 @@ export function BuyInDialog({
                     aria-describedby={error ? errorId : undefined}
                     onChange={(e) => setName(e.target.value)}
                   />
-                  {/* 오류가 있으면 입장 화면처럼 도움말 자리에 오류를 바로 띄운다 */}
-                  {error ? (
-                    <span id={errorId} className="field-error" role="alert">
-                      {error}
-                    </span>
-                  ) : (
-                    <span className="hint">
+                  {/* 오류는 도움말 자리에 겹쳐 띄우고 도움말은 가리기만 해서 창 높이가 바뀌지 않게 한다 */}
+                  <span className="field-note">
+                    <span className={error ? 'hint covered' : 'hint'} aria-hidden={error ? true : undefined}>
                       다른 플레이어에게 보이는 이름입니다. 한글·영문·숫자·공백 1~10자로 정해 주세요.
                     </span>
-                  )}
+                    {error && (
+                      <span id={errorId} className="field-error" role="alert">
+                        {error}
+                      </span>
+                    )}
+                  </span>
                 </label>
               </div>
               <SeatField options={options} seat={seat} busy={busy} onChange={setSeatKey} />

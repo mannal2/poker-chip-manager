@@ -98,6 +98,25 @@ it('asks for a name when buy-in is pressed with the name empty', async () => {
   expect(host.querySelector('[role="alert"]')).toBeNull();
 });
 
+// 이름 안내가 떠도 도움말 자리를 그대로 차지해 탭을 오가도 창 높이가 바뀌지 않는다
+it('keeps the hint in place while the name error shows', async () => {
+  await show(eliminated());
+  const hint = () => panelAt(0).querySelector('.hint')!;
+  await act(async () => button('바이인').click());
+  expect(hint().classList.contains('covered')).toBe(true);
+  expect(hint().getAttribute('aria-hidden')).toBe('true');
+  await act(() => button('재입장').click());
+  await act(async () => button('바이인').click());
+  // 재입장 탭에서 누른 것은 숨은 새 플레이어 탭의 이름 칸을 바꾸지 않는다
+  expect(panelAt(0).querySelector('.field-error')).toBeNull();
+  expect(hint().classList.contains('covered')).toBe(false);
+});
+
+// 탭 내용 하나를 순서로 찾는다
+function panelAt(index: number) {
+  return host.querySelectorAll<HTMLElement>('.buy-in-panels > *')[index];
+}
+
 // 재입장할 사람을 고르지 않고 바이인을 누르면 목록 위에 안내한다
 it('asks to choose someone when re-entry is pressed with nobody chosen', async () => {
   const { onSubmit } = await show(eliminated());

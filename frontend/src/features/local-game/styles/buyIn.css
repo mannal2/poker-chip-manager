@@ -52,7 +52,20 @@
 .buy-in input[aria-invalid='true'] {
   border-color: var(--gold);
 }
-.buy-in .field-error {
+/* The error takes the hint's place in the same cell; the hint only hides, so the field keeps its height
+   whether the error shows or not (the hidden tab included). */
+.buy-in .field-note {
+  display: grid;
+  margin-top: calc(4 * var(--u));
+}
+.buy-in .field-note > * {
+  grid-area: 1 / 1;
+  min-width: 0;
+}
+.buy-in .field-note > .covered {
+  visibility: hidden;
+}
+.buy-in p.field-error {
   display: block;
   margin-top: calc(4 * var(--u));
 }

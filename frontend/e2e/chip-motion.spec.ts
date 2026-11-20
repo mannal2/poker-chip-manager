@@ -148,6 +148,14 @@ test('폴드 반환과 지급은 한 번, 획득 알림 없이 자동 진행·�
   await expect(payouts).toHaveAttribute('data-amount', '15');
   await expect(payouts).toHaveAttribute('data-to', 'p1');
   expect(await payouts.evaluate((e) => e.getAnimations()[0].effect!.getTiming().delay)).toBe(0);
+  // 칩이 도착할 즈음 승자 카드 위에 받은 금액이 떠오르고 입력은 막지 않는다
+  const gain = page.locator('.payout-gain');
+  await expect(gain).toHaveCount(1);
+  await expect(gain).toHaveText('+15');
+  await expect(gain).toHaveAttribute('data-to', 'p1');
+  expect(await gain.evaluate((e) => getComputedStyle(e).pointerEvents)).toBe('none');
+  expect(await gain.evaluate((e) => e.getAnimations()[0].effect!.getTiming().delay)).toBe(600);
+  await expect(gain).toHaveCount(0, { timeout: 3000 });
   await expect(page.locator('.toast')).toHaveCount(0);
   await page
     .locator('.chip-flight')

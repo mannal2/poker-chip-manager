@@ -5,6 +5,7 @@ import { historyRows } from '../../src/features/gameplay/model/history';
 import type { GameCommand, GameEvent } from '../../src/game/types';
 import { chipTransfers } from '../../src/features/local-game/model/localChipTransfers';
 import { eventsToTransfers } from '../../src/features/gameplay/model/eventTransfers';
+import { payoutGains, type ChipTransfer } from '../../src/features/gameplay/model/chipTransfer';
 // 사람의 베팅 뒤 자동 폴드가 이어져도 최초 명령의 이동 순서를 유지한다
 it('베팅 뒤 자동 폴드는 베팅과 반환 및 지급을 동시에 합치지 않는다', () => {
   const events: GameEvent[] = [
@@ -131,5 +132,24 @@ it('빈 SB에서 모두 BB에게 폴드하면 팟 0 정산: 반환 이동만, �
     '핸드 종료',
     'HAND 03',
     '프리플랍',
+  ]);
+});
+
+// 지급 이동만 수령자별로 합쳐 카드 위에 띄울 금액을 만든다
+it('지급 금액 글자는 수령자별 합계 한 번만 만든다', () => {
+  const move = (to: string, amount: number, delay: number, kind: ChipTransfer['kind']) => ({
+    from: 'pot',
+    to,
+    amount,
+    delay,
+    kind,
+  });
+  expect(payoutGains([move('p1', 10, 0, 'bet')])).toEqual([]);
+  expect(payoutGains([move('p1', 30, 0, 'payout'), move('p1', 20, 720, 'payout')])).toEqual([
+    { to: 'p1', amount: 50, delay: 720 },
+  ]);
+  expect(payoutGains([move('p1', 40, 0, 'payout'), move('p2', 40, 0, 'payout')])).toEqual([
+    { to: 'p1', amount: 40, delay: 0 },
+    { to: 'p2', amount: 40, delay: 0 },
   ]);
 });

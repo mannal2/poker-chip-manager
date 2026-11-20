@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, type RefObject } from 'react';
-import type { ChipTransfer } from '../model/chipTransfer';
+import { payoutGains, type ChipTransfer } from '../model/chipTransfer';
 // 화면 좌표 한 점
 type Point = { x: number; y: number };
 // 애니메이션 시작 전에 측정해 둔 이동 목록과 좌표
@@ -8,6 +8,7 @@ type Prepared = {
   moves: ChipTransfer[];
   points: Map<string, Point>;
   size: number;
+  unit: number;
 };
 // 지금 칩 애니메이션을 재생해도 되는지 확인한다
 /** Chip flights are skipped while the page is hidden or the user prefers reduced motion. */
@@ -58,7 +59,7 @@ export function useChipMotion(screen: RefObject<HTMLElement | null>, scope: stri
         ?.querySelectorAll<HTMLElement>('.seat')
         .forEach((seat) => point(seat.dataset.player!, seat.querySelector('.card-values')));
       const unit = parseFloat(getComputedStyle(screen.current!).fontSize) / 15;
-      return { epoch: epoch.current, moves, points, size: 12 * unit };
+      return { epoch: epoch.current, moves, points, size: 12 * unit, unit };
     },
     [screen],
   );
@@ -106,6 +107,32 @@ export function useChipMotion(screen: RefObject<HTMLElement | null>, scope: stri
       animation.onfinish = () => {
         node.remove();
         active.current.delete(node);
+      };
+    }
+    // 지급 칩이 도착할 때 수령자 카드 위에 받은 금액을 잠깐 띄운다
+    for (const gain of payoutGains(prepared.moves)) {
+      const at = prepared.points.get(gain.to);
+      if (!at) continue;
+      const label = document.createElement('span');
+      label.className = 'payout-gain';
+      label.setAttribute('aria-hidden', 'true');
+      label.dataset.to = gain.to;
+      label.textContent = `+${gain.amount.toLocaleString('ko-KR')}`;
+      Object.assign(label.style, { left: `${at.x}px`, top: `${at.y}px` });
+      document.body.appendChild(label);
+      active.current.add(label);
+      const animation = label.animate(
+        [
+          { transform: 'translate(-50%, -50%)', opacity: 0 },
+          { opacity: 1, offset: 0.2 },
+          { opacity: 1, offset: 0.6 },
+          { transform: `translate(-50%, calc(-50% - ${16 * prepared.unit}px))`, opacity: 0 },
+        ],
+        { duration: 1200, delay: gain.delay + 600, easing: 'ease-out', fill: 'both' },
+      );
+      animation.onfinish = () => {
+        label.remove();
+        active.current.delete(label);
       };
     }
   }, []);

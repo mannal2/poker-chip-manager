@@ -3,7 +3,8 @@ import { Dialog } from '../../../shared/ui/Dialog';
 import { Tabs } from '../../../shared/ui/Tabs';
 import { normalizeName, renameError } from '../../../game/settings';
 import { messageFor } from '../../gameplay/model/errorMessages';
-import { seatOptions, type SeatOption } from '../model/buyIn';
+import { seatOptions } from '../../gameplay/model/buyIn';
+import { SeatField } from '../../gameplay/components/SeatField';
 import type { GameCommand, GameState } from '../../../game/types';
 import '../styles/buyIn.css';
 
@@ -34,34 +35,6 @@ function reentryCandidates(state: GameState): { id: string; name: string; seated
   return [...best.entries()]
     .filter(([key]) => !alive.has(key))
     .map(([, c]) => ({ id: c.id, name: c.name, seated: c.seated }));
-}
-
-// 앉을 자리를 고르는 선택칸
-function SeatField({
-  options,
-  seat,
-  busy,
-  onChange,
-}: {
-  options: SeatOption[];
-  seat: SeatOption | undefined;
-  busy: boolean;
-  onChange: (key: string) => void;
-}) {
-  return (
-    <div className="fields">
-      <label>
-        자리
-        <select value={seat?.key ?? ''} disabled={busy} onChange={(e) => onChange(e.target.value)}>
-          {options.map((o) => (
-            <option key={o.key} value={o.key}>
-              {o.label}
-            </option>
-          ))}
-        </select>
-      </label>
-    </div>
-  );
 }
 
 // 탭 내용 하나를 그리고 안 보이는 탭은 자리만 차지하게 숨긴다

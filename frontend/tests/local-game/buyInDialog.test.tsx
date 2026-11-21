@@ -3,7 +3,7 @@ import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { BuyInDialog } from '../../src/features/local-game/components/BuyInDialog';
-import { seatOptions } from '../../src/features/local-game/model/buyIn';
+import { seatOptions } from '../../src/features/gameplay/model/buyIn';
 import { apply, fixtureState } from '../game/helpers';
 import type { GameState } from '../../src/game/types';
 

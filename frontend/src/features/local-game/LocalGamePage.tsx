@@ -7,7 +7,7 @@ import { usePwaPresentation } from '../pwa/usePwaPresentation';
 import { InstallNotice } from '../pwa/InstallNotice';
 import { ManagerMenu } from './components/ManagerMenu';
 import { BuyInDialog } from './components/BuyInDialog';
-import { buyInBlockReason } from './model/buyIn';
+import { buyInBlockReason } from '../gameplay/model/buyIn';
 import { StorageErrorDetails } from './components/StorageErrorDetails';
 import { useEffect, useRef, useState } from 'react';
 import type { ControlLease } from './storage/types';

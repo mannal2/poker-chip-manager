@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { buyInBlockReason, seatOptions } from '../../src/features/local-game/model/buyIn';
+import { buyInBlockReason, seatOptions } from '../../src/features/gameplay/model/buyIn';
 import { fixtureState } from '../game/helpers';
 import type { GameState } from '../../src/game/types';
 

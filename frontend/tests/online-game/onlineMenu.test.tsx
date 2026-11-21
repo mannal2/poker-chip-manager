@@ -80,7 +80,7 @@ it.each(['eliminated', 'forfeited'] as const)('offers in-game kick for %s player
 // 탈락 또는 기권한 본인에게는 기권 대신 방 나가기를 제공한다
 it.each([
   ['eliminated', ['홈', '바이인', '방 나가기']],
-  ['forfeited', ['홈', '이번 핸드가 끝나면 바이인을 신청할 수 있습니다.', '방 나가기']],
+  ['forfeited', ['홈', '바이인', '방 나가기']],
 ] as const)('offers leaving to %s players', (flag, labels) => {
   const snapshot = playing(false);
   guestPlayer(snapshot).player[flag] = true;
@@ -116,19 +116,32 @@ it.each([false, true])('opens the waiting buy-ins for the host (eliminated=%s)',
   expect(menuItems(snapshot).some((i) => i.label === '바이인')).toBe(false);
 });
 
-// 기권한 플레이어는 핸드가 끝나 탈락으로 정리될 때까지 바이인을 언제 신청할 수 있는지 안내받는다
-it('tells a forfeited player the buy-in opens when the hand ends', () => {
+// 기권한 플레이어의 바이인 버튼은 핸드가 끝나기 전에는 흐리게 보이고, 누르면 신청할 수 있는 시점을 알린다
+it('explains when a forfeited player can buy in', () => {
+  vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
   const snapshot = playing(false);
   const { player } = guestPlayer(snapshot);
   player.forfeited = true;
   player.eliminated = false;
-  const items = menuItems(snapshot);
-  const notice = items.find((i) => i.label === '이번 핸드가 끝나면 바이인을 신청할 수 있습니다.');
-  expect(notice?.notice).toBe(true);
-  expect(notice?.command).toBeUndefined();
-  expect(items.some((i) => i.label === '바이인')).toBe(false);
+  const item = menuItems(snapshot).find((i) => i.label === '바이인');
+  expect(item?.command).toBeUndefined();
+  expect(item?.explains).toBe('이번 핸드가 끝나면 바이인을 신청할 수 있습니다.');
+  const host = document.createElement('div');
+  const root = createRoot(host);
+  const choose = vi.fn();
+  const notify = vi.fn();
+  act(() =>
+    root.render(<OnlineMenu snapshot={snapshot} choose={choose} home={() => {}} notify={notify} />),
+  );
+  const button = [...host.querySelectorAll('button')].find((b) => b.textContent === '바이인')!;
+  expect(button.getAttribute('aria-disabled')).toBe('true');
+  act(() => button.click());
+  expect(notify).toHaveBeenCalledWith('이번 핸드가 끝나면 바이인을 신청할 수 있습니다.');
+  expect(choose).not.toHaveBeenCalled();
+  act(() => root.unmount());
+  vi.unstubAllGlobals();
   player.eliminated = true;
-  expect(menuItems(snapshot).some((i) => i.label === '바이인')).toBe(true);
+  expect(menuItems(snapshot).find((i) => i.label === '바이인')?.command?.type).toBe('REQUEST_BUY_IN');
 });
 
 // 자리를 다른 바이인에게 내준 탈락자도 재입장을 신청할 수 있다

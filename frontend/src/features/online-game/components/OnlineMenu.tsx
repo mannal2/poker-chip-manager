@@ -15,6 +15,8 @@ export interface MenuItem {
   notice?: boolean;
   // 명령 대신 따로 대화상자를 연다
   opens?: 'buy-ins';
+  // 지금은 할 수 없는 항목: 흐리게 보이고 누르면 이 문구로 이유를 알린다
+  explains?: string;
 }
 
 export const forfeitWarning =
@@ -59,9 +61,9 @@ export function reentryPending(snapshot: RoomSnapshot, me: RoomParticipant) {
 
 // 탈락한 본인의 바이인 버튼, 또는 이미 신청했으면 그 자리의 대기 안내를 만든다
 function reentryItem(snapshot: RoomSnapshot, me: RoomParticipant): MenuItem | null {
-  // 기권한 칩은 핸드가 끝날 때 나눠지고 그때 탈락으로 정리되므로 그 전에는 신청 시점만 알린다
+  // 기권한 칩은 핸드가 끝날 때 나눠지고 그때 탈락으로 정리되므로 그 전에는 누르면 신청 시점을 알린다
   if (forfeitedThisHand(snapshot, me))
-    return { label: '이번 핸드가 끝나면 바이인을 신청할 수 있습니다.', notice: true };
+    return { label: '바이인', explains: '이번 핸드가 끝나면 바이인을 신청할 수 있습니다.' };
   if (!canRequestReentry(snapshot, me)) return null;
   if (reentryPending(snapshot, me))
     return { label: '방장의 승인을 기다리고 있습니다.', notice: true };
@@ -192,7 +194,13 @@ export function OnlineMenu({
                 {item.label}
               </p>
             ) : (
-              <button key={item.label} onClick={() => (item.home ? home() : choose(item))}>
+              <button
+                key={item.label}
+                aria-disabled={item.explains ? true : undefined}
+                onClick={() =>
+                  item.explains ? notify(item.explains) : item.home ? home() : choose(item)
+                }
+              >
                 {item.label}
               </button>
             ),

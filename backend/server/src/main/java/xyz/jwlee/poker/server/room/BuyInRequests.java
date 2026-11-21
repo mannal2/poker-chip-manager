@@ -44,6 +44,14 @@ public final class BuyInRequests {
     // 신청한 쪽의 대기 신청이 한도 안이면 새 신청을 더한다
     Request add(String id, String askedBy, String tournamentId, String name, String reentryOf, String participantId,
             Instant now) {
+        // 같은 탈락자의 재입장 신청이 이미 대기 중이면 새로 만들지 않고 그 신청을 돌려준다
+        if (reentryOf != null) {
+            Optional<Request> waiting = pending().stream()
+                    .filter(r -> reentryOf.equals(r.reentryOf()) && r.statusAt(now) == Status.PENDING).findFirst();
+            if (waiting.isPresent()) {
+                return waiting.get();
+            }
+        }
         long waiting = requests.values().stream().filter(r -> r.askedBy().equals(askedBy)
                 && r.statusAt(now) == Status.PENDING).count();
         if (waiting >= MAX_PER_ASKER) {
@@ -71,6 +79,17 @@ public final class BuyInRequests {
         requests.put(request.id(), request.ended(Status.APPROVED, now, participantId, credential));
         if (request.reentryOf() != null) {
             supersede(participantId, now);
+        } else {
+            supersedeNewcomers(request.askedBy(), now);
+        }
+    }
+
+    // 한 세션이 낸 새 사람 대기 신청을 모두 밀어내 한 세션이 자리를 둘 갖지 않게 한다
+    private void supersedeNewcomers(String askedBy, Instant now) {
+        for (Request other : pending()) {
+            if (other.reentryOf() == null && askedBy.equals(other.askedBy())) {
+                requests.put(other.id(), other.ended(Status.SUPERSEDED, now, null, null));
+            }
         }
     }
 

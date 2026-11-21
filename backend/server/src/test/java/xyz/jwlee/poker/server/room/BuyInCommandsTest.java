@@ -273,6 +273,34 @@ class BuyInCommandsTest {
         assertThat(listFor(g.room, "a")).isEmpty();
     }
 
+    // 한 세션의 새 사람 신청 하나가 승인되면 같은 세션의 다른 대기 신청은 밀려나 두 번 앉지 못하는지 확인한다
+    @Test
+    void approvingOneNewcomerRequestEndsTheSameSessionsOtherRequests() {
+        GameFixture g = playing();
+        BuyInRequests.Request erin = ask(g.room, "s1", "Erin");
+        BuyInRequests.Request finn = ask(g.room, "s1", "Finn");
+        BuyInRequests.Request gina = ask(g.room, "s2", "Gina");
+
+        g.check(approve(g, erin, between("p2")));
+
+        assertThat(statusOf(g.room, finn)).isEqualTo(Status.SUPERSEDED);
+        assertThat(code(approve(g, finn, between("p2")))).isEqualTo("BUY_IN_NOT_PENDING");
+        assertThat(statusOf(g.room, gina)).isEqualTo(Status.PENDING);
+    }
+
+    // 탈락자가 재입장 신청을 여러 번 눌러도 방장에게는 한 건만 보이는지 확인한다
+    @Test
+    void aRepeatedReentryRequestStaysOnePendingRequest() {
+        GameFixture g = playing();
+        eliminateCarol(g);
+
+        g.check(g.sendWithoutHand("c", "REQUEST_BUY_IN", "{}"));
+        g.check(g.sendWithoutHand("c", "REQUEST_BUY_IN", "{}"));
+
+        assertThat(g.room.buyInRequests().pending()).hasSize(1);
+        assertThat(listFor(g.room, "a")).hasSize(1);
+    }
+
     // 한 세션은 대기 신청 세 건까지만 낼 수 있는지 확인한다
     @Test
     void aSessionHoldsAtMostThreePendingRequests() {

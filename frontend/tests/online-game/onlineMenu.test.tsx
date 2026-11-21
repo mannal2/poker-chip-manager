@@ -80,7 +80,7 @@ it.each(['eliminated', 'forfeited'] as const)('offers in-game kick for %s player
 // 탈락 또는 기권한 본인에게는 기권 대신 방 나가기를 제공한다
 it.each([
   ['eliminated', ['홈', '바이인', '방 나가기']],
-  ['forfeited', ['홈', '방 나가기']],
+  ['forfeited', ['홈', '이번 핸드가 끝나면 바이인을 신청할 수 있습니다.', '방 나가기']],
 ] as const)('offers leaving to %s players', (flag, labels) => {
   const snapshot = playing(false);
   guestPlayer(snapshot).player[flag] = true;
@@ -114,6 +114,21 @@ it.each([false, true])('opens the waiting buy-ins for the host (eliminated=%s)',
   expect(items[0].command).toBeUndefined();
   snapshot.game.status = 'ended';
   expect(menuItems(snapshot).some((i) => i.label === '바이인')).toBe(false);
+});
+
+// 기권한 플레이어는 핸드가 끝나 탈락으로 정리될 때까지 바이인을 언제 신청할 수 있는지 안내받는다
+it('tells a forfeited player the buy-in opens when the hand ends', () => {
+  const snapshot = playing(false);
+  const { player } = guestPlayer(snapshot);
+  player.forfeited = true;
+  player.eliminated = false;
+  const items = menuItems(snapshot);
+  const notice = items.find((i) => i.label === '이번 핸드가 끝나면 바이인을 신청할 수 있습니다.');
+  expect(notice?.notice).toBe(true);
+  expect(notice?.command).toBeUndefined();
+  expect(items.some((i) => i.label === '바이인')).toBe(false);
+  player.eliminated = true;
+  expect(menuItems(snapshot).some((i) => i.label === '바이인')).toBe(true);
 });
 
 // 자리를 다른 바이인에게 내준 탈락자도 재입장을 신청할 수 있다

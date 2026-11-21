@@ -44,6 +44,14 @@ export function canRequestReentry(snapshot: RoomSnapshot, participant: RoomParti
   );
 }
 
+// 본인이 기권했지만 그 핸드가 아직 끝나지 않아 탈락으로 정리되기 전인지 확인한다
+function forfeitedThisHand(snapshot: RoomSnapshot, me: RoomParticipant) {
+  const game = snapshot.game;
+  if (!game || game.status !== 'playing') return false;
+  const player = game.players.find((p) => p.id === me.playerId);
+  return !!player?.forfeited && !player.eliminated;
+}
+
 // 탈락한 본인이 이미 재입장을 신청해 방장의 승인을 기다리는지 확인한다
 export function reentryPending(snapshot: RoomSnapshot, me: RoomParticipant) {
   return snapshot.buyInRequests.some((r) => r.reentryOf === me.playerId);
@@ -51,6 +59,9 @@ export function reentryPending(snapshot: RoomSnapshot, me: RoomParticipant) {
 
 // 탈락한 본인의 바이인 버튼, 또는 이미 신청했으면 그 자리의 대기 안내를 만든다
 function reentryItem(snapshot: RoomSnapshot, me: RoomParticipant): MenuItem | null {
+  // 기권한 칩은 핸드가 끝날 때 나눠지고 그때 탈락으로 정리되므로 그 전에는 신청 시점만 알린다
+  if (forfeitedThisHand(snapshot, me))
+    return { label: '이번 핸드가 끝나면 바이인을 신청할 수 있습니다.', notice: true };
   if (!canRequestReentry(snapshot, me)) return null;
   if (reentryPending(snapshot, me))
     return { label: '방장의 승인을 기다리고 있습니다.', notice: true };

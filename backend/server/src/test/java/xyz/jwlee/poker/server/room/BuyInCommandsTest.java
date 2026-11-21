@@ -206,6 +206,19 @@ class BuyInCommandsTest {
         assertThat(player(g.room, "p3").handTotal).isGreaterThan(0);
     }
 
+    // 기권한 사람도 그 핸드가 끝나 탈락으로 정리되면 재입장을 신청할 수 있는지 확인한다
+    @Test
+    void aForfeitedPlayerMayAskToReenterOnceTheHandEnds() {
+        GameFixture g = playing();
+        g.check(g.send("c", "FORFEIT", "{}"));
+        // 남은 칩은 핸드가 끝날 때 나눠지므로 그 전에는 아직 탈락자가 아니다
+        assertThat(code(g.sendWithoutHand("c", "REQUEST_BUY_IN", "{}"))).isEqualTo("NOT_ELIMINATED");
+        g.check(g.send("a", "FOLD", null));
+        assertThat(player(g.room, "p2").eliminated).isTrue();
+        g.check(g.sendWithoutHand("c", "REQUEST_BUY_IN", "{}"));
+        assertThat(g.room.buyInRequests().pending()).hasSize(1);
+    }
+
     // 탈락자의 재입장 신청이 승인되면 새 플레이어로 다시 연결되고 옛 ID는 더 쓰이지 않는지 확인한다
     @Test
     void anApprovedReentryRelinksTheSeatAndTheOldPlayerIdIsDone() {

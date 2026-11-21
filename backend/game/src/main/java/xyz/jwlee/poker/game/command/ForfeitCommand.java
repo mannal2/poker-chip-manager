@@ -31,7 +31,8 @@ public final class ForfeitCommand {
                 .filter(x -> x.id.equals(cmd.playerId()))
                 .findFirst()
                 .orElse(null);
-        Rules.require(p != null && !p.eliminated && !p.forfeited);
+        // A buy-in still waiting for cards is cancelled by the host (CANCEL_BUY_IN), never forfeited.
+        Rules.require(p != null && !p.eliminated && !p.forfeited && p.joining == null);
         p.forfeited = true;
         p.folded = true;
         h.pending.remove(p.id);

@@ -353,7 +353,7 @@ public final class Round {
     /**
      * After the payouts, each forfeited player's stack goes to the survivors in 5-chip units; the
      * leftover units go one each from the seat after the button. The emptied stack is then
-     * eliminated by the normal rule.
+     * eliminated by the normal rule. A buy-in still waiting for cards is no survivor: it gets no share.
      */
     private static void splitForfeitedStacks(GameState s, TransitionContext c, List<GameEvent> events) {
         int count = s.players.size();
@@ -363,7 +363,7 @@ public final class Round {
                 continue;
             }
             List<Player> survivors = new ArrayList<>(s.players.stream()
-                    .filter(p -> !p.eliminated && !p.forfeited && p.stack > 0)
+                    .filter(p -> !p.eliminated && !p.forfeited && p.joining == null && p.stack > 0)
                     .toList());
             if (survivors.isEmpty()) {
                 throw new IllegalStateException("NO_FORFEIT_SURVIVOR");

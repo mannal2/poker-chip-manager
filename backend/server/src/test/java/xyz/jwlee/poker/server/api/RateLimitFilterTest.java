@@ -223,6 +223,16 @@ class RateLimitFilterTest {
         postFrom("/api/room-joins", "198.51.100.2").andExpect(status().isUnauthorized());
     }
 
+    // 바이인 신청도 참가와 같은 IP 버킷을 쓰는지 확인한다
+    @Test
+    void buyInRequestsShareTheAddressBucket() throws Exception {
+        for (int i = 0; i < 20; i++) {
+            postFrom("/api/buy-in-requests", "198.51.100.9").andExpect(status().isUnauthorized());
+        }
+
+        postFrom("/api/room-joins", "198.51.100.9").andExpect(status().isTooManyRequests());
+    }
+
     // 방 생성 한도로 거절된 시도는 IP 버킷을 쓰지 않아 참가를 막지 않는다
     @Test
     void refusedRoomCreationsDoNotDrainTheAddressBucket() throws Exception {

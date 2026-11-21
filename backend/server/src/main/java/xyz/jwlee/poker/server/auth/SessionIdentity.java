@@ -12,13 +12,14 @@ import xyz.jwlee.poker.server.room.RequestLedger;
 import xyz.jwlee.poker.server.room.RoomException;
 import xyz.jwlee.poker.server.room.SeatBinding;
 
-// HttpSession의 화면 스트림별 요청 원장, 방별 자리 자격, 복구 신청을 읽고 쓰는 역할을 전담한다
+// HttpSession의 화면 스트림별 요청 원장, 방별 자리 자격, 복구·바이인 신청을 읽고 쓰는 역할을 전담한다
 /** The only reader and writer of the app's HttpSession attributes. */
 public final class SessionIdentity {
 
     private static final String STREAMS = "pcm.streams";
     private static final String PARTICIPANTS = "pcm.participants";
     private static final String RECOVERIES = "pcm.recoveries";
+    private static final String BUY_INS = "pcm.buyIns";
     private static final int UNBOUND_IDLE_SECONDS = 30 * 60;
 
     private final HttpSession session;
@@ -108,6 +109,21 @@ public final class SessionIdentity {
         recoveries().remove(recoveryRequestId);
     }
 
+    // 이 세션이 만든 바이인 신청과 그 방을 기억한다
+    public void rememberBuyIn(String buyInRequestId, String roomId) {
+        buyIns().put(buyInRequestId, roomId);
+    }
+
+    // 이 세션이 만든 바이인 신청의 방을 찾는다
+    public Optional<String> buyInRoom(String buyInRequestId) {
+        return Optional.ofNullable(buyIns().get(buyInRequestId));
+    }
+
+    // 사라진 바이인 신청을 잊는다
+    public void forgetBuyIn(String buyInRequestId) {
+        buyIns().remove(buyInRequestId);
+    }
+
     // 방별 자리 자격 맵을 돌려준다
     private Map<String, SeatBinding> participants() {
         return slot(PARTICIPANTS, ConcurrentHashMap::new);
@@ -116,6 +132,11 @@ public final class SessionIdentity {
     // 복구 신청 id에서 방 id로 가는 맵을 돌려준다
     private Map<String, String> recoveries() {
         return slot(RECOVERIES, ConcurrentHashMap::new);
+    }
+
+    // 바이인 신청 id에서 방 id로 가는 맵을 돌려준다
+    private Map<String, String> buyIns() {
+        return slot(BUY_INS, ConcurrentHashMap::new);
     }
 
     // 세션 속성을 읽고 없으면 만들어 저장한다

@@ -32,6 +32,7 @@
 | `error-not-found` | 오류 본문 `{code, message}`(404 `ROOM_NOT_FOUND`) |
 | `error-origin-rejected` | 필터 오류 본문 `{code}`(403 `ORIGIN_REJECTED`) |
 | `recovery-request`, `recovery-approved` | 복구 신청(201), 승인된 신청의 결과 조회 |
+| `buy-in-request`, `buy-in-approved` | 진행 중인 방에 새 사람의 바이인 신청(201, 본문은 `roomCode`·`name`), 승인된 신청의 결과 조회 |
 | `ws-subscribe` | 클라이언트가 보내는 SUBSCRIBE |
 | `ws-snapshot` | 방 변경을 알리는 SNAPSHOT. 방장이 받는 것이라 `recoveryRequests`가 채워져 있다 |
 | `ws-ping` | 서버의 생존 확인 |
@@ -46,6 +47,7 @@
 - 화면은 `(stateVersion, draftVersion)`이 낮은 SNAPSHOT을 버린다. 같은 쌍은 `previousVersion`이 `null`일 때만 효과 재생 없이 적용한다.
 - 마지막 메시지(`ACCESS_REVOKED`·`ROOM_GONE`·`PROTOCOL_INCOMPATIBLE`) 뒤에는 1000, 메시지 없이 끊을 때는 1001로 닫는다. 재연결 여부는 코드가 아니라 마지막 메시지를 받았는지로 정한다.
 - 복구 결과 조회는 대기·거절·만료·대체면 `{recoveryRequestId, status}`만, 승인이면 생성·참가와 같은 필드를 함께 돌려준다.
+- 바이인 결과 조회도 같은 모양이고 ID 필드만 `buyInRequestId`다. 스냅샷의 `buyInRequests`는 진행 중일 때의 대기 신청이며, 방장은 모두, 재입장을 신청한 탈락자는 자기 것만 받는다.
 - 본문이 `{code}`뿐인 것은 `ORIGIN_REJECTED`·`CSRF_REJECTED`·`NO_SESSION`(필터 응답)과 `TOO_MANY_STREAMS`다. 본문 과대 413은 `{code, message}`다.
 - 스냅샷의 `deployPending`은 서버가 배포 준비로 새 게임 시작을 닫았는지다. 모든 예시에서는 `false`다.
 

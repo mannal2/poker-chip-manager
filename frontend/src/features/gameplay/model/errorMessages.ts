@@ -37,6 +37,9 @@ export type ServerErrorCode =
   | 'RECOVERY_LIMIT'
   | 'RECOVERY_NOT_PENDING'
   | 'RECOVERY_TARGET_NOT_FOUND'
+  | 'BUY_IN_CLOSED'
+  | 'BUY_IN_LIMIT'
+  | 'BUY_IN_NOT_PENDING'
   | 'ALREADY_PARTICIPANT'
   | 'FORBIDDEN'
   | 'DEPLOY_PENDING'
@@ -101,6 +104,9 @@ export const errorMessages: Record<ErrorCode, string> = {
   RECOVERY_LIMIT: '이 자리의 복구 신청이 너무 많습니다. 잠시 뒤 다시 시도해 주세요.',
   RECOVERY_NOT_PENDING: '이미 처리되었거나 만료된 복구 신청입니다.',
   RECOVERY_TARGET_NOT_FOUND: '이 이름의 자리를 찾을 수 없습니다.',
+  BUY_IN_CLOSED: '지금은 바이인을 받을 수 없습니다.',
+  BUY_IN_LIMIT: '바이인 신청이 너무 많습니다. 잠시 후 다시 시도해 주세요.',
+  BUY_IN_NOT_PENDING: '이미 처리된 바이인 신청입니다.',
   ALREADY_PARTICIPANT: '이미 이 방에 참가하고 있습니다.',
   FORBIDDEN: '이 작업을 할 권한이 없습니다.',
   DEPLOY_PENDING: '서버 업데이트가 끝나면 시작할 수 있습니다.',

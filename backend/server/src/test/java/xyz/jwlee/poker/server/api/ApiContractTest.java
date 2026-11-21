@@ -180,6 +180,7 @@ class ApiContractTest {
             assertThat(state.has("draftVersion")).isTrue();
             assertThat(state.has("hostTakeoverOpen")).isTrue();
             assertThat(state.has("recoveryRequests")).isTrue();
+            assertThat(state.has("buyInRequests")).isTrue();
             assertThat(state.get("participants").get(0).has("connected")).isTrue();
             assertThat(state.get("you").has("canTakeHost")).isTrue();
         }
@@ -196,7 +197,7 @@ class ApiContractTest {
         assertThat(snapshot.get("events")).isNotEmpty();
     }
 
-    // 세션부터 결과·조작 인수·복구·방 삭제까지 예시로 남길 교환을 실행한다.
+    // 세션부터 결과·조작 인수·복구·바이인·방 삭제까지 예시로 남길 교환을 실행한다.
     private void play() throws Exception {
         Browser alice = new Browser("session", "stream");
         Browser bob = new Browser(null, null);
@@ -225,6 +226,13 @@ class ApiContractTest {
         exchanges.put("ws-snapshot", (ObjectNode) aliceScreen.next(
                 m -> m.get("type").asString().equals("SNAPSHOT")
                         && m.get("state").get("stateVersion").asLong() == afterCall));
+        Browser newcomer = new Browser(null, null);
+        String buyIn = newcomer.screen("buy-in-request", 201, "/api/buy-in-requests",
+                "\"roomCode\":\"" + roomCode + "\",\"name\":\"Carol\"").get("buyInRequestId").asString();
+        alice.command(null, 200, "BUY_IN_APPROVE", "{\"buyInRequestId\":\"" + buyIn
+                + "\",\"placement\":{\"kind\":\"between\",\"after\":\"p1\"}}");
+        newcomer.call("buy-in-approved", 200, HttpMethod.GET, "/api/buy-in-requests/{requestId}", buyIn, null);
+        alice.command(null, 200, "CANCEL_BUY_IN", "{\"playerId\":\"p2\"}");
 
         alice.command(null, 200, "SETTLEMENT_DRAFT", "{\"potIndex\":0,\"winners\":{\"pot0\":[\"p0\"]}}");
         assertThat(alice.snapshot("snapshot-settlement").get("settlementDraft").isNull()).isFalse();

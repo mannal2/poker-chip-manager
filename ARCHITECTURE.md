@@ -268,7 +268,7 @@ Spring Boot 4·Spring MVC·가상 스레드 앱이다. 방은 서버 메모리�
 | `api/` | `RoomController`(생성·참가·상태), `CommandController`(명령·요청 결과·조작 인수), `RecoveryController`(복구 신청·결과 조회), `HistoryController`, `HealthController`, 본문 크기 필터, `RateLimitFilter`·`RateLimitProperties`(빈도 제한), `ApiExceptionHandler`·`ApiError`(코드·HTTP 상태·문구) |
 | `auth/` | `SecurityConfig`, `OriginFilter`, `SessionGuardFilter`, `SessionController`(세션·스트림), `SessionIdentity`(세션 속성·스트림 장부의 유일한 입구, 방별 `SeatBinding` 보관), `WebSocketHandshakeGuard`(핸드셰이크의 Origin·세션 검사), `SessionLimitListener`(서버 전체 세션 수, 자리 없는 세션의 30분 유휴) |
 | `realtime/` | `RealtimeConfig`(`/ws` 등록), `RoomSocketHandler`(소켓 열림·닫힘, SUBSCRIBE·PONG·RESYNC), `ConnectionHub`(열린 연결 표, `RoomPublisher` 구현), `Connection`(소켓 하나의 전송 대기열), `HeartbeatTask`(1초 주기 PING·무응답·전송 정체·미구독 정리), `SweepTask`(1초 주기 방 점검), `SessionExpiryListener`(세션이 끝나면 연결 회수) |
-| `room/` | `Room`(방 상태·잠금), `CommandPipeline`(검사 순서와 명령 연결), `WaitingRoomCommands`·`GameCommands`·`ResultCommands`·`RecoveryCommands`, `RoomLifecycle`(연결 전환·시간 규칙), `PresenceGrace`(대기방 재접속·자동 처리 유예 설정값), `Presence`(참가자별 구독 연결·끊김 시각), `AutoPlay`(끊긴 사람의 자동 체크·폴드), `RecoveryRequests`, `SeatBinding`(자리와 자격의 묶음), `StartConditions`, `StartGate`(배포 중 새 게임 차단), `Capabilities`, `RequestLedger`·`RequestOutcome`, `SnapshotWriter`, `PublicationBuilder`·`Publication`·`RoomPublisher`(방 변경을 수신자별 메시지로 모으는 경계) |
+| `room/` | `Room`(방 상태·잠금), `CommandPipeline`(검사 순서와 명령 연결), `WaitingRoomCommands`·`GameCommands`·`ResultCommands`·`RecoveryCommands`·`BuyInCommands`, `RoomLifecycle`(연결 전환·시간 규칙), `PresenceGrace`(대기방 재접속·자동 처리 유예 설정값), `Presence`(참가자별 구독 연결·끊김 시각), `AutoPlay`(끊긴 사람의 자동 체크·폴드), `RecoveryRequests`·`BuyInRequests`, `SeatBinding`(자리와 자격의 묶음), `StartConditions`, `StartGate`(배포 중 새 게임 차단), `Capabilities`, `RequestLedger`·`RequestOutcome`, `SnapshotWriter`, `PublicationBuilder`·`Publication`·`RoomPublisher`(방 변경을 수신자별 메시지로 모으는 경계) |
 | `registry/` | `RoomRegistry`(방 표·한도·코드·잠금 진입, 배포 준비), `RoomCodes` |
 | `ops/` | `DeployController`(내부 배포 경로), `LoopbackOnlyFilter`(내부 경로의 loopback 제한), `GateFile`(기동 때 시작 차단 파일 판정) |
 | `support/` | `IdGenerator`, `Clock` 빈, `Protocol`, `TokenBuckets`(키별 토큰 버킷, 키 수 상한과 유휴 정리) |
@@ -309,13 +309,14 @@ Spring Boot 4·Spring MVC·가상 스레드 앱이다. 방은 서버 메모리�
 | `POST /api/rooms/{roomId}/control` | 같은 참가자의 다른 화면으로 조작 인수 |
 | `GET /api/rooms/{roomId}/history` | 현재 토너먼트 기록 |
 | `POST /api/recovery-requests`, `GET /api/recovery-requests/{id}` | 새 기기의 복구 신청, 자기 신청의 결과 조회(승인이면 세션을 자리에 연결) |
+| `POST /api/buy-in-requests`, `GET /api/buy-in-requests/{id}` | 진행 중인 방에 새 사람의 바이인 신청, 자기 신청의 결과 조회(승인이면 세션을 새 자리에 연결). 탈락자의 재입장은 방 명령 `REQUEST_BUY_IN` |
 | `GET /ws` | WebSocket. 핸드셰이크에서 Origin·세션을 보고 메시지마다 자리 자격을 다시 본다 |
 
 요청·응답·소켓 메시지의 실제 예시는 [shared/api-contract/](shared/api-contract/README.md)에 있고 [ApiContractTest](backend/server/src/test/java/xyz/jwlee/poker/server/api/ApiContractTest.java)가 실제 응답과 비교한다. 명세와 다른 곳은 [SYSTEM_SPEC.md](SYSTEM_SPEC.md) 6·14절의 2A·2B 항목에 표시했다.
 
 ### 빈도 제한과 배포 게이트
 
-- `RateLimitFilter`는 보안 체인과 모든 요청 장부보다 앞에 있다. 거절된 요청은 흔적을 남기지 않으므로 같은 순번으로 다시 보낼 수 있다. 버킷은 넷이다: 세션별 명령(`commands`·`control`), 주소별 방 생성, 주소별 생성·참가·복구 신청, 주소별 새 세션 발급. 방 생성은 주소 버킷보다 먼저 검사한다. 주소는 `poker.client-ip-header`(운영 `X-Real-IP`)이고 없으면 소켓 주소다. 값과 근거는 [SYSTEM_SPEC.md](SYSTEM_SPEC.md) 15절, [TECH_DECISIONS.md](TECH_DECISIONS.md) T81이다.
+- `RateLimitFilter`는 보안 체인과 모든 요청 장부보다 앞에 있다. 거절된 요청은 흔적을 남기지 않으므로 같은 순번으로 다시 보낼 수 있다. 버킷은 넷이다: 세션별 명령(`commands`·`control`), 주소별 방 생성, 주소별 생성·참가·복구·바이인 신청, 주소별 새 세션 발급. 방 생성은 주소 버킷보다 먼저 검사한다. 주소는 `poker.client-ip-header`(운영 `X-Real-IP`)이고 없으면 소켓 주소다. 값과 근거는 [SYSTEM_SPEC.md](SYSTEM_SPEC.md) 15절, [TECH_DECISIONS.md](TECH_DECISIONS.md) T81이다.
 - `SessionLimitListener.tryOpen`은 세션 수 확인과 생성을 한 단계로 묶어 2,000개를 넘기지 않는다. 넘으면 `SessionController`가 503 `SESSION_LIMIT`을 낸다.
 - `StartGate`는 배포 중 새 게임 시작(`StartConditions`의 `DEPLOY_PENDING`)과 결과 화면의 종료 취소(`UNDO_DEPLOY_PENDING`)를 막는다. 닫힘은 deploymentId 하나가 소유하고 같은 ID만 연다. 방 스냅샷의 `deployPending`은 대기방·결과 화면 안내용이다.
 - `GateFile`은 기동 때 `poker.deploy.gate-file`(운영 `/run/poker-gate/start-gate.json`)을 읽는다. `COMPLETE` 기록이거나, 디렉터리는 있고 파일이 없으면 열고, 그 밖에는 닫는다. 디렉터리가 없거나 읽을 수 없으면 `unknown`으로 닫는다(R7). 설정이 비면(기본·e2e 프로필) 연다.

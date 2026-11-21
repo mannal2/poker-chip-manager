@@ -170,7 +170,8 @@
       },
       "legal" : null,
       "settlementDraft" : null,
-      "recoveryRequests" : [ ]
+      "recoveryRequests" : [ ],
+      "buyInRequests" : [ ]
     }
   }
 }

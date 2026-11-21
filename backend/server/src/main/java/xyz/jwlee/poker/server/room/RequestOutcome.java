@@ -6,7 +6,8 @@ package xyz.jwlee.poker.server.room;
  * only for create/join, so a replay can answer with the same room. {@code issuedGeneration} and {@code issuedTo}
  * are set only for a successful takeover (0 and null otherwise): a retry gets the generation it was issued, not
  * whatever is current by then, and only while the session is still the participant it was issued to.
- * {@code recoveryRequestId} is set only for a recovery request, so a retry answers with the same request.
+ * {@code recoveryRequestId} is set only for a recovery or buy-in request (the id of that request), so a retry
+ * answers with the same request.
  */
 public record RequestOutcome(
         String requestId, long sequence, Outcome outcome, String code, long resultStateVersion, String roomId,
@@ -37,5 +38,11 @@ public record RequestOutcome(
             String requestId, long sequence, long resultStateVersion, String roomId, String recoveryRequestId) {
         return new RequestOutcome(requestId, sequence, Outcome.APPLIED, "OK", resultStateVersion, roomId, 0, null,
                 recoveryRequestId);
+    }
+
+    // 성공한 바이인 신청의 결과를 만든다. 신청 ID는 복구 신청과 같은 칸에 둔다
+    public static RequestOutcome buyIn(
+            String requestId, long sequence, long resultStateVersion, String roomId, String buyInRequestId) {
+        return recovery(requestId, sequence, resultStateVersion, roomId, buyInRequestId);
     }
 }

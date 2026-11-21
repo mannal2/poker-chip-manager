@@ -21,6 +21,7 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 import xyz.jwlee.poker.server.auth.SessionIdentity;
 import xyz.jwlee.poker.server.registry.RoomRegistry;
+import xyz.jwlee.poker.server.room.Room;
 import xyz.jwlee.poker.server.room.RoomPhase;
 import xyz.jwlee.poker.server.room.SeatBinding;
 
@@ -284,9 +285,9 @@ class RoomControllerTest {
     }
 
     @Test
-    void theEleventhParticipantIsRefusedWithRoomFull() throws Exception {
+    void theSixteenthParticipantIsRefusedWithRoomFull() throws Exception {
         JsonNode created = new Client().create("Alice");
-        for (int i = 0; i < 9; i++) {
+        for (int i = 0; i < Room.MAX_PARTICIPANTS - 1; i++) {
             registry.join(created.get("code").asString(), "p" + i);
         }
 

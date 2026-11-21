@@ -35,6 +35,9 @@ class ErrorCodeTest {
             Map.entry("RECOVERY_LIMIT", 422),
             Map.entry("ALREADY_PARTICIPANT", 422),
             Map.entry("RECOVERY_NOT_PENDING", 422),
+            Map.entry("BUY_IN_CLOSED", 422),
+            Map.entry("BUY_IN_LIMIT", 422),
+            Map.entry("BUY_IN_NOT_PENDING", 422),
             Map.entry("ROOM_LIMIT", 503),
             Map.entry("SESSION_LIMIT", 503));
 
@@ -56,6 +59,9 @@ class ErrorCodeTest {
             Map.entry("RECOVERY_LIMIT", "이 자리의 복구 신청이 너무 많습니다. 잠시 뒤 다시 시도해 주세요."),
             Map.entry("ALREADY_PARTICIPANT", "이미 이 방에 참가하고 있습니다."),
             Map.entry("RECOVERY_NOT_PENDING", "이미 처리되었거나 만료된 복구 신청입니다."),
+            Map.entry("BUY_IN_CLOSED", "지금은 바이인을 받을 수 없습니다."),
+            Map.entry("BUY_IN_LIMIT", "바이인 신청이 너무 많습니다. 잠시 후 다시 시도해 주세요."),
+            Map.entry("BUY_IN_NOT_PENDING", "이미 처리된 바이인 신청입니다."),
             Map.entry("NOT_YOUR_TURN", "지금은 내 차례가 아닙니다."),
             Map.entry("INVALID_ACTION", "지금은 할 수 없는 행동입니다."),
             Map.entry("ABORT_FIRST", "진행 중인 게임을 먼저 중단해 주세요."),

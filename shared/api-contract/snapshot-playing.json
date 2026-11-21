@@ -121,6 +121,7 @@
       "reasonCode" : null
     },
     "settlementDraft" : null,
-    "recoveryRequests" : [ ]
+    "recoveryRequests" : [ ],
+    "buyInRequests" : [ ]
   }
 }

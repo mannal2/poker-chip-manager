@@ -74,7 +74,8 @@ final class RateLimitFilter extends OncePerRequestFilter {
         if (path.equals("/api/rooms") && !rooms.buckets().tryTake(clientIp(request))) {
             return rooms;
         }
-        if (path.equals("/api/rooms") || path.equals("/api/room-joins") || path.equals("/api/recovery-requests")) {
+        if (path.equals("/api/rooms") || path.equals("/api/room-joins") || path.equals("/api/recovery-requests")
+                || path.equals("/api/buy-in-requests")) {
             return addresses.buckets().tryTake(clientIp(request)) ? null : addresses;
         }
         return null;

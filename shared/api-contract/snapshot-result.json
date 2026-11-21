@@ -7,7 +7,7 @@
     "roomId" : "00000000-0000-4000-8000-000000000003",
     "code" : "ABC234",
     "roomPhase" : "RESULT",
-    "stateVersion" : 11,
+    "stateVersion" : 14,
     "draftVersion" : 1,
     "deployPending" : false,
     "tournamentId" : "00000000-0000-4000-8000-000000000010",
@@ -48,7 +48,7 @@
     },
     "game" : {
       "tournamentId" : "00000000-0000-4000-8000-000000000010",
-      "version" : 4,
+      "version" : 6,
       "status" : "ended",
       "settings" : {
         "names" : [ "Alice", "Bob" ],
@@ -59,6 +59,12 @@
       },
       "initialTotal" : 2000,
       "setupOrder" : [ "p0", "p1" ],
+      "formerPlayers" : [ {
+        "id" : "p2",
+        "name" : "Carol",
+        "entry" : 1,
+        "reason" : "cancelled"
+      } ],
       "players" : [ {
         "id" : "p0",
         "name" : "Alice",
@@ -100,7 +106,7 @@
       "pendingBlinds" : null,
       "undo" : {
         "tournamentId" : "00000000-0000-4000-8000-000000000010",
-        "version" : 3,
+        "version" : 5,
         "status" : "playing",
         "settings" : {
           "names" : [ "Alice", "Bob" ],
@@ -111,6 +117,12 @@
         },
         "initialTotal" : 2000,
         "setupOrder" : [ "p0", "p1" ],
+        "formerPlayers" : [ {
+          "id" : "p2",
+          "name" : "Carol",
+          "entry" : 1,
+          "reason" : "cancelled"
+        } ],
         "players" : [ {
           "id" : "p0",
           "name" : "Alice",
@@ -150,7 +162,7 @@
         },
         "pot" : 2000,
         "pendingBlinds" : null,
-        "eventIds" : [ "00000000-0000-4000-8000-000000000015:0", "00000000-0000-4000-8000-000000000015:1", "00000000-0000-4000-8000-000000000015:2" ]
+        "eventIds" : [ "00000000-0000-4000-8000-000000000021:0", "00000000-0000-4000-8000-000000000021:1", "00000000-0000-4000-8000-000000000021:2" ]
       }
     },
     "legal" : null,
@@ -161,6 +173,7 @@
       "name" : "Bob",
       "requestedAt" : "2026-10-30T12:00:00Z",
       "expiresAt" : "2026-10-30T12:05:00Z"
-    } ]
+    } ],
+    "buyInRequests" : [ ]
   }
 }

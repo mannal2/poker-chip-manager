@@ -219,7 +219,7 @@ final class GameCommands {
     }
 
     // 명령이 거절되었으면 오류 코드가 담긴 예외를 던지고, 적용되었으면 새 상태와 이벤트를 담은 결과를 반환한다
-    private static TransitionResult.Applied applied(TransitionResult result) {
+    static TransitionResult.Applied applied(TransitionResult result) {
         return switch (result) {
             case TransitionResult.Applied a -> a;
             case TransitionResult.Rejected r -> throw RoomException.rule(r.code());

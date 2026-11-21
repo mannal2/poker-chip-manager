@@ -13,6 +13,8 @@ export interface MenuItem {
   then?: 'stay-or-leave';
   // 누를 수 없는 안내 문구로 표시한다
   notice?: boolean;
+  // 명령 대신 따로 대화상자를 연다
+  opens?: 'buy-ins';
 }
 
 export const forfeitWarning =
@@ -42,10 +44,15 @@ export function canRequestReentry(snapshot: RoomSnapshot, participant: RoomParti
   );
 }
 
+// 탈락한 본인이 이미 재입장을 신청해 방장의 승인을 기다리는지 확인한다
+export function reentryPending(snapshot: RoomSnapshot, me: RoomParticipant) {
+  return snapshot.buyInRequests.some((r) => r.reentryOf === me.playerId);
+}
+
 // 탈락한 본인의 바이인 버튼, 또는 이미 신청했으면 그 자리의 대기 안내를 만든다
 function reentryItem(snapshot: RoomSnapshot, me: RoomParticipant): MenuItem | null {
   if (!canRequestReentry(snapshot, me)) return null;
-  if (snapshot.buyInRequests.some((r) => r.reentryOf === me.playerId))
+  if (reentryPending(snapshot, me))
     return { label: '방장의 승인을 기다리고 있습니다.', notice: true };
   return { label: '바이인', command: { type: 'REQUEST_BUY_IN', handScoped: false } };
 }
@@ -62,7 +69,10 @@ export function menuItems(snapshot: RoomSnapshot): MenuItem[] {
   if (!playing)
     items.push({ label: '방 나가기', command: { type: 'LEAVE', handScoped: false } });
   if (playing) {
-    const reentry = me && reentryItem(snapshot, me);
+    // 방장은 대기 바이인 대화상자 하나에서 취소와 자기 재입장 신청을 모두 한다
+    if (host && snapshot.game?.status === 'playing')
+      items.push({ label: '바이인', opens: 'buy-ins' });
+    const reentry = !host && me && reentryItem(snapshot, me);
     if (reentry) items.push(reentry);
     if (me && inPlay(snapshot, me))
       items.push({

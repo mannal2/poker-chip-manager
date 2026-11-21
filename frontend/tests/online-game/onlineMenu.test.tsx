@@ -31,7 +31,7 @@ function guestPlayer(snapshot: ReturnType<typeof playing>) {
 it.each([
   ['WAITING', true, ['홈', '방 나가기', '방장 넘기기', '플레이어 내보내기']],
   ['WAITING', false, ['홈', '방 나가기']],
-  ['PLAYING', true, ['홈', '기권', '기권 처리', '방장 넘기기', '토너먼트 중단']],
+  ['PLAYING', true, ['홈', '바이인', '기권', '기권 처리', '방장 넘기기', '토너먼트 중단']],
   ['PLAYING', false, ['홈', '기권']],
   ['RESULT', true, ['홈', '방 나가기', '방장 넘기기', '다시 준비하기']],
   ['RESULT', false, ['홈', '방 나가기']],
@@ -91,17 +91,28 @@ it.each([
   expect(leave.confirm).toContain('다시 들어올 수 없습니다');
 });
 
-// 탈락한 본인(방장 포함)의 메뉴에만 재입장 바이인 신청 버튼이 있다
-it.each([false, true])('offers a buy-in request to an eliminated player (host=%s)', (isHost) => {
-  const snapshot = playing(isHost);
-  const me = snapshot.participants.find((p) => p.participantId === snapshot.you.participantId)!;
-  const player = snapshot.game.players.find((p) => p.id === me.playerId)!;
+// 탈락한 본인의 메뉴에만 재입장 바이인 신청 버튼이 있다
+it('offers a buy-in request to an eliminated guest', () => {
+  const snapshot = playing(false);
+  const { player } = guestPlayer(snapshot);
   expect(menuItems(snapshot).some((i) => i.label === '바이인')).toBe(false);
   player.eliminated = true;
   const buyIn = menuItems(snapshot).find((i) => i.label === '바이인');
   expect(buyIn?.command).toEqual({ type: 'REQUEST_BUY_IN', handScoped: false });
   expect(buyIn?.confirm).toBeUndefined();
   snapshot.roomPhase = 'RESULT';
+  expect(menuItems(snapshot).some((i) => i.label === '바이인')).toBe(false);
+});
+
+// 방장의 바이인 버튼은 탈락 여부와 관계없이 대기 중인 바이인 대화상자를 연다
+it.each([false, true])('opens the waiting buy-ins for the host (eliminated=%s)', (out) => {
+  const snapshot = playing(true);
+  snapshot.game.players[0].eliminated = out;
+  const items = menuItems(snapshot).filter((i) => i.label === '바이인');
+  expect(items).toHaveLength(1);
+  expect(items[0].opens).toBe('buy-ins');
+  expect(items[0].command).toBeUndefined();
+  snapshot.game.status = 'ended';
   expect(menuItems(snapshot).some((i) => i.label === '바이인')).toBe(false);
 });
 

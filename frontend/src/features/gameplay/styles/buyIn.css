@@ -69,3 +69,9 @@
   display: block;
   margin-top: calc(4 * var(--u));
 }
+/* The online approval shows who asked and how, read-only, where the single-device tabs and name field sit. */
+.buy-in .applicant {
+  margin: 0 0 calc(12 * var(--u));
+  font-size: calc(14 * var(--u));
+  font-weight: 600;
+}

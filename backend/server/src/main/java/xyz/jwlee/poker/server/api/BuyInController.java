@@ -53,7 +53,7 @@ class BuyInController {
     @PostMapping("/api/buy-in-requests")
     ResponseEntity<ObjectNode> ask(@RequestBody(required = false) JsonNode body, HttpServletRequest request) {
         RoomController.Fields f = RoomController.Fields.parse(body);
-        String code = f.string("roomCode");
+        String code = f.string("code");
         String name = f.string("name");
         String fingerprint = Fingerprint.sha256("buy-in\n" + code + "\n" + name);
         SessionIdentity identity = identity(request);

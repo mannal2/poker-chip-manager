@@ -32,7 +32,7 @@
 | `error-not-found` | 오류 본문 `{code, message}`(404 `ROOM_NOT_FOUND`) |
 | `error-origin-rejected` | 필터 오류 본문 `{code}`(403 `ORIGIN_REJECTED`) |
 | `recovery-request`, `recovery-approved` | 복구 신청(201), 승인된 신청의 결과 조회 |
-| `buy-in-request`, `buy-in-approved` | 진행 중인 방에 새 사람의 바이인 신청(201, 본문은 `roomCode`·`name`), 승인된 신청의 결과 조회 |
+| `buy-in-request`, `buy-in-approved` | 진행 중인 방에 새 사람의 바이인 신청(201, 본문은 생성·참가·복구와 같은 `code`·`name`), 승인된 신청의 결과 조회 |
 | `ws-subscribe` | 클라이언트가 보내는 SUBSCRIBE |
 | `ws-snapshot` | 방 변경을 알리는 SNAPSHOT. 방장이 받는 것이라 `recoveryRequests`가 채워져 있다 |
 | `ws-ping` | 서버의 생존 확인 |

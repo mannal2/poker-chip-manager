@@ -228,7 +228,7 @@ class ApiContractTest {
                         && m.get("state").get("stateVersion").asLong() == afterCall));
         Browser newcomer = new Browser(null, null);
         String buyIn = newcomer.screen("buy-in-request", 201, "/api/buy-in-requests",
-                "\"roomCode\":\"" + roomCode + "\",\"name\":\"Carol\"").get("buyInRequestId").asString();
+                "\"code\":\"" + roomCode + "\",\"name\":\"Carol\"").get("buyInRequestId").asString();
         alice.command(null, 200, "BUY_IN_APPROVE", "{\"buyInRequestId\":\"" + buyIn
                 + "\",\"placement\":{\"kind\":\"between\",\"after\":\"p1\"}}");
         newcomer.call("buy-in-approved", 200, HttpMethod.GET, "/api/buy-in-requests/{requestId}", buyIn, null);

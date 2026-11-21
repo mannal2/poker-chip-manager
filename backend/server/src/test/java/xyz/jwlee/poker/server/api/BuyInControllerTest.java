@@ -122,7 +122,7 @@ class BuyInControllerTest {
 
         // 바이인을 신청한다
         ResultActions ask(String roomCode, String name) throws Exception {
-            return postJson("/api/buy-in-requests", envelope("\"roomCode\":\"" + roomCode + "\",\"name\":\"" + name
+            return postJson("/api/buy-in-requests", envelope("\"code\":\"" + roomCode + "\",\"name\":\"" + name
                     + "\""));
         }
 
@@ -202,7 +202,7 @@ class BuyInControllerTest {
     void aRequestAnswersIdPendingAndExpiryAndARetryMakesOnlyOne() throws Exception {
         Client alice = playing();
         Client device = new Client();
-        String request = device.envelope("\"roomCode\":\"" + alice.code + "\",\"name\":\"Erin\"");
+        String request = device.envelope("\"code\":\"" + alice.code + "\",\"name\":\"Erin\"");
 
         JsonNode first = body(device.postJson("/api/buy-in-requests", request).andExpect(status().isCreated())
                 .andExpect(jsonPath("$.status").value("PENDING"))

@@ -10,14 +10,16 @@
 
 **Spec:** [docs/superpowers/specs/2026-11-19-buy-in-design.md](../specs/2026-11-19-buy-in-design.md)의 결정 9와 "멀티플레이 (2단계)" 절. 1단계에서 바뀐 결정이 우선한다: 재입장은 **원래 자리로만** 하고, 원래 자리를 다른 사람이 차지했을 때만 자리를 고른다([SINGLE_DEVICE_MODE.md](../../../SINGLE_DEVICE_MODE.md) 11-20 결정).
 
-## 사용자 확인이 필요한 결정 (계획 검토 때 정한다)
+## 확정된 결정 (사용자 2026-11-21)
 
-아래는 설계 문서가 답하지 않은 부분이다. 계획은 **추천안**으로 쓰여 있고, 다르게 정하면 해당 Task만 고친다.
-
-1. **방 인원 상한:** 지금 `Room.MAX_PARTICIPANTS = 10`이고 탈락자도 참가자로 남는다. 새 사람이 탈락자 빈자리를 차지하면 방 인원이 11명 이상이 될 수 있다.
-   추천: 참가자 상한을 **20**으로 올리고, 좌석 10개 제한은 엔진의 `seatOptions`가 지킨다. 자리를 빼앗긴 탈락자는 방에 관전자로 남고 나중에 다른 자리로 재입장할 수 있다.
-2. **새 사람의 이름이 기존 참가자(탈락자 포함)와 같을 때:** 추천: `DUPLICATE_NAME`으로 거절하고 "같은 이름의 플레이어가 있습니다. 기기를 바꾸셨다면 복구를 신청해 주세요."로 안내한다. 이름으로 재입장하는 길은 열지 않는다(재입장은 방 안의 탈락자만 신청).
-3. **대기 중 바이인 취소:** 첫 카드 전까지 방장만 `CANCEL_BUY_IN`할 수 있다. 추천: 새 사람이 취소되면 참가자에서 빠지고 화면에 "바이인이 취소되었습니다."를 보여 준 뒤 입장 화면으로 돌아간다. 재입장이 취소되면 원래 탈락자 기록에 다시 연결된다.
+1. **방 인원 상한:** `Room.MAX_PARTICIPANTS`를 10에서 **15**로 올린다. 좌석 10개 제한은 엔진의 `seatOptions`가 지킨다. 자리를 빼앗긴 탈락자는 방에 관전자로 남고, 나중에 빈자리로 재입장할 수 있다. 15명이 차면 새 사람의 바이인 신청은 `ROOM_FULL`로 거절한다.
+2. **새 사람의 이름이 기존 참가자(탈락자 포함)와 같을 때:** `DUPLICATE_NAME`으로 거절하고 "같은 이름의 플레이어가 있습니다. 기기를 바꾸셨다면 복구를 신청해 주세요."로 안내한다. 재입장은 방 안의 탈락자만 신청한다.
+3. **대기 중 바이인 취소:** 첫 카드 전까지 방장만 `CANCEL_BUY_IN`할 수 있다. 새 사람이 취소되면 참가자에서 빠지고 "바이인이 취소되었습니다."를 보여 준 뒤 입장 화면으로 돌아간다. 재입장이 취소되면 원래 탈락자 기록에 다시 연결된다.
+4. **탈락자의 신청 위치:** 오른쪽 위 메뉴(☰)의 `바이인` 버튼으로 신청한다. 단일기기에서 메뉴에 바이인을 둔 것과 같은 자리다. 신청 중에는 그 버튼 자리에 "방장의 승인을 기다리고 있습니다."를 보여 주고 다시 누를 수 없다.
+5. **방장 화면:** 복구 신청처럼 화면 위 가운데 알림 줄(`HostRequests`)에 "P5 바이인 신청"(여러 건이면 "신청 n건")이 뜬다. 누르면 신청 목록이 열리고, 바이인 신청의 `승인`을 누르면 **단일기기 바이인 대화상자와 같은 모양**의 승인 화면이 열린다.
+   - 같은 것: 대화상자 틀, 자리 고르기 칸(`SeatField`), 재입장의 "원래 자리로 돌아갑니다." / 원래 자리가 차지됐을 때의 안내와 자리 고르기, 아래 안내 문구(시작 칩과 참여 시점).
+   - 다른 것: 탭과 이름 입력 대신 신청자 이름과 종류(새 플레이어 / 재입장 ×n)를 읽기 전용으로 보여 준다. 신청한 사람이 정한 값이라 방장이 바꾸지 않는다. 버튼은 `바이인 승인`과 `거절`이다.
+   - 대기 중인 바이인 취소는 방장 메뉴(☰)의 `바이인` 버튼이 여는 대화상자에서 한다. 단일기기 대화상자 위쪽의 "대기 중인 바이인" 목록과 같은 모양이다.
 
 ## Global Constraints
 
@@ -61,7 +63,7 @@
 
 **Files:**
 - Create: `backend/server/src/main/java/xyz/jwlee/poker/server/room/BuyInRequests.java`, `BuyInCommands.java`, `backend/server/src/main/java/xyz/jwlee/poker/server/api/BuyInController.java`
-- Modify: `Room.java`(참가자 추가 경로, `MAX_PARTICIPANTS`, `playerIds` 다시 연결), `CommandPipeline.java`(새 명령), `RoomLifecycle.java`(만료 쓸기), `SnapshotWriter.java`(대기 신청 게시), `ErrorCode.java`, `shared/error-codes.json`
+- Modify: `Room.java`(참가자 추가 경로, `MAX_PARTICIPANTS` 15, `playerIds` 다시 연결), `CommandPipeline.java`(새 명령), `RoomLifecycle.java`(만료 쓸기), `SnapshotWriter.java`(대기 신청 게시), `ErrorCode.java`, `shared/error-codes.json`
 - Test: `backend/server/src/test/...` 복구 신청 테스트와 같은 위치에 `BuyInCommandsTest`, `BuyInControllerTest`
 
 **Interfaces:**
@@ -113,7 +115,7 @@
 ### Task 5: 신청 화면(새 사람·탈락자)
 
 **Files:**
-- Modify: `frontend/src/features/online-game/components/OnlineEntry.tsx`(참가 탭에서 `NOT_WAITING`을 받으면 "게임이 진행 중입니다. 바이인을 신청할까요?" 확인 → 신청), 복구 대기 화면 컴포넌트(신청 종류만 바꿔 재사용), `RoomPage.tsx`·`OnlineMenu.tsx`(탈락한 본인에게 `다시 참가(바이인)` 버튼 → `REQUEST_BUY_IN`, 대기 중이면 "방장의 승인을 기다리고 있습니다." 표시)
+- Modify: `frontend/src/features/online-game/components/OnlineEntry.tsx`(참가 탭에서 `NOT_WAITING`을 받으면 "게임이 진행 중입니다. 바이인을 신청할까요?" 확인 → 신청), 복구 대기 화면 컴포넌트(신청 종류만 바꿔 재사용), `OnlineMenu.tsx`(결정 4: 탈락한 본인의 메뉴에 `바이인` 버튼 → `REQUEST_BUY_IN`, 대기 중이면 그 자리에 "방장의 승인을 기다리고 있습니다.")
 - Test: 해당 컴포넌트 테스트
 
 - [ ] **Step 1:** 실패하는 컴포넌트 테스트: 진행 중 방 참가 → 확인 → 신청 호출, 승인 상태 → 방 입장, 거절·만료 → 안내 후 입장 화면, 탈락자 버튼 → 명령 전송, 탈락하지 않은 사람에게는 버튼 없음.
@@ -123,7 +125,8 @@
 ### Task 6: 방장 승인·취소 화면
 
 **Files:**
-- Modify: `frontend/src/features/online-game/components/HostRequests.tsx`(복구 신청과 바이인 신청을 함께 표시), 새 `BuyInApproval.tsx`(승인 대화상자: 새 사람은 `SeatField`, 재입장은 원래 자리가 비었으면 "원래 자리로 돌아갑니다.", 차지됐으면 `SeatField`), `OnlineMenu.tsx`(방장에게 "대기 중인 바이인"과 `바이인 취소`)
+- Modify: `frontend/src/features/online-game/components/HostRequests.tsx`(결정 5: 위 가운데 알림 줄과 신청 목록에 복구 신청과 바이인 신청을 함께 표시), 새 `BuyInApproval.tsx`(단일기기 대화상자와 같은 모양의 승인 화면), `OnlineMenu.tsx`(방장 메뉴의 `바이인` → 대기 중인 바이인 목록과 `바이인 취소`)
+- 단일기기 `BuyInDialog.tsx`와 겹치는 부분(재입장 안내, 안내 문구, 대기 목록)은 Task 3에서 `gameplay`로 옮긴 조각을 함께 쓴다. 필요하면 Task 3 범위에 그 조각을 더한다.
 - Test: 컴포넌트 테스트
 
 - [ ] **Step 1:** 실패하는 테스트: 바이인 신청 알림 표시, 승인 시 고른 자리로 `BUY_IN_APPROVE`, 재입장 원래 자리 승인은 자리를 묻지 않음, 거절, 대기 바이인 취소 → `CANCEL_BUY_IN`.

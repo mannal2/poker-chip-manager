@@ -352,7 +352,7 @@ class RoomRegistryTest {
     }
 
     @Test
-    void concurrentJoinsNeverExceedTheRoomCapacity() throws Exception {
+    void concurrentJoinsNeverExceedTenParticipants() throws Exception {
         var entry = registry.create("Host");
         int threads = 20;
         ExecutorService pool = Executors.newFixedThreadPool(threads);
@@ -375,6 +375,6 @@ class RoomRegistryTest {
             f.get();
         }
         pool.shutdown();
-        assertThat(registry.<Integer>withRoom(entry.roomId(), room -> room.participants().size())).isEqualTo(Room.MAX_PARTICIPANTS);
+        assertThat(registry.<Integer>withRoom(entry.roomId(), room -> room.participants().size())).isEqualTo(10);
     }
 }

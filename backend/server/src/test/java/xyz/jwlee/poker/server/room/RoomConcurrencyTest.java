@@ -22,8 +22,7 @@ import xyz.jwlee.poker.server.support.IdGenerator;
 // 같은 상태 버전으로 동시에 들어온 명령 중 하나만 적용되는지 검사한다.
 class RoomConcurrencyTest {
 
-    // 한 게임에 앉을 수 있는 최대 인원(방 정원 15명보다 적다)
-    private static final int PEOPLE = 10;
+    private static final int PEOPLE = Room.MAX_PARTICIPANTS;
     private static final int THREADS = 20;
 
     private final RoomRegistry registry = new RoomRegistry(

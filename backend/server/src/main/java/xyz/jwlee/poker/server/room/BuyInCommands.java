@@ -19,6 +19,7 @@ import xyz.jwlee.poker.game.model.FormerPlayer;
 import xyz.jwlee.poker.game.model.GameState;
 import xyz.jwlee.poker.game.model.Player;
 import xyz.jwlee.poker.game.model.TournamentStatus;
+import xyz.jwlee.poker.game.rule.RuleErrorCode;
 import xyz.jwlee.poker.game.settings.SettingsValidator;
 import xyz.jwlee.poker.server.room.BuyInRequests.Request;
 import xyz.jwlee.poker.server.room.BuyInRequests.Status;
@@ -74,6 +75,11 @@ public final class BuyInCommands {
             if (!room.hasParticipant(participantId)
                     || !request.reentryOf().equals(room.playerIds().get(participantId))) {
                 throw new RoomException(ErrorCode.BUY_IN_NOT_PENDING);
+            }
+            // A re-entry goes back to its own seat; only a seat someone else took lets the host pick another.
+            boolean stillSeated = game.players.stream().anyMatch(p -> p.id.equals(request.reentryOf()));
+            if (stillSeated && !placement.equals(new BuyInPlacement.Replace(request.reentryOf()))) {
+                throw RoomException.rule(RuleErrorCode.INVALID_SEATS);
             }
         } else {
             room.requireRoomFor(request.name());

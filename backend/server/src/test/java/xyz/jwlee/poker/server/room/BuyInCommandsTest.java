@@ -349,16 +349,64 @@ class BuyInCommandsTest {
     // 방 인원이 15명이면 새 사람의 신청을 거절하는지 확인한다
     @Test
     void aRoomOfFifteenRefusesNewcomers() {
-        assertThat(Room.MAX_PARTICIPANTS).isEqualTo(15);
+        assertThat(Room.MAX_WITH_BUY_INS).isEqualTo(15);
         GameFixture g = playing();
         BuyInRequests.Request early = ask(g.room, "Erin");
-        for (int i = 0; g.room.participants().size() < Room.MAX_PARTICIPANTS; i++) {
+        for (int i = 0; g.room.participants().size() < Room.MAX_WITH_BUY_INS; i++) {
             g.room.addBoughtInParticipant("x" + i, "N" + i, "cred-x" + i, clock.instant());
         }
 
         assertThat(refusal(g.room, "Late")).isEqualTo("ROOM_FULL");
         assertThat(code(approve(g, early, between("p2")))).isEqualTo("ROOM_FULL");
         assertThat(statusOf(g.room, early)).isEqualTo(Status.PENDING);
+    }
+
+    // 대기실은 여전히 10명까지만 받는지 확인한다(15명은 진행 중 바이인 경로에만 쓴다)
+    @Test
+    void aWaitingRoomStillSeatsAtMostTen() {
+        CommandFixture f = new CommandFixture(4, clock);
+        for (int i = 0; f.room.participants().size() < 10; i++) {
+            f.room.addParticipant("w" + i, "W" + i, "cred-w" + i, clock.instant());
+        }
+
+        assertThatThrownBy(() -> f.room.addParticipant("late", "Late", "cred-late", clock.instant()))
+                .isInstanceOf(RoomException.class)
+                .extracting(e -> ((RoomException) e).code()).isEqualTo("ROOM_FULL");
+        assertThat(Room.MAX_PARTICIPANTS).isEqualTo(10);
+    }
+
+    // 원래 카드가 아직 자리에 있으면 재입장은 그 자리로만 승인되는지 확인한다
+    @Test
+    void aReentryWhoseCardIsStillSeatedGoesBackToThatSeatOnly() {
+        GameFixture g = playing();
+        eliminateCarol(g);
+        g.check(g.sendWithoutHand("c", "REQUEST_BUY_IN", "{}"));
+        BuyInRequests.Request r = g.room.buyInRequests().pending().get(0);
+        GameState before = g.room.game();
+
+        assertThat(code(approve(g, r, between("p0")))).isEqualTo("INVALID_SEATS");
+        assertThat(code(approve(g, r, replace("p1")))).isEqualTo("INVALID_SEATS");
+
+        assertThat(g.room.game()).isSameAs(before);
+        assertThat(g.room.playerIds().get("c")).isEqualTo("p2");
+        assertThat(statusOf(g.room, r)).isEqualTo(Status.PENDING);
+        g.check(approve(g, r, replace("p2")));
+        assertThat(g.room.game().players.stream().filter(p -> p.name.equals("Carol")).count()).isEqualTo(1);
+    }
+
+    // 원래 자리를 다른 사람이 차지했으면 방장이 다른 자리를 고를 수 있는지 확인한다
+    @Test
+    void aReentryWhoseSeatWasTakenMayGoElsewhere() {
+        GameFixture g = playing();
+        eliminateCarol(g);
+        g.check(approve(g, ask(g.room, "Erin"), replace("p2")));
+        g.check(g.sendWithoutHand("c", "REQUEST_BUY_IN", "{}"));
+        BuyInRequests.Request r = g.room.buyInRequests().pending().get(0);
+
+        g.check(approve(g, r, between("p0")));
+
+        assertThat(g.room.playerIds().get("c")).isEqualTo("p4");
+        assertThat(player(g.room, "p4").name).isEqualTo("Carol");
     }
 
     // 방장에게는 대기 신청이, 재입장 신청자에게는 자기 신청만 보이고 자격은 어디에도 없는지 확인한다

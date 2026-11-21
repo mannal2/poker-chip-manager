@@ -22,7 +22,10 @@ import xyz.jwlee.poker.game.model.GameState;
  */
 public final class Room {
 
-    public static final int MAX_PARTICIPANTS = 15;
+    /** Most people a waiting room seats: a game starts with at most 10. */
+    public static final int MAX_PARTICIPANTS = 10;
+    /** Most people a running room holds once buy-ins join; eliminated people stay as spectators. */
+    public static final int MAX_WITH_BUY_INS = 15;
     public static final int INITIAL_CONTROL_GENERATION = 1;
 
     private final String roomId;
@@ -243,9 +246,13 @@ public final class Room {
     }
 
     // 새 사람이 앉을 자리가 있고 이름이 참가자(탈락자 포함)와 겹치지 않는지 확인한다
-    /** Capacity first (ROOM_FULL), then the name, compared case-insensitively (DUPLICATE_NAME). */
+    /**
+     * Capacity first (ROOM_FULL: 10 in the waiting room, 15 once a game runs), then the name, compared
+     * case-insensitively (DUPLICATE_NAME).
+     */
     void requireRoomFor(String name) {
-        if (participants.size() >= MAX_PARTICIPANTS) {
+        int capacity = phase == RoomPhase.WAITING ? MAX_PARTICIPANTS : MAX_WITH_BUY_INS;
+        if (participants.size() >= capacity) {
             throw new RoomException(ErrorCode.ROOM_FULL);
         }
         String lowered = name.toLowerCase(Locale.ROOT);

@@ -644,6 +644,11 @@ A00~A11 단일 기기 구현과 자동 검증을 마쳤다. 멀티플레이·실
 - 최종 검증(2026-11-03, Windows): `backend/gradlew -p backend test` PASS(706개, 실패 0, 건너뜀 1: Windows에서 읽기 권한을 뺄 수 없어 가정으로 건너뛰는 `GateFileTest.aFileWithoutReadPermissionIsClosed`). 프런트 lint·typecheck PASS, 단위 40파일 416개 PASS, 제품 build PASS, `test:e2e` 447개 PASS·조건부 제외 3개(5.9분), `test:e2e:online` 57개 PASS(2.7분, `deploy-gate` 포함), `test:e2e:restart` 1개 PASS(1.0분). `test-deploy-frontend.sh`·`test-plan-release.sh` PASS. `test-deploy-backend.sh`는 Git Bash에서 65개 PASS·1개 SKIP(flock이 없어 실제 잠금 경합 생략). Docker가 꺼져 있어 이번에는 Linux에서 다시 실행하지 않았다.
 - 한계: 실제 서버에서는 아무것도 실행하지 않았다. DEPLOYMENT_SPEC 8절 O01~O12는 모두 **대기**이며 사용자의 공개 절차(GO_LIVE) 실행 뒤에 기록한다. main의 `restart-e2e`·`plan`·`publish-backend`·`deploy`와 호출된 워크플로의 Tailscale OIDC는 GitHub에서 실행된 적이 없다. 10방 부하 메모리, 실기기 다중 접속(DEVICE_CHECKS "운영 서버 공개 확인")은 미검증이다.
 
+## 2026-11-20: 핸드 전환 표시
+
+- 계획: [2026-11-20-hand-transition.md](docs/superpowers/plans/2026-11-20-hand-transition.md). `hand-transition` 브랜치.
+- 구현: 지급 칩 도착 시 수령자 카드 위 `+금액` 글자(`payoutGains`, `useChipMotion`), 새 핸드 시작 시 펠트 테두리 금빛과 HAND 숫자 강조(`useHandStartCue`, `Table`, `GameHeader`). 로컬·온라인 공통 화면에 적용했다. 규칙은 UX_SPEC 2026-11-20 절이다.
+
 ## 2026-11-21: 바이인 2단계(멀티플레이)
 
 - 계획: [2026-11-20-buy-in-multiplayer.md](docs/superpowers/plans/2026-11-20-buy-in-multiplayer.md), 설계 [2026-11-19-buy-in-design.md](docs/superpowers/specs/2026-11-19-buy-in-design.md). `buy-in` 브랜치, 작업 1~7, 로컬 커밋만(push/PR/merge/배포 없음).

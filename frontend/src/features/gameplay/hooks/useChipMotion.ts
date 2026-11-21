@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, type RefObject } from 'react';
-import type { ChipTransfer } from '../model/chipTransfer';
+import { payoutGains, type ChipTransfer } from '../model/chipTransfer';
 // 화면 좌표 한 점
 type Point = { x: number; y: number };
 // 애니메이션 시작 전에 측정해 둔 이동 목록과 좌표
@@ -8,6 +8,9 @@ type Prepared = {
   moves: ChipTransfer[];
   points: Map<string, Point>;
   size: number;
+  unit: number;
+  /** Top centre of each seat card, where a payout label rises from. */
+  tops: Map<string, Point>;
 };
 // 지금 칩 애니메이션을 재생해도 되는지 확인한다
 /** Chip flights are skipped while the page is hidden or the user prefers reduced motion. */
@@ -54,11 +57,14 @@ export function useChipMotion(screen: RefObject<HTMLElement | null>, scope: stri
         if (r?.width && r.height) points.set(id, { x: r.x + r.width / 2, y: r.y + r.height / 2 });
       };
       point('pot', screen.current?.querySelector('.pot strong'));
-      screen.current
-        ?.querySelectorAll<HTMLElement>('.seat')
-        .forEach((seat) => point(seat.dataset.player!, seat.querySelector('.card-values')));
+      const tops = new Map<string, Point>();
+      screen.current?.querySelectorAll<HTMLElement>('.seat').forEach((seat) => {
+        point(seat.dataset.player!, seat.querySelector('.card-values'));
+        const r = seat.getBoundingClientRect();
+        if (r.width && r.height) tops.set(seat.dataset.player!, { x: r.x + r.width / 2, y: r.y });
+      });
       const unit = parseFloat(getComputedStyle(screen.current!).fontSize) / 15;
-      return { epoch: epoch.current, moves, points, size: 12 * unit };
+      return { epoch: epoch.current, moves, points, size: 12 * unit, unit, tops };
     },
     [screen],
   );
@@ -106,6 +112,34 @@ export function useChipMotion(screen: RefObject<HTMLElement | null>, scope: stri
       animation.onfinish = () => {
         node.remove();
         active.current.delete(node);
+      };
+    }
+    // 지급 칩이 도착할 때 수령자 카드 위에 받은 금액을 잠깐 띄운다
+    for (const gain of payoutGains(prepared.moves)) {
+      // 카드 안 숫자를 가리지 않도록 카드 위쪽 바깥에서 떠오른다
+      const at = prepared.tops.get(gain.to);
+      if (!at) continue;
+      const label = document.createElement('span');
+      label.className = 'payout-gain';
+      label.setAttribute('aria-hidden', 'true');
+      label.dataset.to = gain.to;
+      label.textContent = `+${gain.amount.toLocaleString('ko-KR')}`;
+      Object.assign(label.style, { left: `${at.x}px`, top: `${at.y}px` });
+      document.body.appendChild(label);
+      active.current.add(label);
+      const animation = label.animate(
+        [
+          // 카드 윗변의 D·SB·BB 배지를 피하도록 8만큼 띄워서 시작한다
+          { transform: `translate(-50%, calc(-100% - ${8 * prepared.unit}px))`, opacity: 0 },
+          { opacity: 1, offset: 0.2 },
+          { opacity: 1, offset: 0.6 },
+          { transform: `translate(-50%, calc(-100% - ${24 * prepared.unit}px))`, opacity: 0 },
+        ],
+        { duration: 1200, delay: gain.delay + 600, easing: 'ease-out', fill: 'both' },
+      );
+      animation.onfinish = () => {
+        label.remove();
+        active.current.delete(label);
       };
     }
   }, []);

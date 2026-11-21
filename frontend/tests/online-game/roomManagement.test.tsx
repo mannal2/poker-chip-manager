@@ -148,6 +148,24 @@ it('rejects a target who left the play at confirmation time', async () => {
   }
 });
 
+// 탈락한 본인이 메뉴의 바이인을 누르면 확인 없이 재입장 신청 명령을 보낸다
+it('sends a re-entry request from the eliminated player menu', async () => {
+  const x = await mountRoom();
+  try {
+    const me = x.view.snapshot!.participants.find(
+      (p) => p.participantId === x.view.snapshot!.you.participantId,
+    )!;
+    x.view.snapshot!.game!.players.find((p) => p.id === me.playerId)!.eliminated = true;
+    await x.rerender();
+    await x.click('관리 메뉴');
+    await x.click('바이인');
+    expect(x.send).toHaveBeenCalledWith([{ type: 'REQUEST_BUY_IN', handScoped: false }]);
+    expect(x.host.querySelector('.menu-actions')).toBeNull();
+  } finally {
+    await x.close();
+  }
+});
+
 // 서버 업데이트 안내는 대기방과 결과 화면에만 보이고 진행 화면에는 보이지 않는다
 it.each([
   ['WAITING', true],

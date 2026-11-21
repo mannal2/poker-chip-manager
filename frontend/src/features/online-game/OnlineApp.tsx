@@ -46,7 +46,9 @@ export function OnlineApp() {
       ) : (
         <OnlineEntry view={view} controller={controller} />
       )}
-      {online && !fatal && view.error && !view.errorField && <p role="alert">{view.error}</p>}
+      {online && !fatal && view.error && !view.errorField && view.errorCode !== 'NOT_WAITING' && (
+        <p role="alert">{view.error}</p>
+      )}
       <a href="/local/">홈으로</a>
     </main>
   );

@@ -1840,6 +1840,26 @@ it('drops a missing buy-in request', async () => {
   expect(sessionStorage.getItem('online.buyInRequest')).toBeNull();
 });
 
+// 첫 카드 전 바이인이 취소되어 방에서 빠지면 취소 안내와 함께 입장 화면으로 돌아간다
+it.each([
+  ['next-hand', 'entry'],
+  [undefined, 'revoked'],
+] as const)('treats a revoked joining=%s player as a cancelled buy-in', async (joining, phase) => {
+  const x = setup();
+  await x.enter();
+  const state = structuredClone(playing.response) as RoomSnapshot;
+  const me = state.participants.find((p) => p.participantId === state.you.participantId)!;
+  const player = state.game!.players.find((p) => p.id === me.playerId)!;
+  if (joining) player.joining = joining;
+  x.h.onSnapshot({ type: 'SNAPSHOT', previousVersion: null, events: [], state });
+  x.h.onFinal('ACCESS_REVOKED');
+  expect(x.c.getView().phase).toBe(phase);
+  if (phase === 'entry') {
+    expect(x.c.getView()).toMatchObject({ snapshot: null, error: '바이인이 취소되었습니다.' });
+    expect(localStorage.getItem('online.lastRoom')).toBeNull();
+  }
+});
+
 // 방 안의 바이인 명령은 기존 명령 경로로 그대로 전송된다
 it.each([
   ['REQUEST_BUY_IN', undefined],

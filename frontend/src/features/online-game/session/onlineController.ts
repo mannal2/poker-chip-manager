@@ -58,6 +58,8 @@ export interface OnlineView {
   buyIn: BuyInStatus | null;
   error: string | null;
   errorField: EntryField | null;
+  // 입장 화면이 거절 종류에 따라 다음 조작을 고를 수 있게 남기는 서버 오류 코드
+  errorCode?: string | null;
 }
 // 컨트롤러가 쓰는 소켓 기능
 type SocketPort = Pick<RoomSocket, 'subscribe' | 'resync' | 'reconnect' | 'close'>;
@@ -78,6 +80,9 @@ const UNKNOWN_RESULT = '요청 결과를 확인하지 못했습니다. 다시 �
 const TOO_MANY_SCREENS = '지금은 서버 연결이 많습니다. 잠시 후 자동으로 다시 연결합니다.';
 const PHASES = { entry: 'joining', recovery: 'recovering', buyIn: 'buying-in' } as const;
 const LOST_ROOM_CODES = ['NO_SESSION', 'ROOM_NOT_FOUND'];
+const BUY_IN_DUPLICATE_NAME =
+  '같은 이름의 플레이어가 있습니다. 기기를 바꾸셨다면 복구를 신청해 주세요.';
+const BUY_IN_CANCELLED = '바이인이 취소되었습니다.';
 
 // 서버 상태와 요청 원장 및 화면 수명을 함께 관리한다
 export class OnlineController {
@@ -166,9 +171,10 @@ export class OnlineController {
   }
   // 새 화면 값을 저장하고 모든 구독자에게 알린다
   private update(patch: Partial<OnlineView>): void {
-    // 오류를 바꾸면서 칸을 지정하지 않은 경로는 칸 묶음을 지운다
+    // 오류를 바꾸면서 칸이나 코드를 지정하지 않은 경로는 이전 묶음을 지운다
     const field = 'error' in patch && !('errorField' in patch) ? { errorField: null } : {};
-    this.view = { ...this.view, ...patch, ...field };
+    const code = 'error' in patch && !('errorCode' in patch) ? { errorCode: null } : {};
+    this.view = { ...this.view, ...patch, ...field, ...code };
     this.listeners.forEach((listener) => listener());
   }
   // 활성 화면의 세션과 스트림을 한 번 준비한다
@@ -228,6 +234,10 @@ export class OnlineController {
   // 사용자가 고친 칸에 묶인 오류만 지운다
   clearFieldError(field: EntryField): void {
     if (this.view.errorField === field) this.update({ error: null, errorField: null });
+  }
+  // 입장 화면이 안내를 닫으면 남은 오류를 지운다
+  dismissError(): void {
+    if (this.view.error) this.update({ error: null });
   }
   // 새 방을 생성한다
   create(name: string): Promise<boolean> {
@@ -695,8 +705,16 @@ export class OnlineController {
         error:
           request.kind === 'recovery' && result.code === 'RECOVERY_TARGET_NOT_FOUND'
             ? `이 방에 '${String(request.body.name)}' 플레이어가 없습니다.`
-            : messageFor(result.code),
-        ...(entering ? { phase: 'entry' as const, errorField: entryErrorField(result.code) } : {}),
+            : request.kind === 'buyIn' && result.code === 'DUPLICATE_NAME'
+              ? BUY_IN_DUPLICATE_NAME
+              : messageFor(result.code),
+        ...(entering
+          ? {
+              phase: 'entry' as const,
+              errorField: entryErrorField(result.code),
+              errorCode: result.code ?? null,
+            }
+          : {}),
       });
       if (
         result.code !== 'ROOM_NOT_FOUND' ||
@@ -874,6 +892,11 @@ export class OnlineController {
       this.completeLeave();
       return;
     }
+    if (type === 'ACCESS_REVOKED' && this.waitingBuyIn()) {
+      this.completeLeave();
+      this.update({ error: BUY_IN_CANCELLED });
+      return;
+    }
     this.stop();
     if (type === 'ROOM_GONE') forgetRoom();
     this.update({
@@ -882,6 +905,13 @@ export class OnlineController {
       hasControl: false,
       pending: false,
     });
+  }
+  // 마지막 상태에서 본인이 첫 카드를 기다리는 바이인 플레이어였는지 확인한다
+  /** 첫 카드 전의 바이인 플레이어는 내보내기·기권 대상이 아니므로, 이때의 자격 회수는 방장의 바이인 취소다. */
+  private waitingBuyIn(): boolean {
+    const snapshot = this.view.snapshot;
+    const me = snapshot?.participants.find((p) => p.participantId === snapshot.you.participantId);
+    return !!me?.playerId && !!snapshot?.game?.players.find((p) => p.id === me.playerId)?.joining;
   }
   // 확정된 탈퇴의 방 표시와 탭 자격을 삭제하고 입장 화면으로 돌아간다
   private completeLeave(): void {

@@ -78,13 +78,81 @@ it.each(['eliminated', 'forfeited'] as const)('offers in-game kick for %s player
 });
 
 // 탈락 또는 기권한 본인에게는 기권 대신 방 나가기를 제공한다
-it.each(['eliminated', 'forfeited'] as const)('offers leaving to %s players', (flag) => {
+it.each([
+  ['eliminated', ['홈', '바이인', '방 나가기']],
+  ['forfeited', ['홈', '방 나가기']],
+] as const)('offers leaving to %s players', (flag, labels) => {
   const snapshot = playing(false);
   guestPlayer(snapshot).player[flag] = true;
   const items = menuItems(snapshot);
-  expect(items.map((i) => i.label)).toEqual(['홈', '방 나가기']);
-  expect(items[1].command?.type).toBe('LEAVE');
-  expect(items[1].confirm).toContain('다시 들어올 수 없습니다');
+  expect(items.map((i) => i.label)).toEqual(labels);
+  const leave = items.find((i) => i.label === '방 나가기')!;
+  expect(leave.command?.type).toBe('LEAVE');
+  expect(leave.confirm).toContain('다시 들어올 수 없습니다');
+});
+
+// 탈락한 본인(방장 포함)의 메뉴에만 재입장 바이인 신청 버튼이 있다
+it.each([false, true])('offers a buy-in request to an eliminated player (host=%s)', (isHost) => {
+  const snapshot = playing(isHost);
+  const me = snapshot.participants.find((p) => p.participantId === snapshot.you.participantId)!;
+  const player = snapshot.game.players.find((p) => p.id === me.playerId)!;
+  expect(menuItems(snapshot).some((i) => i.label === '바이인')).toBe(false);
+  player.eliminated = true;
+  const buyIn = menuItems(snapshot).find((i) => i.label === '바이인');
+  expect(buyIn?.command).toEqual({ type: 'REQUEST_BUY_IN', handScoped: false });
+  expect(buyIn?.confirm).toBeUndefined();
+  snapshot.roomPhase = 'RESULT';
+  expect(menuItems(snapshot).some((i) => i.label === '바이인')).toBe(false);
+});
+
+// 자리를 다른 바이인에게 내준 탈락자도 재입장을 신청할 수 있다
+it('offers a buy-in request to a player whose seat was taken', () => {
+  const snapshot = playing(false);
+  const { player } = guestPlayer(snapshot);
+  snapshot.game.players = snapshot.game.players.filter((p) => p.id !== player.id);
+  snapshot.game.formerPlayers = [
+    { id: player.id, name: player.name, entry: 1, reason: 'replaced' },
+  ];
+  expect(menuItems(snapshot).some((i) => i.label === '바이인')).toBe(true);
+  snapshot.game.formerPlayers[0].reason = 'cancelled';
+  expect(menuItems(snapshot).some((i) => i.label === '바이인')).toBe(false);
+});
+
+// 재입장 신청이 대기 중이면 버튼 자리에 대기 안내를 보이고 다시 누를 수 없다
+it('shows the waiting notice instead of the button while a re-entry is pending', () => {
+  vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
+  const snapshot = playing(false);
+  const { guest, player } = guestPlayer(snapshot);
+  player.eliminated = true;
+  snapshot.buyInRequests = [
+    {
+      buyInRequestId: 'b',
+      name: guest.name,
+      reentryOf: player.id,
+      requestedAt: 'now',
+      expiresAt: 'later',
+    },
+  ];
+  const items = menuItems(snapshot);
+  expect(items.map((i) => i.label)).toEqual([
+    '홈',
+    '방장의 승인을 기다리고 있습니다.',
+    '방 나가기',
+  ]);
+  expect(items[1].command).toBeUndefined();
+  const host = document.createElement('div');
+  const root = createRoot(host);
+  const choose = vi.fn();
+  act(() =>
+    root.render(<OnlineMenu snapshot={snapshot} choose={choose} home={() => {}} notify={() => {}} />),
+  );
+  const notice = host.querySelector('[role="status"]');
+  expect(notice?.textContent).toBe('방장의 승인을 기다리고 있습니다.');
+  expect([...host.querySelectorAll('button')].map((b) => b.textContent)).not.toContain(
+    '방장의 승인을 기다리고 있습니다.',
+  );
+  act(() => root.unmount());
+  vi.unstubAllGlobals();
 });
 
 // 기권 처리와 내보내기가 함께 있으면 한 줄에 나란히 렌더한다

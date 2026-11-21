@@ -81,6 +81,7 @@ function entryView(patch: Partial<OnlineView>): OnlineView {
   return {
     phase: 'entry',
     recovery: null,
+    buyIn: null,
     snapshot: null,
     connection: 'offline',
     pending: false,
@@ -200,6 +201,7 @@ it('shows only approval guidance while recovery is pending', async () => {
   const view: OnlineView = {
     phase: 'recovering',
     recovery: { recoveryRequestId: 'r', status: 'PENDING' },
+    buyIn: null,
     snapshot: null,
     connection: 'offline',
     pending: false,

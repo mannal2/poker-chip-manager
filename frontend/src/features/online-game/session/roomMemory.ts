@@ -1,6 +1,7 @@
 const LAST = 'online.lastRoom';
 const TAB = 'online.controlRoom';
 const RECOVERY = 'online.recoveryRequest';
+const BUY_IN = 'online.buyInRequest';
 
 // 마지막 방의 식별자를 읽고 형식이 깨졌으면 저장값을 지운다
 export function savedRoomId(): string | null {
@@ -54,4 +55,19 @@ export function rememberRecovery(id: string): void {
 // 끝난 복구 신청을 지운다
 export function forgetRecovery(): void {
   sessionStorage.removeItem(RECOVERY);
+}
+
+// 이 탭에서 기다리던 바이인 신청을 읽는다
+export function savedBuyIn(): string | null {
+  return sessionStorage.getItem(BUY_IN);
+}
+
+// 새로고침 뒤에도 조회하도록 바이인 신청을 저장한다
+export function rememberBuyIn(id: string): void {
+  sessionStorage.setItem(BUY_IN, id);
+}
+
+// 끝난 바이인 신청을 지운다
+export function forgetBuyIn(): void {
+  sessionStorage.removeItem(BUY_IN);
 }

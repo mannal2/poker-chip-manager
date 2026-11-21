@@ -40,6 +40,13 @@ export interface RoomSnapshot {
     requestedAt: string;
     expiresAt: string;
   }[];
+  buyInRequests: {
+    buyInRequestId: string;
+    name: string;
+    reentryOf: string | null;
+    requestedAt: string;
+    expiresAt: string;
+  }[];
 }
 
 // 방 변경을 알리는 소켓 메시지
@@ -81,6 +88,21 @@ export type RecoveryStatus =
 // 복구 신청 접수 응답
 export interface RecoveryRequestResponse {
   recoveryRequestId: string;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'EXPIRED' | 'SUPERSEDED';
+  expiresAt: string;
+}
+
+// 바이인 신청 결과 조회 응답
+export type BuyInStatus =
+  | ({ buyInRequestId: string; status: 'APPROVED' } & JoinResponse)
+  | {
+      buyInRequestId: string;
+      status: 'PENDING' | 'REJECTED' | 'EXPIRED' | 'SUPERSEDED';
+    };
+
+// 바이인 신청 접수 응답
+export interface BuyInRequestResponse {
+  buyInRequestId: string;
   status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'EXPIRED' | 'SUPERSEDED';
   expiresAt: string;
 }
@@ -279,6 +301,15 @@ export function isRoomSnapshot(value: unknown): value is RoomSnapshot {
         ['recoveryRequestId', 'participantId', 'name', 'requestedAt', 'expiresAt'].every(
           (key) => typeof r[key] === 'string',
         ),
+    ) &&
+    Array.isArray(value.buyInRequests) &&
+    value.buyInRequests.every(
+      (r) =>
+        object(r) &&
+        ['buyInRequestId', 'name', 'requestedAt', 'expiresAt'].every(
+          (key) => typeof r[key] === 'string',
+        ) &&
+        (r.reentryOf === null || typeof r.reentryOf === 'string'),
     )
   );
 }
@@ -352,6 +383,29 @@ export function isRecoveryRequestResponse(value: unknown): value is RecoveryRequ
   return (
     object(value) &&
     typeof value.recoveryRequestId === 'string' &&
+    typeof value.status === 'string' &&
+    ['PENDING', 'APPROVED', 'REJECTED', 'EXPIRED', 'SUPERSEDED'].includes(value.status) &&
+    typeof value.expiresAt === 'string'
+  );
+}
+
+// 승인된 바이인에만 자리 정보가 포함되는 상태 응답을 확인한다
+export function isBuyInStatus(value: unknown): value is BuyInStatus {
+  return (
+    object(value) &&
+    typeof value.buyInRequestId === 'string' &&
+    (value.status === 'APPROVED'
+      ? isJoinResponse(value)
+      : typeof value.status === 'string' &&
+        ['PENDING', 'REJECTED', 'EXPIRED', 'SUPERSEDED'].includes(value.status))
+  );
+}
+
+// 바이인 신청 POST의 응답에 포함되는 상태 및 만료 시각을 확인한다
+export function isBuyInRequestResponse(value: unknown): value is BuyInRequestResponse {
+  return (
+    object(value) &&
+    typeof value.buyInRequestId === 'string' &&
     typeof value.status === 'string' &&
     ['PENDING', 'APPROVED', 'REJECTED', 'EXPIRED', 'SUPERSEDED'].includes(value.status) &&
     typeof value.expiresAt === 'string'

@@ -329,6 +329,7 @@ async function mountRoom(
     connection: 'online',
     hasControl: true,
     recovery: null,
+    buyIn: null,
     error,
     errorField: null,
   };

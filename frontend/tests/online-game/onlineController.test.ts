@@ -1753,12 +1753,114 @@ it('resumes polling a recovery request after a reload', async () => {
   expect(second.api.get).toHaveBeenCalledWith('/api/recovery-requests/recover');
 });
 
+// 바이인 신청은 코드와 이름으로 접수되고 승인 결과를 조회해 방에 들어간다
+it('requests a buy-in, polls it, and joins the room on approval', async () => {
+  const x = setup();
+  x.api.post.mockResolvedValueOnce({
+    ok: true,
+    body: { buyInRequestId: 'buy', status: 'PENDING', expiresAt: 'later' },
+  });
+  x.api.get
+    .mockResolvedValueOnce({ ok: true, body: { buyInRequestId: 'buy', status: 'PENDING' } })
+    .mockResolvedValue({
+      ok: true,
+      body: { ...x.entry, buyInRequestId: 'buy', status: 'APPROVED' },
+    });
+  expect(await x.c.requestBuyIn(' abc234 ', ' Carol ')).toBe(true);
+  expect(x.api.post).toHaveBeenCalledWith(
+    '/api/buy-in-requests',
+    expect.objectContaining({ code: 'ABC234', name: 'Carol' }),
+  );
+  expect(x.c.getView()).toMatchObject({ phase: 'buying-in', buyIn: { status: 'PENDING' } });
+  expect(sessionStorage.getItem('online.buyInRequest')).toBe('buy');
+  expect(x.api.get).toHaveBeenCalledWith('/api/buy-in-requests/buy');
+  await vi.waitFor(() => expect(x.c.getView().phase).toBe('room'), { timeout: 5000 });
+  expect(sessionStorage.getItem('online.buyInRequest')).toBeNull();
+  expect(x.c.getView().buyIn).toBeNull();
+});
+
+// 거절·만료·대체된 바이인 신청은 이유와 함께 입장 화면으로 돌려보낸다
+it.each([
+  ['REJECTED', '방장이 바이인 신청을 거절했습니다.'],
+  ['EXPIRED', '바이인 신청이 만료되었습니다.'],
+  ['SUPERSEDED', '이 신청으로는 더 이상 자리에 앉을 수 없습니다.'],
+])('returns %s buy-in to entry with a reason', async (status, message) => {
+  const x = setup();
+  x.api.post.mockResolvedValueOnce({
+    ok: true,
+    body: { buyInRequestId: 'buy', status: 'PENDING', expiresAt: 'later' },
+  });
+  x.api.get.mockResolvedValueOnce({ ok: true, body: { buyInRequestId: 'buy', status } });
+  await x.c.requestBuyIn('ABC234', 'Carol');
+  expect(x.c.getView()).toMatchObject({ phase: 'entry', pending: false, error: message });
+  expect(sessionStorage.getItem('online.buyInRequest')).toBeNull();
+});
+
+// 바이인 신청 입력 검증과 서버 거절 문구는 복구와 같은 규칙을 따른다
+it('validates buy-in input and shows its rejection messages', async () => {
+  const x = setup();
+  expect(await x.c.requestBuyIn('ABC234', '')).toBe(false);
+  expect(x.c.getView().errorField).toBe('name');
+  expect(await x.c.requestBuyIn('ABC123', 'Carol')).toBe(false);
+  expect(x.c.getView().errorField).toBe('code');
+  expect(x.api.post).not.toHaveBeenCalled();
+  x.api.post.mockResolvedValueOnce({ ok: false, status: 409, code: 'BUY_IN_CLOSED', body: {} });
+  expect(await x.c.requestBuyIn('ABC234', 'Carol')).toBe(false);
+  expect(x.c.getView()).toMatchObject({
+    phase: 'entry',
+    error: '지금은 바이인을 받을 수 없습니다.',
+  });
+});
+
+// 바이인 대기 중 새로고침해도 같은 신청의 결과를 이어서 조회한다
+it('resumes polling a buy-in request after a reload', async () => {
+  const x = setup();
+  sessionStorage.setItem('online.buyInRequest', 'buy');
+  x.api.get.mockResolvedValueOnce({ ok: true, body: { buyInRequestId: 'buy', status: 'PENDING' } });
+  expect(await x.c.resume()).toBe(true);
+  expect(x.c.getView()).toMatchObject({ phase: 'buying-in', buyIn: { status: 'PENDING' } });
+  expect(x.api.get).toHaveBeenCalledWith('/api/buy-in-requests/buy');
+});
+
+// 신청이 사라졌으면 저장값을 지우고 입장 화면으로 돌아간다
+it('drops a missing buy-in request', async () => {
+  const x = setup();
+  sessionStorage.setItem('online.buyInRequest', 'buy');
+  x.api.get.mockResolvedValueOnce({
+    ok: false,
+    status: 404,
+    code: 'REQUEST_NOT_FOUND',
+    body: {},
+  });
+  await x.c.resume();
+  expect(x.c.getView()).toMatchObject({
+    phase: 'entry',
+    error: '바이인 신청을 찾을 수 없습니다.',
+  });
+  expect(sessionStorage.getItem('online.buyInRequest')).toBeNull();
+});
+
+// 방 안의 바이인 명령은 기존 명령 경로로 그대로 전송된다
+it.each([
+  ['REQUEST_BUY_IN', undefined],
+  ['BUY_IN_APPROVE', { buyInRequestId: 'b', placement: { kind: 'between', after: 'p0' } }],
+  ['BUY_IN_REJECT', { buyInRequestId: 'b' }],
+  ['CANCEL_BUY_IN', { playerId: 'p2' }],
+])('sends the %s room command', async (type, payload) => {
+  const x = setup();
+  await x.enter();
+  await x.c.send([{ type, ...(payload ? { payload } : {}), handScoped: false }]);
+  expect(x.api.post.mock.lastCall![1]).toMatchObject({ type, ...(payload ? { payload } : {}) });
+});
+
 // 연결 한도 안내는 표시하고 스냅샷을 다시 받으면 지운다
 it('shows the too-many-screens notice until a snapshot arrives', async () => {
   const x = setup();
   await x.enter();
   x.h.onTooManyScreens!();
-  expect(x.c.getView().error).toBe('지금은 서버 연결이 많습니다. 잠시 후 자동으로 다시 연결합니다.');
+  expect(x.c.getView().error).toBe(
+    '지금은 서버 연결이 많습니다. 잠시 후 자동으로 다시 연결합니다.',
+  );
   x.h.onSnapshot({ type: 'SNAPSHOT', previousVersion: null, events: [], state: x.entry.state });
   expect(x.c.getView().error).toBeNull();
 });

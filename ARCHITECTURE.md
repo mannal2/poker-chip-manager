@@ -216,7 +216,7 @@ PWA 등록은 로컬 게임에서 호출하는 `useLocalPWA`가 담당한다.
 | `Invariants` | 모든 성공 전환 뒤 칩 총량·팟 장부·차례 검사 |
 | `Tournament` | 설정 검증 후 준비 단계 상태 생성(`create`) |
 | `model/` | `GameState`·`Player`·`Hand`·`Pot`·`GameSettings`·`UndoSnapshot` 등 상태 모델과 `copy()` |
-| `command/` | `GameCommand` record와 명령별 처리기: `SetupCommands`·`BettingCommands`·`FlowCommands`·`ForfeitCommand`, 공통 검사 `HandGuard` |
+| `command/` | `GameCommand` record와 명령별 처리기: `SetupCommands`·`BettingCommands`·`FlowCommands`·`BuyInCommands`·`ForfeitCommand`, 공통 검사 `HandGuard` |
 | `event/` | `GameEvent`와 종류별 record `EventDetails`(sealed) |
 | `rule/` | `Rules.require`, `RuleViolation`, `RuleErrorCode`, `SettlementErrorCode` |
 | `settings/` | `SettingsValidator`와 결과 `SettingsValidation`, `SettingsErrorCode` |
@@ -231,6 +231,7 @@ PWA 등록은 로컬 게임에서 호출하는 `useLocalPWA`가 담당한다.
 | `commands/setup.ts` | `command/SetupCommands` |
 | `commands/betting.ts` | `command/BettingCommands` |
 | `commands/flow.ts` | `command/FlowCommands` |
+| `commands/buyIn.ts` | `command/BuyInCommands` |
 | (없음, 서버 전용) | `command/ForfeitCommand` |
 | `round.ts` | `Round` |
 | `legal.ts` | `Legal`, `LegalActions`, `LegalReasonCode` |

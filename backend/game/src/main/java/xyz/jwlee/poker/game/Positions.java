@@ -45,8 +45,18 @@ public final class Positions {
         return new BlindSeats(sbSeat, nextSeat(sbSeat, alive));
     }
 
+    // 좌석이 시계 방향으로 버튼 다음부터 SB 직전 사이(양 끝 제외)에 있는지 판정한다
+    public static boolean isBetweenButtonAndSb(int seat, int buttonSeat, int sbSeat, int size) {
+        if (buttonSeat == sbSeat) {
+            return false;
+        }
+        int from = (seat - buttonSeat + size) % size;
+        int to = (sbSeat - buttonSeat + size) % size;
+        return from > 0 && from < to;
+    }
+
     // 생존 좌석 수를 센다
-    private static int aliveCount(boolean[] alive) {
+    static int aliveCount(boolean[] alive) {
         int n = 0;
         for (boolean a : alive) {
             if (a) {

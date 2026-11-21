@@ -10,11 +10,14 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import xyz.jwlee.poker.game.LegalActions;
+import xyz.jwlee.poker.game.command.BuyInPlacement;
 import xyz.jwlee.poker.game.command.GameCommand;
 import xyz.jwlee.poker.game.model.Blinds;
+import xyz.jwlee.poker.game.model.FormerPlayer;
 import xyz.jwlee.poker.game.model.GameSettings;
 import xyz.jwlee.poker.game.model.GameState;
 import xyz.jwlee.poker.game.model.Hand;
+import xyz.jwlee.poker.game.model.Joining;
 import xyz.jwlee.poker.game.model.Phase;
 import xyz.jwlee.poker.game.model.Player;
 import xyz.jwlee.poker.game.model.TournamentStatus;
@@ -42,6 +45,14 @@ public final class GameJson {
         s.settings = readSettings(n.get("settings"));
         s.initialTotal = n.get("initialTotal").asInt();
         s.setupOrder = present(n, "setupOrder") ? strings(n.get("setupOrder")) : null;
+        if (present(n, "formerPlayers")) {
+            s.formerPlayers = new ArrayList<>();
+            n.get("formerPlayers").forEach(p -> s.formerPlayers.add(new FormerPlayer(
+                    p.get("id").asString(),
+                    p.get("name").asString(),
+                    p.get("entry").asInt(),
+                    FormerPlayer.Reason.valueOf(p.get("reason").asString().toUpperCase(Locale.ROOT)))));
+        }
         s.players = new ArrayList<>();
         n.get("players").forEach(p -> s.players.add(readPlayer(p)));
         s.hand = present(n, "hand") ? readHand(n.get("hand")) : null;
@@ -67,6 +78,16 @@ public final class GameJson {
         n.put("initialTotal", s.initialTotal);
         if (s.setupOrder != null) {
             n.set("setupOrder", stringArray(s.setupOrder));
+        }
+        if (s.formerPlayers != null) {
+            ArrayNode former = n.putArray("formerPlayers");
+            for (FormerPlayer p : s.formerPlayers) {
+                ObjectNode f = former.addObject();
+                f.put("id", p.id());
+                f.put("name", p.name());
+                f.put("entry", p.entry());
+                f.put("reason", p.reason().name().toLowerCase(Locale.ROOT));
+            }
         }
         ArrayNode players = n.putArray("players");
         s.players.forEach(p -> players.add(writePlayer(p)));
@@ -127,6 +148,10 @@ public final class GameJson {
         p.handTotal = n.get("H").asInt();
         p.actedAtBet = present(n, "actedAt") ? n.get("actedAt").asInt() : null;
         p.reopensAt = n.get("reopenAt").asInt();
+        // Buy-in fields: absent on the original players and in states saved before buy-ins existed.
+        p.entry = present(n, "entry") ? n.get("entry").asInt() : null;
+        p.joining = present(n, "joining") ? readJoining(n.get("joining").asString()) : null;
+        p.replaced = present(n, "replaced") ? readPlayer(n.get("replaced")) : null;
         return p;
     }
 
@@ -149,7 +174,25 @@ public final class GameJson {
             n.put("actedAt", p.actedAtBet);
         }
         n.put("reopenAt", p.reopensAt);
+        if (p.entry != null) {
+            n.put("entry", p.entry);
+        }
+        if (p.joining != null) {
+            n.put("joining", p.joining == Joining.NEXT_HAND ? "next-hand" : "button");
+        }
+        if (p.replaced != null) {
+            n.set("replaced", writePlayer(p.replaced));
+        }
         return n;
+    }
+
+    // TS joining 값('next-hand' 또는 'button')을 읽는다
+    private static Joining readJoining(String wire) {
+        return switch (wire) {
+            case "next-hand" -> Joining.NEXT_HAND;
+            case "button" -> Joining.BUTTON;
+            default -> throw new IllegalArgumentException("Unknown joining: " + wire);
+        };
     }
 
     // JSON에서 핸드를 읽는다
@@ -216,7 +259,24 @@ public final class GameJson {
             case "UNDO" -> new GameCommand.Undo();
             case "ABORT" -> new GameCommand.Abort();
             case "FORFEIT" -> new GameCommand.Forfeit(player, false);
+            case "BUY_IN" -> new GameCommand.BuyIn(
+                    present(n, "name") && n.get("name").isString() ? n.get("name").asString() : null,
+                    readPlacement(n.get("placement")),
+                    present(n, "reentryOf") ? n.get("reentryOf").asString() : null);
+            case "CANCEL_BUY_IN" -> new GameCommand.CancelBuyIn(player);
             default -> throw new IllegalArgumentException("Unknown command type: " + n.get("type").asString());
+        };
+    }
+
+    // 바이인 자리 JSON을 읽고 알 수 없는 형태면 null을 돌려준다(엔진이 INVALID_SEATS로 거절한다)
+    private static BuyInPlacement readPlacement(JsonNode n) {
+        if (n == null || !n.isObject() || !present(n, "kind")) {
+            return null;
+        }
+        return switch (n.get("kind").asString()) {
+            case "between" -> new BuyInPlacement.Between(present(n, "after") ? n.get("after").asString() : null);
+            case "replace" -> new BuyInPlacement.Replace(present(n, "playerId") ? n.get("playerId").asString() : null);
+            default -> null;
         };
     }
 

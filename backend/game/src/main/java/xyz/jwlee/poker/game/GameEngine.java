@@ -3,6 +3,7 @@ package xyz.jwlee.poker.game;
 import java.util.ArrayList;
 import java.util.List;
 import xyz.jwlee.poker.game.command.BettingCommands;
+import xyz.jwlee.poker.game.command.BuyInCommands;
 import xyz.jwlee.poker.game.command.FlowCommands;
 import xyz.jwlee.poker.game.command.ForfeitCommand;
 import xyz.jwlee.poker.game.command.GameCommand;
@@ -46,6 +47,8 @@ public final class GameEngine {
                 case GameCommand.Undo x -> FlowCommands.undo(s, x, c, events);
                 case GameCommand.Abort x -> FlowCommands.abort(s, x, c, events);
                 case GameCommand.Forfeit x -> ForfeitCommand.forfeit(s, x, c, events);
+                case GameCommand.BuyIn x -> BuyInCommands.buyIn(s, x, c, events);
+                case GameCommand.CancelBuyIn x -> BuyInCommands.cancelBuyIn(s, x, c, events);
             }
             if (isUndoable(cmd)) {
                 GameState snapshot = input.copy();

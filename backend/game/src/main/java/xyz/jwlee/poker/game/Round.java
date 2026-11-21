@@ -9,6 +9,7 @@ import xyz.jwlee.poker.game.event.GameEvent;
 import xyz.jwlee.poker.game.model.Blinds;
 import xyz.jwlee.poker.game.model.GameState;
 import xyz.jwlee.poker.game.model.Hand;
+import xyz.jwlee.poker.game.model.Joining;
 import xyz.jwlee.poker.game.model.Phase;
 import xyz.jwlee.poker.game.model.Player;
 import xyz.jwlee.poker.game.model.SeatPositions;
@@ -158,21 +159,106 @@ public final class Round {
         }
     }
 
+    // 헤즈업 직후 세 명 이상이 되면 이전 BB 다음 자리를 BB로 두고 거꾸로 SB와 버튼을 정한다
+    private static SeatPositions positionsAfterHeadsUp(boolean[] alive, Hand previous) {
+        int bbSeat = Positions.nextSeat(previous.bbSeat, alive);
+        int sbSeat = seatBefore(bbSeat, alive);
+        return new SeatPositions(seatBefore(sbSeat, alive), sbSeat, bbSeat);
+    }
+
+    // 기준 좌석의 앞자리부터 거꾸로 돌며 참가 자격이 있는 첫 좌석을 찾는다
+    private static int seatBefore(int seat, boolean[] alive) {
+        for (int k = 1; k <= alive.length; k++) {
+            int i = (seat - k + alive.length) % alive.length;
+            if (alive[i]) {
+                return i;
+            }
+        }
+        throw new IllegalStateException("NO_ELIGIBLE_SEAT");
+    }
+
+    // 버튼과 블라인드 위치를 이전 핸드(없으면 설정의 버튼)에서 계산한다
+    private static SeatPositions positionsFrom(GameState s, Hand previous, boolean[] alive) {
+        if (previous == null) {
+            var seats = Positions.initialBlindSeats(s.settings.button(), alive);
+            return new SeatPositions(s.settings.button(), seats.sbSeat(), seats.bbSeat());
+        }
+        return Positions.nextPositions(alive, new SeatPositions(previous.buttonSeat, previous.sbSeat, previous.bbSeat));
+    }
+
+    // 카드를 받는 자리 집합으로 이번 핸드 위치를 계산한다(헤즈업에서 세 명 이상이 되면 따로 계산)
+    private static SeatPositions positionsWithJoiners(GameState s, Hand previous, boolean[] alive) {
+        boolean headsUp = previous != null && previous.buttonSeat == previous.sbSeat;
+        return headsUp && Positions.aliveCount(alive) >= 3
+                ? positionsAfterHeadsUp(alive, previous)
+                : positionsFrom(s, previous, alive);
+    }
+
+    // 대기자를 참여시킬지 정하고 이번 핸드에 카드를 받는 사람 기준으로 위치를 계산한다
+    private static SeatPositions seatJoiners(GameState s, Hand previous) {
+        int size = s.players.size();
+        boolean[] playing = new boolean[size];
+        List<Integer> joiners = new ArrayList<>();
+        for (int i = 0; i < size; i++) {
+            Player p = s.players.get(i);
+            playing[i] = !p.eliminated && p.joining == null;
+            if (p.joining != null) {
+                joiners.add(i);
+            }
+        }
+        if (joiners.isEmpty()) {
+            return positionsFrom(s, previous, playing);
+        }
+        if (Positions.aliveCount(playing) < 2) {
+            joiners.forEach(i -> dealIn(s.players.get(i)));
+            return positionsWithJoiners(s, previous, dealt(s));
+        }
+        // Drop joiners strictly between the button and the SB, recomputing until the positions settle.
+        List<Integer> candidates = joiners;
+        SeatPositions position;
+        while (true) {
+            boolean[] alive = playing.clone();
+            candidates.forEach(i -> alive[i] = true);
+            SeatPositions computed = positionsWithJoiners(s, previous, alive);
+            position = computed;
+            List<Integer> kept = candidates.stream()
+                    .filter(i -> !Positions.isBetweenButtonAndSb(i, computed.buttonSeat(), computed.sbSeat(), size))
+                    .toList();
+            if (kept.size() == candidates.size()) {
+                break;
+            }
+            candidates = kept;
+        }
+        for (int i : joiners) {
+            if (candidates.contains(i)) {
+                dealIn(s.players.get(i));
+            } else {
+                s.players.get(i).joining = Joining.BUTTON;
+            }
+        }
+        return position;
+    }
+
+    // 대기자를 이번 핸드에 참여시킨다
+    private static void dealIn(Player p) {
+        p.joining = null;
+        p.replaced = null;
+    }
+
+    // 이번 핸드에 카드를 받는 좌석(탈락하지 않고 기다리지 않는 사람)을 표시한다
+    private static boolean[] dealt(GameState s) {
+        boolean[] alive = new boolean[s.players.size()];
+        for (int i = 0; i < alive.length; i++) {
+            alive[i] = !s.players.get(i).eliminated && s.players.get(i).joining == null;
+        }
+        return alive;
+    }
+
     // 새 핸드를 만들고 블라인드를 낸 뒤 첫 차례를 정한다
     public static void startHand(GameState s, TransitionContext c, List<GameEvent> events) {
         Hand previous = s.hand;
-        boolean[] alive = new boolean[s.players.size()];
-        for (int i = 0; i < alive.length; i++) {
-            alive[i] = !s.players.get(i).eliminated;
-        }
-        SeatPositions position;
-        if (previous != null) {
-            position = Positions.nextPositions(
-                    alive, new SeatPositions(previous.buttonSeat, previous.sbSeat, previous.bbSeat));
-        } else {
-            var seats = Positions.initialBlindSeats(s.settings.button(), alive);
-            position = new SeatPositions(s.settings.button(), seats.sbSeat(), seats.bbSeat());
-        }
+        SeatPositions position = seatJoiners(s, previous);
+        boolean[] alive = dealt(s);
         Blinds blinds = s.pendingBlinds != null
                 ? s.pendingBlinds
                 : previous != null
@@ -182,7 +268,7 @@ public final class Round {
         for (Player p : s.players) {
             p.roundBet = 0;
             p.handTotal = 0;
-            p.folded = false;
+            p.folded = p.joining != null;
             p.actedAtBet = null;
             p.reopensAt = 0;
         }
@@ -202,10 +288,12 @@ public final class Round {
         h.actorId = null;
         h.currentBet = blinds.bigBlind();
         h.minRaise = blinds.bigBlind();
-        h.pending = new ArrayList<>(s.players.stream()
-                .filter(p -> !p.eliminated && p.stack > 0)
-                .map(p -> p.id)
-                .toList());
+        h.pending = new ArrayList<>();
+        for (int i = 0; i < alive.length; i++) {
+            if (alive[i] && s.players.get(i).stack > 0) {
+                h.pending.add(s.players.get(i).id);
+            }
+        }
         h.showdown = false;
         s.hand = h;
         if (alive[position.sbSeat()]) {

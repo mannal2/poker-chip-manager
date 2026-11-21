@@ -120,4 +120,21 @@ public sealed interface EventDetails {
             return "FORFEIT_SPLIT";
         }
     }
+
+    // 바이인한 사람이 자리에 앉은 이벤트
+    /** {@code reentryOf} and {@code replaced} are null when absent. */
+    record PlayerBoughtIn(String playerId, int entry, String reentryOf, String replaced) implements EventDetails {
+        @Override
+        public String type() {
+            return "BUY_IN";
+        }
+    }
+
+    // 바이인이 취소된 이벤트
+    record BuyInCancelled(String playerId) implements EventDetails {
+        @Override
+        public String type() {
+            return "BUY_IN_CANCEL";
+        }
+    }
 }

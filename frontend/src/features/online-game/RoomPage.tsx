@@ -11,6 +11,7 @@ import { noticesFor } from './model/eventNotices';
 import { Dialog } from '../../shared/ui/Dialog';
 import { OnlineMenu, inPlay, menuItems, type MenuItem } from './components/OnlineMenu';
 import { HostRequests } from './components/HostRequests';
+import { HostBuyIns } from './components/HostBuyIns';
 import { ResultActions } from './components/ResultActions';
 import type { RoomParticipant, RoomSnapshot, ServerCommand } from './api/types';
 import '../gameplay/styles/header.css';
@@ -60,6 +61,7 @@ export function RoomPage({
   const screen = useRef<HTMLElement>(null);
   useScreenFit(screen);
   const [dialog, setDialog] = useState('');
+  const [buyIns, setBuyIns] = useState(false);
   const [targetSelection, setTargetSelection] = useState<{ label: string; scope: string } | null>(
     null,
   );
@@ -72,6 +74,10 @@ export function RoomPage({
   const { session, setup, toast, resetSelection } = useOnlineGameSession(view, controller);
   const notify = toast.show;
   const snapshot = view.snapshot!;
+  // 방장 바이인 대화상자는 방장이고 토너먼트가 진행 중일 때만 열려 있는다
+  const buyInsOpenable =
+    snapshot.hostId === snapshot.you.participantId && snapshot.game?.status === 'playing';
+  if (buyIns && !buyInsOpenable) setBuyIns(false);
   const selectedItem = targetSelection
     ? menuItems(snapshot).find((item) => item.label === targetSelection.label)
     : undefined;
@@ -119,6 +125,16 @@ export function RoomPage({
         return false;
       }
     }
+    if (command.type === 'BUY_IN_APPROVE' || command.type === 'BUY_IN_REJECT') {
+      const id = (command.payload as { buyInRequestId: string }).buyInRequestId;
+      if (
+        current.hostId !== current.you.participantId ||
+        !current.buyInRequests.some((r) => r.buyInRequestId === id)
+      ) {
+        notify('바이인 신청이 더 이상 유효하지 않습니다.');
+        return false;
+      }
+    }
     const ok = await controller.send(commands);
     if (!ok)
       notify(controller.getView().error ?? '처리하지 못했습니다. 다시 시도해 주세요.');
@@ -139,6 +155,11 @@ export function RoomPage({
       setTargetSelection(null);
       setDialog('');
       return notify('상황이 바뀌어 취소했습니다. 다시 선택해 주세요.');
+    }
+    if (valid.opens === 'buy-ins') {
+      setDialog('');
+      setBuyIns(true);
+      return;
     }
     if (item.command?.type === 'FORFEIT' && current.hostId === current.you.participantId)
       return notify('방장을 다른 플레이어에게 넘긴 뒤에 할 수 있습니다.');
@@ -274,9 +295,7 @@ export function RoomPage({
             <HostRequests
               snapshot={view.snapshot!}
               busy={session.busy}
-              send={(command) => {
-                void send(command);
-              }}
+              send={(command) => send(command)}
             />
           )
         }
@@ -306,6 +325,14 @@ export function RoomPage({
           />
         }
       />
+      {buyIns && buyInsOpenable && (
+        <HostBuyIns
+          snapshot={snapshot}
+          busy={session.busy}
+          send={(command) => send(command)}
+          onClose={() => setBuyIns(false)}
+        />
+      )}
       {confirmation?.step === 'stay-or-leave' && (
         <Dialog
           title="기권 후 방 선택"

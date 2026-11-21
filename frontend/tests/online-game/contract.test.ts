@@ -6,6 +6,8 @@ import {
   isJoinResponse,
   isRecoveryStatus,
   isRecoveryRequestResponse,
+  isBuyInStatus,
+  isBuyInRequestResponse,
 } from '../../src/features/online-game/api/types';
 import { toGameState } from '../../src/features/online-game/model/toGameState';
 import { assertInvariants } from '../../src/game/invariants';
@@ -107,4 +109,45 @@ it('shows server rejection messages instead of unknown codes', () => {
     '이 자리의 복구 신청이 너무 많습니다. 잠시 뒤 다시 시도해 주세요.',
   );
   expect(messageFor('NO_DEALER')).toBe('첫 딜러로 시작할 플레이어 카드를 선택하세요.');
+});
+
+// 바이인 신청 접수 응답과 승인 결과 조회가 공용 계약 예시를 통과한다
+it('accepts the buy-in request and approved status examples', () => {
+  expect(isBuyInRequestResponse(fixture('buy-in-request'))).toBe(true);
+  expect(isBuyInStatus(fixture('buy-in-approved'))).toBe(true);
+  expect(isBuyInStatus({ buyInRequestId: 'b', status: 'PENDING' })).toBe(true);
+  expect(isBuyInStatus({ buyInRequestId: 'b', status: 'SUPERSEDED' })).toBe(true);
+});
+
+// 승인 결과는 자리 정보가 있어야 하고 알 수 없는 상태나 식별자는 거부한다
+it('rejects malformed buy-in responses', () => {
+  expect(isBuyInStatus({ buyInRequestId: 'b', status: 'APPROVED' })).toBe(false);
+  expect(isBuyInStatus({ ...(fixture('buy-in-approved') as object), state: null })).toBe(false);
+  expect(isBuyInStatus({ buyInRequestId: 'b', status: 'UNKNOWN' })).toBe(false);
+  expect(isBuyInStatus({ buyInRequestId: 1, status: 'PENDING' })).toBe(false);
+  expect(isBuyInRequestResponse({ buyInRequestId: 'b', status: 'PENDING' })).toBe(false);
+  expect(
+    isBuyInRequestResponse({
+      buyInRequestId: 'b',
+      status: 'NOPE',
+      expiresAt: '2026-10-30T12:05:00Z',
+    }),
+  ).toBe(false);
+});
+
+// 스냅샷의 대기 바이인 목록은 배열이고 각 항목의 필드 형식이 맞아야 한다
+it('validates the buy-in requests in a snapshot', () => {
+  const source = fixture('snapshot-playing') as Record<string, unknown>;
+  const item = {
+    buyInRequestId: 'b',
+    name: 'Carol',
+    reentryOf: null,
+    requestedAt: '2026-10-30T12:00:00Z',
+    expiresAt: '2026-10-30T12:05:00Z',
+  };
+  expect(isRoomSnapshot({ ...source, buyInRequests: [item] })).toBe(true);
+  expect(isRoomSnapshot({ ...source, buyInRequests: [{ ...item, reentryOf: 'p1' }] })).toBe(true);
+  expect(isRoomSnapshot({ ...source, buyInRequests: undefined })).toBe(false);
+  expect(isRoomSnapshot({ ...source, buyInRequests: [{ ...item, name: 1 }] })).toBe(false);
+  expect(isRoomSnapshot({ ...source, buyInRequests: [{ ...item, reentryOf: 1 }] })).toBe(false);
 });

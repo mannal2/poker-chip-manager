@@ -17,6 +17,12 @@ public final class Player {
     public Integer actedAtBet;
     /** TS {@code reopenAt}. */
     public int reopensAt;
+    /** Entry number of a bought-in player (1 for a new name, higher for a re-entry); null for the original players. */
+    public Integer entry;
+    /** Null once the player is dealt in. */
+    public Joining joining;
+    /** The eliminated player whose seat this buy-in took; dropped when dealt in. */
+    public Player replaced;
 
     public Player() {}
 
@@ -33,6 +39,9 @@ public final class Player {
         p.handTotal = handTotal;
         p.actedAtBet = actedAtBet;
         p.reopensAt = reopensAt;
+        p.entry = entry;
+        p.joining = joining;
+        p.replaced = replaced == null ? null : replaced.copy();
         return p;
     }
 }

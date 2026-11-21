@@ -8,6 +8,23 @@ import {
   OnlineController,
   type OnlineView,
 } from '../../src/features/online-game/session/onlineController';
+import created from '../../../shared/api-contract/create-room.json';
+
+// 입장 흐름만 검사하도록 방 화면을 표시 문구 하나로 대신한다
+vi.mock('../../src/features/online-game/RoomPage', () => ({
+  // 방에 들어간 상태임을 문구로 알린다
+  RoomPage: () => <p>방 화면</p>,
+}));
+// 방에 들어간 뒤 실제 웹소켓을 열지 않는다
+vi.mock('../../src/features/online-game/realtime/roomSocket', () => ({
+  // 구독과 종료만 받는 빈 소켓
+  RoomSocket: class {
+    // 구독 요청을 무시한다
+    subscribe() {}
+    // 종료 요청을 무시한다
+    close() {}
+  },
+}));
 
 let host: HTMLDivElement;
 let root: Root;
@@ -81,6 +98,7 @@ function entryView(patch: Partial<OnlineView>): OnlineView {
   return {
     phase: 'entry',
     recovery: null,
+    buyIn: null,
     snapshot: null,
     connection: 'offline',
     pending: false,
@@ -200,6 +218,7 @@ it('shows only approval guidance while recovery is pending', async () => {
   const view: OnlineView = {
     phase: 'recovering',
     recovery: { recoveryRequestId: 'r', status: 'PENDING' },
+    buyIn: null,
     snapshot: null,
     connection: 'offline',
     pending: false,
@@ -295,4 +314,99 @@ it('resumes once under effect replay and closes the stream on unmount', async ()
   expect(vi.mocked(fetch).mock.calls.filter(([, init]) => init?.method === 'DELETE')).toHaveLength(
     1,
   );
+});
+
+// 바이인 흐름의 서버 응답을 경로별로 정해 fetch를 대신한다
+function stubBuyIn(responses: {
+  join?: [number, object];
+  request?: [number, object];
+  status?: object;
+}) {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (path: string, init?: RequestInit) => {
+      if (init?.method === 'DELETE') return new Response(null, { status: 204 });
+      const [status, body] =
+        path === '/api/session'
+          ? [200, { csrfToken: 'token', protocolVersion: 1 }]
+          : path === '/api/session/streams'
+            ? [200, { streamId: 'stream' }]
+            : path === '/api/room-joins'
+              ? (responses.join ?? [422, { code: 'NOT_WAITING' }])
+              : path === '/api/buy-in-requests'
+                ? (responses.request ?? [
+                    200,
+                    { buyInRequestId: 'b', status: 'PENDING', expiresAt: 'later' },
+                  ])
+                : [200, responses.status ?? { buyInRequestId: 'b', status: 'PENDING' }];
+      return new Response(JSON.stringify(body), { status });
+    }),
+  );
+}
+// 서버에 보낸 경로의 요청 본문을 읽는다
+function sentTo(path: string) {
+  const call = vi.mocked(fetch).mock.calls.find(([p]) => p === path);
+  return call ? JSON.parse(String(call[1]!.body)) : undefined;
+}
+// 참가 탭에서 이름을 넣고 방 참가를 눌러 진행 중 방 안내를 받는다
+async function joinRunningRoom() {
+  await act(() => root.render(<OnlineApp />));
+  await act(() => type(host.querySelector<HTMLInputElement>('[name="name"]')!, 'Carol'));
+  await act(async () => button('방 참가')!.click());
+}
+// 진행 중인 방에 참가하면 바이인 신청을 묻고 확인하면 같은 코드와 이름으로 신청한다
+it('offers a buy-in when the joined room is already playing', async () => {
+  stubBuyIn({});
+  await joinRunningRoom();
+  const dialog = host.querySelector('dialog')!;
+  expect(dialog.textContent).toContain('게임이 진행 중입니다. 바이인을 신청할까요?');
+  expect(host.textContent).not.toContain('이미 게임이 시작된 방입니다.');
+  expect(sentTo('/api/buy-in-requests')).toBeUndefined();
+  await act(async () => button('바이인 신청')!.click());
+  expect(sentTo('/api/buy-in-requests')).toMatchObject({ code: 'ABC234', name: 'Carol' });
+  await vi.waitFor(() => expect(host.textContent).toContain('바이인 신청을 보냈습니다.'));
+  expect(host.querySelector('[role="status"]')?.textContent).toBe(
+    '방장의 승인을 기다리고 있습니다.',
+  );
+  expect(host.querySelector('[name="name"]')).toBeNull();
+  expect(host.querySelector('button')).toBeNull();
+});
+// 바이인 확인을 닫으면 신청하지 않고 참가 탭에 남는다
+it('stays on the join tab when the buy-in offer is declined', async () => {
+  stubBuyIn({});
+  await joinRunningRoom();
+  await act(async () => host.querySelector<HTMLButtonElement>('.dialog-close')!.click());
+  expect(host.querySelector('dialog')).toBeNull();
+  expect(host.querySelector<HTMLInputElement>('[name="name"]')!.value).toBe('Carol');
+  expect(sentTo('/api/buy-in-requests')).toBeUndefined();
+});
+// 승인되면 방 화면으로 들어간다
+it('enters the room once the buy-in is approved', async () => {
+  stubBuyIn({ status: { ...created.response, buyInRequestId: 'b', status: 'APPROVED' } });
+  await joinRunningRoom();
+  await act(async () => button('바이인 신청')!.click());
+  await vi.waitFor(() => expect(host.textContent).toContain('방 화면'));
+});
+// 거절되거나 만료되면 이유를 보여 주고 입장 화면으로 돌아간다
+it.each([
+  ['REJECTED', '방장이 바이인 신청을 거절했습니다.'],
+  ['EXPIRED', '바이인 신청이 만료되었습니다.'],
+])('returns to the entry form after a %s buy-in', async (status, reason) => {
+  stubBuyIn({ status: { buyInRequestId: 'b', status } });
+  await joinRunningRoom();
+  await act(async () => button('바이인 신청')!.click());
+  await vi.waitFor(() => expect(host.querySelector('[role="alert"]')?.textContent).toBe(reason));
+  expect(host.querySelector<HTMLInputElement>('[name="code"]')).not.toBeNull();
+  expect(button('방 참가')?.disabled).toBe(false);
+});
+// 같은 이름이 있어 거절된 바이인은 복구를 안내하고, 인원 초과는 기존 문구를 쓴다
+it.each([
+  ['DUPLICATE_NAME', '같은 이름의 플레이어가 있습니다. 기기를 바꾸셨다면 복구를 신청해 주세요.'],
+  ['ROOM_FULL', '방이 가득 찼습니다.'],
+])('explains a %s buy-in refusal', async (code, message) => {
+  stubBuyIn({ request: [409, { code }] });
+  await joinRunningRoom();
+  await act(async () => button('바이인 신청')!.click());
+  await vi.waitFor(() => expect(host.textContent).toContain(message));
+  expect(host.querySelector('dialog')).toBeNull();
 });

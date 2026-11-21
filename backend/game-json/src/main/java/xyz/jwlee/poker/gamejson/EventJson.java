@@ -79,6 +79,17 @@ public final class EventJson {
                 ObjectNode shares = n.putObject("shares");
                 x.shares().forEach(shares::put);
             }
+            case EventDetails.PlayerBoughtIn x -> {
+                n.put("playerId", x.playerId());
+                n.put("entry", x.entry());
+                if (x.reentryOf() != null) {
+                    n.put("reentryOf", x.reentryOf());
+                }
+                if (x.replaced() != null) {
+                    n.put("replaced", x.replaced());
+                }
+            }
+            case EventDetails.BuyInCancelled x -> n.put("playerId", x.playerId());
         }
         return n;
     }

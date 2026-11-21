@@ -434,6 +434,11 @@ button.card-values {
   font-size: calc(12 * var(--u));
   pointer-events: none;
 }
+.seat .entry-count {
+  margin-left: calc(3 * var(--u));
+  font-size: calc(var(--card-text) * 0.7 * var(--u));
+  opacity: 0.7;
+}
 
 /* A new hand lights the felt rim once: brightest at 30%, gone after 1s. It never takes input. */
 .felt-glow {

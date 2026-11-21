@@ -648,3 +648,11 @@ A00~A11 단일 기기 구현과 자동 검증을 마쳤다. 멀티플레이·실
 
 - 계획: [2026-11-20-hand-transition.md](docs/superpowers/plans/2026-11-20-hand-transition.md). `hand-transition` 브랜치.
 - 구현: 지급 칩 도착 시 수령자 카드 위 `+금액` 글자(`payoutGains`, `useChipMotion`), 새 핸드 시작 시 펠트 테두리 금빛과 HAND 숫자 강조(`useHandStartCue`, `Table`, `GameHeader`). 로컬·온라인 공통 화면에 적용했다. 규칙은 UX_SPEC 2026-11-20 절이다.
+
+## 2026-11-21: 바이인 2단계(멀티플레이)
+
+- 계획: [2026-11-20-buy-in-multiplayer.md](docs/superpowers/plans/2026-11-20-buy-in-multiplayer.md), 설계 [2026-11-19-buy-in-design.md](docs/superpowers/specs/2026-11-19-buy-in-design.md). `buy-in` 브랜치, 작업 1~7, 로컬 커밋만(push/PR/merge/배포 없음).
+- 구현: Java 엔진의 `BUY_IN`·`CANCEL_BUY_IN`과 다음 핸드 참여 규칙(공용 픽스처 `buyin` 통과), 서버 `BuyInRequests`·`BuyInCommands`·`BuyInController`(`/api/buy-in-requests`, 방 명령 `REQUEST_BUY_IN`·`BUY_IN_APPROVE`·`BUY_IN_REJECT`·`CANCEL_BUY_IN`, 대기방 10명·진행 중 15명), 온라인 신청 화면(입장 탭의 바이인 확인과 대기 화면, 탈락자의 ☰ `바이인`), 방장 알림 줄의 바이인 신청과 승인 화면(`BuyInApproval`), 방장 메뉴의 대기 바이인 취소·탈락한 방장의 재입장 신청(`HostBuyIns`), 단일 기기와 함께 쓰는 `SeatField`·`BuyInParts`·`model/buyIn.ts`. 확정 결정은 MULTIPLAYER_MODE.md 5절 "바이인".
+- 작업 7: 실제 서버 E2E `frontend/e2e/online/buy-in.spec.ts`(새 사람 신청 → 방장이 자리 골라 승인 → 다음 핸드에 그 자리에서 버튼·카드, 탈락자 재입장 → 원래 자리 `×2`, 탈락한 방장의 재입장 신청과 자기 승인, 방장 거절, 첫 카드 전 바이인 취소). 탈락한 방장의 자기 승인 경로도 실제 서버에서 통과했다.
+- 검증(2026-11-21, Windows): `backend/gradlew test` PASS(XML 합계 805개, 실패 0, 건너뜀 1은 기존 `GateFileTest` 가정). 프런트 typecheck·`eslint .` PASS, Vitest 594개 PASS. `test:e2e:online` 85개 PASS(2.5분), `test:e2e:restart` 1개 PASS. 로컬 `npx playwright test` 첫 실행은 511 PASS·3 skip·WebKit 4 FAIL(app-flow 조작권 이어하기, local-navigation 2개, name-scope)이었고, 네 개만 다시 돌리면 3개 PASS·1개(local-navigation 22행) FAIL, 그 하나를 `--repeat-each=3`으로 돌리면 3번 모두 PASS였다. 바이인과 무관한 WebKit 탐색·조작권 경합으로 보이며 원인은 확인하지 않았다. 두 번째 전체 실행은 514 PASS·3 skip·WebKit 1 FAIL(`entry-routes.spec.ts:54`, 온라인 청크 검사는 통과하고 마지막 페이지 오류 목록에 WebKit의 "Context is stopped"가 잡힘)이었고, 그 파일을 WebKit에서 `--repeat-each=3`으로 돌리면 6개 모두 PASS였다. 두 실행에서 같은 검사가 두 번 실패한 적은 없다.
+- 한계: 실기기 다중 접속, 서버 재시작 뒤 바이인 상태 복원의 E2E(서버 단위 검사만), 신청 만료 5분의 실제 경과는 E2E로 검증하지 않았다.

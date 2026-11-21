@@ -93,6 +93,10 @@ public final class CommandPipeline {
             case "RE_READY" -> plain(true, ResultCommands::reReady);
             case "RECOVERY_APPROVE" -> plain(true, RecoveryCommands::approve);
             case "RECOVERY_REJECT" -> plain(true, RecoveryCommands::reject);
+            case "REQUEST_BUY_IN" -> plain(false, BuyInCommands::requestReentry);
+            case "BUY_IN_APPROVE" -> plain(true, BuyInCommands::approve);
+            case "BUY_IN_REJECT" -> plain(true, BuyInCommands::reject);
+            case "CANCEL_BUY_IN" -> plain(true, BuyInCommands::cancel);
             default -> null;
         };
     }

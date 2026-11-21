@@ -48,4 +48,11 @@ public sealed interface GameCommand {
     // 플레이어를 기권시키는 명령
     /** {@code byHost} marks a forfeit the host made for another player. */
     record Forfeit(String playerId, boolean byHost) implements GameCommand {}
+
+    // 새 사람이나 탈락자를 테이블에 앉히는 바이인 명령
+    /** {@code name} is ignored for a re-entry; {@code reentryOf} (nullable) is the earlier player id. */
+    record BuyIn(String name, BuyInPlacement placement, String reentryOf) implements GameCommand {}
+
+    // 아직 카드를 받지 않은 바이인을 취소하는 명령
+    record CancelBuyIn(String playerId) implements GameCommand {}
 }

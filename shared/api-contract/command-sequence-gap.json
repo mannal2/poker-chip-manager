@@ -4,10 +4,10 @@
   "status" : 409,
   "request" : {
     "protocolVersion" : 1,
-    "requestId" : "command-04-10",
-    "sequence" : 10,
+    "requestId" : "command-04-12",
+    "sequence" : 12,
     "controlGeneration" : 1,
-    "expectedStateVersion" : 11,
+    "expectedStateVersion" : 14,
     "type" : "UNDO",
     "tournamentId" : "00000000-0000-4000-8000-000000000010",
     "handId" : "00000000-0000-4000-8000-000000000010:hand:1",

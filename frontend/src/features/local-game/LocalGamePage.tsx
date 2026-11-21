@@ -6,6 +6,8 @@ import { UpdateNotice } from '../pwa/UpdateNotice';
 import { usePwaPresentation } from '../pwa/usePwaPresentation';
 import { InstallNotice } from '../pwa/InstallNotice';
 import { ManagerMenu } from './components/ManagerMenu';
+import { BuyInDialog } from './components/BuyInDialog';
+import { buyInBlockReason } from '../gameplay/model/buyIn';
 import { StorageErrorDetails } from './components/StorageErrorDetails';
 import { useEffect, useRef, useState } from 'react';
 import type { ControlLease } from './storage/types';
@@ -64,6 +66,7 @@ function LocalGame({
   useScreenFit(screen);
   const pwa = useLocalPWA();
   const [dialog, setDialog] = useState('');
+  const [buyInOpen, setBuyInOpen] = useState(false);
   const [confirmation, setConfirmation] = useState<{
     message: string;
     resolve: (accepted: boolean) => void;
@@ -265,6 +268,13 @@ function LocalGame({
             menu={
               <ManagerMenu
                 onHome={returnHome}
+                buyInBlockReason={s ? buyInBlockReason(s) : null}
+                onBuyIn={() => {
+                  const reason = s ? buyInBlockReason(s) : null;
+                  if (reason) return notify(reason);
+                  setDialog('');
+                  setBuyInOpen(true);
+                }}
                 onNew={() => void newGame(() => setDialog(''))}
               />
             }
@@ -287,6 +297,17 @@ function LocalGame({
             onApply={update.apply}
           />
         </Dialog>
+      )}
+      {buyInOpen && s && session && (
+        <BuyInDialog
+          state={s}
+          busy={busy}
+          onSubmit={(command) => session.dispatch(command)}
+          onClose={() => setBuyInOpen(false)}
+          onDone={(name) =>
+            notify(`${name} 바이인을 마쳤습니다. 바이인 전 행동은 취소할 수 없습니다.`)
+          }
+        />
       )}
       <InstallNotice install={install} />
       {confirmationDialog}

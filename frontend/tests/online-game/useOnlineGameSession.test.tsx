@@ -30,6 +30,7 @@ it('retains a cleared pick through the initial draft and delayed first echo unti
     hasControl: true,
     pending: false,
     recovery: null,
+    buyIn: null,
     error: null,
     errorField: null,
   };
@@ -94,6 +95,7 @@ it('keeps the latest host pick through delayed echoes and restores server picks 
     hasControl: true,
     pending: false,
     recovery: null,
+    buyIn: null,
     error: null,
     errorField: null,
   };
@@ -203,6 +205,7 @@ it('adapts authoritative permissions, live guards and own rename without grantin
     hasControl: true,
     pending: false,
     recovery: null,
+    buyIn: null,
     error: null,
     errorField: null,
   };
@@ -275,6 +278,7 @@ it('rejects a case-insensitive duplicate online without sending', async () => {
     hasControl: true,
     pending: false,
     recovery: null,
+    buyIn: null,
     error: null,
     errorField: null,
   };

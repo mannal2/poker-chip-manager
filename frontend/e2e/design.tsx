@@ -56,7 +56,7 @@ createRoot(document.getElementById('root')!).render(
       <GameHeader
         notice={
           q.has('request') ? (
-            <HostRequests snapshot={snapshot} busy={false} send={() => {}} />
+            <HostRequests snapshot={snapshot} busy={false} send={async () => false} />
           ) : undefined
         }
         handNumber={1}

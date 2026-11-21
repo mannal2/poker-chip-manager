@@ -85,7 +85,32 @@ public final class SnapshotWriter {
             });
         }
         writeRecoveryRequests(n.putArray("recoveryRequests"), room, viewer);
+        writeBuyInRequests(n.putArray("buyInRequests"), room, viewer);
         return new RoomSnapshot(n, room.version());
+    }
+
+    // 진행 중인 토너먼트의 대기 바이인 신청을 방장에게는 모두, 재입장 신청자에게는 자기 것만 쓴다. 세션과 자격 값은 넣지 않는다
+    private static void writeBuyInRequests(ArrayNode out, Room room, Participant viewer) {
+        if (room.phase() != RoomPhase.PLAYING || room.game() == null) {
+            return;
+        }
+        boolean host = room.isHost(viewer.participantId());
+        for (BuyInRequests.Request r : room.buyInRequests().pending()) {
+            boolean own = viewer.participantId().equals(r.participantId());
+            if (!r.tournamentId().equals(room.game().tournamentId) || !(host || own)) {
+                continue;
+            }
+            ObjectNode o = out.addObject();
+            o.put("buyInRequestId", r.id());
+            o.put("name", r.name());
+            if (r.reentryOf() == null) {
+                o.putNull("reentryOf");
+            } else {
+                o.put("reentryOf", r.reentryOf());
+            }
+            o.put("requestedAt", r.requestedAt().toString());
+            o.put("expiresAt", r.expiresAt().toString());
+        }
     }
 
     // 방장에게만 자리가 남아 있는 대기 복구 신청을 쓴다. 세션과 자격 값은 넣지 않는다

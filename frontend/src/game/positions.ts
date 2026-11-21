@@ -34,3 +34,15 @@ export function initialBlindSeats(
   const sbSeat = alive.filter(Boolean).length === 2 ? button : nextSeat(button, alive);
   return { sbSeat, bbSeat: nextSeat(sbSeat, alive) };
 }
+// 좌석이 시계 방향으로 버튼 다음부터 SB 직전 사이(양 끝 제외)에 있는지 판정한다
+export function isBetweenButtonAndSb(
+  seat: number,
+  buttonSeat: number,
+  sbSeat: number,
+  size: number,
+): boolean {
+  if (buttonSeat === sbSeat) return false;
+  const from = (seat - buttonSeat + size) % size,
+    to = (sbSeat - buttonSeat + size) % size;
+  return from > 0 && from < to;
+}

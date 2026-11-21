@@ -7,8 +7,12 @@ import {
   isControlResponse,
   isJoinResponse,
   isOlderSnapshot,
+  isBuyInRequestResponse,
+  isBuyInStatus,
   isRecoveryRequestResponse,
+  isRecoveryStatus,
   isRoomSnapshot,
+  type BuyInStatus,
   type RecoveryStatus,
   type RoomSnapshot,
   type ServerCommand,
@@ -17,14 +21,17 @@ import {
 import type { FinalMessage, RoomSocket, RoomSocketHandlers } from '../realtime/roomSocket';
 import type { KnownEvent } from '../model/eventNotices';
 import { EventMemory } from './eventMemory';
-import { RecoveryPoller } from './recoveryPoller';
+import { RequestPoller } from './requestPoller';
 import {
   clearTabControl,
+  forgetBuyIn,
   forgetRecovery,
   forgetRoom,
   markTabControl,
+  rememberBuyIn,
   rememberRecovery,
   rememberRoom,
+  savedBuyIn,
   savedRecovery,
   savedRoomId,
   tabControls,
@@ -40,15 +47,19 @@ export function entryErrorField(code: string | undefined): EntryField | null {
 }
 // 화면이 구독하는 온라인 상태
 export interface OnlineView {
-  phase: 'entry' | 'joining' | 'recovering' | 'room' | 'gone' | 'revoked' | 'incompatible';
+  phase:
+    'entry' | 'joining' | 'recovering' | 'buying-in' | 'room' | 'gone' | 'revoked' | 'incompatible';
   snapshot: RoomSnapshot | null;
   effectsFromVersion?: number | null;
   connection: 'online' | 'syncing' | 'offline' | 'replaced';
   hasControl: boolean;
   pending: boolean;
   recovery: RecoveryStatus | null;
+  buyIn: BuyInStatus | null;
   error: string | null;
   errorField: EntryField | null;
+  // 입장 화면이 거절 종류에 따라 다음 조작을 고를 수 있게 남기는 서버 오류 코드
+  errorCode?: string | null;
 }
 // 컨트롤러가 쓰는 소켓 기능
 type SocketPort = Pick<RoomSocket, 'subscribe' | 'resync' | 'reconnect' | 'close'>;
@@ -58,7 +69,7 @@ type Confirmed = { events: SnapshotMessage['events']; previous: RoomSnapshot; ne
 type Request = {
   path: string;
   body: Record<string, unknown>;
-  kind: 'entry' | 'recovery' | 'control' | 'command';
+  kind: 'entry' | 'recovery' | 'buyIn' | 'control' | 'command';
   draft: boolean;
   scopeRevision?: number;
   unresolved?: boolean;
@@ -67,7 +78,11 @@ type Request = {
 const CONNECTION_ERROR = '서버에 연결하지 못했습니다. 연결 상태를 확인해 주세요.';
 const UNKNOWN_RESULT = '요청 결과를 확인하지 못했습니다. 다시 확인해 주세요.';
 const TOO_MANY_SCREENS = '지금은 서버 연결이 많습니다. 잠시 후 자동으로 다시 연결합니다.';
+const PHASES = { entry: 'joining', recovery: 'recovering', buyIn: 'buying-in' } as const;
 const LOST_ROOM_CODES = ['NO_SESSION', 'ROOM_NOT_FOUND'];
+const BUY_IN_DUPLICATE_NAME =
+  '같은 이름의 플레이어가 있습니다. 기기를 바꾸셨다면 복구를 신청해 주세요.';
+const BUY_IN_CANCELLED = '바이인이 취소되었습니다.';
 
 // 서버 상태와 요청 원장 및 화면 수명을 함께 관리한다
 export class OnlineController {
@@ -78,6 +93,7 @@ export class OnlineController {
     hasControl: false,
     pending: false,
     recovery: null,
+    buyIn: null,
     error: null,
     errorField: null,
   };
@@ -102,7 +118,8 @@ export class OnlineController {
   private awaitingEvents: { previous: RoomSnapshot; version: number } | null = null;
   private socketFailures = 0;
   private probing = false;
-  private recoveryPoller: RecoveryPoller | null = null;
+  private recoveryPoller: RequestPoller<RecoveryStatus> | null = null;
+  private buyInPoller: RequestPoller<BuyInStatus> | null = null;
   private refreshTimer: ReturnType<typeof setInterval> | undefined;
 
   // API와 핸들러를 받는 소켓 생성자를 주입받는다
@@ -154,9 +171,10 @@ export class OnlineController {
   }
   // 새 화면 값을 저장하고 모든 구독자에게 알린다
   private update(patch: Partial<OnlineView>): void {
-    // 오류를 바꾸면서 칸을 지정하지 않은 경로는 칸 묶음을 지운다
+    // 오류를 바꾸면서 칸이나 코드를 지정하지 않은 경로는 이전 묶음을 지운다
     const field = 'error' in patch && !('errorField' in patch) ? { errorField: null } : {};
-    this.view = { ...this.view, ...patch, ...field };
+    const code = 'error' in patch && !('errorCode' in patch) ? { errorCode: null } : {};
+    this.view = { ...this.view, ...patch, ...field, ...code };
     this.listeners.forEach((listener) => listener());
   }
   // 활성 화면의 세션과 스트림을 한 번 준비한다
@@ -217,6 +235,10 @@ export class OnlineController {
   clearFieldError(field: EntryField): void {
     if (this.view.errorField === field) this.update({ error: null, errorField: null });
   }
+  // 입장 화면이 안내를 닫으면 남은 오류를 지운다
+  dismissError(): void {
+    if (this.view.error) this.update({ error: null });
+  }
   // 새 방을 생성한다
   create(name: string): Promise<boolean> {
     if (this.rejectsName(name)) return Promise.resolve(false);
@@ -229,6 +251,19 @@ export class OnlineController {
   }
   // 기존 참가자 자리의 복구 승인을 요청한다
   requestRecovery(code: string, name: string): Promise<boolean> {
+    return this.requestApproval('/api/recovery-requests', 'recovery', code, name);
+  }
+  // 진행 중인 방에 새 자리를 얻기 위한 바이인 승인을 요청한다
+  requestBuyIn(code: string, name: string): Promise<boolean> {
+    return this.requestApproval('/api/buy-in-requests', 'buyIn', code, name);
+  }
+  // 입력을 먼저 확인한 뒤 방장 승인이 필요한 입장 신청을 보낸다
+  private requestApproval(
+    path: string,
+    kind: 'recovery' | 'buyIn',
+    code: string,
+    name: string,
+  ): Promise<boolean> {
     if (this.request || this.view.pending || this.view.phase === 'room')
       return Promise.resolve(false);
     const normalizedName = normalizeName(name);
@@ -241,11 +276,7 @@ export class OnlineController {
       this.update({ error: '방 코드를 정확히 입력해 주세요.', errorField: 'code' });
       return Promise.resolve(false);
     }
-    return this.enter(
-      '/api/recovery-requests',
-      { code: code.trim().toUpperCase(), name: normalizedName },
-      'recovery',
-    );
+    return this.enter(path, { code: code.trim().toUpperCase(), name: normalizedName }, kind);
   }
   // 서버 이름 규칙에 맞지 않는 이름은 빈도 한도를 쓰지 않도록 요청 전에 입장 화면에서 거절한다
   private rejectsName(name: string): boolean {
@@ -255,11 +286,15 @@ export class OnlineController {
     return true;
   }
   // 입장 요청을 보관하여 명시적 재시도에도 같은 본문을 사용한다
-  private async enter(path: string, payload: object, kind: 'entry' | 'recovery'): Promise<boolean> {
+  private async enter(
+    path: string,
+    payload: object,
+    kind: 'entry' | 'recovery' | 'buyIn',
+  ): Promise<boolean> {
     if (this.request || this.view.pending || this.view.phase === 'room') return false;
     const epoch = this.epoch;
     this.update({
-      phase: kind === 'recovery' ? 'recovering' : 'joining',
+      phase: PHASES[kind],
       snapshot: null,
       hasControl: false,
       pending: true,
@@ -276,6 +311,8 @@ export class OnlineController {
     if (this.view.pending || this.request || this.view.phase === 'room') return false;
     const recovery = savedRecovery();
     if (recovery) return this.resumeRecovery(recovery);
+    const buyIn = savedBuyIn();
+    if (buyIn) return this.resumeBuyIn(buyIn);
     const roomId = savedRoomId();
     if (!roomId) return false;
     const epoch = this.epoch;
@@ -309,6 +346,15 @@ export class OnlineController {
     this.pollRecovery(id);
     return true;
   }
+  // 새로고침 전에 보낸 바이인 신청의 결과 조회를 이어간다
+  private async resumeBuyIn(id: string): Promise<boolean> {
+    const epoch = this.epoch;
+    this.update({ phase: 'buying-in', pending: true, buyIn: null });
+    if (!(await this.open()) || epoch !== this.epoch) return false;
+    this.update({ pending: false, buyIn: { buyInRequestId: id, status: 'PENDING' } });
+    this.pollBuyIn(id);
+    return true;
+  }
   // 입장 응답의 세대와 저장 가능한 방 정보만 보관한다
   private joined(body: unknown): boolean {
     if (!isJoinResponse(body)) return false;
@@ -320,6 +366,7 @@ export class OnlineController {
       phase: 'room',
       pending: false,
       recovery: null,
+      buyIn: null,
       error: null,
     });
     this.connect();
@@ -649,17 +696,24 @@ export class OnlineController {
       return true;
     }
     if (!result.ok) {
-      if (result.code === 'NO_SESSION' && (request.kind === 'entry' || request.kind === 'recovery'))
-        return this.sessionExpired();
+      const entering =
+        request.kind === 'entry' || request.kind === 'recovery' || request.kind === 'buyIn';
+      if (result.code === 'NO_SESSION' && entering) return this.sessionExpired();
       this.request = null;
       this.update({
         pending: this.sending,
         error:
           request.kind === 'recovery' && result.code === 'RECOVERY_TARGET_NOT_FOUND'
             ? `이 방에 '${String(request.body.name)}' 플레이어가 없습니다.`
-            : messageFor(result.code),
-        ...(request.kind === 'entry' || request.kind === 'recovery'
-          ? { phase: 'entry' as const, errorField: entryErrorField(result.code) }
+            : request.kind === 'buyIn' && result.code === 'DUPLICATE_NAME'
+              ? BUY_IN_DUPLICATE_NAME
+              : messageFor(result.code),
+        ...(entering
+          ? {
+              phase: 'entry' as const,
+              errorField: entryErrorField(result.code),
+              errorCode: result.code ?? null,
+            }
           : {}),
       });
       if (
@@ -686,6 +740,20 @@ export class OnlineController {
         },
       });
       this.pollRecovery(body.recoveryRequestId);
+      return true;
+    }
+    if (request.kind === 'buyIn' && isBuyInRequestResponse(body)) {
+      this.request = null;
+      rememberBuyIn(body.buyInRequestId);
+      this.update({
+        pending: false,
+        error: null,
+        buyIn: {
+          buyInRequestId: body.buyInRequestId,
+          status: body.status === 'APPROVED' ? 'PENDING' : body.status,
+        },
+      });
+      this.pollBuyIn(body.buyInRequestId);
       return true;
     }
     if (
@@ -742,21 +810,65 @@ export class OnlineController {
   }
   // 복구 신청의 결과 조회를 시작한다
   private pollRecovery(id: string): void {
-    this.recoveryPoller = new RecoveryPoller(this.api, id, {
-      // 조회한 상태를 화면과 입장 흐름에 반영한다
-      onStatus: (status) => this.recoveryChanged(status),
-      // 방이나 신청이 사라지면 저장값을 지우고 입장 화면으로 돌아간다
-      onMissing: (code) => {
-        forgetRecovery();
-        this.update({
-          phase: 'entry',
-          pending: false,
-          recovery: null,
-          error: code === 'ROOM_NOT_FOUND' ? messageFor(code) : '복구 신청을 찾을 수 없습니다.',
-        });
+    this.recoveryPoller = new RequestPoller(
+      this.api,
+      `/api/recovery-requests/${encodeURIComponent(id)}`,
+      isRecoveryStatus,
+      {
+        // 조회한 상태를 화면과 입장 흐름에 반영한다
+        onStatus: (status) => this.recoveryChanged(status),
+        // 방이나 신청이 사라지면 저장값을 지우고 입장 화면으로 돌아간다
+        onMissing: (code) => {
+          forgetRecovery();
+          this.update({
+            phase: 'entry',
+            pending: false,
+            recovery: null,
+            error: code === 'ROOM_NOT_FOUND' ? messageFor(code) : '복구 신청을 찾을 수 없습니다.',
+          });
+        },
       },
-    });
+    );
     void this.recoveryPoller.poll();
+  }
+  // 바이인 신청의 결과 조회를 시작한다
+  private pollBuyIn(id: string): void {
+    this.buyInPoller = new RequestPoller(
+      this.api,
+      `/api/buy-in-requests/${encodeURIComponent(id)}`,
+      isBuyInStatus,
+      {
+        // 조회한 상태를 화면과 입장 흐름에 반영한다
+        onStatus: (status) => this.buyInChanged(status),
+        // 방이나 신청이 사라지면 저장값을 지우고 입장 화면으로 돌아간다
+        onMissing: (code) => {
+          forgetBuyIn();
+          this.update({
+            phase: 'entry',
+            pending: false,
+            buyIn: null,
+            error: code === 'ROOM_NOT_FOUND' ? messageFor(code) : '바이인 신청을 찾을 수 없습니다.',
+          });
+        },
+      },
+    );
+    void this.buyInPoller.poll();
+  }
+  // 조회한 바이인 상태에 따라 방에 들어가거나 입장 화면으로 돌아간다
+  private buyInChanged(status: BuyInStatus): void {
+    this.update({ buyIn: status });
+    if (status.status === 'PENDING') return;
+    forgetBuyIn();
+    if (status.status === 'APPROVED') {
+      this.joined(status);
+      return;
+    }
+    const reasons = {
+      REJECTED: '방장이 바이인 신청을 거절했습니다.',
+      EXPIRED: '바이인 신청이 만료되었습니다.',
+      SUPERSEDED: '이 신청으로는 더 이상 자리에 앉을 수 없습니다.',
+    };
+    this.update({ phase: 'entry', pending: false, error: reasons[status.status] });
   }
   // 조회한 복구 상태에 따라 방에 들어가거나 입장 화면으로 돌아간다
   private recoveryChanged(status: RecoveryStatus): void {
@@ -780,6 +892,11 @@ export class OnlineController {
       this.completeLeave();
       return;
     }
+    if (type === 'ACCESS_REVOKED' && this.waitingBuyIn()) {
+      this.completeLeave();
+      this.update({ error: BUY_IN_CANCELLED });
+      return;
+    }
     this.stop();
     if (type === 'ROOM_GONE') forgetRoom();
     this.update({
@@ -788,6 +905,13 @@ export class OnlineController {
       hasControl: false,
       pending: false,
     });
+  }
+  // 마지막 상태에서 본인이 첫 카드를 기다리는 바이인 플레이어였는지 확인한다
+  /** 첫 카드 전의 바이인 플레이어는 내보내기·기권 대상이 아니므로, 이때의 자격 회수는 방장의 바이인 취소다. */
+  private waitingBuyIn(): boolean {
+    const snapshot = this.view.snapshot;
+    const me = snapshot?.participants.find((p) => p.participantId === snapshot.you.participantId);
+    return !!me?.playerId && !!snapshot?.game?.players.find((p) => p.id === me.playerId)?.joining;
   }
   // 확정된 탈퇴의 방 표시와 탭 자격을 삭제하고 입장 화면으로 돌아간다
   private completeLeave(): void {
@@ -802,6 +926,8 @@ export class OnlineController {
     this.grantedGeneration = null;
     this.recoveryPoller?.stop();
     this.recoveryPoller = null;
+    this.buyInPoller?.stop();
+    this.buyInPoller = null;
     clearInterval(this.refreshTimer);
     document.removeEventListener('visibilitychange', this.onVisible);
     this.socket?.close();
@@ -829,6 +955,7 @@ export class OnlineController {
     this.stop();
     clearTabControl();
     forgetRecovery();
+    forgetBuyIn();
     this.update({
       phase: 'entry',
       snapshot: null,
@@ -836,6 +963,7 @@ export class OnlineController {
       hasControl: false,
       pending: false,
       recovery: null,
+      buyIn: null,
       error: null,
     });
   }

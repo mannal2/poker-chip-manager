@@ -9,6 +9,7 @@ import settlement from '../../../shared/game-fixtures/settlement.json';
 import lifecycle from '../../../shared/game-fixtures/lifecycle.json';
 import undo from '../../../shared/game-fixtures/undo.json';
 import events from '../../../shared/game-fixtures/events.json';
+import buyin from '../../../shared/game-fixtures/buyin.json';
 import forfeit from '../../../shared/game-fixtures/forfeit.json';
 import { validateSettings } from '../../src/game/settings';
 import {
@@ -24,7 +25,7 @@ import type { GameCommand, GameEvent, GameState, Pot } from '../../src/game/type
 
 // Fixture format v2: every case carries a full GameState (or the suite's own input) and a
 // list of commands; the runner holds no interpretation of compact states.
-const suites = { settings, positions, betting, pots, settlement, lifecycle, undo, events };
+const suites = { settings, positions, betting, pots, settlement, lifecycle, undo, events, buyin };
 export type SuiteName = keyof typeof suites;
 type Command = {
   type: string;
@@ -181,6 +182,7 @@ const runners: Record<SuiteName, (f: Case) => void> = {
   lifecycle: runLifecycle,
   undo: runLifecycle,
   events: runLifecycle,
+  buyin: runLifecycle,
 };
 
 // Server-only suites: the TS engine has no such command, so their cases are only checked

@@ -39,12 +39,23 @@ export function buildTableView(
       disconnected: disconnectedIds?.has(p.id),
       contribution: p.H + (state.hand?.actorId === p.id ? draftAmount : 0),
       pending: state.hand?.actorId === p.id && draftAmount > 0,
+      entry: p.entry ?? 1,
       roles: [
         p.id === hostPlayerId ? '방장' : '',
         i === button ? 'D' : '',
         button >= 0 && i === sb && !p.eliminated ? 'SB' : '',
         button >= 0 && i === bb ? 'BB' : '',
-        p.eliminated || p.forfeited ? '탈락' : p.folded ? '폴드' : p.stack === 0 ? '올인' : '',
+        p.eliminated || p.forfeited
+          ? '탈락'
+          : p.joining
+            ? p.joining === 'next-hand'
+              ? '다음 핸드부터'
+              : '버튼 대기'
+            : p.folded
+              ? '폴드'
+              : p.stack === 0
+                ? '올인'
+                : '',
       ]
         .filter(Boolean)
         .join(' · '),

@@ -11,6 +11,10 @@ export interface MenuItem {
   row?: string;
   // 확인 뒤 방에 남을지 나갈지 한 번 더 묻는다
   then?: 'stay-or-leave';
+  // 누를 수 없는 안내 문구로 표시한다
+  notice?: boolean;
+  // 명령 대신 따로 대화상자를 연다
+  opens?: 'buy-ins';
 }
 
 export const forfeitWarning =
@@ -28,6 +32,31 @@ export function inPlay(snapshot: RoomSnapshot, participant: RoomParticipant) {
   );
 }
 
+// 서버가 재입장 신청을 받는 탈락자(탈락했거나 자리를 다른 바이인에게 내준 사람)인지 판별한다
+export function canRequestReentry(snapshot: RoomSnapshot, participant: RoomParticipant) {
+  const game = snapshot.game;
+  if (!game || game.status !== 'playing' || !participant.playerId) return false;
+  const player = game.players.find((p) => p.id === participant.playerId);
+  if (player) return player.eliminated;
+  return (
+    game.formerPlayers?.some((f) => f.id === participant.playerId && f.reason === 'replaced') ??
+    false
+  );
+}
+
+// 탈락한 본인이 이미 재입장을 신청해 방장의 승인을 기다리는지 확인한다
+export function reentryPending(snapshot: RoomSnapshot, me: RoomParticipant) {
+  return snapshot.buyInRequests.some((r) => r.reentryOf === me.playerId);
+}
+
+// 탈락한 본인의 바이인 버튼, 또는 이미 신청했으면 그 자리의 대기 안내를 만든다
+function reentryItem(snapshot: RoomSnapshot, me: RoomParticipant): MenuItem | null {
+  if (!canRequestReentry(snapshot, me)) return null;
+  if (reentryPending(snapshot, me))
+    return { label: '방장의 승인을 기다리고 있습니다.', notice: true };
+  return { label: '바이인', command: { type: 'REQUEST_BUY_IN', handScoped: false } };
+}
+
 // 역할과 단계 및 서버 명단의 생존 여부로 관리 메뉴와 대상을 구성한다
 export function menuItems(snapshot: RoomSnapshot): MenuItem[] {
   const host = snapshot.you.participantId === snapshot.hostId;
@@ -40,6 +69,11 @@ export function menuItems(snapshot: RoomSnapshot): MenuItem[] {
   if (!playing)
     items.push({ label: '방 나가기', command: { type: 'LEAVE', handScoped: false } });
   if (playing) {
+    // 방장은 대기 바이인 대화상자 하나에서 취소와 자기 재입장 신청을 모두 한다
+    if (host && snapshot.game?.status === 'playing')
+      items.push({ label: '바이인', opens: 'buy-ins' });
+    const reentry = !host && me && reentryItem(snapshot, me);
+    if (reentry) items.push(reentry);
     if (me && inPlay(snapshot, me))
       items.push({
         label: '기권',
@@ -141,11 +175,17 @@ export function OnlineMenu({
       <button onClick={() => void copyCode()}>방 코드 {snapshot.code} 복사</button>
       {menuRows(items).map((row) => (
         <div key={row.map((item) => item.label).join('/')} className={row.length > 1 ? 'menu-row' : undefined}>
-          {row.map((item) => (
-            <button key={item.label} onClick={() => (item.home ? home() : choose(item))}>
-              {item.label}
-            </button>
-          ))}
+          {row.map((item) =>
+            item.notice ? (
+              <p key={item.label} role="status">
+                {item.label}
+              </p>
+            ) : (
+              <button key={item.label} onClick={() => (item.home ? home() : choose(item))}>
+                {item.label}
+              </button>
+            ),
+          )}
         </div>
       ))}
     </div>

@@ -48,7 +48,9 @@ public final class RoomLifecycle {
     // 전원 미접속 방을 abandonedLimit 뒤에 닫는 시간 규칙을 한 번 판정한다
     public static void sweep(Room room, RoomEnv env, Duration abandonedLimit) {
         Instant now = env.now();
-        if (room.recoveryRequests().sweep(now)) {
+        boolean recoveryExpired = room.recoveryRequests().sweep(now);
+        boolean buyInExpired = room.buyInRequests().sweep(now);
+        if (recoveryExpired || buyInExpired) {
             room.bumpVersion();
         }
         switch (room.phase()) {

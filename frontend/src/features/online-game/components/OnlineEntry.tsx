@@ -1,4 +1,6 @@
-import { useState, type KeyboardEvent, type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
+import { Dialog } from '../../../shared/ui/Dialog';
+import { Tabs } from '../../../shared/ui/Tabs';
 import type { EntryField, OnlineController, OnlineView } from '../session/onlineController';
 
 // 영문과 숫자만 남긴 뒤 소문자를 대문자로 바꾼다
@@ -57,6 +59,16 @@ function EntryInput({
   );
 }
 
+// 방장 승인을 기다리는 동안 보낸 신청의 종류와 대기 안내만 보여 준다
+function ApprovalWaiting({ kind }: { kind: '복구' | '바이인' }) {
+  return (
+    <>
+      <p>{kind} 신청을 보냈습니다.</p>
+      <p role="status">방장의 승인을 기다리고 있습니다.</p>
+    </>
+  );
+}
+
 // 방 만들기와 방 참가를 탭으로 나눠 입력을 받고 기존 자리 복구를 제공한다
 export function OnlineEntry({
   view,
@@ -71,7 +83,9 @@ export function OnlineEntry({
   );
   const [tab, setTab] = useState<Tab>(() => (code ? 'join' : 'create'));
   if (view.phase === 'recovering' && view.recovery?.status === 'PENDING')
-    return <p role="status">방장의 승인을 기다리고 있습니다.</p>;
+    return <ApprovalWaiting kind="복구" />;
+  if (view.phase === 'buying-in' && view.buyIn?.status === 'PENDING')
+    return <ApprovalWaiting kind="바이인" />;
   const fieldError = (field: EntryField) => (view.errorField === field ? view.error : null);
   // 탭을 바꾸고 이전 탭에서 남은 칸 오류를 지운다
   const choose = (next: Tab) => {
@@ -79,14 +93,6 @@ export function OnlineEntry({
     controller.clearFieldError('name');
     controller.clearFieldError('code');
     setTab(next);
-  };
-  // 왼쪽·오른쪽 화살표로 탭을 옮긴다
-  const moveTab = (event: KeyboardEvent<HTMLDivElement>) => {
-    if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
-    event.preventDefault();
-    const next = tab === 'create' ? 'join' : 'create';
-    choose(next);
-    event.currentTarget.querySelector<HTMLButtonElement>(`#entry-tab-${next}`)?.focus();
   };
   const nameInput = (
     <EntryInput field="name" label="내 이름" error={fieldError('name')} help={NAME_HELP}>
@@ -106,23 +112,14 @@ export function OnlineEntry({
   );
   return (
     <>
-      <div className="entry-tabs" role="tablist" aria-label="입장 방법" onKeyDown={moveTab}>
-        {TABS.map((t) => (
-          <button
-            key={t.id}
-            id={`entry-tab-${t.id}`}
-            role="tab"
-            type="button"
-            aria-selected={tab === t.id}
-            aria-controls="entry-panel"
-            tabIndex={tab === t.id ? 0 : -1}
-            disabled={view.pending}
-            onClick={() => choose(t.id)}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
+      <Tabs
+        tabs={TABS}
+        selected={tab}
+        onSelect={choose}
+        disabled={view.pending}
+        label="입장 방법"
+        idPrefix="entry"
+      />
       <div
         className="entry-panel"
         id="entry-panel"
@@ -176,7 +173,22 @@ export function OnlineEntry({
         )}
       </div>
       {view.phase === 'joining' && <p role="status">방에 연결하고 있습니다.</p>}
-      {view.phase === 'recovering' && <p role="status">방장의 승인을 기다리고 있습니다.</p>}
+      {(view.phase === 'recovering' || view.phase === 'buying-in') && (
+        <p role="status">방장의 승인을 기다리고 있습니다.</p>
+      )}
+      {tab === 'join' && view.phase === 'entry' && view.errorCode === 'NOT_WAITING' && (
+        <Dialog
+          title="바이인 신청"
+          onClose={() => controller.dismissError()}
+          actions={
+            <button className="primary" onClick={() => void controller.requestBuyIn(code, name)}>
+              바이인 신청
+            </button>
+          }
+        >
+          <p>게임이 진행 중입니다. 바이인을 신청할까요?</p>
+        </Dialog>
+      )}
       {view.pending && view.error && (
         <button onClick={() => void controller.retry()}>다시 시도</button>
       )}

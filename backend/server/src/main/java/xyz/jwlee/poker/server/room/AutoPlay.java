@@ -31,7 +31,7 @@ final class AutoPlay {
             if (!(result instanceof TransitionResult.Applied applied)) {
                 break;
             }
-            room.updateGame(applied.state(), applied.events());
+            room.updateGame(applied.state(), applied.events(), env.now());
             changed = true;
         }
         return changed;

@@ -148,6 +148,49 @@ it('rejects a target who left the play at confirmation time', async () => {
   }
 });
 
+// 탈락한 참가자가 메뉴의 바이인을 누르면 확인 없이 재입장 신청 명령을 보낸다
+it('sends a re-entry request from the eliminated player menu', async () => {
+  const x = await mountRoom();
+  try {
+    const bob = x.view.snapshot!.participants.find((p) => p.name === 'Bob')!;
+    x.view.snapshot!.you.participantId = bob.participantId;
+    x.view.snapshot!.game!.players.find((p) => p.id === bob.playerId)!.eliminated = true;
+    await x.rerender();
+    await x.click('관리 메뉴');
+    await x.click('바이인');
+    expect(x.send).toHaveBeenCalledWith([{ type: 'REQUEST_BUY_IN', handScoped: false }]);
+    expect(x.host.querySelector('.menu-actions')).toBeNull();
+  } finally {
+    await x.close();
+  }
+});
+
+// 방장의 바이인은 대기 바이인 대화상자를 열고, 거기서 취소와 탈락한 방장의 재입장 신청을 한다
+it('opens the host buy-in dialog from the menu', async () => {
+  const x = await mountRoom();
+  try {
+    const game = x.view.snapshot!.game!;
+    game.players[0].eliminated = true;
+    game.players.push({ ...game.players[1], id: 'p2', name: 'Dave', joining: 'next-hand' });
+    await x.rerender();
+    await x.click('관리 메뉴');
+    await x.click('바이인');
+    expect(x.host.querySelector('.menu-actions')).toBeNull();
+    expect(x.host.querySelector('dialog[aria-label="바이인"] h3')?.textContent).toBe(
+      '대기 중인 바이인',
+    );
+    await x.click('바이인 취소');
+    expect(x.send).toHaveBeenLastCalledWith([
+      { type: 'CANCEL_BUY_IN', payload: { playerId: 'p2' }, handScoped: false },
+    ]);
+    await x.click('재입장 신청');
+    expect(x.send).toHaveBeenLastCalledWith([{ type: 'REQUEST_BUY_IN', handScoped: false }]);
+    expect(x.host.querySelector('dialog[aria-label="바이인"]')).toBeNull();
+  } finally {
+    await x.close();
+  }
+});
+
 // 서버 업데이트 안내는 대기방과 결과 화면에만 보이고 진행 화면에는 보이지 않는다
 it.each([
   ['WAITING', true],
@@ -329,6 +372,7 @@ async function mountRoom(
     connection: 'online',
     hasControl: true,
     recovery: null,
+    buyIn: null,
     error,
     errorField: null,
   };

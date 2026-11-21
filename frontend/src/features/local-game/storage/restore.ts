@@ -1,6 +1,13 @@
 import type { StoredGame } from './types';
 import { assertInvariants } from '../../../game/invariants';
 import { validateSettings, validChips } from '../../../game/settings';
+// 살아 있는 참가자의 이름이 공백·NFC·대소문자를 무시하고 겹치는지 확인한다
+function hasDuplicateLiveName(players: { name: string; eliminated: boolean }[]): boolean {
+  const names = players
+    .filter((p) => !p.eliminated)
+    .map((p) => String(p.name).trim().normalize('NFC').toLowerCase());
+  return new Set(names).size !== names.length;
+}
 // 저장된 게임의 형식, 설정, 핸드, 취소 스냅샷이 손상되지 않았는지 검증한다
 export function validateStored(value: StoredGame): void {
   if (value.schemaVersion !== 1)
@@ -8,6 +15,11 @@ export function validateStored(value: StoredGame): void {
   if (value.rulesVersion !== 1)
     throw Error('지원하지 않는 게임 규칙입니다. 호환되는 앱으로 열어 주세요.');
   const s = value.state;
+  // 바이인한 게임은 참가자 수와 총량이 시작 설정보다 늘어나므로 시작 설정과 맞추지 않는다
+  const boughtIn =
+    !!s &&
+    (!!s.formerPlayers?.length ||
+      (Array.isArray(s.players) && s.players.some((p) => p.entry !== undefined)));
   if (
     !s ||
     typeof s.tournamentId !== 'string' ||
@@ -24,12 +36,16 @@ export function validateStored(value: StoredGame): void {
     s.players.length < 2 ||
     s.players.length > 10 ||
     !validateSettings(s.settings).ok ||
-    s.players.length !== s.settings.names.length
+    (!boughtIn && s.players.length !== s.settings.names.length)
   )
     throw Error('저장 설정이 손상되었습니다.');
   if (
-    s.initialTotal !== s.settings.initial * s.players.length ||
-    s.players.some((p, i) => p.name !== s.settings.names[i])
+    boughtIn
+      ? s.initialTotal % s.settings.initial !== 0 ||
+        s.initialTotal < s.settings.initial * s.players.length ||
+        hasDuplicateLiveName(s.players)
+      : s.initialTotal !== s.settings.initial * s.players.length ||
+        s.players.some((p, i) => p.name !== s.settings.names[i])
   )
     throw Error('저장 설정·참가자·총량이 일치하지 않습니다.');
   if (
@@ -63,6 +79,7 @@ export function validateStored(value: StoredGame): void {
     throw Error('저장 참가자 정보가 손상되었습니다.');
   if (
     s.setupOrder &&
+    !boughtIn &&
     (!Array.isArray(s.setupOrder) ||
       s.setupOrder.length !== s.players.length ||
       new Set(s.setupOrder).size !== s.players.length ||

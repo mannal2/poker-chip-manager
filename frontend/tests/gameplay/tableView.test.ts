@@ -125,3 +125,22 @@ it('marks forfeited cards as eliminated before their stack distribution', () => 
   expect(view.players[1].out).toBe(true);
   expect(view.players[1].roles).toContain('탈락');
 });
+
+// 대기 중인 바이인 좌석은 폴드 대신 합류 시점을 표시한다
+it('labels waiting buy-ins instead of folded', () => {
+  const state = fixtureState(3);
+  state.players[1] = { ...state.players[1], folded: true, joining: 'next-hand' };
+  state.players[2] = { ...state.players[2], folded: true, joining: 'button' };
+  const roles = buildTableView(state, emptyDrafts).players.map((p) => p.roles);
+  expect(roles[1]).toContain('다음 핸드부터');
+  expect(roles[1]).not.toContain('폴드');
+  expect(roles[2]).toContain('버튼 대기');
+  expect(roles[2]).not.toContain('폴드');
+});
+
+// 참가 횟수가 없으면 1로 좌석에 넘긴다
+it('passes the entry count', () => {
+  const state = fixtureState(2);
+  state.players[1] = { ...state.players[1], entry: 3 };
+  expect(buildTableView(state, emptyDrafts).players.map((p) => p.entry)).toEqual([1, 3]);
+});

@@ -22,7 +22,10 @@ import xyz.jwlee.poker.game.model.GameState;
  */
 public final class Room {
 
+    /** Most people a waiting room seats: a game starts with at most 10. */
     public static final int MAX_PARTICIPANTS = 10;
+    /** Most people a running room holds once buy-ins join; eliminated people stay as spectators. */
+    public static final int MAX_WITH_BUY_INS = 15;
     public static final int INITIAL_CONTROL_GENERATION = 1;
 
     private final String roomId;
@@ -46,6 +49,8 @@ public final class Room {
     private boolean closed;
     private final Presence presence = new Presence();
     private final RecoveryRequests recoveryRequests = new RecoveryRequests();
+    private final BuyInRequests buyInRequests = new BuyInRequests();
+    private final Map<String, String> reentryOrigins = new HashMap<>();
     private boolean hostTakeoverOpen;
     private boolean deployPending;
     private final List<String> pendingRevocations = new ArrayList<>();
@@ -68,6 +73,8 @@ public final class Room {
     public Presence presence() { return presence; }
     // 방의 복구 요청 목록을 돌려준다
     public RecoveryRequests recoveryRequests() { return recoveryRequests; }
+    // 방의 바이인 신청 목록을 돌려준다
+    public BuyInRequests buyInRequests() { return buyInRequests; }
 
     public RoomPhase phase() { return phase; }
     public void setPhase(RoomPhase phase) { this.phase = phase; bumpVersion(); }
@@ -224,21 +231,72 @@ public final class Room {
         if (phase != RoomPhase.WAITING) {
             throw new RoomException(ErrorCode.NOT_WAITING);
         }
-        if (participants.size() >= MAX_PARTICIPANTS) {
+        Participant p = seat(participantId, name, credential, now);
+        bumpVersion();
+        return p;
+    }
+
+    // 진행 중인 방에 승인된 바이인 참가자를 앉힌다. 버전은 명령 파이프라인이 올린다
+    /** The PLAYING-phase path of {@link #addParticipant}, for an approved buy-in; the same capacity and name rules. */
+    Participant addBoughtInParticipant(String participantId, String name, String credential, Instant now) {
+        if (phase != RoomPhase.PLAYING) {
+            throw new RoomException(ErrorCode.BUY_IN_CLOSED);
+        }
+        return seat(participantId, name, credential, now);
+    }
+
+    // 새 사람이 앉을 자리가 있고 이름이 참가자(탈락자 포함)와 겹치지 않는지 확인한다
+    /**
+     * Capacity first (ROOM_FULL: 10 in the waiting room, 15 once a game runs), then the name, compared
+     * case-insensitively (DUPLICATE_NAME).
+     */
+    void requireRoomFor(String name) {
+        int capacity = phase == RoomPhase.WAITING ? MAX_PARTICIPANTS : MAX_WITH_BUY_INS;
+        if (participants.size() >= capacity) {
             throw new RoomException(ErrorCode.ROOM_FULL);
         }
         String lowered = name.toLowerCase(Locale.ROOT);
         if (participants.stream().anyMatch(p -> p.name().toLowerCase(Locale.ROOT).equals(lowered))) {
             throw new RoomException(ErrorCode.DUPLICATE_NAME);
         }
+    }
+
+    // 자리와 이름 규칙을 확인한 뒤 참가자를 명단 끝에 더하고 첫 참가자를 방장으로 정한다
+    private Participant seat(String participantId, String name, String credential, Instant now) {
+        requireRoomFor(name);
         Participant p = new Participant(participantId, name, nextJoinOrder++, INITIAL_CONTROL_GENERATION, credential);
         participants.add(p);
         presence.joined(participantId, now);
         if (hostId == null) {
             hostId = participantId;
         }
-        bumpVersion();
         return p;
+    }
+
+    // 참가자를 다른 게임 플레이어 기록에 연결한다
+    void linkPlayer(String participantId, String playerId) {
+        playerIds.put(participantId, playerId);
+    }
+
+    // 참가자와 게임 플레이어의 연결을 끊는다
+    void unlinkPlayer(String participantId) {
+        playerIds.remove(participantId);
+    }
+
+    // 재입장으로 생긴 플레이어 ID에 원래 탈락 플레이어 ID를 기억한다
+    void rememberReentry(String playerId, String previousPlayerId) {
+        reentryOrigins.put(playerId, previousPlayerId);
+    }
+
+    // 재입장 플레이어의 원래 탈락 플레이어 ID를 꺼내고 지운다. 새 사람이면 빈 값이다
+    Optional<String> takeReentryOrigin(String playerId) {
+        return Optional.ofNullable(reentryOrigins.remove(playerId));
+    }
+
+    // 게임 플레이어 ID에 연결된 참가자를 찾는다
+    Optional<String> participantOfPlayer(String playerId) {
+        return playerIds.entrySet().stream().filter(e -> e.getValue().equals(playerId))
+                .map(Map.Entry::getKey).findFirst();
     }
 
     // Waiting-room mutations. They do not bump the version: the command pipeline bumps once per command.
@@ -261,6 +319,7 @@ public final class Room {
         this.game = state;
         this.playerIds.clear();
         this.playerIds.putAll(playerIdsByParticipant);
+        this.reentryOrigins.clear();
         this.events.clear();
         this.collectedEventCount = 0;
         this.settlementDraft = null;
@@ -280,6 +339,7 @@ public final class Room {
         }
         this.game = null;
         this.playerIds.clear();
+        this.reentryOrigins.clear();
         this.events.clear();
         this.collectedEventCount = 0;
         this.settlementDraft = null;
@@ -287,14 +347,20 @@ public final class Room {
     }
 
     // 게임 상태를 바꾸고 이벤트를 덧붙이며 게임 상태에 따라 방 단계를 정한다
-    /** Replaces the game state and appends the engine's events in order; the phase follows the game status. */
-    void updateGame(GameState state, List<GameEvent> appended) {
+    /**
+     * Replaces the game state and appends the engine's events in order; the phase follows the game status. When the
+     * tournament ends or is aborted no host can see or approve a buy-in request any more, so pending ones end.
+     */
+    void updateGame(GameState state, List<GameEvent> appended, Instant now) {
         this.game = state;
         this.events.addAll(appended);
         this.phase = switch (state.status) {
             case ENDED, ABORTED -> RoomPhase.RESULT;
             default -> RoomPhase.PLAYING;
         };
+        if (phase == RoomPhase.RESULT) {
+            buyInRequests.supersedeAllPending(now);
+        }
     }
 
     // 방장의 정산 선택 초안을 새 버전으로 저장한다
@@ -399,7 +465,7 @@ public final class Room {
      * Removes a participant. The dealer stays on the same person (-1 if that was the leaver); a leaving host
      * hands the room to the earliest connected joiner, or the earliest joiner left when nobody is connected; the
      * last one out closes the room. Their connections wait in {@link #drainPendingRevocations} to be ended, and
-     * their pending recovery requests end now: no host can see or approve them any more.
+     * their pending recovery and re-entry requests end now: no host can see or approve them any more.
      */
     void removeParticipant(String participantId, Instant now) {
         String dealer = dealerId();
@@ -407,6 +473,7 @@ public final class Room {
         ledgers.keySet().removeIf(k -> k.startsWith(participantId + "#"));
         pendingRevocations.addAll(presence.forget(participantId));
         recoveryRequests.supersede(participantId, now);
+        buyInRequests.supersede(participantId, now);
         pointDealerAt(dealer);
         if (participants.isEmpty()) {
             hostId = null;

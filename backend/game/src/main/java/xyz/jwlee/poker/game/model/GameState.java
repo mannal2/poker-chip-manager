@@ -12,6 +12,8 @@ public final class GameState {
     public int initialTotal;
     /** Null when the state carries no setup order. */
     public List<String> setupOrder;
+    /** Null until a seat is replaced or a buy-in is cancelled. */
+    public List<FormerPlayer> formerPlayers;
     public List<Player> players = new ArrayList<>();
     /** Null between hands. */
     public Hand hand;
@@ -31,6 +33,7 @@ public final class GameState {
         s.settings = settings; // immutable record
         s.initialTotal = initialTotal;
         s.setupOrder = setupOrder == null ? null : new ArrayList<>(setupOrder);
+        s.formerPlayers = formerPlayers == null ? null : new ArrayList<>(formerPlayers); // immutable records
         s.players = new ArrayList<>(players.size());
         for (Player p : players) {
             s.players.add(p.copy());

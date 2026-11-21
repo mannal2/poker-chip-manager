@@ -347,14 +347,20 @@ public final class Room {
     }
 
     // 게임 상태를 바꾸고 이벤트를 덧붙이며 게임 상태에 따라 방 단계를 정한다
-    /** Replaces the game state and appends the engine's events in order; the phase follows the game status. */
-    void updateGame(GameState state, List<GameEvent> appended) {
+    /**
+     * Replaces the game state and appends the engine's events in order; the phase follows the game status. When the
+     * tournament ends or is aborted no host can see or approve a buy-in request any more, so pending ones end.
+     */
+    void updateGame(GameState state, List<GameEvent> appended, Instant now) {
         this.game = state;
         this.events.addAll(appended);
         this.phase = switch (state.status) {
             case ENDED, ABORTED -> RoomPhase.RESULT;
             default -> RoomPhase.PLAYING;
         };
+        if (phase == RoomPhase.RESULT) {
+            buyInRequests.supersedeAllPending(now);
+        }
     }
 
     // 방장의 정산 선택 초안을 새 버전으로 저장한다

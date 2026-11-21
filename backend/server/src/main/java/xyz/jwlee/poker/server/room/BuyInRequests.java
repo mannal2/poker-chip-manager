@@ -83,6 +83,13 @@ public final class BuyInRequests {
         }
     }
 
+    // 대기 중인 신청을 모두 밀어낸다(토너먼트가 끝나 더는 받을 수 없을 때)
+    void supersedeAllPending(Instant now) {
+        for (Request other : pending()) {
+            requests.put(other.id(), other.ended(Status.SUPERSEDED, now, other.participantId(), null));
+        }
+    }
+
     // 신청을 거절로 끝낸다
     void reject(Request request, Instant now) {
         requests.put(request.id(), request.ended(Status.REJECTED, now, request.participantId(), null));

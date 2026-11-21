@@ -130,6 +130,24 @@ class BuyInCommandsTest {
         assertThat(refusal(g.room, "Erin")).isEqualTo("BUY_IN_CLOSED");
     }
 
+    // 토너먼트가 끝나면 대기 중이던 신청이 끝난 상태로 닫혀 더 기다리지 않는지 확인한다
+    @Test
+    void whenTheTournamentEndsPendingRequestsEndAsSuperseded() {
+        GameFixture g = GameFixture.started(2, 0, clock);
+        BuyInRequests.Request r = ask(g.room, "Erin");
+        g.check(g.send(g.actor(), "ALL_IN", null));
+        g.check(g.send(g.actor(), "CALL", null));
+        String winners = Settlement.buildPots(g.room.game()).stream()
+                .map(p -> "\"" + p.id() + "\":[\"p0\"]").collect(Collectors.joining(",", "{", "}"));
+        g.check(g.send("a", "SETTLE_HAND", "{\"winners\":" + winners + "}"));
+        assertThat(g.room.game().status).isEqualTo(TournamentStatus.ENDED);
+
+        BuyInRequests.Request after = g.room.buyInRequests().find(r.id()).orElseThrow();
+        assertThat(after.status()).isEqualTo(Status.SUPERSEDED);
+        assertThat(after.statusAt(clock.instant())).isEqualTo(Status.SUPERSEDED);
+        assertThat(g.room.buyInRequests().pending()).isEmpty();
+    }
+
     // 진행 중인 방에서 신청하면 대기 신청이 생기고 방장에게 알리는지 확인한다
     @Test
     void askingInARunningRoomMakesAPendingRequestAndTellsTheHost() {

@@ -87,7 +87,7 @@ public final class BuyInCommands {
         TransitionResult.Applied applied = GameCommands.applied(GameEngine.transition(game,
                 new GameCommand.BuyIn(request.name(), placement, request.reentryOf()), env.transition()));
         String playerId = boughtIn(applied);
-        room.updateGame(applied.state(), applied.events());
+        room.updateGame(applied.state(), applied.events(), env.now());
         room.clearDraft();
         if (reentry) {
             room.rememberReentry(playerId, request.reentryOf());
@@ -116,7 +116,7 @@ public final class BuyInCommands {
                 GameEngine.transition(game, new GameCommand.CancelBuyIn(playerId), env.transition()));
         Optional<String> owner = room.participantOfPlayer(playerId);
         Optional<String> origin = room.takeReentryOrigin(playerId);
-        room.updateGame(applied.state(), applied.events());
+        room.updateGame(applied.state(), applied.events(), env.now());
         room.clearDraft();
         owner.ifPresent(participantId -> {
             if (origin.isPresent()) {

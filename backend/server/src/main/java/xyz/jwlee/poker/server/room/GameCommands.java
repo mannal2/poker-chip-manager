@@ -63,7 +63,7 @@ final class GameCommands {
         TransitionResult.Applied applied =
                 applied(GameEngine.transition(created, new GameCommand.StartTournament(), ctx));
         room.beginGame(applied.state(), ids, s);
-        room.updateGame(applied.state(), applied.events());
+        room.updateGame(applied.state(), applied.events(), env.now());
     }
 
     // 현재 차례 참가자 본인의 베팅 행동을 엔진에 전달한다
@@ -212,7 +212,7 @@ final class GameCommands {
     private static void run(Room room, GameCommand command, RoomEnv env) {
         TransitionResult.Applied applied =
                 applied(GameEngine.transition(room.game(), command, env.transition()));
-        room.updateGame(applied.state(), applied.events());
+        room.updateGame(applied.state(), applied.events(), env.now());
         if (!(command instanceof GameCommand.ScheduleBlinds)) {
             room.clearDraft();
         }

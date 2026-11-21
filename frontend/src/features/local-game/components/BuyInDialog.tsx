@@ -5,8 +5,9 @@ import { normalizeName, renameError } from '../../../game/settings';
 import { messageFor } from '../../gameplay/model/errorMessages';
 import { seatOptions } from '../../gameplay/model/buyIn';
 import { SeatField } from '../../gameplay/components/SeatField';
+import { BuyInGuide, ReentrySeat, WaitingBuyIns } from '../../gameplay/components/BuyInParts';
 import type { GameCommand, GameState } from '../../../game/types';
-import '../styles/buyIn.css';
+import '../../gameplay/styles/buyIn.css';
 
 type Mode = 'new' | 'reentry';
 const TABS: readonly { id: Mode; label: string }[] = [
@@ -118,22 +119,11 @@ export function BuyInDialog({
     >
       <div className="buy-in">
         {waiting.length > 0 && (
-          <section>
-            <h3>대기 중인 바이인</h3>
-            <ul className="waiting">
-              {waiting.map((p) => (
-                <li key={p.id}>
-                  <span>{p.name}</span>
-                  <button
-                    disabled={busy}
-                    onClick={() => void onSubmit({ type: 'CANCEL_BUY_IN', playerId: p.id })}
-                  >
-                    바이인 취소
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </section>
+          <WaitingBuyIns
+            waiting={waiting}
+            busy={busy}
+            onCancel={(playerId) => void onSubmit({ type: 'CANCEL_BUY_IN', playerId })}
+          />
         )}
         <Tabs
           tabs={TABS}
@@ -205,22 +195,19 @@ export function BuyInDialog({
                   재입장할 탈락자를 골라 주세요.
                 </p>
               )}
-              {person?.seated && <p className="hint">원래 자리로 돌아갑니다.</p>}
-              {person && !person.seated && (
-                <>
-                  <p className="hint">
-                    원래 자리에 다른 플레이어가 앉아 있습니다. 앉을 자리를 골라 주세요.
-                  </p>
-                  <SeatField options={options} seat={seat} busy={busy} onChange={setSeatKey} />
-                </>
+              {person && (
+                <ReentrySeat
+                  seated={person.seated}
+                  options={options}
+                  seat={seat}
+                  busy={busy}
+                  onChange={setSeatKey}
+                />
               )}
             </Panel>
           </div>
         </div>
-        <p className="guide">
-          시작 칩 {state.settings.initial.toLocaleString('ko-KR')}을 받고 다음 핸드부터 참여합니다.
-          버튼과 스몰 블라인드 사이 자리면 버튼이 지나간 뒤 참여합니다.
-        </p>
+        <BuyInGuide initial={state.settings.initial} />
       </div>
     </Dialog>
   );
